@@ -23,10 +23,10 @@ struct UncallableWithArguments {
 
 VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
                                           ast::Call const *node) {
-  LOG("", "waiting for params on %s", node->DebugString());
-  absl::Span<std::pair<core::ParameterType, Context::CallableIdentifier> const>
+  absl::Span<absl::flat_hash_map<core::ParameterType,
+                                 Context::CallableIdentifier> const>
       callee_parameter_types = co_await VerifyParametersOf(node->callee());
-  LOG("", "%p, %u", callee_parameter_types.data(), callee_parameter_types.size());
+  ASSERT(callee_parameter_types.size() == 1);
 
   core::Arguments<QualifiedType> arguments;
   bool has_error = false;
@@ -49,9 +49,9 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
   if (has_error) { co_return tv.TypeOf(node, Error()); }
 
   std::vector<
-      std::pair<core::ParameterType, Context::CallableIdentifier> const *>
+      std::pair<core::ParameterType const, Context::CallableIdentifier> const *>
       parameter_types;
-  for (auto const &callee_parameter_type : callee_parameter_types) {
+  for (auto const &callee_parameter_type : callee_parameter_types[0]) {
     auto callability_result = core::Callability(
         callee_parameter_type.first.value(), arguments,
         [&](QualifiedType argument_type, core::Type parameter_type) {

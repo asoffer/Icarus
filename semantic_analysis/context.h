@@ -64,10 +64,12 @@ struct Context {
 
   // Sets the parameter types associated with a `ast::ParameterizedExpression`
   // node that can be used to invoke the expression.
-  absl::Span<std::pair<core::ParameterType, CallableIdentifier> const>
-  set_parameters(ast::Expression const *expr,
-                 std::vector<std::pair<core::ParameterType, CallableIdentifier>>
-                     parameters);
+  absl::Span<absl::flat_hash_map<core::ParameterType,
+                                 Context::CallableIdentifier> const>
+  set_parameters(
+      ast::Expression const *expr,
+      std::vector<absl::flat_hash_map<core::ParameterType, CallableIdentifier>>
+          parameters);
 
  private:
   absl::flat_hash_map<ast::Expression const *, std::vector<QualifiedType>>
@@ -75,7 +77,7 @@ struct Context {
 
   absl::flat_hash_map<
       ast::Expression const *,
-      std::vector<std::pair<core::ParameterType, CallableIdentifier>>>
+      std::vector<absl::flat_hash_map<core::ParameterType, CallableIdentifier>>>
       parameters_;
 };
 

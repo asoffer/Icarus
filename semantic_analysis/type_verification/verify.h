@@ -21,8 +21,8 @@ enum class TypeVerificationPhase {
 namespace internal_verify {
 
 using Types =
-    std::tuple<absl::Span<std::pair<core::ParameterType,
-                                    Context::CallableIdentifier> const>,
+    std::tuple<absl::Span<absl::flat_hash_map<
+                   core::ParameterType, Context::CallableIdentifier> const>,
                absl::Span<QualifiedType const>, void, void>;
 template <TypeVerificationPhase P>
 using ReturnType = std::tuple_element_t<static_cast<int>(P), Types>;
@@ -83,23 +83,23 @@ struct TypeVerifier : VerificationScheduler {
             node, std::vector(qualified_types.begin(), qualified_types.end())));
   }
 
-  auto ParametersOf(ast::Expression const *node,
-                    absl::Span<std::pair<core::ParameterType,
-                                         Context::CallableIdentifier> const>
-                        parameter_ids) {
-    return VerificationTask::YieldResult<
-        TypeVerificationPhase::VerifyParameters>(
-        node, context().set_parameters(node, std::vector(parameter_ids.begin(),
-                                                         parameter_ids.end())));
-  }
-
   auto ParametersOf(
       ast::Expression const *node,
-      std::vector<std::pair<core::ParameterType, Context::CallableIdentifier>>
+      std::vector<
+          absl::flat_hash_map<core::ParameterType, Context::CallableIdentifier>>
           parameter_ids) {
     return VerificationTask::YieldResult<
         TypeVerificationPhase::VerifyParameters>(
         node, context().set_parameters(node, std::move(parameter_ids)));
+  }
+
+  auto ParametersOf(
+      ast::Expression const *node,
+      absl::flat_hash_map<core::ParameterType, Context::CallableIdentifier>
+          parameter_ids) {
+    std::vector<decltype(parameter_ids)> v;
+    v.push_back(std::move(parameter_ids));
+    return ParametersOf(node, std::move(v));
   }
 
   template <typename NodeType>

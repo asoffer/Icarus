@@ -49,12 +49,18 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
   auto &scope           = *node->scope();
   std::string_view name = node->name();
 
-  std::vector<std::pair<core::ParameterType, Context::CallableIdentifier>>
+  absl::flat_hash_map<core::ParameterType, Context::CallableIdentifier>
       parameters_options;
   for (auto const &id : scope.visible_ancestor_declaration_id_named(name)) {
     absl::Span parameters = co_await VerifyParametersOf(&id);
-    for (auto [p, callable_identifier] : parameters) {
-      parameters_options.emplace_back(p, &id);
+    if (parameters.data() == nullptr) { continue; }
+
+    ASSERT(parameters.size() == 1);
+    for (auto [p, callable_identifier] : parameters[0]) {
+      auto [iter, inserted] = parameters_options.emplace(p, &id);
+      // TODO: Error: ambiguity? There are other forms of ambiguity too
+      // though.
+      ASSERT(inserted == true);
     }
   }
   co_yield tv.ParametersOf(node, std::move(parameters_options));

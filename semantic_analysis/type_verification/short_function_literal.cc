@@ -23,10 +23,8 @@ VerificationTask TypeVerifier::VerifyType(
   }
 
   core::ParameterType parameter_type(tv.type_system(), parameters);
-  std::vector<std::pair<core::ParameterType, Context::CallableIdentifier>>
-      parameter_types;
-  parameter_types.emplace_back(parameter_type,
-                               Context::CallableIdentifier(node));
+  absl::flat_hash_map<core::ParameterType, Context::CallableIdentifier>
+      parameter_types{{parameter_type, Context::CallableIdentifier(node)}};
   co_yield tv.ParametersOf(node, std::move(parameter_types));
 
   if (has_error) { co_return tv.TypeOf(node, Error()); }

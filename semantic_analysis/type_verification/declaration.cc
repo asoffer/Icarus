@@ -86,11 +86,15 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
       co_return tv.TypeOf(node, qt);
     } break;
     case ast::Declaration::kInferred: {
-      absl::Span parameters = co_await VerifyParametersOf(node->init_val());
-      for (auto const &id : node->ids()) {
-        co_yield tv.ParametersOf(&id, parameters); 
+      if (absl::Span parameters = co_await VerifyParametersOf(node->init_val());
+          parameters.data() != nullptr) {
+        ASSERT(parameters.size() == node->ids().size());
+        size_t i = 0;
+        for (auto const &id : node->ids()) {
+          co_yield tv.ParametersOf(&id, parameters[i++]);
+        }
       }
-      co_yield tv.ParametersOf(node, parameters);
+
       initial_value_qts = co_await VerifyTypeOf(node->init_val());
       // Syntactically: `var := value`, or `var ::= value`
       if (initial_value_qts.size() != 1) { NOT_YET("Log an error"); }
@@ -116,9 +120,7 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
 
 VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
                                           ast::Declaration::Id const *node) {
-  auto &declaration = node->declaration();
-  co_yield tv.ParametersOf(node, co_await VerifyParametersOf(&declaration));
-  co_return tv.TypeOf(node, co_await VerifyTypeOf(&declaration));
+  return VerifyType(tv, &node->declaration());
 }
 
 VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,

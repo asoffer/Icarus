@@ -33,10 +33,11 @@ absl::Span<QualifiedType const> Context::set_qualified_type(
   return iter->second;
 }
 
-absl::Span<std::pair<core::ParameterType, Context::CallableIdentifier> const>
+absl::Span<
+    absl::flat_hash_map<core::ParameterType, Context::CallableIdentifier> const>
 Context::set_parameters(
     ast::Expression const *expr,
-    std::vector<std::pair<core::ParameterType, CallableIdentifier>>
+    std::vector<absl::flat_hash_map<core::ParameterType, CallableIdentifier>>
         parameters) {
   [[maybe_unused]] auto [iter, inserted] =
       parameters_.try_emplace(expr, std::move(parameters));
