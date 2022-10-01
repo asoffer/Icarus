@@ -20,7 +20,7 @@ using TestScheduler = Scheduler<Task<Node, Phase>>;
 
 Task<Node, Phase> OneTaskWithNoAwaits(TestScheduler &, Node n) {
   ++*n.counter;
-  co_return;
+  co_return Task<Node, Phase>::YieldResult<Phase::Zero>(n);
 }
 
 TEST(Scheduler, OneTaskWithNoAwaits) {
@@ -38,6 +38,7 @@ Task<Node, Phase> OneTaskWithOneAwait(TestScheduler &, Node n) {
   co_yield Task<Node, Phase>::YieldResult<Phase::Zero>(n);
   if (n.next) { co_await Task<Node, Phase>::Phase<Phase::Zero>(*n.next); }
   ++*n.counter;
+  co_return Task<Node, Phase>::YieldResult<Phase::One>(n);
 }
 
 TEST(Scheduler, OneTaskWithOneAwait) {
@@ -57,12 +58,16 @@ TEST(Scheduler, OneTaskWithOneAwait) {
 
 Task<Node, Phase> SelfReferential(TestScheduler &, Node n) {
   ++*n.counter;
+  std::cerr << "***a" << n.next << "\n";
   co_yield Task<Node, Phase>::YieldResult<Phase::Zero>(n);
   co_await Task<Node, Phase>::Phase<Phase::Zero>(*n.next);
   ++*n.counter;
-  co_yield Task<Node, Phase>::YieldResult<Phase::Zero>(n);
+  std::cerr << "***b" << n.next << "\n";
+  co_yield Task<Node, Phase>::YieldResult<Phase::One>(n);
   co_await Task<Node, Phase>::Phase<Phase::One>(*n.next);
+  std::cerr << "***c" << n.next << "\n";
   ++*n.counter;
+  co_return Task<Node, Phase>::YieldResult<Phase::Completed>(n);
 }
 
 TEST(Scheduler, SelfReferential) {
@@ -81,7 +86,9 @@ TEST(Scheduler, SelfReferential) {
 }
 
 template <Phase P>
-using ReturnType = std::conditional_t<P == Phase::Zero, int, std::string_view>;
+using ReturnType = std::conditional_t<
+    P == Phase::Zero, int,
+    std::conditional_t<P == Phase::One, std::string_view, void>>;
 using ReturningTask       = Task<Node, Phase, ReturnType>;
 using ReturnTestScheduler = Scheduler<ReturningTask>;
 
@@ -93,6 +100,7 @@ ReturningTask ReturningSelfReferential(ReturnTestScheduler &, Node n) {
   co_yield ReturningTask::YieldResult<Phase::One>(n, "hello");
   *n.counter += (co_await ReturningTask::Phase<Phase::One>(*n.next)).size();
   ++*n.counter;
+  co_return ReturningTask::YieldResult<Phase::Completed>(n);
 }
 
 TEST(Scheduler, ReturningSelfReferential) {
@@ -118,6 +126,7 @@ ReturningTask SkipPhaseZero(ReturnTestScheduler &, Node n) {
   // value-initialized value of the returned type.
   *n.counter += co_await ReturningTask::Phase<Phase::Zero>(*n.next);
   *n.counter += (co_await ReturningTask::Phase<Phase::One>(*n.next)).size();
+  co_return ReturningTask::YieldResult<Phase::Completed>(n);
 }
 
 TEST(Scheduler, SkipPhaseZero) {

@@ -19,7 +19,7 @@ core::Type TypeOfNode(ast::Terminal const& node, TypeSystem& type_system) {
 
 VerificationTask TypeVerifier::VerifyType(TypeVerifier& tv,
                                           ast::Terminal const* node) {
-  co_yield tv.TypeOf(node, Constant(TypeOfNode(*node, tv.type_system())));
+  co_return tv.TypeOf(node, Constant(TypeOfNode(*node, tv.type_system())));
 }
 
 }  // namespace semantic_analysis

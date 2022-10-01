@@ -44,10 +44,7 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
     }
   }
 
-  if (has_error) {
-    co_yield tv.TypeOf(node, Error());
-    co_return;
-  }
+  if (has_error) { co_return tv.TypeOf(node, Error()); }
 
   std::vector<
       std::pair<core::ParameterType, Context::CallableIdentifier> const *>
@@ -65,8 +62,7 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
   switch (parameter_types.size()) {
     case 0:
       tv.ConsumeDiagnostic(UncallableWithArguments{});
-      co_yield tv.TypeOf(node, Error());
-      break;
+      co_return tv.TypeOf(node, Error());
     case 1: {
       auto const &[parameter_type, callable_identifier] = *parameter_types[0];
       absl::Span callee_qts =
@@ -80,8 +76,8 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
       std::vector<QualifiedType> qts;
       qts.reserve(return_types.size());
       for (core::Type t : return_types) { qts.emplace_back(t); }
-      co_yield tv.TypeOf(node, std::move(qts));
-    } break;
+      co_return tv.TypeOf(node, std::move(qts));
+    }
     default: NOT_YET("Log an error");
   }
 }

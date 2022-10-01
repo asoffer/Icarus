@@ -53,8 +53,7 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
     ASSERT(qts.size() == 1);
 
     if (qts[0].qualifiers() >= Qualifiers::Error()) {
-      co_yield tv.TypeOf(node, Error());
-      co_return;
+      co_return tv.TypeOf(node, Error());
     } else {
       viable.emplace_back(&id, qts[0]);
     }
@@ -76,16 +75,15 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
       qt                                  = symbol_qt;
 
       if (qt.qualifiers() >= Qualifiers::Error()) {
-        co_yield tv.TypeOf(node, qt);
-        co_return;
+        co_return tv.TypeOf(node, qt);
       }
 
       if (not(qt.qualifiers() >= Qualifiers::Constant())) {
         qt = Reference(qt);
       }
 
-      co_yield tv.TypeOf(node, qt);
-    } break;
+      co_return tv.TypeOf(node, qt);
+    }
     case 0: {
       if (std::empty(
               node->scope()->ancestor_declaration_id_named(node->name()))) {
@@ -100,8 +98,8 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
         });
       }
       qt = Error();
-      co_yield tv.TypeOf(node, qt);
-    } break;
+      co_return tv.TypeOf(node, qt);
+    } 
     default: {
       Qualifiers qualifiers = Qualifiers::Constant();
       absl::flat_hash_set<core::Type> member_types;
@@ -114,14 +112,11 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
         member_types.insert(qt.type());
       }
 
-      if (error) {
-        co_yield tv.TypeOf(node, qt);
-        co_return;
-      }
+      if (error) { co_return tv.TypeOf(node, qt); }
 
       NOT_YET();
-      co_yield tv.TypeOf(node, qt);
-    } break;
+      co_return tv.TypeOf(node, qt);
+    }
   }
 }
 

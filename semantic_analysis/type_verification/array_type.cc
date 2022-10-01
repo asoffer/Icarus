@@ -85,7 +85,7 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
     constant = false;
   }
 
-  co_yield tv.TypeOf(
+  co_return tv.TypeOf(
       node, QualifiedType(
                 Type, ((error ? Qualifiers::Error() : Qualifiers()) |
                        (constant ? Qualifiers::Constant() : Qualifiers()))));

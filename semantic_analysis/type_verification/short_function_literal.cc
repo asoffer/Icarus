@@ -29,10 +29,7 @@ VerificationTask TypeVerifier::VerifyType(
                                Context::CallableIdentifier(node));
   co_yield tv.ParametersOf(node, std::move(parameter_types));
 
-  if (has_error) {
-    co_yield tv.TypeOf(node, Error());
-    co_return;
-  }
+  if (has_error) { co_return tv.TypeOf(node, Error()); }
 
   absl::Span body_qualified_types = co_await VerifyTypeOf(node->body());
 
@@ -46,9 +43,9 @@ VerificationTask TypeVerifier::VerifyType(
     }
   }
 
-  co_yield tv.TypeOf(node,
-                  Constant(core::FunctionType(tv.type_system(), parameter_type,
-                                              std::move(body_types))));
+  co_return tv.TypeOf(
+      node, Constant(core::FunctionType(tv.type_system(), parameter_type,
+                                        std::move(body_types))));
 }
 
 }  // namespace semantic_analysis

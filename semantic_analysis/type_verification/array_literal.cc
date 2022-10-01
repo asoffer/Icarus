@@ -40,10 +40,7 @@ std::optional<core::Type> GuessIntendedArrayType(
 
 VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
                                           ast::ArrayLiteral const *node) {
-  if (node->empty()) {
-    co_yield tv.TypeOf(node, Constant(EmptyArray));
-    co_return;
-  }
+  if (node->empty()) { co_return tv.TypeOf(node, Constant(EmptyArray)); }
 
   std::vector<QualifiedType> element_qualified_types;
   element_qualified_types.reserve(node->elements().size());
@@ -58,10 +55,7 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
     }
   }
 
-  if (error) {
-    co_yield tv.TypeOf(node, Error());
-    co_return;
-  }
+  if (error) { co_return tv.TypeOf(node, Error()); }
 
   absl::flat_hash_map<core::Type, int> element_type_count;
 
@@ -102,7 +96,7 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
     qt = Error(qualifiers);
   }
 
-  co_yield tv.TypeOf(node, qt);
+  co_return tv.TypeOf(node, qt);
 }
 
 }  // namespace semantic_analysis

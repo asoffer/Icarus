@@ -16,6 +16,11 @@
 #include "base/meta.h"
 
 namespace semantic_analysis {
+namespace internal_task {
+
+struct Empty {};
+
+}  // namespace internal_task
 
 template <typename TaskType>
 struct Scheduler;
@@ -60,14 +65,21 @@ struct Task {
     std::suspend_never initial_suspend() { return {}; }
     std::suspend_always final_suspend() noexcept { return {}; }
     void unhandled_exception() {}
-    void return_void() {}
+
+    template <phase_identifier_type P>
+    auto return_value(YieldResult<P> y) {
+      std::cerr << "**?\n";
+      return yield_value(y);
+    }
 
     template <phase_identifier_type P>
     auto yield_value(YieldResult<P> y) {
-      if constexpr (std::is_void_v<return_type<P>>) {
-        scheduler().template set_completed<P>(y.key());
-      } else {
-        scheduler().template set_completed<P>(y.key(), y.value());
+      if constexpr (P != phase_identifier_type::Completed) {
+        if constexpr (std::is_void_v<return_type<P>>) {
+          scheduler().template set_completed<P>(y.key());
+        } else {
+          scheduler().template set_completed<P>(y.key(), y.value());
+        }
       }
 
       struct {
@@ -192,32 +204,37 @@ struct Task<KeyType, PhaseId, ReturnType>::Phase<P, false>
 template <typename KeyType, PhaseIdentifier PhaseId,
           template <PhaseId> typename ReturnType>
 template <PhaseId P, bool ReturnsVoid>
-struct Task<KeyType, PhaseId, ReturnType>::YieldResult
-    : private Task<KeyType, PhaseId, ReturnType>::Phase<P, ReturnsVoid> {
- private:
-  using Base = Task<KeyType, PhaseId, ReturnType>::Phase<P, ReturnsVoid>;
-
+struct Task<KeyType, PhaseId, ReturnType>::YieldResult {
  public:
-  using key_type              = typename Base::key_type;
-  using phase_identifier_type = typename Base::phase_identifier_type;
-  using return_type           = typename Base::return_type;
-  using task_type             = typename Base::task_type;
-  using Base::key;
+  using key_type              = KeyType;
+  using phase_identifier_type = PhaseId;
+  using task_type             = Task<KeyType, PhaseId, ReturnType>;
+  using return_type           = typename task_type::template return_type<P>;
+
+  template <std::convertible_to<key_type> K>
+  explicit YieldResult(K&& key) requires(ReturnsVoid)
+      : key_(std::forward<K>(key)) {}
 
   template <std::convertible_to<key_type> K, typename... Arguments>
   explicit YieldResult(K&& key, Arguments&&... arguments) requires(
-      (sizeof...(arguments) == 0 and ReturnsVoid) or
       std::constructible_from<return_type, Arguments...>)
-      : Base(std::forward<K>(key)) {
-    if constexpr (not ReturnsVoid) {
-      new (this->return_slot())
-          return_type(std::forward<Arguments>(arguments)...);
-    }
+      : key_(std::forward<K>(key)),
+        value_(std::forward<Arguments>(arguments)...) {}
+
+ private:
+  friend task_type::promise_type;
+
+  constexpr key_type const& key() const { return key_; }
+
+  template <typename R = return_type>
+  constexpr R const& value() const requires(not ReturnsVoid) {
+    return value_;
   }
 
-  return_type value() const requires(not ReturnsVoid) {
-    return *static_cast<return_type const*>(this->return_slot());
-  }
+  using return_storage_type =
+      std::conditional_t<ReturnsVoid, internal_task::Empty, return_type>;
+  key_type key_;
+  [[no_unique_address]] return_storage_type value_;
 };
 
 template <typename TaskType>

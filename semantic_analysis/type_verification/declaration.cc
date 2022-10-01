@@ -70,10 +70,7 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
       if (type_expr_qt != Constant(Type)) { NOT_YET("Log an error"); }
       std::optional t =
           EvaluateAsType(tv.context(), tv.type_system(), node->type_expr());
-      if (not t) {
-        co_yield tv.TypeOf(node, Error());
-        co_return;
-      }
+      if (not t) { co_return tv.TypeOf(node, Error()); }
 
       // TODO: If it's a local variable, the type needs to be default
       // initializable. If it's a parameter the type does not need to be default
@@ -90,7 +87,7 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
       QualifiedType qt(*t);
       if (node->flags() & ast::Declaration::f_IsConst) { qt = Constant(qt); }
       for (auto const &id : node->ids()) { co_yield tv.TypeOf(&id, qt); }
-      co_yield tv.TypeOf(node, qt);
+      co_return tv.TypeOf(node, qt);
     } break;
     case ast::Declaration::kInferred: {
       // Syntactically: `var := value`, or `var ::= value`
@@ -106,7 +103,7 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
         qt = Constant(qt);
       }
       for (auto const &id : node->ids()) { co_yield tv.TypeOf(&id, qt); }
-      co_yield tv.TypeOf(node, qt);
+      co_return tv.TypeOf(node, qt);
 
     } break;
     default: NOT_YET(node->DebugString());
