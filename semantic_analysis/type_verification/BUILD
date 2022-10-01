@@ -10,6 +10,7 @@ cc_library(
         "declaration.cc",
         "identifier.cc",
         "short_function_literal.cc",
+        "program_arguments.cc",
         "unary_operator.cc",
         "terminal.cc",
     ],
@@ -81,6 +82,16 @@ cc_test(
 cc_test(
     name = "short_function_literal_test",
     srcs = ["short_function_literal_test.cc"],
+    deps = [
+        ":verify",
+        "//test:repl",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "program_arguments_test",
+    srcs = ["program_arguments_test.cc"],
     deps = [
         ":verify",
         "//test:repl",
