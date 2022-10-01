@@ -71,7 +71,7 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
       std::optional t =
           EvaluateAsType(tv.context(), tv.type_system(), node->type_expr());
       if (not t) {
-        tv.complete_verification(node, Error());
+        co_yield tv.TypeOf(node, Error());
         co_return;
       }
 
@@ -89,8 +89,8 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
 
       QualifiedType qt(*t);
       if (node->flags() & ast::Declaration::f_IsConst) { qt = Constant(qt); }
-      for (auto const &id : node->ids()) { tv.complete_verification(&id, qt); }
-      tv.complete_verification(node, qt);
+      for (auto const &id : node->ids()) { co_yield tv.TypeOf(&id, qt); }
+      co_yield tv.TypeOf(node, qt);
     } break;
     case ast::Declaration::kInferred: {
       // Syntactically: `var := value`, or `var ::= value`
@@ -105,8 +105,8 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
         }
         qt = Constant(qt);
       }
-      for (auto const &id : node->ids()) { tv.complete_verification(&id, qt); }
-      tv.complete_verification(node, qt);
+      for (auto const &id : node->ids()) { co_yield tv.TypeOf(&id, qt); }
+      co_yield tv.TypeOf(node, qt);
 
     } break;
     default: NOT_YET(node->DebugString());
@@ -118,7 +118,7 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
   return VerifyType(tv, &node->declaration());
 }
 
-VerificationTask TypeVerifier::VerifyType(TypeVerifier & tv,
+VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
                                           ast::BindingDeclaration const *node) {
   UNREACHABLE();
 }

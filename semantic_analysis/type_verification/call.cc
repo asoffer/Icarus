@@ -45,7 +45,7 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
   }
 
   if (has_error) {
-    tv.complete_verification(node, Error());
+    co_yield tv.TypeOf(node, Error());
     co_return;
   }
 
@@ -65,7 +65,7 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
   switch (parameter_types.size()) {
     case 0:
       tv.ConsumeDiagnostic(UncallableWithArguments{});
-      tv.complete_verification(node, Error());
+      co_yield tv.TypeOf(node, Error());
       break;
     case 1: {
       auto const &[parameter_type, callable_identifier] = *parameter_types[0];
@@ -80,7 +80,7 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
       std::vector<QualifiedType> qts;
       qts.reserve(return_types.size());
       for (core::Type t : return_types) { qts.emplace_back(t); }
-      tv.complete_verification(node, std::move(qts));
+      co_yield tv.TypeOf(node, std::move(qts));
     } break;
     default: NOT_YET("Log an error");
   }

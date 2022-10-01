@@ -46,14 +46,14 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
                      module::Module::SymbolInformation const>;
   std::vector<std::pair<symbol_ref_type, QualifiedType>> viable;
 
-  auto &scope = *node->scope();
+  auto &scope           = *node->scope();
   std::string_view name = node->name();
   for (auto const &id : scope.visible_ancestor_declaration_id_named(name)) {
     absl::Span qts = co_await VerifyTypeOf(&id);
     ASSERT(qts.size() == 1);
 
     if (qts[0].qualifiers() >= Qualifiers::Error()) {
-      tv.complete_verification(node, Error());
+      co_yield tv.TypeOf(node, Error());
       co_return;
     } else {
       viable.emplace_back(&id, qts[0]);
@@ -76,7 +76,7 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
       qt                                  = symbol_qt;
 
       if (qt.qualifiers() >= Qualifiers::Error()) {
-        tv.complete_verification(node, qt);
+        co_yield tv.TypeOf(node, qt);
         co_return;
       }
 
@@ -84,7 +84,7 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
         qt = Reference(qt);
       }
 
-      tv.complete_verification(node, qt);
+      co_yield tv.TypeOf(node, qt);
     } break;
     case 0: {
       if (std::empty(
@@ -100,7 +100,7 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
         });
       }
       qt = Error();
-      tv.complete_verification(node, qt);
+      co_yield tv.TypeOf(node, qt);
     } break;
     default: {
       Qualifiers qualifiers = Qualifiers::Constant();
@@ -115,12 +115,12 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
       }
 
       if (error) {
-        tv.complete_verification(node, qt);
+        co_yield tv.TypeOf(node, qt);
         co_return;
       }
 
       NOT_YET();
-      tv.complete_verification(node, qt);
+      co_yield tv.TypeOf(node, qt);
     } break;
   }
 }

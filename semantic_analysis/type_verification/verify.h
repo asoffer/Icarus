@@ -69,22 +69,22 @@ struct TypeVerifier : VerificationScheduler {
     return VerifyType(*this, node);
   }
 
-  void complete_verification(ast::Expression const *node,
-                             QualifiedType qualified_type) {
-    this->set_completed<TypeVerificationPhase::VerifyType>(
+  auto TypeOf(ast::Expression const *node, QualifiedType qualified_type) {
+    return VerificationTask::YieldResult<TypeVerificationPhase::VerifyType>(
         node, context().set_qualified_type(node, qualified_type));
   }
-  void complete_verification(ast::Expression const *node,
-                             std::vector<QualifiedType> qualified_types) {
-    this->set_completed<TypeVerificationPhase::VerifyType>(
+  auto TypeOf(ast::Expression const *node,
+              std::vector<QualifiedType> qualified_types) {
+    return VerificationTask::YieldResult<TypeVerificationPhase::VerifyType>(
         node, context().set_qualified_types(node, std::move(qualified_types)));
   }
 
-  void complete_parameters(
+  auto ParametersOf(
       ast::Expression const *node,
       std::vector<std::pair<core::ParameterType, Context::CallableIdentifier>>
           parameter_ids) {
-    this->set_completed<TypeVerificationPhase::VerifyParameters>(
+    return VerificationTask::YieldResult<
+        TypeVerificationPhase::VerifyParameters>(
         node, context().set_parameters(node, std::move(parameter_ids)));
   }
 

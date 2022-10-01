@@ -23,13 +23,14 @@ VerificationTask TypeVerifier::VerifyType(
   }
 
   core::ParameterType parameter_type(tv.type_system(), parameters);
-  std::vector<std::pair<core::ParameterType, Context::CallableIdentifier>> parameter_types;
+  std::vector<std::pair<core::ParameterType, Context::CallableIdentifier>>
+      parameter_types;
   parameter_types.emplace_back(parameter_type,
                                Context::CallableIdentifier(node));
-  tv.complete_parameters(node, std::move(parameter_types));
+  co_yield tv.ParametersOf(node, std::move(parameter_types));
 
   if (has_error) {
-    tv.complete_verification(node, Error());
+    co_yield tv.TypeOf(node, Error());
     co_return;
   }
 
@@ -45,9 +46,9 @@ VerificationTask TypeVerifier::VerifyType(
     }
   }
 
-  tv.complete_verification(
-      node, Constant(core::FunctionType(tv.type_system(), parameter_type,
-                                        std::move(body_types))));
+  co_yield tv.TypeOf(node,
+                  Constant(core::FunctionType(tv.type_system(), parameter_type,
+                                              std::move(body_types))));
 }
 
 }  // namespace semantic_analysis

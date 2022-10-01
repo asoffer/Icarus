@@ -4,7 +4,7 @@
 
 namespace semantic_analysis {
 
-core::Type TypeOf(ast::Terminal const& node, TypeSystem& type_system) {
+core::Type TypeOfNode(ast::Terminal const& node, TypeSystem& type_system) {
   if (node.type() == base::meta<bool>) { return Bool; }
   if (node.type() == base::meta<ir::Char>) { return Char; }
   if (node.type() == base::meta<type::Type>) { return Type; }
@@ -19,8 +19,7 @@ core::Type TypeOf(ast::Terminal const& node, TypeSystem& type_system) {
 
 VerificationTask TypeVerifier::VerifyType(TypeVerifier& tv,
                                           ast::Terminal const* node) {
-  tv.complete_verification(node, Constant(TypeOf(*node, tv.type_system())));
-  co_return;
+  co_yield tv.TypeOf(node, Constant(TypeOfNode(*node, tv.type_system())));
 }
 
 }  // namespace semantic_analysis

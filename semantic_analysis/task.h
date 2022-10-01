@@ -274,48 +274,6 @@ struct Scheduler {
     return static_cast<phase_identifier_type>(static_cast<size_t>(P) + 1);
   }
 
-  template <phase_identifier_type P>
-  void set_completed(key_type const& key) requires(
-      std::is_void_v<typename task_type::template Phase<P>::return_type>) {
-    auto& [current_phase, phase_entries] = keys_.try_emplace(key).first->second;
-    current_phase = NextAfter<P>();
-    auto& phase_entry = phase_entries[static_cast<size_t>(P)];
-
-    // Add all the entries awaiting the completion of this phase to the
-    // ready-queue.
-    for (auto [coroutine_handle, return_slot] : phase_entry.awaiting()) {
-      ready_.push(coroutine_handle);
-    }
-    phase_entry = PhaseEntry::ResultPointer(nullptr);
-  }
-
-  template <phase_identifier_type P, typename ReturnType>
-  void
-  set_completed(key_type const& key, ReturnType&& phase_return_value) requires(
-      not std::is_void_v<typename task_type::template Phase<P>::return_type>) {
-    using return_type = typename task_type::template Phase<P>::return_type;
-
-    auto* result_ptr = static_cast<return_type*>(
-        results_
-            .emplace_back(
-                new return_type(std::forward<ReturnType>(phase_return_value)),
-                [](void* ptr) { delete static_cast<return_type*>(ptr); })
-            .get());
-
-    auto& [current_phase, phase_entries] = keys_.try_emplace(key).first->second;
-
-    current_phase     = NextAfter<P>();
-    auto& phase_entry = phase_entries[static_cast<size_t>(P)];
-
-    // Add all the entries awaiting the completion of this phase to the
-    // ready-queue.
-    for (auto [coroutine_handle, return_slot] : phase_entry.awaiting()) {
-      new (return_slot) return_type(*result_ptr);
-      ready_.push(coroutine_handle);
-    }
-    phase_entry = PhaseEntry::ResultPointer(result_ptr);
-  }
-
   void complete() {
     while (not ready_.empty()) {
       auto task = ready_.front();
@@ -325,6 +283,8 @@ struct Scheduler {
   }
 
  private:
+  friend promise_type;
+
   // Called to create a `task_type` if one has not yet been added to the
   // scheduler corresponding to a given value of type `key_type`.
   absl::AnyInvocable<task_type(Scheduler&, key_type)> task_creator_;
@@ -386,6 +346,48 @@ struct Scheduler {
                static_cast<underlying_type>(phase_identifier_type::Completed)>
         phase_entries;
   };
+
+  template <phase_identifier_type P>
+  void set_completed(key_type const& key) requires(
+      std::is_void_v<typename task_type::template Phase<P>::return_type>) {
+    auto& [current_phase, phase_entries] = keys_.try_emplace(key).first->second;
+    current_phase                        = NextAfter<P>();
+    auto& phase_entry = phase_entries[static_cast<size_t>(P)];
+
+    // Add all the entries awaiting the completion of this phase to the
+    // ready-queue.
+    for (auto [coroutine_handle, return_slot] : phase_entry.awaiting()) {
+      ready_.push(coroutine_handle);
+    }
+    phase_entry = PhaseEntry::ResultPointer(nullptr);
+  }
+
+  template <phase_identifier_type P, typename ReturnType>
+  void
+  set_completed(key_type const& key, ReturnType&& phase_return_value) requires(
+      not std::is_void_v<typename task_type::template Phase<P>::return_type>) {
+    using return_type = typename task_type::template Phase<P>::return_type;
+
+    auto* result_ptr = static_cast<return_type*>(
+        results_
+            .emplace_back(
+                new return_type(std::forward<ReturnType>(phase_return_value)),
+                [](void* ptr) { delete static_cast<return_type*>(ptr); })
+            .get());
+
+    auto& [current_phase, phase_entries] = keys_.try_emplace(key).first->second;
+
+    current_phase     = NextAfter<P>();
+    auto& phase_entry = phase_entries[static_cast<size_t>(P)];
+
+    // Add all the entries awaiting the completion of this phase to the
+    // ready-queue.
+    for (auto [coroutine_handle, return_slot] : phase_entry.awaiting()) {
+      new (return_slot) return_type(*result_ptr);
+      ready_.push(coroutine_handle);
+    }
+    phase_entry = PhaseEntry::ResultPointer(result_ptr);
+  }
 
   absl::flat_hash_map<key_type, TaskState> keys_;
 

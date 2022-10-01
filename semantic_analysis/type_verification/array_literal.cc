@@ -41,7 +41,7 @@ std::optional<core::Type> GuessIntendedArrayType(
 VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
                                           ast::ArrayLiteral const *node) {
   if (node->empty()) {
-    tv.complete_verification(node, Constant(EmptyArray));
+    co_yield tv.TypeOf(node, Constant(EmptyArray));
     co_return;
   }
 
@@ -59,7 +59,7 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
   }
 
   if (error) {
-    tv.complete_verification(node, Error());
+    co_yield tv.TypeOf(node, Error());
     co_return;
   }
 
@@ -102,7 +102,7 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
     qt = Error(qualifiers);
   }
 
-  tv.complete_verification(node, qt);
+  co_yield tv.TypeOf(node, qt);
 }
 
 }  // namespace semantic_analysis

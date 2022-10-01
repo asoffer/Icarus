@@ -261,7 +261,7 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
       default: UNREACHABLE(node->DebugString());
     }
   }
-  tv.complete_verification(node, qt);
+  co_yield tv.TypeOf(node, qt);
 }
 
 }  // namespace semantic_analysis
