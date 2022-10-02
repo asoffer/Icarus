@@ -1,5 +1,6 @@
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
+#include "semantic_analysis/type_system.h"
 #include "test/repl.h"
 
 namespace semantic_analysis {
@@ -9,7 +10,6 @@ using ::test::EvaluatesTo;
 
 TEST(Terminal, Evaluation) {
   test::Repl repl;
-  auto& type_system = repl.type_system();
 
   EXPECT_THAT(repl.execute("true"), EvaluatesTo(true));
   EXPECT_THAT(repl.execute("false"), EvaluatesTo(false));

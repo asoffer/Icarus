@@ -41,21 +41,23 @@ cc_library(
     ],
 )
 
-# cc_test(
-#       name = "unary_operator_test",
-#       srcs = ["unary_operator_test.cc"],
-#       deps = [
-#           ":byte_code",
-#           "//test:repl",
-#           "@com_google_googletest//:gtest_main",
-#       ],
-# )
-
 cc_test(
       name = "terminal_test",
       srcs = ["terminal_test.cc"],
       deps = [
           ":byte_code",
+          "//semantic_analysis:type_system",
+          "//test:repl",
+          "@com_google_googletest//:gtest_main",
+      ],
+)
+
+cc_test(
+      name = "unary_operator_test",
+      srcs = ["unary_operator_test.cc"],
+      deps = [
+          ":byte_code",
+          "//semantic_analysis:type_system",
           "//test:repl",
           "@com_google_googletest//:gtest_main",
       ],
