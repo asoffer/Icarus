@@ -23,6 +23,32 @@ struct UncallableWithArguments {
 
 VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
                                           ast::Call const *node) {
+  // TODO: Remove this hack. We haven't yet figured out precisely how to
+  // represent compile-time-only, or functions whose return type is dependent on
+  // a compile-time parameter, but supporting `builtin.foreign` is an important
+  // bootstrapping step, so we simply hard-code type-checking for it. We're not
+  // even checking for it robustly.
+  if (ast::Access const *access = node->callee()->if_as<ast::Access>();
+      access and access->member_name() == "foreign") {
+    ASSERT(node->arguments().size() == 2);
+    absl::Span name_argument_qts =
+        co_await VerifyTypeOf(&node->arguments()[0].expr());
+    absl::Span type_argument_qts =
+        co_await VerifyTypeOf(&node->arguments()[1].expr());
+    ASSERT(name_argument_qts.size() == 1);
+    ASSERT(type_argument_qts.size() == 1);
+    QualifiedType name_qt = name_argument_qts[0];
+    QualifiedType type_qt = type_argument_qts[0];
+    ASSERT(name_qt.type() == SliceType(tv.type_system(), Char));
+    ASSERT(name_qt.qualifiers() >= Qualifiers::Constant());
+    ASSERT(type_qt.type() == Type);
+    ASSERT(type_qt.qualifiers() >= Qualifiers::Constant());
+    std::optional fn_type = EvaluateAs<core::Type>(
+        tv.context(), tv.type_system(), &node->arguments()[1].expr());
+    ASSERT(fn_type.has_value() == true);
+    co_return tv.TypeOf(node, Constant(*fn_type));
+  }
+
   absl::Span<absl::flat_hash_map<core::ParameterType,
                                  Context::CallableIdentifier> const>
       callee_parameter_types = co_await VerifyParametersOf(node->callee());
