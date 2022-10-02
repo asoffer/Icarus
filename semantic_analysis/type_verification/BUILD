@@ -9,6 +9,7 @@ cc_library(
         "call.cc",
         "declaration.cc",
         "identifier.cc",
+        "if_stmt.cc",
         "short_function_literal.cc",
         "program_arguments.cc",
         "unary_operator.cc",
@@ -72,6 +73,16 @@ cc_test(
 cc_test(
     name = "identifier_test",
     srcs = ["identifier_test.cc"],
+    deps = [
+        ":verify",
+        "//test:repl",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "if_stmt_test",
+    srcs = ["if_stmt_test.cc"],
     deps = [
         ":verify",
         "//test:repl",

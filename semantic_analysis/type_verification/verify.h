@@ -5,6 +5,9 @@
 #include "ast/ast.h"
 #include "ast/module.h"
 #include "diagnostic/consumer/consumer.h"
+#include "jasmin/execute.h"
+#include "semantic_analysis/byte_code/byte_code.h"
+#include "semantic_analysis/byte_code/instruction_set.h"
 #include "semantic_analysis/context.h"
 #include "semantic_analysis/task.h"
 #include "semantic_analysis/type_system.h"
@@ -116,6 +119,7 @@ struct TypeVerifier : VerificationScheduler {
   static VerificationTask VerifyType(TypeVerifier &,
                                      ast::Declaration::Id const *);
   static VerificationTask VerifyType(TypeVerifier &, ast::Identifier const *);
+  static VerificationTask VerifyType(TypeVerifier &, ast::IfStmt const *);
   static VerificationTask VerifyType(TypeVerifier &,
                                      ast::ShortFunctionLiteral const *);
   static VerificationTask VerifyType(TypeVerifier &,
@@ -129,6 +133,19 @@ struct TypeVerifier : VerificationScheduler {
   Context &context_;
   diagnostic::DiagnosticConsumer &diagnostic_consumer_;
 };
+
+template <typename T>
+std::optional<T> EvaluateAs(Context &context, TypeSystem &type_system,
+                            ast::Expression const *expr) {
+  auto qt        = context.qualified_type(expr);
+  bool has_error = (qt.qualifiers() >= Qualifiers::Error());
+  ASSERT(has_error == false);
+
+  IrFunction f = EmitByteCode(*expr, context, type_system);
+  T result;
+  jasmin::Execute(f, {}, result);
+  return result;
+}
 
 }  // namespace semantic_analysis
 

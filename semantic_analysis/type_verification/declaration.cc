@@ -1,8 +1,5 @@
 #include "ast/ast.h"
 #include "compiler/common_diagnostics.h"
-#include "jasmin/execute.h"
-#include "semantic_analysis/byte_code/byte_code.h"
-#include "semantic_analysis/byte_code/instruction_set.h"
 #include "semantic_analysis/type_system.h"
 #include "semantic_analysis/type_verification/verify.h"
 
@@ -37,19 +34,6 @@ struct InitializingConstantWithNonConstant {
   std::string_view view;
 };
 
-std::optional<core::Type> EvaluateAsType(Context &context,
-                                         TypeSystem &type_system,
-                                         ast::Expression const *expr) {
-  auto qt        = context.qualified_type(expr);
-  bool has_error = (qt.qualifiers() >= Qualifiers::Error());
-  ASSERT(has_error == false);
-
-  IrFunction f = EmitByteCode(*expr, context, type_system);
-  core::Type result;
-  jasmin::Execute(f, {}, result);
-  return result;
-}
-
 }  // namespace
 
 VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
@@ -64,8 +48,8 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
       if (type_expr_qts.size() != 1) { NOT_YET("Log an error"); }
       auto type_expr_qt = type_expr_qts[0];
       if (type_expr_qt != Constant(Type)) { NOT_YET("Log an error"); }
-      std::optional t =
-          EvaluateAsType(tv.context(), tv.type_system(), node->type_expr());
+      std::optional t = EvaluateAs<core::Type>(tv.context(), tv.type_system(),
+                                               node->type_expr());
       if (not t) { co_return tv.TypeOf(node, Error()); }
 
       // TODO: If it's a local variable, the type needs to be default
