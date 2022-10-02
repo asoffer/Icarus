@@ -118,6 +118,7 @@ struct TypeVerifier : VerificationScheduler {
   static VerificationTask VerifyType(TypeVerifier &, ast::Declaration const *);
   static VerificationTask VerifyType(TypeVerifier &,
                                      ast::Declaration::Id const *);
+  static VerificationTask VerifyType(TypeVerifier &, ast::FunctionType const *);
   static VerificationTask VerifyType(TypeVerifier &, ast::Identifier const *);
   static VerificationTask VerifyType(TypeVerifier &, ast::IfStmt const *);
   static VerificationTask VerifyType(TypeVerifier &,

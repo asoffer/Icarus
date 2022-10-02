@@ -3,6 +3,7 @@
 #include "type/type.h"
 
 namespace semantic_analysis {
+namespace {
 
 core::Type TypeOfNode(ast::Terminal const& node, TypeSystem& type_system) {
   if (node.type() == base::meta<bool>) { return Bool; }
@@ -16,6 +17,8 @@ core::Type TypeOfNode(ast::Terminal const& node, TypeSystem& type_system) {
   }
   NOT_YET();
 }
+
+}  // namespace
 
 VerificationTask TypeVerifier::VerifyType(TypeVerifier& tv,
                                           ast::Terminal const* node) {

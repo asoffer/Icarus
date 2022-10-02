@@ -12,17 +12,41 @@ using ::testing::AllOf;
 using ::testing::Pair;
 
 TEST(Declaration, DefaultInitialization) {
-  test::Repl repl;
-  EXPECT_THAT(repl.type_check(R"(x: bool)"),
-              AllOf(HasQualTypes(QualifiedType(Bool)), HasDiagnostics()));
-  EXPECT_THAT(repl.type_check(R"(x :: bool)"),
-              AllOf(HasQualTypes(Constant(Bool)), HasDiagnostics()));
-  EXPECT_THAT(repl.type_check(R"(x: i32)"),
-              AllOf(HasQualTypes(QualifiedType(I(32))), HasDiagnostics()));
-  EXPECT_THAT(repl.type_check(R"(x :: u64)"),
-              AllOf(HasQualTypes(Constant(U(64))), HasDiagnostics()));
+  {
+    test::Repl repl;
+    EXPECT_THAT(repl.type_check(R"(x: bool)"),
+                AllOf(HasQualTypes(QualifiedType(Bool)), HasDiagnostics()));
+  }
+  {
+    test::Repl repl;
+
+    EXPECT_THAT(repl.type_check(R"(x :: bool)"),
+                AllOf(HasQualTypes(Constant(Bool)), HasDiagnostics()));
+  }
+  {
+    test::Repl repl;
+    EXPECT_THAT(repl.type_check(R"(x: i32)"),
+                AllOf(HasQualTypes(QualifiedType(I(32))), HasDiagnostics()));
+  }
+  {
+    test::Repl repl;
+    EXPECT_THAT(repl.type_check(R"(x :: u64)"),
+                AllOf(HasQualTypes(Constant(U(64))), HasDiagnostics()));
+  }
+
   // TODO: Type must be default initializable.
   // TODO: Parameters
+}
+
+TEST(Declaration, RequiresConstantType) {
+  test::Repl repl;
+  EXPECT_THAT(repl.type_check(R"(
+  t: type
+  x: t
+  )"),
+              AllOf(HasQualTypes(Error()),
+                    HasDiagnostics(Pair("type-error",
+                                        "non-constant-type-in-declaration"))));
 }
 
 TEST(Declaration, Inferred) {

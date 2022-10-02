@@ -34,6 +34,19 @@ struct InitializingConstantWithNonConstant {
   std::string_view view;
 };
 
+struct NonConstantTypeInDeclaration {
+  static constexpr std::string_view kCategory = "type-error";
+  static constexpr std::string_view kName = "non-constant-type-in-declaration";
+
+  diagnostic::DiagnosticMessage ToMessage() const {
+    return diagnostic::DiagnosticMessage(
+        diagnostic::Text("Non-constant type encountered in declaration."),
+        diagnostic::SourceQuote().Highlighted(view, diagnostic::Style{}));
+  }
+
+  std::string_view view;
+};
+
 }  // namespace
 
 VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
@@ -47,7 +60,13 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
       // Syntactically: `var: T`, or `var :: T`
       if (type_expr_qts.size() != 1) { NOT_YET("Log an error"); }
       auto type_expr_qt = type_expr_qts[0];
-      if (type_expr_qt != Constant(Type)) { NOT_YET("Log an error"); }
+      if (type_expr_qt != Constant(Type)) {
+        tv.ConsumeDiagnostic(NonConstantTypeInDeclaration{
+            .view = node->type_expr()->range(),
+        });
+        co_return tv.TypeOf(node, Error());
+      }
+
       std::optional t = EvaluateAs<core::Type>(tv.context(), tv.type_system(),
                                                node->type_expr());
       if (not t) { co_return tv.TypeOf(node, Error()); }
@@ -92,9 +111,7 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
         }
         qt = Constant(qt);
       }
-      for (auto const &id : node->ids()) {
-        co_yield tv.TypeOf(&id, qt); 
-      }
+      for (auto const &id : node->ids()) { co_yield tv.TypeOf(&id, qt); }
       co_return tv.TypeOf(node, qt);
 
     } break;
