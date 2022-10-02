@@ -8,8 +8,12 @@
 namespace semantic_analysis {
 namespace internal_byte_code {
 
-using InstructionSet =
-    jasmin::MakeInstructionSet<jasmin::Push, TypeSystem::JasminInstructionSet>;
+// TOOD: core::*Type instructions should be registerable and not required to be
+// explicitly added here.
+using InstructionSet = jasmin::MakeInstructionSet<
+    jasmin::Push, TypeSystem::JasminInstructionSet, core::ParameterType::Begin,
+    core::ParameterType::Append, core::ParameterType::AppendNamed,
+    core::ParameterType::End<TypeSystem>, core::FunctionType::End<TypeSystem>>;
 
 }  // namespace internal_byte_code
 

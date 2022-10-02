@@ -19,23 +19,35 @@ struct ParameterType : TypeCategory<ParameterType, core::Parameters<Type>> {
   }
 
   struct Begin : jasmin::StackMachineInstruction<Begin> {
-    static constexpr void execute(jasmin::ValueStack& value_stack) {
+    static void execute(jasmin::ValueStack& value_stack) {
       value_stack.push(new core::Parameters<Type>);
     }
   };
 
   struct Append : jasmin::StackMachineInstruction<Append> {
-    static constexpr void execute(jasmin::ValueStack& value_stack, Type t) {
-      value_stack.peek<core::Parameters<Type>*>()->append("", t);
+    static core::Parameters<Type>* execute(core::Parameters<Type>* parameters,
+                                           Type t) {
+      parameters->append("", t);
+      return parameters;
+    }
+  };
+
+  struct AppendNamed : jasmin::StackMachineInstruction<AppendNamed> {
+    static core::Parameters<Type>* execute(core::Parameters<Type>* parameters,
+                                           char const* buffer, size_t length,
+                                           Type t) {
+      parameters->append(std::string(buffer, length), t);
+      return parameters;
     }
   };
 
   template <TypeSystemSupporting<ParameterType> TS>
   struct End : jasmin::StackMachineInstruction<End<TS>> {
-    static constexpr Type execute(jasmin::ValueStack& value_stack, TS* system) {
-      return ParameterType(*system,
-                           std::move(*std::unique_ptr<core::Parameters<Type>>(
-                               value_stack.pop<core::Parameters<Type>*>())));
+    static void execute(jasmin::ValueStack& value_stack, TS* system) {
+      std::unique_ptr<core::Parameters<Type>> ptr(
+          value_stack.pop<core::Parameters<Type>*>());
+      value_stack.push(
+          static_cast<Type>(ParameterType(*system, std::move(*ptr))));
     }
   };
 };

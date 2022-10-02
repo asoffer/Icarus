@@ -27,4 +27,3 @@ TEST(Terminal, Evaluation) {
 
 }  // namespace
 }  // namespace semantic_analysis
-

@@ -27,15 +27,15 @@ struct FunctionType
 
   template <TypeSystemSupporting<FunctionType> TS>
   struct End : jasmin::StackMachineInstruction<End<TS>> {
-    static Type execute(jasmin::ValueStack& value_stack, TS* system,
+    static void execute(jasmin::ValueStack& value_stack, TS* system,
                         size_t num_return_types) {
       std::vector<Type> return_types(num_return_types);
       while (num_return_types != 0) {
         return_types[--num_return_types] = value_stack.pop<Type>();
       }
-      return FunctionType(*system,
-                          value_stack.pop<Type>().get<ParameterType>(*system),
-                          std::move(return_types));
+      value_stack.push(static_cast<Type>(FunctionType(
+          *system, value_stack.pop<Type>().get<ParameterType>(*system),
+          std::move(return_types))));
     }
   };
 };

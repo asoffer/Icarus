@@ -36,12 +36,13 @@ struct ByteCodeValueEmitter : ByteCodeEmitterBase {
   }
 
   template <typename NodeType>
-  void Emit(NodeType const *, IrFunction &f) {
+  void Emit(NodeType const *node, IrFunction &f) {
     NOT_YET(base::meta<NodeType>);
   }
 
+  void Emit(ast::FunctionType const *node, IrFunction &f);
   void Emit(ast::UnaryOperator const *node, IrFunction &f);
-  void Emit(ast::Terminal const *t, IrFunction &f);
+  void Emit(ast::Terminal const *node, IrFunction &f);
 };
 
 }  // namespace semantic_analysis

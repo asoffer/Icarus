@@ -3,12 +3,12 @@
 
 namespace semantic_analysis {
 
-void ByteCodeValueEmitter::Emit(ast::Terminal const* t, IrFunction& f) {
-  QualifiedType qt = context().qualified_type(t);
+void ByteCodeValueEmitter::Emit(ast::Terminal const* node, IrFunction& f) {
+  QualifiedType qt = context().qualified_type(node);
   if (qt.type() == Bool) {
-    f.append<jasmin::Push>(t->value().get<bool>());
+    f.append<jasmin::Push>(node->value().get<bool>());
   } else if (qt.type() == Type) {
-    type::Type ty = t->value().get<type::Type>();
+    type::Type ty = node->value().get<type::Type>();
     if (ty == type::I8) {
       f.append<jasmin::Push>(I(8));
     } else if (ty == type::I16) {
