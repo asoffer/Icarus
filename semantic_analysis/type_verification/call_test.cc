@@ -139,6 +139,22 @@ TEST(Call, MultipleParametersWithoutImplicitConversions) {
             HasDiagnostics(Pair("type-error", "uncallable-with-arguments"))));
 }
 
+TEST(Call, BuiltinForeign) {
+  test::Repl repl;
+
+  core::Parameters<core::Type> parameters;
+  parameters.append("", I(32));
+
+  core::FunctionType fn_type(
+      repl.type_system(),
+      core::ParameterType(repl.type_system(), std::move(parameters)), {I(32)});
+
+  EXPECT_THAT(repl.type_check(R"(
+  builtin.foreign("func", i32 -> i32)
+  )"),
+              AllOf(HasQualTypes(Constant(fn_type)), HasDiagnostics()));
+}
+
 TEST(Call, OverloadSets) {
   test::Repl repl;
 

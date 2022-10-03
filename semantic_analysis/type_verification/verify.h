@@ -47,18 +47,26 @@ inline auto VerifyParametersOf(ast::Node const *node) {
 struct TypeVerifier : VerificationScheduler {
   using signature = VerificationTask();
 
-  explicit TypeVerifier(TypeSystem &type_system, Context &c,
-                        diagnostic::DiagnosticConsumer &d)
+  explicit TypeVerifier(BuiltinModule &builtin_module, TypeSystem &type_system,
+                        Context &c, diagnostic::DiagnosticConsumer &d)
       : VerificationScheduler([](VerificationScheduler &s,
                                  ast::Node const *node) -> VerificationTask {
           return node->visit(static_cast<TypeVerifier &>(s));
         }),
+        builtin_module_(builtin_module),
         type_system_(type_system),
         context_(c),
         diagnostic_consumer_(d) {}
 
   Context &context() const { return context_; }
   TypeSystem &type_system() const { return type_system_; }
+  BuiltinModule &builtin_module() const { return builtin_module_; }
+
+  template <typename T>
+  std::optional<T> EvaluateAs(ast::Expression const *expression) const {
+    return ::semantic_analysis::EvaluateAs<T>(context(), builtin_module(),
+                                              type_system(), expression);
+  }
 
   template <typename D>
   void ConsumeDiagnostic(D &&d) {
@@ -130,23 +138,11 @@ struct TypeVerifier : VerificationScheduler {
   static VerificationTask VerifyType(TypeVerifier &, ast::Terminal const *);
 
  private:
+  BuiltinModule &builtin_module_;
   TypeSystem &type_system_;
   Context &context_;
   diagnostic::DiagnosticConsumer &diagnostic_consumer_;
 };
-
-template <typename T>
-std::optional<T> EvaluateAs(Context &context, TypeSystem &type_system,
-                            ast::Expression const *expr) {
-  auto qt        = context.qualified_type(expr);
-  bool has_error = (qt.qualifiers() >= Qualifiers::Error());
-  ASSERT(has_error == false);
-
-  IrFunction f = EmitByteCode(*expr, context, type_system);
-  T result;
-  jasmin::Execute(f, {}, result);
-  return result;
-}
 
 }  // namespace semantic_analysis
 

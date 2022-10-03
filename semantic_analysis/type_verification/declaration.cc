@@ -67,8 +67,7 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
         co_return tv.TypeOf(node, Error());
       }
 
-      std::optional t = EvaluateAs<core::Type>(tv.context(), tv.type_system(),
-                                               node->type_expr());
+      std::optional t = tv.EvaluateAs<core::Type>(node->type_expr());
       if (not t) { co_return tv.TypeOf(node, Error()); }
 
       // TODO: If it's a local variable, the type needs to be default

@@ -43,8 +43,8 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
     ASSERT(name_qt.qualifiers() >= Qualifiers::Constant());
     ASSERT(type_qt.type() == Type);
     ASSERT(type_qt.qualifiers() >= Qualifiers::Constant());
-    std::optional fn_type = EvaluateAs<core::Type>(
-        tv.context(), tv.type_system(), &node->arguments()[1].expr());
+    std::optional fn_type =
+        tv.EvaluateAs<core::Type>(&node->arguments()[1].expr());
     ASSERT(fn_type.has_value() == true);
     co_return tv.TypeOf(node, Constant(*fn_type));
   }

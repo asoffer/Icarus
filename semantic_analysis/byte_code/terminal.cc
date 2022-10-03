@@ -1,5 +1,7 @@
 #include "semantic_analysis/byte_code/emitter.h"
 #include "type/primitive.h"
+#include "ir/value/slice.h"
+#include "type/slice.h"
 
 namespace semantic_analysis {
 
@@ -38,6 +40,10 @@ void ByteCodeValueEmitter::Emit(ast::Terminal const* node, IrFunction& f) {
     } else {
       NOT_YET();
     }
+  } else if (qt.type() == SliceType(type_system(), Char)) {
+    ir::Slice slice = node->value().get<ir::Slice>();
+    f.append<jasmin::Push>(slice.data());
+    f.append<jasmin::Push>(slice.length());
   } else {
     NOT_YET();
   }

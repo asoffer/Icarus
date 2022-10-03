@@ -119,6 +119,7 @@ struct Repl {
   ExecuteResult execute(std::string source);
   TypeCheckResult type_check(std::string source);
 
+  semantic_analysis::BuiltinModule& builtin_module() { return builtin_module_; }
   semantic_analysis::TypeSystem& type_system() { return type_system_; }
 
  private:
@@ -129,6 +130,7 @@ struct Repl {
   std::deque<std::string> source_content_;
   ast::Module ast_module_{nullptr};
   semantic_analysis::Context context_;
+  semantic_analysis::BuiltinModule builtin_module_;
   semantic_analysis::TypeSystem type_system_;
   diagnostic::TrackingConsumer consumer_;
 };

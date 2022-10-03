@@ -10,6 +10,7 @@ cc_library(
         "//ast:expression",
         "//semantic_analysis:context",
         "//semantic_analysis:type_system",
+        "@asoffer_jasmin//jasmin:execute",
         "@asoffer_jasmin//jasmin:function",
         "@asoffer_jasmin//jasmin/instructions:core",
     ],
@@ -19,6 +20,7 @@ cc_library(
     name = "emitter",
     hdrs = ["emitter.h"],
     srcs = [
+        "call.cc",
         "function_type.cc",
         "unary_operator.cc",
         "terminal.cc",
@@ -26,8 +28,12 @@ cc_library(
     deps = [
         ":instruction_set",
         "//ast",
+        "//ir/value:slice",
         "//semantic_analysis:context",
         "//semantic_analysis:type_system",
+        "//type:primitive",
+        "//type:slice",
+        "@asoffer_jasmin//jasmin:execute",
         "@asoffer_jasmin//jasmin:function",
         "@asoffer_jasmin//jasmin/instructions:core",
     ],
@@ -36,10 +42,25 @@ cc_library(
 cc_library(
     name = "instruction_set",
     hdrs = ["instruction_set.h"],
+    srcs = ["instruction_set.cc"],
     deps = [
+        "//ir/value:fn",
+        "//semantic_analysis/module:builtin",
+        "//semantic_analysis:type_system",
         "@asoffer_jasmin//jasmin:function",
         "@asoffer_jasmin//jasmin/instructions:core",
     ],
+)
+
+cc_test(
+      name = "call_test",
+      srcs = ["call_test.cc"],
+      deps = [
+          ":byte_code",
+          "//semantic_analysis:type_system",
+          "//test:repl",
+          "@com_google_googletest//:gtest_main",
+      ],
 )
 
 cc_test(
