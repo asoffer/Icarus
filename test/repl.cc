@@ -17,7 +17,8 @@ Repl::ExecuteResult Repl::execute(std::string content) {
     return ExecuteResult(source_content_.back());
   }
 
-  semantic_analysis::TypeVerifier tv(builtin_module_, type_system_, context_, consumer_);
+  semantic_analysis::TypeVerifier tv(foreign_function_map_, type_system_,
+                                     context_, consumer_);
   for (auto const* node : node_span) { tv.schedule(node); }
   tv.complete();
 
@@ -25,9 +26,9 @@ Repl::ExecuteResult Repl::execute(std::string content) {
     return ExecuteResult(source_content_.back());
   }
 
-  auto const& expr = node_span.back()->as<ast::Expression>();
-  semantic_analysis::IrFunction f =
-      semantic_analysis::EmitByteCode(expr, context_, builtin_module_, type_system_);
+  auto const& expr                = node_span.back()->as<ast::Expression>();
+  semantic_analysis::IrFunction f = semantic_analysis::EmitByteCode(
+      expr, context_, foreign_function_map_, type_system_);
   return ExecuteResult(source_content_.back(), std::move(f));
 }
 
@@ -40,8 +41,8 @@ Repl::TypeCheckResult Repl::type_check(std::string content) {
                            consumer_.diagnostics(), *this);
   }
 
-  semantic_analysis::TypeVerifier tv(builtin_module_, type_system_, context_,
-                                     consumer_);
+  semantic_analysis::TypeVerifier tv(foreign_function_map_, type_system_,
+                                     context_, consumer_);
   for (auto const* node : node_span) { tv.schedule(node); }
   tv.complete();
 

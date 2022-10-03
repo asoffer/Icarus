@@ -47,24 +47,24 @@ inline auto VerifyParametersOf(ast::Node const *node) {
 struct TypeVerifier : VerificationScheduler {
   using signature = VerificationTask();
 
-  explicit TypeVerifier(BuiltinModule &builtin_module, TypeSystem &type_system,
+  explicit TypeVerifier(ForeignFunctionMap &foreign_function_map, TypeSystem &type_system,
                         Context &c, diagnostic::DiagnosticConsumer &d)
       : VerificationScheduler([](VerificationScheduler &s,
                                  ast::Node const *node) -> VerificationTask {
           return node->visit(static_cast<TypeVerifier &>(s));
         }),
-        builtin_module_(builtin_module),
+        foreign_function_map_(foreign_function_map),
         type_system_(type_system),
         context_(c),
         diagnostic_consumer_(d) {}
 
   Context &context() const { return context_; }
   TypeSystem &type_system() const { return type_system_; }
-  BuiltinModule &builtin_module() const { return builtin_module_; }
+  ForeignFunctionMap &foreign_function_map() const { return foreign_function_map_; }
 
   template <typename T>
   std::optional<T> EvaluateAs(ast::Expression const *expression) const {
-    return ::semantic_analysis::EvaluateAs<T>(context(), builtin_module(),
+    return ::semantic_analysis::EvaluateAs<T>(context(), foreign_function_map(),
                                               type_system(), expression);
   }
 
@@ -138,7 +138,7 @@ struct TypeVerifier : VerificationScheduler {
   static VerificationTask VerifyType(TypeVerifier &, ast::Terminal const *);
 
  private:
-  BuiltinModule &builtin_module_;
+  ForeignFunctionMap &foreign_function_map_;
   TypeSystem &type_system_;
   Context &context_;
   diagnostic::DiagnosticConsumer &diagnostic_consumer_;

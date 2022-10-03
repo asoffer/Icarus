@@ -14,7 +14,7 @@ void ByteCodeValueEmitter::Emit(ast::Call const* node, IrFunction& f) {
     if (not fn_type) { NOT_YET(); }
 
     EmitByteCode(&node->arguments()[0].expr(), f);
-    f.append<BuiltinForeign>(*fn_type, &builtin_module());
+    f.append<BuiltinForeign>(*fn_type, &foreign_function_map());
     return;
   }
 

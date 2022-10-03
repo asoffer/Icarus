@@ -9,6 +9,7 @@
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "jasmin/execute.h"
+#include "semantic_analysis/byte_code/foreign_function_map.h"
 #include "semantic_analysis/byte_code/instruction_set.h"
 #include "semantic_analysis/context.h"
 #include "semantic_analysis/type_system.h"
@@ -119,7 +120,9 @@ struct Repl {
   ExecuteResult execute(std::string source);
   TypeCheckResult type_check(std::string source);
 
-  semantic_analysis::BuiltinModule& builtin_module() { return builtin_module_; }
+  semantic_analysis::ForeignFunctionMap& foreign_function_map() {
+    return foreign_function_map_;
+  }
   semantic_analysis::TypeSystem& type_system() { return type_system_; }
 
  private:
@@ -130,8 +133,8 @@ struct Repl {
   std::deque<std::string> source_content_;
   ast::Module ast_module_{nullptr};
   semantic_analysis::Context context_;
-  semantic_analysis::BuiltinModule builtin_module_;
   semantic_analysis::TypeSystem type_system_;
+  semantic_analysis::ForeignFunctionMap foreign_function_map_{type_system_};
   diagnostic::TrackingConsumer consumer_;
 };
 

@@ -3,14 +3,16 @@
 
 #include "jasmin/function.h"
 #include "jasmin/instructions/core.h"
-#include "semantic_analysis/module/builtin.h"
 #include "semantic_analysis/type_system.h"
 
 namespace semantic_analysis {
+// Defined in "semantic_analysis/byte_code/foreign_function_map.h", in the same
+// build target.
+struct ForeignFunctionMap;
 
 struct BuiltinForeign : jasmin::StackMachineInstruction<BuiltinForeign> {
   static void execute(jasmin::ValueStack& value_stack, core::Type t,
-                      BuiltinModule* module);
+                      ForeignFunctionMap* module);
 };
 
 namespace internal_byte_code {

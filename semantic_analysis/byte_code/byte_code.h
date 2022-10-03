@@ -15,7 +15,8 @@ namespace semantic_analysis {
 // Returns an `IrFunction` accepting no parameters and whose execution computes
 // the value associated with `expression`.
 IrFunction EmitByteCode(ast::Expression const& expression,
-                        Context const& context, BuiltinModule& builtin_module,
+                        Context const& context,
+                        ForeignFunctionMap& foreign_function_map,
                         TypeSystem& type_system);
 
 // Evaluates `expr` in the given `context` if possible, returning `std::nullopt`
@@ -24,14 +25,16 @@ IrFunction EmitByteCode(ast::Expression const& expression,
 // parameter `T` is undefined behavior and not guaranteed to result in a
 // returned value of `std::nullopt`.
 template <typename T>
-std::optional<T> EvaluateAs(Context& context, BuiltinModule& builtin_module,
+std::optional<T> EvaluateAs(Context& context,
+                            ForeignFunctionMap& foreign_function_map,
                             TypeSystem& type_system,
                             ast::Expression const* expr) {
   auto qt        = context.qualified_type(expr);
   bool has_error = (qt.qualifiers() >= Qualifiers::Error());
   ASSERT(has_error == false);
 
-  IrFunction f = EmitByteCode(*expr, context, builtin_module, type_system);
+  IrFunction f =
+      EmitByteCode(*expr, context, foreign_function_map, type_system);
   T result;
   jasmin::Execute(f, {}, result);
   return result;

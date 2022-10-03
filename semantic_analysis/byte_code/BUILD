@@ -41,11 +41,18 @@ cc_library(
 
 cc_library(
     name = "instruction_set",
-    hdrs = ["instruction_set.h"],
-    srcs = ["instruction_set.cc"],
+    hdrs = [
+        "instruction_set.h",
+        "foreign_function_map.h",
+    ],
+    srcs = [
+        "instruction_set.cc",
+        "foreign_function_map.cc",
+    ],
     deps = [
+        "//base:flyweight_map",
+        "//core/type_system",
         "//ir/value:fn",
-        "//semantic_analysis/module:builtin",
         "//semantic_analysis:type_system",
         "@asoffer_jasmin//jasmin:function",
         "@asoffer_jasmin//jasmin/instructions:core",

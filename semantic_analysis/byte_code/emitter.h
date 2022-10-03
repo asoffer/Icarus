@@ -14,27 +14,29 @@ namespace semantic_analysis {
 struct ByteCodeEmitterBase {
   using signature = void(IrFunction &);
 
-  explicit ByteCodeEmitterBase(Context const *c, BuiltinModule &builtin_module,
+  explicit ByteCodeEmitterBase(Context const *c,
+                               ForeignFunctionMap &foreign_function_map,
                                TypeSystem &type_system)
-      : builtin_module_(builtin_module),
+      : foreign_function_map_(foreign_function_map),
         type_system_(type_system),
         context_(ASSERT_NOT_NULL(c)) {}
 
   Context const &context() const { return *context_; }
 
   auto &type_system() const { return type_system_; }
-  auto &builtin_module() const { return builtin_module_; }
+  auto &foreign_function_map() const { return foreign_function_map_; }
 
  private:
-  BuiltinModule &builtin_module_;
+  ForeignFunctionMap &foreign_function_map_;
   TypeSystem &type_system_;
   Context const *context_;
 };
 
 struct ByteCodeValueEmitter : ByteCodeEmitterBase {
-  explicit ByteCodeValueEmitter(Context const *c, BuiltinModule &builtin_module,
+  explicit ByteCodeValueEmitter(Context const *c,
+                                ForeignFunctionMap &foreign_function_map,
                                 TypeSystem &type_system)
-      : ByteCodeEmitterBase(c, builtin_module, type_system) {}
+      : ByteCodeEmitterBase(c, foreign_function_map, type_system) {}
 
   void operator()(auto const *node, IrFunction &f) { return Emit(node, f); }
 
