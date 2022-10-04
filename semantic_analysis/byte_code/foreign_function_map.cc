@@ -13,7 +13,9 @@ IrFunction ConstructIrFunction(TypeSystem& type_system, core::Type t,
   auto const& parameters = fn_type.parameters();
   absl::Span returns     = fn_type.returns();
   IrFunction f(parameters.size(), returns.size());
-  // TODO: Invoke fn_ptr in an instruction.
+  ASSERT(returns.size() <= 1);
+  f.append<InvokeForeignFunction>(fn_ptr, parameters.data(), parameters.size(),
+                                  returns.empty() ? nullptr : returns.data());
   f.append<jasmin::Return>();
   return f;
 }
@@ -40,9 +42,6 @@ std::pair<ir::Fn, IrFunction const*> ForeignFunctionMap::ForeignFunction(
     ASSERT(fn_ptr != nullptr);
     ir_fn = ConstructIrFunction(type_system_, t, fn_ptr);
   }
-
-  LOG("", "%u", foreign_functions_.index(iter));
-  LOG("", "%u", foreign_functions_.size());
 
   ASSERT(foreign_functions_.from_index(foreign_functions_.index(iter))
              .second.second != nullptr);

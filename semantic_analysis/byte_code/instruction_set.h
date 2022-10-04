@@ -15,15 +15,23 @@ struct BuiltinForeign : jasmin::StackMachineInstruction<BuiltinForeign> {
                       ForeignFunctionMap* module);
 };
 
+struct InvokeForeignFunction
+    : jasmin::StackMachineInstruction<InvokeForeignFunction> {
+  static void execute(jasmin::ValueStack& value_stack, void (*fn_ptr)(),
+                      core::Parameter<core::Type> const* parameters,
+                      size_t parameter_count,
+                      core::Type const* maybe_return_type);
+};
+
 namespace internal_byte_code {
 
-// TOOD: core::*Type instructions should be registerable and not required to be
-// explicitly added here.
+// TOOD: core::*Type instructions should be registerable and not required to
+// be explicitly added here.
 using InstructionSet = jasmin::MakeInstructionSet<
     jasmin::Push, TypeSystem::JasminInstructionSet, core::ParameterType::Begin,
     core::ParameterType::Append, core::ParameterType::AppendNamed,
     core::ParameterType::End<TypeSystem>, core::FunctionType::End<TypeSystem>,
-    BuiltinForeign>;
+    BuiltinForeign, InvokeForeignFunction>;
 
 }  // namespace internal_byte_code
 

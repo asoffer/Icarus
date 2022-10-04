@@ -189,6 +189,8 @@ struct Parameters
   constexpr auto begin() { return params_.begin(); }
   constexpr auto end() { return params_.end(); }
 
+  parameter_type const* data() const { return params_.data(); }
+
   // Returns a pair consisting of a pointer to the parameter names `s` and the
   // parameter's index if such a parameter exists. If no such parameter exists,
   // returns a null pointer for the first pair element. The value of the second

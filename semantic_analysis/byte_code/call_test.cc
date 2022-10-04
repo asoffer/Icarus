@@ -25,9 +25,14 @@ TEST(Call, BuiltinForeign) {
   EXPECT_EQ(reinterpret_cast<decltype(&MyFunction)>(
                 repl.foreign_function_map().ForeignFunctionPointer(ir::LocalFnId(0))),
             &MyFunction);
-  EXPECT_THAT(
-      result,
-      EvaluatesTo(repl.foreign_function_map().ForeignFunction(ir::LocalFnId(0))));
+
+  auto const *fn =
+      repl.foreign_function_map().ForeignFunction(ir::LocalFnId(0));
+  EXPECT_THAT(result, EvaluatesTo(fn));
+
+  int32_t value;
+  jasmin::Execute(*fn, {int32_t{7}}, value);
+  EXPECT_EQ(value, MyFunction(7));
 }
 
 }  // namespace
