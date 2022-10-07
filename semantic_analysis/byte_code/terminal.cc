@@ -9,6 +9,14 @@ void ByteCodeValueEmitter::Emit(ast::Terminal const* node, IrFunction& f) {
   QualifiedType qt = context().qualified_type(node);
   if (qt.type() == Bool) {
     f.append<jasmin::Push>(node->value().get<bool>());
+  } else if (qt.type() == SliceType(type_system(), Char)) {
+    ir::Slice slice = node->value().get<ir::Slice>();
+    f.append<jasmin::Push>(slice.data());
+    f.append<jasmin::Push>(slice.length());
+  } else if (qt.type() == F64) {
+    // TODO: Long-term these won't be doubles, but rather a "rational" type that
+    // is arbitrary-precision.
+    f.append<jasmin::Push>(node->value().get<double>());
   } else if (qt.type() == Type) {
     type::Type ty = node->value().get<type::Type>();
     if (ty == type::I8) {
@@ -40,12 +48,8 @@ void ByteCodeValueEmitter::Emit(ast::Terminal const* node, IrFunction& f) {
     } else {
       NOT_YET();
     }
-  } else if (qt.type() == SliceType(type_system(), Char)) {
-    ir::Slice slice = node->value().get<ir::Slice>();
-    f.append<jasmin::Push>(slice.data());
-    f.append<jasmin::Push>(slice.length());
   } else {
-    NOT_YET();
+    NOT_YET(node->DebugString());
   }
 }
 

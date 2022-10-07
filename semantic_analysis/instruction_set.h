@@ -2,6 +2,7 @@
 #define ICARUS_SEMANTIC_ANALYSIS_INSTRUCTION_SET_H
 
 #include "jasmin/function.h"
+#include "jasmin/instructions/arithmetic.h"
 #include "jasmin/instructions/core.h"
 #include "semantic_analysis/type_system.h"
 
@@ -25,13 +26,18 @@ struct InvokeForeignFunction
 
 namespace internal_byte_code {
 
+template <template <typename> typename I, typename... Ts>
+using ApplyInstruction = jasmin::MakeInstructionSet<I<Ts>...>;
+
 // TOOD: core::*Type instructions should be registerable and not required to
 // be explicitly added here.
 using InstructionSet = jasmin::MakeInstructionSet<
     jasmin::Push, TypeSystem::JasminInstructionSet, core::ParameterType::Begin,
     core::ParameterType::Append, core::ParameterType::AppendNamed,
     core::ParameterType::End<TypeSystem>, core::FunctionType::End<TypeSystem>,
-    BuiltinForeign, InvokeForeignFunction>;
+    BuiltinForeign, InvokeForeignFunction,
+    ApplyInstruction<jasmin::Negate, int8_t, int16_t, int32_t, int64_t, uint8_t,
+                     uint16_t, uint32_t, uint64_t, float, double>>;
 
 }  // namespace internal_byte_code
 

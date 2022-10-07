@@ -40,5 +40,10 @@ TEST(UnaryOperator, Pointers) {
                                     BufferPointerType(type_system, I(32)))))));
 }
 
+TEST(UnaryOperator, Negation) {
+  test::Repl repl;
+  EXPECT_THAT(repl.execute("-3.14"), EvaluatesTo(-3.14));
+}
+
 }  // namespace
 }  // namespace semantic_analysis

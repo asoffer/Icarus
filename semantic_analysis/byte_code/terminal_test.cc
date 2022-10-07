@@ -23,6 +23,7 @@ TEST(Terminal, Evaluation) {
   EXPECT_THAT(repl.execute("u16"), EvaluatesTo(U(16)));
   EXPECT_THAT(repl.execute("u32"), EvaluatesTo(U(32)));
   EXPECT_THAT(repl.execute("u64"), EvaluatesTo(U(64)));
+  EXPECT_THAT(repl.execute("1.25"), EvaluatesTo(1.25));
 }
 
 }  // namespace
