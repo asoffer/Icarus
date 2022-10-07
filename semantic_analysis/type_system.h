@@ -11,6 +11,7 @@
 #include "core/type_system/pointer.h"
 #include "core/type_system/sized_integer.h"
 #include "core/type_system/type_system.h"
+#include "ir/value/char.h"
 
 namespace semantic_analysis {
 
@@ -225,6 +226,97 @@ bool IsIntegral(core::Type t);
 
 std::string DebugQualifiedType(QualifiedType qt, TypeSystem& ts);
 std::string DebugType(core::Type t, TypeSystem& ts);
+
+template <typename F>
+bool WithPrimitiveType(core::Type t, F&& f) {
+  using fn_type = std::decay_t<F>;
+  // TODO: Support Integer, Module, and maybe error.
+  if constexpr (requires { (void)&fn_type::template operator()<bool>; }) {
+    if (t == Bool) {
+      std::forward<F>(f).template operator()<bool>();
+      return true;
+    }
+  }
+  if constexpr (requires { (void)&fn_type::template operator()<ir::Char>; }) {
+    if (t == Char) {
+      std::forward<F>(f).template operator()<ir::Char>();
+      return true;
+    }
+  }
+  if constexpr (requires { (void)&fn_type::template operator()<std::byte>; }) {
+    if (t == Byte) {
+      std::forward<F>(f).template operator()<std::byte>();
+      return true;
+    }
+  }
+  if constexpr (requires { (void)&fn_type::template operator()<core::Type>; }) {
+    if (t == Type) {
+      std::forward<F>(f).template operator()<core::Type>();
+      return true;
+    }
+  }
+  if constexpr (requires { (void)&fn_type::template operator()<int8_t>; }) {
+    if (t == I(8)) {
+      std::forward<F>(f).template operator()<int8_t>();
+      return true;
+    }
+  }
+  if constexpr (requires { (void)&fn_type::template operator()<int16_t>; }) {
+    if (t == I(16)) {
+      std::forward<F>(f).template operator()<int16_t>();
+      return true;
+    }
+  }
+  if constexpr (requires { (void)&fn_type::template operator()<int32_t>; }) {
+    if (t == I(32)) {
+      std::forward<F>(f).template operator()<int32_t>();
+      return true;
+    }
+  }
+  if constexpr (requires { (void)&fn_type::template operator()<int64_t>; }) {
+    if (t == I(64)) {
+      std::forward<F>(f).template operator()<int64_t>();
+      return true;
+    }
+  }
+  if constexpr (requires { (void)&fn_type::template operator()<uint8_t>; }) {
+    if (t == U(8)) {
+      std::forward<F>(f).template operator()<uint8_t>();
+      return true;
+    }
+  }
+  if constexpr (requires { (void)&fn_type::template operator()<uint16_t>; }) {
+    if (t == U(16)) {
+      std::forward<F>(f).template operator()<uint16_t>();
+      return true;
+    }
+  }
+  if constexpr (requires { (void)&fn_type::template operator()<uint32_t>; }) {
+    if (t == U(32)) {
+      std::forward<F>(f).template operator()<uint32_t>();
+      return true;
+    }
+  }
+  if constexpr (requires { (void)&fn_type::template operator()<uint64_t>; }) {
+    if (t == U(64)) {
+      std::forward<F>(f).template operator()<uint64_t>();
+      return true;
+    }
+  }
+  if constexpr (requires { (void)&fn_type::template operator()<float>; }) {
+    if (t == F32) {
+      std::forward<F>(f).template operator()<float>();
+      return true;
+    }
+  }
+  if constexpr (requires { (void)&fn_type::template operator()<double>; }) {
+    if (t == F64) {
+      std::forward<F>(f).template operator()<double>();
+      return true;
+    }
+  }
+  return false;
+}
 
 }  // namespace semantic_analysis
 
