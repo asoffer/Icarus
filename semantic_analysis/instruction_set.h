@@ -1,13 +1,13 @@
-#ifndef ICARUS_SEMANTIC_ANALYSIS_BYTE_CODE_INSTRUCTION_SET_H
-#define ICARUS_SEMANTIC_ANALYSIS_BYTE_CODE_INSTRUCTION_SET_H
+#ifndef ICARUS_SEMANTIC_ANALYSIS_INSTRUCTION_SET_H
+#define ICARUS_SEMANTIC_ANALYSIS_INSTRUCTION_SET_H
 
 #include "jasmin/function.h"
 #include "jasmin/instructions/core.h"
 #include "semantic_analysis/type_system.h"
 
 namespace semantic_analysis {
-// Defined in "semantic_analysis/byte_code/foreign_function_map.h", in the same
-// build target.
+// Defined in "semantic_analysis/foreign_function_map.h", in the same build
+// target.
 struct ForeignFunctionMap;
 
 struct BuiltinForeign : jasmin::StackMachineInstruction<BuiltinForeign> {
@@ -39,4 +39,4 @@ using IrFunction = jasmin::Function<internal_byte_code::InstructionSet>;
 
 }  // namespace semantic_analysis
 
-#endif  // ICARUS_SEMANTIC_ANALYSIS_BYTE_CODE_INSTRUCTION_SET_H
+#endif  // ICARUS_SEMANTIC_ANALYSIS_INSTRUCTION_SET_H

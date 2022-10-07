@@ -6,10 +6,10 @@ cc_library(
     srcs = ["byte_code.cc"],
     deps = [
         ":emitter",
-        ":instruction_set",
         "//ast:expression",
         "//semantic_analysis:compiler_state",
         "//semantic_analysis:context",
+        "//semantic_analysis:instruction_set",
         "//semantic_analysis:type_system",
         "@asoffer_jasmin//jasmin:execute",
         "@asoffer_jasmin//jasmin:function",
@@ -27,35 +27,15 @@ cc_library(
         "terminal.cc",
     ],
     deps = [
-        ":instruction_set",
         "//ast",
         "//ir/value:slice",
         "//semantic_analysis:compiler_state",
         "//semantic_analysis:context",
+        "//semantic_analysis:instruction_set",
         "//semantic_analysis:type_system",
         "//type:primitive",
         "//type:slice",
         "@asoffer_jasmin//jasmin:execute",
-        "@asoffer_jasmin//jasmin:function",
-        "@asoffer_jasmin//jasmin/instructions:core",
-    ],
-)
-
-cc_library(
-    name = "instruction_set",
-    hdrs = [
-        "instruction_set.h",
-        "foreign_function_map.h",
-    ],
-    srcs = [
-        "instruction_set.cc",
-        "foreign_function_map.cc",
-    ],
-    deps = [
-        "//base:flyweight_map",
-        "//core/type_system",
-        "//ir/value:fn",
-        "//semantic_analysis:type_system",
         "@asoffer_jasmin//jasmin:function",
         "@asoffer_jasmin//jasmin/instructions:core",
     ],

@@ -1,5 +1,5 @@
-#ifndef ICARUS_SEMANTIC_ANALYSIS_BYTE_CODE_FOREIGN_FUNCTION_MAP_H
-#define ICARUS_SEMANTIC_ANALYSIS_BYTE_CODE_FOREIGN_FUNCTION_MAP_H
+#ifndef ICARUS_SEMANTIC_ANALYSIS_FOREIGN_FUNCTION_MAP_H
+#define ICARUS_SEMANTIC_ANALYSIS_FOREIGN_FUNCTION_MAP_H
 
 #include <functional>
 #include <string>
@@ -8,7 +8,7 @@
 #include "base/flyweight_map.h"
 #include "core/type_system/type_system.h"
 #include "ir/value/fn.h"
-#include "semantic_analysis/byte_code/instruction_set.h"
+#include "semantic_analysis/instruction_set.h"
 
 namespace semantic_analysis {
 
@@ -31,4 +31,4 @@ struct ForeignFunctionMap {
 
 }  // namespace semantic_analysis
 
-#endif  // ICARUS_SEMANTIC_ANALYSIS_BYTE_CODE_FOREIGN_FUNCTION_MAP_H
+#endif  // ICARUS_SEMANTIC_ANALYSIS_FOREIGN_FUNCTION_MAP_H

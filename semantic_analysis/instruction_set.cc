@@ -1,11 +1,11 @@
-#include "semantic_analysis/byte_code/instruction_set.h"
+#include "semantic_analysis/instruction_set.h"
 
 #include <ffi.h>
 
 #include "absl/container/inlined_vector.h"
 #include "ir/value/fn.h"
 #include "jasmin/value.h"
-#include "semantic_analysis/byte_code/foreign_function_map.h"
+#include "semantic_analysis/foreign_function_map.h"
 
 namespace semantic_analysis {
 namespace {

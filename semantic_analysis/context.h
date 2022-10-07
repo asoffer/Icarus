@@ -3,7 +3,7 @@
 
 #include "ast/ast.h"
 #include "ir/value/fn.h"
-#include "semantic_analysis/byte_code/instruction_set.h"
+#include "semantic_analysis/instruction_set.h"
 #include "semantic_analysis/type_system.h"
 
 namespace semantic_analysis {

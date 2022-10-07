@@ -1,4 +1,4 @@
-#include "semantic_analysis/byte_code/foreign_function_map.h"
+#include "semantic_analysis/foreign_function_map.h"
 
 #include <dlfcn.h>
 

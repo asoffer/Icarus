@@ -4,10 +4,10 @@ cc_library(
     name = "compiler_state",
     hdrs = ["compiler_state.h"],
     deps = [
+        ":instruction_set",
         ":type_system",
         "//ast",
         "//base:debug",
-        "//semantic_analysis/byte_code:instruction_set",
     ]
 )
 
@@ -16,11 +16,31 @@ cc_library(
     hdrs = ["context.h"],
     srcs = ["context.cc"],
     deps = [
+        ":instruction_set",
         ":type_system",
         "//ast",
         "//base:debug",
-        "//semantic_analysis/byte_code:instruction_set",
     ]
+)
+
+cc_library(
+    name = "instruction_set",
+    hdrs = [
+        "instruction_set.h",
+        "foreign_function_map.h",
+    ],
+    srcs = [
+        "instruction_set.cc",
+        "foreign_function_map.cc",
+    ],
+    deps = [
+        ":type_system",
+        "//base:flyweight_map",
+        "//core/type_system",
+        "//ir/value:fn",
+        "@asoffer_jasmin//jasmin:function",
+        "@asoffer_jasmin//jasmin/instructions:core",
+    ],
 )
 
 cc_library(

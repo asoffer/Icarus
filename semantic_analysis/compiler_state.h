@@ -6,7 +6,7 @@
 #include "core/parameters.h"
 #include "core/type_system/type_system.h"
 #include "ir/value/fn.h"
-#include "semantic_analysis/byte_code/foreign_function_map.h"
+#include "semantic_analysis/foreign_function_map.h"
 #include "semantic_analysis/type_system.h"
 
 namespace semantic_analysis {
