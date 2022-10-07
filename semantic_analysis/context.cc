@@ -45,4 +45,15 @@ Context::set_parameters(
   return iter->second;
 }
 
+void Context::set_callee_overload(ast::Call const *call_expr, ir::Fn f) {
+  [[maybe_unused]] auto [iter, inserted] = callees_.try_emplace(call_expr, f);
+  ASSERT(inserted == true);
+}
+
+ir::Fn Context::callee_overload(ast::Call const *call_expr) const {
+  auto iter = callees_.find(call_expr);
+  ASSERT(iter != callees_.end());
+  return iter->second;
+}
+
 }  // namespace semantic_analysis

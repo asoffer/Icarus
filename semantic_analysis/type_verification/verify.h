@@ -47,25 +47,26 @@ inline auto VerifyParametersOf(ast::Node const *node) {
 struct TypeVerifier : VerificationScheduler {
   using signature = VerificationTask();
 
-  explicit TypeVerifier(ForeignFunctionMap &foreign_function_map, TypeSystem &type_system,
-                        Context &c, diagnostic::DiagnosticConsumer &d)
+  explicit TypeVerifier(CompilerState &compiler_state, Context &c,
+                        diagnostic::DiagnosticConsumer &d)
       : VerificationScheduler([](VerificationScheduler &s,
                                  ast::Node const *node) -> VerificationTask {
           return node->visit(static_cast<TypeVerifier &>(s));
         }),
-        foreign_function_map_(foreign_function_map),
-        type_system_(type_system),
+        compiler_state_(compiler_state),
         context_(c),
         diagnostic_consumer_(d) {}
 
   Context &context() const { return context_; }
-  TypeSystem &type_system() const { return type_system_; }
-  ForeignFunctionMap &foreign_function_map() const { return foreign_function_map_; }
+  TypeSystem &type_system() const { return compiler_state_.type_system(); }
+  ForeignFunctionMap &foreign_function_map() const {
+    return compiler_state_.foreign_function_map();
+  }
 
   template <typename T>
   std::optional<T> EvaluateAs(ast::Expression const *expression) const {
-    return ::semantic_analysis::EvaluateAs<T>(context(), foreign_function_map(),
-                                              type_system(), expression);
+    return ::semantic_analysis::EvaluateAs<T>(context(), compiler_state_,
+                                              expression);
   }
 
   template <typename D>
@@ -138,8 +139,7 @@ struct TypeVerifier : VerificationScheduler {
   static VerificationTask VerifyType(TypeVerifier &, ast::Terminal const *);
 
  private:
-  ForeignFunctionMap &foreign_function_map_;
-  TypeSystem &type_system_;
+  CompilerState &compiler_state_;
   Context &context_;
   diagnostic::DiagnosticConsumer &diagnostic_consumer_;
 };

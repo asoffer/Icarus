@@ -6,6 +6,7 @@
 #include "jasmin/function.h"
 #include "jasmin/instructions/core.h"
 #include "semantic_analysis/byte_code/instruction_set.h"
+#include "semantic_analysis/compiler_state.h"
 #include "semantic_analysis/context.h"
 #include "semantic_analysis/type_system.h"
 
@@ -14,29 +15,25 @@ namespace semantic_analysis {
 struct ByteCodeEmitterBase {
   using signature = void(IrFunction &);
 
-  explicit ByteCodeEmitterBase(Context const *c,
-                               ForeignFunctionMap &foreign_function_map,
-                               TypeSystem &type_system)
-      : foreign_function_map_(foreign_function_map),
-        type_system_(type_system),
-        context_(ASSERT_NOT_NULL(c)) {}
+  explicit ByteCodeEmitterBase(Context const *c, CompilerState &compiler_state)
+      : compiler_state_(compiler_state), context_(ASSERT_NOT_NULL(c)) {}
 
   Context const &context() const { return *context_; }
 
-  auto &type_system() const { return type_system_; }
-  auto &foreign_function_map() const { return foreign_function_map_; }
+  TypeSystem &type_system() const { return compiler_state_.type_system(); }
+  auto &foreign_function_map() const {
+    return compiler_state_.foreign_function_map();
+  }
+  auto &compiler_state() const { return compiler_state_; }
 
  private:
-  ForeignFunctionMap &foreign_function_map_;
-  TypeSystem &type_system_;
+  CompilerState &compiler_state_;
   Context const *context_;
 };
 
 struct ByteCodeValueEmitter : ByteCodeEmitterBase {
-  explicit ByteCodeValueEmitter(Context const *c,
-                                ForeignFunctionMap &foreign_function_map,
-                                TypeSystem &type_system)
-      : ByteCodeEmitterBase(c, foreign_function_map, type_system) {}
+  explicit ByteCodeValueEmitter(Context const *c, CompilerState &compiler_state)
+      : ByteCodeEmitterBase(c, compiler_state) {}
 
   void operator()(auto const *node, IrFunction &f) { return Emit(node, f); }
 

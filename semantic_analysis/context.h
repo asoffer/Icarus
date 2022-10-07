@@ -2,6 +2,8 @@
 #define ICARUS_SEMANTIC_ANALYSIS_CONTEXT_H
 
 #include "ast/ast.h"
+#include "ir/value/fn.h"
+#include "semantic_analysis/byte_code/instruction_set.h"
 #include "semantic_analysis/type_system.h"
 
 namespace semantic_analysis {
@@ -30,6 +32,15 @@ struct Context {
   // have any qualified types associated with it on this `Context.`
   absl::Span<QualifiedType const> set_qualified_type(
       ast::Expression const *expr, QualifiedType qualified_types);
+
+  // Given a call-expression, returns an `ir::Fn` identifier for the function
+  // being invoked.
+  ir::Fn callee_overload(ast::Call const *call_expr) const;
+
+  // Given a call-expression and an `ir::Fn` identifying the function being
+  // called, stores the association between the call-expression and the `ir::Fn`
+  // to be recalled via `callee_overload`.
+  void set_callee_overload(ast::Call const *call_expr, ir::Fn f);
 
   // A data structure responsible for identifying a callable AST node along with
   // all information required to complete its type-verification. During
@@ -79,6 +90,8 @@ struct Context {
       ast::Expression const *,
       std::vector<absl::flat_hash_map<core::ParameterType, CallableIdentifier>>>
       parameters_;
+
+  absl::flat_hash_map<ast::Call const *, ir::Fn> callees_;
 };
 
 }  // namespace semantic_analysis

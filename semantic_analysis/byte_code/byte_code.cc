@@ -5,11 +5,9 @@
 namespace semantic_analysis {
 
 IrFunction EmitByteCode(ast::Expression const &expression,
-                        Context const &context,
-                        ForeignFunctionMap &foreign_function_map,
-                        TypeSystem &type_system) {
+                        Context const &context, CompilerState &compiler_state) {
   IrFunction f(0, 1);
-  ByteCodeValueEmitter e(&context, foreign_function_map, type_system);
+  ByteCodeValueEmitter e(&context, compiler_state);
   e.EmitByteCode(&expression, f);
   f.append<jasmin::Return>();
   return f;

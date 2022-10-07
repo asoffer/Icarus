@@ -1,6 +1,17 @@
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
+    name = "compiler_state",
+    hdrs = ["compiler_state.h"],
+    deps = [
+        ":type_system",
+        "//ast",
+        "//base:debug",
+        "//semantic_analysis/byte_code:instruction_set",
+    ]
+)
+
+cc_library(
     name = "context",
     hdrs = ["context.h"],
     srcs = ["context.cc"],
@@ -8,6 +19,7 @@ cc_library(
         ":type_system",
         "//ast",
         "//base:debug",
+        "//semantic_analysis/byte_code:instruction_set",
     ]
 )
 
