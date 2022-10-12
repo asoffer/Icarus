@@ -15,7 +15,8 @@ namespace semantic_analysis {
 
 // Returns an `IrFunction` accepting no parameters and whose execution computes
 // the value associated with `expression`.
-IrFunction EmitByteCode(ast::Expression const& expression,
+IrFunction EmitByteCode(QualifiedType qualified_type,
+                        ast::Expression const& expression,
                         Context const& context, CompilerState& compiler_state);
 
 // Evaluates `expr` in the given `context` if possible, returning `std::nullopt`
@@ -30,9 +31,19 @@ std::optional<T> EvaluateAs(Context& context, CompilerState& compiler_state,
   bool has_error = (qt.qualifiers() >= Qualifiers::Error());
   ASSERT(has_error == false);
 
-  IrFunction f = EmitByteCode(*expr, context, compiler_state);
+  IrFunction f = EmitByteCode(qt, *expr, context, compiler_state);
+
   T result;
-  jasmin::Execute(f, {}, result);
+  if (FitsInRegister(qt.type(), compiler_state.type_system())) {
+    jasmin::Execute(f, {}, result);
+  } else {
+    IrFunction wrapper(0, 0);
+    wrapper.append<jasmin::Push>(&result);
+    wrapper.append<jasmin::Push>(&f);
+    wrapper.append<jasmin::Call>();
+    wrapper.append<jasmin::Return>();
+    jasmin::Execute(f, {});
+  }
   return result;
 }
 

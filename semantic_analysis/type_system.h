@@ -318,6 +318,8 @@ bool WithPrimitiveType(core::Type t, F&& f) {
   return false;
 }
 
+bool FitsInRegister(core::Type type, TypeSystem& type_system);
+
 }  // namespace semantic_analysis
 
 #endif  // ICARUS_SEMANTIC_ANALYSIS_TYPE_SYSTEM_H

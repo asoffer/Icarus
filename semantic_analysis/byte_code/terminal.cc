@@ -13,6 +13,10 @@ void ByteCodeValueEmitter::Emit(ast::Terminal const* node, IrFunction& f) {
     ir::Slice slice = node->value().get<ir::Slice>();
     f.append<jasmin::Push>(slice.data());
     f.append<jasmin::Push>(slice.length());
+  } else if (qt.type() == Integer) {
+    // TODO: Store the integer in some shared manager type.
+    auto* i = new ir::Integer(node->value().get<ir::Integer>());
+    f.append<Construct<ir::Integer>>(i);
   } else if (qt.type() == F64) {
     // TODO: Long-term these won't be doubles, but rather a "rational" type that
     // is arbitrary-precision.

@@ -38,6 +38,7 @@ cc_library(
         "//base:flyweight_map",
         "//core/type_system",
         "//ir/value:fn",
+        "//ir/value:integer",
         "@asoffer_jasmin//jasmin:function",
         "@asoffer_jasmin//jasmin/instructions:arithmetic",
         "@asoffer_jasmin//jasmin/instructions:core",

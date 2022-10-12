@@ -23,7 +23,8 @@ std::optional<semantic_analysis::IrFunction> Repl::ExecutionFunction(
   if (consumer_.num_consumed() != 0) { return std::nullopt; }
 
   auto const& expr = node_span.back()->as<ast::Expression>();
-  return semantic_analysis::EmitByteCode(expr, context_, state_);
+  return semantic_analysis::EmitByteCode(context_.qualified_type(&expr), expr,
+                                         context_, state_);
 }
 
 Repl::TypeCheckResult Repl::type_check(std::string content) {

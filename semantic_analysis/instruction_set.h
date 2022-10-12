@@ -1,6 +1,7 @@
 #ifndef ICARUS_SEMANTIC_ANALYSIS_INSTRUCTION_SET_H
 #define ICARUS_SEMANTIC_ANALYSIS_INSTRUCTION_SET_H
 
+#include "ir/value/integer.h"
 #include "jasmin/function.h"
 #include "jasmin/instructions/arithmetic.h"
 #include "jasmin/instructions/core.h"
@@ -24,6 +25,47 @@ struct InvokeForeignFunction
                       core::Type const* maybe_return_type);
 };
 
+struct TemporarySpace {
+  // TODO: It is particularly inefficient to separately allocate each of these.
+  std::byte* allocate(size_t size_in_bytes) {
+    return allocations_.emplace_back(new std::byte[size_in_bytes]).get();
+  }
+
+  void free_all() { allocations_.clear(); }
+
+ private:
+  std::vector<std::unique_ptr<std::byte[]>> allocations_;
+};
+
+struct AllocateTemporary : jasmin::StackMachineInstruction<AllocateTemporary> {
+  using JasminFunctionState = TemporarySpace;
+  static void execute(jasmin::ValueStack& value_stack,
+                      JasminFunctionState& space, size_t size_in_bytes) {
+    auto* p = space.allocate(size_in_bytes);
+    value_stack.push(p);
+  }
+};
+
+template <typename T>
+struct Construct : jasmin::StackMachineInstruction<Construct<T>> {
+  static void execute(jasmin::ValueStack& value_stack, T const* value) {
+    value_stack.push(new (value_stack.pop<std::byte*>()) T(*value));
+  }
+};
+
+template <typename T>
+struct Destroy : jasmin::StackMachineInstruction<Destroy<T>> {
+  static void execute(jasmin::ValueStack& value_stack) {
+    value_stack.pop<T*>()->~T();
+  }
+};
+
+struct DeallocateAllTemporaries
+    : jasmin::StackMachineInstruction<DeallocateAllTemporaries> {
+  using JasminFunctionState = TemporarySpace;
+  static void execute(JasminFunctionState& space) { space.free_all(); }
+};
+
 namespace internal_byte_code {
 
 template <template <typename> typename I, typename... Ts>
@@ -35,7 +77,8 @@ using InstructionSet = jasmin::MakeInstructionSet<
     jasmin::Push, TypeSystem::JasminInstructionSet, core::ParameterType::Begin,
     core::ParameterType::Append, core::ParameterType::AppendNamed,
     core::ParameterType::End<TypeSystem>, core::FunctionType::End<TypeSystem>,
-    BuiltinForeign, InvokeForeignFunction,
+    AllocateTemporary, DeallocateAllTemporaries, BuiltinForeign,
+    InvokeForeignFunction, Construct<ir::Integer>, Destroy<ir::Integer>,
     ApplyInstruction<jasmin::Negate, int8_t, int16_t, int32_t, int64_t, uint8_t,
                      uint16_t, uint32_t, uint64_t, float, double>>;
 

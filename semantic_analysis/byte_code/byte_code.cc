@@ -4,9 +4,13 @@
 
 namespace semantic_analysis {
 
-IrFunction EmitByteCode(ast::Expression const &expression,
+IrFunction EmitByteCode(QualifiedType qualified_type,
+                        ast::Expression const &expression,
                         Context const &context, CompilerState &compiler_state) {
-  IrFunction f(0, 1);
+  IrFunction f =
+      FitsInRegister(qualified_type.type(), compiler_state.type_system())
+          ? IrFunction(0, 1)
+          : IrFunction(1, 0);
   ByteCodeValueEmitter e(&context, compiler_state);
   e.EmitByteCode(&expression, f);
   f.append<jasmin::Return>();

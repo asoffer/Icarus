@@ -103,9 +103,20 @@ struct Repl {
   template <typename T>
   T execute(std::string source) {
     if (std::optional f = ExecutionFunction(std::move(source))) {
-      T result;
-      jasmin::Execute(*f, {}, result);
-      return result;
+      if constexpr (FitsInRegister<T>()) {
+        T result;
+        jasmin::Execute(*f, {}, result);
+        return result;
+      } else {
+        alignas(T) std::byte result[sizeof(T)];
+        semantic_analysis::IrFunction wrapper(0, 0);
+        wrapper.append<jasmin::Push>(&result);
+        wrapper.append<jasmin::Push>(&*f);
+        wrapper.append<jasmin::Call>();
+        wrapper.append<jasmin::Return>();
+        jasmin::Execute(wrapper, {});
+        return *reinterpret_cast<T const*>(&result);
+      }
     } else {
       std::cerr << "Failed to an implementation function.\n";
       std::abort();
@@ -120,6 +131,10 @@ struct Repl {
   semantic_analysis::TypeSystem& type_system() { return state_.type_system(); }
 
  private:
+  template <typename T>
+  static constexpr bool FitsInRegister() {
+    return not std::is_same_v<T, ir::Integer>;
+  }
   void PrintQualifiedType(std::ostream& os,
                           semantic_analysis::QualifiedType qt);
   void PrintType(std::ostream& os, core::Type t);

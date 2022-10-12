@@ -116,4 +116,9 @@ std::string DebugType(core::Type qt, TypeSystem& ts) {
   return ss.str();
 }
 
+bool FitsInRegister(core::Type type, TypeSystem& type_system) {
+  if (type == Integer) { return false; }
+  return true;
+}
+
 }  // namespace semantic_analysis
