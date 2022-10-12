@@ -54,6 +54,19 @@ struct Construct : jasmin::StackMachineInstruction<Construct<T>> {
 };
 
 template <typename T>
+struct CopyConstruct : jasmin::StackMachineInstruction<CopyConstruct<T>> {
+  static T* execute(T const* from, T* to) { return new (to) T(*from); }
+};
+
+template <typename T>
+struct MoveConstruct : jasmin::StackMachineInstruction<MoveConstruct<T>> {
+  static T* execute(T const* from, T* to) {
+    return new (to) T(std::move(*from));
+  }
+};
+
+
+template <typename T>
 struct Destroy : jasmin::StackMachineInstruction<Destroy<T>> {
   static void execute(jasmin::ValueStack& value_stack) {
     value_stack.pop<T*>()->~T();
@@ -64,6 +77,14 @@ struct DeallocateAllTemporaries
     : jasmin::StackMachineInstruction<DeallocateAllTemporaries> {
   using JasminFunctionState = TemporarySpace;
   static void execute(JasminFunctionState& space) { space.free_all(); }
+};
+
+struct NegateInteger : jasmin::StackMachineInstruction<NegateInteger> {
+  static void execute(jasmin::ValueStack& value_stack) {
+    auto& value = *value_stack.pop<ir::Integer*>();
+    value       = -value;
+    value_stack.push(&value);
+  }
 };
 
 namespace internal_byte_code {
@@ -79,6 +100,7 @@ using InstructionSet = jasmin::MakeInstructionSet<
     core::ParameterType::End<TypeSystem>, core::FunctionType::End<TypeSystem>,
     AllocateTemporary, DeallocateAllTemporaries, BuiltinForeign,
     InvokeForeignFunction, Construct<ir::Integer>, Destroy<ir::Integer>,
+    CopyConstruct<ir::Integer>, MoveConstruct<ir::Integer>, NegateInteger,
     ApplyInstruction<jasmin::Negate, int8_t, int16_t, int32_t, int64_t, uint8_t,
                      uint16_t, uint32_t, uint64_t, float, double>>;
 

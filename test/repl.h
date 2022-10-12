@@ -118,7 +118,7 @@ struct Repl {
         return *reinterpret_cast<T const*>(&result);
       }
     } else {
-      std::cerr << "Failed to an implementation function.\n";
+      std::cerr << "Failed to find an implementation function.\n";
       std::abort();
     }
   }
