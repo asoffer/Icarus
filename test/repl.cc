@@ -9,26 +9,21 @@
 
 namespace test {
 
-Repl::ExecuteResult Repl::execute(std::string content) {
+std::optional<semantic_analysis::IrFunction> Repl::ExecutionFunction(
+    std::string&& content) {
   source_content_.push_back(std::move(content));
   auto nodes              = frontend::Parse(source_content_.back(), consumer_);
   base::PtrSpan node_span = ast_module_.insert(nodes.begin(), nodes.end());
-  if (consumer_.num_consumed() != 0) {
-    return ExecuteResult(source_content_.back());
-  }
+  if (consumer_.num_consumed() != 0) { return std::nullopt; }
 
   semantic_analysis::TypeVerifier tv(state_, context_, consumer_);
   for (auto const* node : node_span) { tv.schedule(node); }
   tv.complete();
 
-  if (consumer_.num_consumed() != 0) {
-    return ExecuteResult(source_content_.back());
-  }
+  if (consumer_.num_consumed() != 0) { return std::nullopt; }
 
-  auto const& expr                = node_span.back()->as<ast::Expression>();
-  semantic_analysis::IrFunction f =
-      semantic_analysis::EmitByteCode(expr, context_, state_);
-  return ExecuteResult(source_content_.back(), std::move(f));
+  auto const& expr = node_span.back()->as<ast::Expression>();
+  return semantic_analysis::EmitByteCode(expr, context_, state_);
 }
 
 Repl::TypeCheckResult Repl::type_check(std::string content) {

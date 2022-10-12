@@ -54,24 +54,6 @@ struct Repl {
   };
 
  public:
-  struct ExecuteResult : ResultBase {
-    semantic_analysis::IrFunction const* function() const {
-      if (value_) { return &*value_; }
-      return nullptr;
-    }
-
-   private:
-    friend Repl;
-
-    explicit ExecuteResult(std::string_view content)
-        : ResultBase(content), value_(std::nullopt) {}
-    explicit ExecuteResult(std::string_view content,
-                           semantic_analysis::IrFunction f)
-        : ResultBase(content), value_(std::move(f)) {}
-
-    std::optional<semantic_analysis::IrFunction> value_;
-  };
-
   struct TypeCheckResult : ResultBase {
     absl::Span<std::pair<std::string, std::string> const> diagnostics() const {
       return diagnostics_;
@@ -118,7 +100,18 @@ struct Repl {
     Repl& repl_;
   };
 
-  ExecuteResult execute(std::string source);
+  template <typename T>
+  T execute(std::string source) {
+    if (std::optional f = ExecutionFunction(std::move(source))) {
+      T result;
+      jasmin::Execute(*f, {}, result);
+      return result;
+    } else {
+      std::cerr << "Failed to an implementation function.\n";
+      std::abort();
+    }
+  }
+
   TypeCheckResult type_check(std::string source);
 
   semantic_analysis::ForeignFunctionMap& foreign_function_map() {
@@ -131,51 +124,15 @@ struct Repl {
                           semantic_analysis::QualifiedType qt);
   void PrintType(std::ostream& os, core::Type t);
 
+  std::optional<semantic_analysis::IrFunction> ExecutionFunction(
+      std::string&& source);
+
   std::deque<std::string> source_content_;
   ast::Module ast_module_{nullptr};
   semantic_analysis::Context context_;
   semantic_analysis::CompilerState state_;
   diagnostic::TrackingConsumer consumer_;
 };
-
-template <typename T>
-struct EvaluatesToMatcher {
-  explicit EvaluatesToMatcher(testing::Matcher<T> m) : m_(std::move(m)) {}
-
-  using is_gtest_matcher = void;
-
-  bool MatchAndExplain(Repl::ExecuteResult const& value,
-                       testing::MatchResultListener* listener) const {
-    auto const* f = value.function();
-    if (not f) { return false; }
-    T result;
-    jasmin::Execute(*f, {}, result);
-    return testing::ExplainMatchResult(m_, result, listener);
-  }
-
-  void DescribeTo(std::ostream* os) const {
-    *os << "evaluates to a value that ";
-    m_.DescribeTo(os);
-  }
-
-  void DescribeNegationTo(std::ostream* os) const {
-    *os << "does not evaluate to a value that ";
-    m_.DescribeTo(os);
-  }
-
- private:
-  testing::Matcher<T> m_;
-};
-
-template <typename T, typename Inner>
-EvaluatesToMatcher<T> EvaluatesTo(Inner&& inner) {
-  return EvaluatesToMatcher<T>(std::move(inner));
-}
-
-template <int&..., typename T>
-auto EvaluatesTo(T&& value) {
-  return EvaluatesTo<std::decay_t<T>>(testing::Eq(std::forward<T>(value)));
-}
 
 struct HasDiagnostics {
  private:

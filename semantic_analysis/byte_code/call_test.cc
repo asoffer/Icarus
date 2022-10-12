@@ -10,25 +10,22 @@ int32_t MyFunction(int32_t n) { return n * n; }
 namespace semantic_analysis {
 namespace {
 
-using ::test::EvaluatesTo;
-using ::testing::_;
-
 TEST(Call, BuiltinForeign) {
   test::Repl repl;
 
-  auto result = repl.execute(R"(builtin.foreign("MyFunction", i32 -> i32))");
+  auto result = repl.execute<IrFunction const *>(
+      R"(builtin.foreign("MyFunction", i32 -> i32))");
 
-  // We need to run the evaluation (which happens inside the matcher) in order
-  // to populate the foreign function map.
-  EXPECT_THAT(result, EvaluatesTo<IrFunction const *>(_));
-
-  EXPECT_EQ(reinterpret_cast<decltype(&MyFunction)>(
-                repl.foreign_function_map().ForeignFunctionPointer(ir::LocalFnId(0))),
-            &MyFunction);
+  // Result needs to be computed before we look up `fn` in the foreign function
+  // map, since it is populated during execution.
+  EXPECT_EQ(
+      reinterpret_cast<decltype(&MyFunction)>(
+          repl.foreign_function_map().ForeignFunctionPointer(ir::LocalFnId(0))),
+      &MyFunction);
 
   auto const *fn =
       repl.foreign_function_map().ForeignFunction(ir::LocalFnId(0));
-  EXPECT_THAT(result, EvaluatesTo(fn));
+  EXPECT_EQ(result, fn);
 
   int32_t value;
   jasmin::Execute(*fn, {int32_t{7}}, value);
