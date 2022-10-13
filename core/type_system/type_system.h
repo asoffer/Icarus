@@ -188,6 +188,15 @@ struct TypeSystem : TypeCategories::manager_type... {
     }
   };
 
+  template <typename F>
+  auto visit(Type t, F&& invocable) {
+    using return_type = std::invoke_result_t<F, base::first<TypeCategories...>>;
+    auto member_fn    = (std::array<return_type (TypeSystem::*)(Type, F &&),
+                                 sizeof...(TypeCategories)>{
+           &TypeSystem::visit_one<TypeCategories, F>...})[t.category()];
+    return (this->*member_fn)(t, std::forward<F>(invocable));
+  }
+
  private:
   using automatic_jasmin_types =
       base::filter<base::type_list<TypeCategories...>,
@@ -198,6 +207,11 @@ struct TypeSystem : TypeCategories::manager_type... {
   struct MakeInstructionSet<base::type_list<Cats...>> {
     using type = jasmin::MakeInstructionSet<Make<Cats>...>;
   };
+
+  template <typename T, typename F>
+  auto visit_one(Type t, F&& invocable) {
+    return std::forward<F>(invocable)(t.get<T>(*this));
+  }
 
  public:
   using JasminInstructionSet =

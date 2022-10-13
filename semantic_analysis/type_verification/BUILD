@@ -1,6 +1,24 @@
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
+    name = "casting",
+    hdrs = ["casting.h"],
+    srcs = ["casting.cc"],
+    deps = [
+        "//semantic_analysis:type_system",
+    ],
+)
+
+cc_test(
+    name = "casting_test",
+    srcs = ["casting_test.cc"],
+    deps = [
+        ":casting",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_library(
     name = "verify",
     hdrs = ["verify.h"],
     srcs = [
