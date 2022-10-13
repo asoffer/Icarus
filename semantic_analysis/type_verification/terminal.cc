@@ -15,7 +15,7 @@ core::Type TypeOfNode(ast::Terminal const& node, TypeSystem& type_system) {
   if (node.type() == base::meta<ir::Slice>) {
     return SliceType(type_system, Char);
   }
-  NOT_YET();
+  NOT_YET(node.DebugString());
 }
 
 }  // namespace

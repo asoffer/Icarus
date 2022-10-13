@@ -35,6 +35,7 @@ cc_library(
         "terminal.cc",
     ],
     deps = [
+        ":casting",
         "//ast",
         "//base:meta",
         "//compiler:common_diagnostics",

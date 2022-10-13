@@ -1,6 +1,7 @@
 #include "ast/ast.h"
 #include "compiler/common_diagnostics.h"
 #include "semantic_analysis/type_system.h"
+#include "semantic_analysis/type_verification/casting.h"
 #include "semantic_analysis/type_verification/verify.h"
 
 namespace semantic_analysis {
@@ -47,6 +48,41 @@ struct NonConstantTypeInDeclaration {
   std::string_view view;
 };
 
+struct NoValidCast {
+  static constexpr std::string_view kCategory = "type-error";
+  static constexpr std::string_view kName     = "no-valid-cast";
+
+  diagnostic::DiagnosticMessage ToMessage() const {
+    return diagnostic::DiagnosticMessage(
+        diagnostic::Text("No valid cast from a value of type `%s` to a value "
+                         "of type `%s`.",
+                         from, to),
+        diagnostic::SourceQuote().Highlighted(view, diagnostic::Style{}));
+  }
+
+  std::string_view view;
+  std::string from;
+  std::string to;
+};
+
+struct OutOfBoundsConstantInteger {
+  static constexpr std::string_view kCategory = "cast-error";
+  static constexpr std::string_view kName     = "out-of-bounds-constant-integer";
+
+  diagnostic::DiagnosticMessage ToMessage() const {
+    return diagnostic::DiagnosticMessage(
+        diagnostic::Text("Cannot cast the integer value %s to the type `%s` "
+                         "because the value would be out of range.",
+                         value, type),
+        diagnostic::SourceQuote().Highlighted(view, diagnostic::Style{}));
+  }
+
+  std::string_view view;
+  std::string_view value;
+  std::string type;
+};
+
+
 }  // namespace
 
 VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
@@ -56,8 +92,8 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
 
   switch (node->kind()) {
     case ast::Declaration::kDefaultInit: {
-      type_expr_qts = co_await VerifyTypeOf(node->type_expr());
       // Syntactically: `var: T`, or `var :: T`
+      type_expr_qts = co_await VerifyTypeOf(node->type_expr());
       if (type_expr_qts.size() != 1) { NOT_YET("Log an error"); }
       auto type_expr_qt = type_expr_qts[0];
       if (type_expr_qt != Constant(Type)) {
@@ -88,6 +124,7 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
       co_return tv.TypeOf(node, qt);
     } break;
     case ast::Declaration::kInferred: {
+      // Syntactically: `var := value`, or `var ::= value`
       if (absl::Span parameters = co_await VerifyParametersOf(node->init_val());
           parameters.data() != nullptr) {
         ASSERT(parameters.size() == node->ids().size());
@@ -98,7 +135,6 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
       }
 
       initial_value_qts = co_await VerifyTypeOf(node->init_val());
-      // Syntactically: `var := value`, or `var ::= value`
       if (initial_value_qts.size() != 1) { NOT_YET("Log an error"); }
       QualifiedType qt(initial_value_qts[0].type());
       if (node->flags() & ast::Declaration::f_IsConst) {
@@ -112,7 +148,50 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
       }
       for (auto const &id : node->ids()) { co_yield tv.TypeOf(&id, qt); }
       co_return tv.TypeOf(node, qt);
+    } break;
+    case ast::Declaration::kCustomInit: {
+      // Syntactically: `var: T = value`, or `var :: T = value`
+      type_expr_qts = co_await VerifyTypeOf(node->type_expr());
+      if (type_expr_qts.size() != 1) { NOT_YET("Log an error"); }
+      auto type_expr_qt = type_expr_qts[0];
+      if (type_expr_qt != Constant(Type)) {
+        tv.ConsumeDiagnostic(NonConstantTypeInDeclaration{
+            .view = node->type_expr()->range(),
+        });
+        co_return tv.TypeOf(node, Error());
+      }
 
+      std::optional t = tv.EvaluateAs<core::Type>(node->type_expr());
+      if (not t) { co_return tv.TypeOf(node, Error()); }
+      if (node->flags() & ast::Declaration::f_IsConst) {
+        co_yield tv.TypeOf(node, Constant(*t));
+      } else {
+        co_yield tv.TypeOf(node, QualifiedType(*t));
+      }
+
+      co_await VerifyParametersOf(node->init_val());
+      initial_value_qts = co_await VerifyTypeOf(node->init_val());
+      if (initial_value_qts.size() != 1) { NOT_YET("Log an error"); }
+      QualifiedType init_qt(initial_value_qts[0].type());
+      if (node->flags() & ast::Declaration::f_IsConst) {
+        if (not(initial_value_qts[0].qualifiers() >= Qualifiers::Constant())) {
+          tv.ConsumeDiagnostic(InitializingConstantWithNonConstant{
+              .view = node->init_val()->range(),
+          });
+          init_qt = Error(init_qt);
+        }
+        init_qt = Constant(init_qt);
+      }
+
+      QualifiedType qt(*t);
+      if (node->flags() & ast::Declaration::f_IsConst) { qt = Constant(qt); }
+      for (auto const &id : node->ids()) { co_yield tv.TypeOf(&id, qt); }
+
+      if (CanCast(init_qt, *t, tv.type_system()) == CastKind::None) {
+        co_return tv.TypeOf(node, Error(qt));
+      }
+
+      co_return tv.TypeOf(node, qt);
     } break;
     default: NOT_YET(node->DebugString());
   }

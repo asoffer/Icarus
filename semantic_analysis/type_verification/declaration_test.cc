@@ -74,5 +74,33 @@ TEST(Declaration, Inferred) {
   //             AllOf(HasQualTypes(Constant(U(64))), HasDiagnostics()));
 }
 
+TEST(Declaration, Custom) {
+  test::Repl repl;
+  EXPECT_THAT(repl.type_check(R"(a : bool = true)"),
+              AllOf(HasQualTypes(QualifiedType(Bool)), HasDiagnostics()));
+  EXPECT_THAT(repl.type_check(R"(b :: bool = true)"),
+              AllOf(HasQualTypes(Constant(Bool)), HasDiagnostics()));
+
+  EXPECT_THAT(repl.type_check(R"(c :: integer = 17)"),
+              AllOf(HasQualTypes(Constant(Integer)), HasDiagnostics()));
+
+  EXPECT_THAT(repl.type_check(R"(d: i32 = 1000)"),
+              AllOf(HasQualTypes(QualifiedType(I(32))), HasDiagnostics()));
+  EXPECT_THAT(repl.type_check(R"(e :: i32 = 1000)"),
+              AllOf(HasQualTypes(Constant(I(32))), HasDiagnostics()));
+}
+
+TEST(Declaration, DISABLED_CastingIntegersRespectsBounds) {
+  test::Repl repl;
+  EXPECT_THAT(repl.type_check(R"(x: i8 = 1000)"),
+              AllOf(HasQualTypes(Error(I(8))),
+                    HasDiagnostics(
+                        Pair("cast-error", "out-of-bounds-constant-integer"))));
+  EXPECT_THAT(repl.type_check(R"(x :: i8 = 1000)"),
+              AllOf(HasQualTypes(Error(I(8))),
+                    HasDiagnostics(
+                        Pair("cast-error", "out-of-bounds-constant-integer"))));
+}
+
 }  // namespace
 }  // namespace semantic_analysis

@@ -29,7 +29,6 @@ absl::Span<QualifiedType const> Context::set_qualified_type(
     ast::Expression const *expr, QualifiedType qualified_type) {
   [[maybe_unused]] auto [iter, inserted] =
       type_.try_emplace(expr, 1, qualified_type);
-  ASSERT(inserted == true);
   return iter->second;
 }
 
