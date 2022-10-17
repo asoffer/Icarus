@@ -5,6 +5,7 @@
 #include "jasmin/function.h"
 #include "jasmin/instructions/arithmetic.h"
 #include "jasmin/instructions/core.h"
+#include "jasmin/instructions/stack.h"
 #include "semantic_analysis/type_system.h"
 
 namespace semantic_analysis {
@@ -48,7 +49,12 @@ struct AllocateTemporary : jasmin::StackMachineInstruction<AllocateTemporary> {
 
 template <typename T>
 struct Construct : jasmin::StackMachineInstruction<Construct<T>> {
-  static void execute(jasmin::ValueStack& value_stack, T const* value) {
+  static void execute(jasmin::ValueStack& value_stack,
+                      T value) requires(jasmin::SmallTrivialValue<T>) {
+    value_stack.push(new (value_stack.pop<std::byte*>()) T(value));
+  }
+  static void execute(jasmin::ValueStack& value_stack, T const* value) requires(
+      not jasmin::SmallTrivialValue<T>) {
     value_stack.push(new (value_stack.pop<std::byte*>()) T(*value));
   }
 };
@@ -64,7 +70,6 @@ struct MoveConstruct : jasmin::StackMachineInstruction<MoveConstruct<T>> {
     return new (to) T(std::move(*from));
   }
 };
-
 
 template <typename T>
 struct Destroy : jasmin::StackMachineInstruction<Destroy<T>> {
@@ -98,9 +103,14 @@ using InstructionSet = jasmin::MakeInstructionSet<
     jasmin::Push, TypeSystem::JasminInstructionSet, core::ParameterType::Begin,
     core::ParameterType::Append, core::ParameterType::AppendNamed,
     core::ParameterType::End<TypeSystem>, core::FunctionType::End<TypeSystem>,
-    AllocateTemporary, DeallocateAllTemporaries, BuiltinForeign,
-    InvokeForeignFunction, Construct<ir::Integer>, Destroy<ir::Integer>,
-    CopyConstruct<ir::Integer>, MoveConstruct<ir::Integer>, NegateInteger,
+    jasmin::StackAllocate, jasmin::StackOffset, AllocateTemporary,
+    DeallocateAllTemporaries, BuiltinForeign, InvokeForeignFunction,
+    Construct<bool>, Construct<ir::Char>, Construct<int8_t>, Construct<int16_t>,
+    Construct<int32_t>, Construct<int64_t>, Construct<ir::Integer>,
+    Construct<uint8_t>, Construct<uint16_t>, Construct<uint32_t>,
+    Construct<uint64_t>, Construct<float>, Construct<double>,
+    Destroy<ir::Integer>, CopyConstruct<ir::Integer>,
+    MoveConstruct<ir::Integer>, NegateInteger,
     ApplyInstruction<jasmin::Negate, int8_t, int16_t, int32_t, int64_t, uint8_t,
                      uint16_t, uint32_t, uint64_t, float, double>>;
 

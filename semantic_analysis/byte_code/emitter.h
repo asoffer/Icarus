@@ -13,7 +13,26 @@
 namespace semantic_analysis {
 
 struct ByteCodeEmitterBase {
-  using signature = void(IrFunction &);
+  struct FunctionData {
+    FunctionData(
+        IrFunction &function,
+        base::flyweight_map<ast::Declaration::Id const *, size_t> &variable_offsets)
+        : function_(function), variable_offsets_(variable_offsets) {}
+
+    IrFunction &function() { return function_; }
+
+    size_t OffsetFor(ast::Declaration::Id const *id) const {
+      auto iter = variable_offsets_.find(id);
+      ASSERT(iter != variable_offsets_.end());
+      return iter->second;
+    }
+
+   private:
+    IrFunction &function_;
+    base::flyweight_map<ast::Declaration::Id const *, size_t> &variable_offsets_;
+  };
+
+  using signature = void(FunctionData);
 
   explicit ByteCodeEmitterBase(Context const *c, CompilerState &compiler_state)
       : compiler_state_(compiler_state), context_(ASSERT_NOT_NULL(c)) {}
@@ -27,7 +46,7 @@ struct ByteCodeEmitterBase {
   auto &compiler_state() const { return compiler_state_; }
 
  private:
-  CompilerState &compiler_state_;
+  CompilerState &compiler_state_; 
   Context const *context_;
 };
 
@@ -35,10 +54,12 @@ struct ByteCodeValueEmitter : ByteCodeEmitterBase {
   explicit ByteCodeValueEmitter(Context const *c, CompilerState &compiler_state)
       : ByteCodeEmitterBase(c, compiler_state) {}
 
-  void operator()(auto const *node, IrFunction &f) { return Emit(node, f); }
+  void operator()(auto const *node, FunctionData data) {
+    return Emit(node, data);
+  }
 
-  void EmitByteCode(ast::Node const *node, IrFunction &f) {
-    node->visit<ByteCodeValueEmitter>(*this, f);
+  void EmitByteCode(ast::Node const *node, FunctionData data) {
+    node->visit<ByteCodeValueEmitter>(*this, data);
   }
 
   template <typename T>
@@ -48,7 +69,8 @@ struct ByteCodeValueEmitter : ByteCodeEmitterBase {
     ASSERT(has_error == false);
 
     IrFunction f(0, 1);
-    EmitByteCode(expression, f);
+    base::flyweight_map<ast::Declaration::Id const *, size_t> variable_offsets;
+    EmitByteCode(expression, FunctionData(f, variable_offsets));
     f.append<jasmin::Return>();
 
     T result;
@@ -57,14 +79,17 @@ struct ByteCodeValueEmitter : ByteCodeEmitterBase {
   }
 
   template <typename NodeType>
-  void Emit(NodeType const *node, IrFunction &f) {
+  void Emit(NodeType const *, FunctionData) {
     NOT_YET(base::meta<NodeType>);
   }
 
-  void Emit(ast::Call const *node, IrFunction &f);
-  void Emit(ast::FunctionType const *node, IrFunction &f);
-  void Emit(ast::UnaryOperator const *node, IrFunction &f);
-  void Emit(ast::Terminal const *node, IrFunction &f);
+  void Emit(ast::Call const *node, FunctionData data);
+  void Emit(ast::Declaration const *node, FunctionData data);
+  void Emit(ast::FunctionType const *node, FunctionData data);
+  void Emit(ast::UnaryOperator const *node, FunctionData data);
+  void Emit(ast::Terminal const *node, FunctionData data);
+
+  void EmitDefaultInitialize(core::Type type, FunctionData data);
 };
 
 }  // namespace semantic_analysis

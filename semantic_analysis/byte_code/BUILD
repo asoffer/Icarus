@@ -22,6 +22,8 @@ cc_library(
     hdrs = ["emitter.h"],
     srcs = [
         "call.cc",
+        "declaration.cc",
+        "default_initialize.cc",
         "function_type.cc",
         "unary_operator.cc",
         "terminal.cc",

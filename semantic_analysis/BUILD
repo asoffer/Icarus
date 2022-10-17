@@ -42,6 +42,7 @@ cc_library(
         "@asoffer_jasmin//jasmin:function",
         "@asoffer_jasmin//jasmin/instructions:arithmetic",
         "@asoffer_jasmin//jasmin/instructions:core",
+        "@asoffer_jasmin//jasmin/instructions:stack",
     ],
 )
 

@@ -12,7 +12,9 @@ IrFunction EmitByteCode(QualifiedType qualified_type,
           ? IrFunction(0, 1)
           : IrFunction(1, 0);
   ByteCodeValueEmitter e(&context, compiler_state);
-  e.EmitByteCode(&expression, f);
+  base::flyweight_map<ast::Declaration::Id const *, size_t> variable_offsets;
+  e.EmitByteCode(&expression,
+                 ByteCodeValueEmitter::FunctionData(f, variable_offsets));
   f.append<jasmin::Return>();
   return f;
 }

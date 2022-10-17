@@ -8,27 +8,29 @@ concept Negatable = jasmin::Negatable<T> and not std::same_as<T, bool>;
 
 }  // namespace
 
-void ByteCodeValueEmitter::Emit(ast::UnaryOperator const *node, IrFunction &f) {
+void ByteCodeValueEmitter::Emit(ast::UnaryOperator const *node,
+                                FunctionData data) {
   switch (node->kind()) {
     case ast::UnaryOperator::Kind::BufferPointer: {
-      EmitByteCode(node->operand(), f);
-      f.append<jasmin::Push>(&type_system());
-      f.append<TypeSystem::Make<BufferPointerType>>();
+      EmitByteCode(node->operand(), data);
+      data.function().append<jasmin::Push>(&type_system());
+      data.function().append<TypeSystem::Make<BufferPointerType>>();
     } break;
     case ast::UnaryOperator::Kind::Pointer: {
-      EmitByteCode(node->operand(), f);
-      f.append<jasmin::Push>(&type_system());
-      f.append<TypeSystem::Make<core::PointerType>>();
+      EmitByteCode(node->operand(), data);
+      data.function().append<jasmin::Push>(&type_system());
+      data.function().append<TypeSystem::Make<core::PointerType>>();
     } break;
     case ast::UnaryOperator::Kind::Negate: {
       auto type = context().qualified_type(node).type();
       if (type == Integer) {
-        EmitByteCode(node->operand(), f);
-        f.append<NegateInteger>();
+        EmitByteCode(node->operand(), data);
+        data.function().append<NegateInteger>();
       } else {
-        EmitByteCode(node->operand(), f);
-        bool found = WithPrimitiveType(
-            type, [&]<Negatable T> { f.append<jasmin::Negate<T>>(); });
+        EmitByteCode(node->operand(), data);
+        bool found = WithPrimitiveType(type, [&]<Negatable T> {
+          data.function().append<jasmin::Negate<T>>();
+        });
         if (not found) { NOT_YET(DebugType(type, type_system())); }
       }
     } break;
