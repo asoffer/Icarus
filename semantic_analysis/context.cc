@@ -55,4 +55,29 @@ ir::Fn Context::callee_overload(ast::Call const *call_expr) const {
   return iter->second;
 }
 
+void Context::set_symbol(ast::Identifier const *id, symbol_ref_type symbol) {
+  [[maybe_unused]] auto [iter, inserted] = symbols_.try_emplace(id, symbol);
+  ASSERT(inserted == true);
+}
+
+Context::symbol_ref_type Context::symbol(ast::Identifier const *id) const {
+  auto iter = symbols_.find(id);
+  ASSERT(iter != symbols_.end());
+  return iter->second;
+}
+
+void Context::set_return_types(ast::ReturnStmt const *return_stmt,
+                               std::vector<core::Type> return_types) {
+  [[maybe_unused]] auto [iter, inserted] =
+      returns_.try_emplace(return_stmt, std::move(return_types));
+  ASSERT(inserted == true);
+}
+
+absl::Span<core::Type const> Context::return_types(
+    ast::ReturnStmt const *return_stmt) const {
+  auto iter = returns_.find(return_stmt);
+  ASSERT(iter != returns_.end());
+  return iter->second;
+}
+
 }  // namespace semantic_analysis

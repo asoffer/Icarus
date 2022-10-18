@@ -42,6 +42,34 @@ struct Context {
   // to be recalled via `callee_overload`.
   void set_callee_overload(ast::Call const *call_expr, ir::Fn f);
 
+  // Given a return statement, returns a view of a collection of the types
+  // returned from that return statement. Requires that `set_return_types` was
+  // previously called with `return_stmt` as an argument.
+  absl::Span<core::Type const> return_types(
+      ast::ReturnStmt const *return_stmt) const;
+
+  // Given a return statement, and a sequence of types returned from that return
+  // statement, stores that association in this `Context`. This member function
+  // must not have been previously called with `return_stmt` as an argument.
+  void set_return_types(ast::ReturnStmt const *return_stmt,
+                        std::vector<core::Type> return_types);
+
+  // Represents a unique identifier for a symbol, potentially within a local
+  // scope, or across modules boundaries.
+  using symbol_ref_type =
+      base::PtrUnion<ast::Declaration::Id const,
+                     module::Module::SymbolInformation const>;
+
+  // Given an identifier AST node `id`, and a `symbol_ref_type`, establishes the
+  // connection that `id` refers to the symbol `symbol`. Requires that `id` not
+  // yet have any established connection to any `symbol_ref_type` on this
+  // `Context`.
+  void set_symbol(ast::Identifier const *id, symbol_ref_type symbol);
+
+  // Returns the `symbol_ref_type` representing the symbol referred to by `id`.
+  // Requires that `set_symbol` be called on `id` beforehand.
+  symbol_ref_type symbol(ast::Identifier const *id) const;
+
   // A data structure responsible for identifying a callable AST node along with
   // all information required to complete its type-verification. During
   // verification of a call-expression, we only verify the parameters of callees
@@ -92,6 +120,11 @@ struct Context {
       parameters_;
 
   absl::flat_hash_map<ast::Call const *, ir::Fn> callees_;
+
+  absl::flat_hash_map<ast::Identifier const *, symbol_ref_type> symbols_;
+
+  absl::flat_hash_map<ast::ReturnStmt const *, std::vector<core::Type>>
+      returns_;
 };
 
 }  // namespace semantic_analysis

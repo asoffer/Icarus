@@ -24,6 +24,7 @@ cc_library(
         "call.cc",
         "declaration.cc",
         "default_initialize.cc",
+        "identifier.cc",
         "function_type.cc",
         "unary_operator.cc",
         "terminal.cc",
@@ -57,6 +58,17 @@ cc_test(
 cc_test(
       name = "function_type_test",
       srcs = ["function_type_test.cc"],
+      deps = [
+          ":byte_code",
+          "//semantic_analysis:type_system",
+          "//test:repl",
+          "@com_google_googletest//:gtest_main",
+      ],
+)
+
+cc_test(
+      name = "identifier_test",
+      srcs = ["identifier_test.cc"],
       deps = [
           ":byte_code",
           "//semantic_analysis:type_system",

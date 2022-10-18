@@ -86,6 +86,7 @@ struct ByteCodeValueEmitter : ByteCodeEmitterBase {
   void Emit(ast::Call const *node, FunctionData data);
   void Emit(ast::Declaration const *node, FunctionData data);
   void Emit(ast::FunctionType const *node, FunctionData data);
+  void Emit(ast::Identifier const *node, FunctionData data);
   void Emit(ast::UnaryOperator const *node, FunctionData data);
   void Emit(ast::Terminal const *node, FunctionData data);
 

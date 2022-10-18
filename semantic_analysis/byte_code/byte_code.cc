@@ -7,10 +7,9 @@ namespace semantic_analysis {
 IrFunction EmitByteCode(QualifiedType qualified_type,
                         ast::Expression const &expression,
                         Context const &context, CompilerState &compiler_state) {
-  IrFunction f =
-      FitsInRegister(qualified_type.type(), compiler_state.type_system())
-          ? IrFunction(0, 1)
-          : IrFunction(1, 0);
+  IrFunction f = PassInRegister(qualified_type, compiler_state.type_system())
+                     ? IrFunction(0, 1)
+                     : IrFunction(1, 0);
   ByteCodeValueEmitter e(&context, compiler_state);
   base::flyweight_map<ast::Declaration::Id const *, size_t> variable_offsets;
   e.EmitByteCode(&expression,

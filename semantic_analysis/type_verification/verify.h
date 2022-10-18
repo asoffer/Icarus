@@ -114,6 +114,11 @@ struct TypeVerifier : VerificationScheduler {
     return ParametersOf(node, std::move(v));
   }
 
+  auto Completed(ast::Node const *node) {
+    return VerificationTask::YieldResult<TypeVerificationPhase::Completed>(
+        node);
+  }
+
   template <typename NodeType>
   static VerificationTask VerifyType(TypeVerifier &tv, NodeType const *) {
     NOT_YET(base::meta<NodeType>);
@@ -127,6 +132,8 @@ struct TypeVerifier : VerificationScheduler {
   static VerificationTask VerifyType(TypeVerifier &, ast::Declaration const *);
   static VerificationTask VerifyType(TypeVerifier &,
                                      ast::Declaration::Id const *);
+  static VerificationTask VerifyType(TypeVerifier &,
+                                     ast::FunctionLiteral const *);
   static VerificationTask VerifyType(TypeVerifier &, ast::FunctionType const *);
   static VerificationTask VerifyType(TypeVerifier &, ast::Identifier const *);
   static VerificationTask VerifyType(TypeVerifier &, ast::IfStmt const *);
@@ -134,6 +141,7 @@ struct TypeVerifier : VerificationScheduler {
                                      ast::ShortFunctionLiteral const *);
   static VerificationTask VerifyType(TypeVerifier &,
                                      ast::ProgramArguments const *);
+  static VerificationTask VerifyType(TypeVerifier &, ast::ReturnStmt const *);
   static VerificationTask VerifyType(TypeVerifier &,
                                      ast::UnaryOperator const *);
   static VerificationTask VerifyType(TypeVerifier &, ast::Terminal const *);

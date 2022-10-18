@@ -116,9 +116,36 @@ std::string DebugType(core::Type qt, TypeSystem& ts) {
   return ss.str();
 }
 
-bool FitsInRegister(core::Type type, TypeSystem& type_system) {
-  if (type == Integer) { return false; }
-  return true;
+core::Bytes SizeOf(core::Type t, TypeSystem& ts) {
+  if (auto p = t.get_if<PrimitiveType>(ts)) {
+    static constexpr std::array kPrimitiveTypes{core::Bytes{1}, core::Bytes{1},
+                                                core::Bytes{1}, core::Bytes{4},
+                                                core::Bytes{8}, core::Bytes{8}};
+    size_t value =
+        static_cast<std::underlying_type_t<decltype(p->value())>>(p->value());
+    ASSERT(value < kPrimitiveTypes.size());
+    return kPrimitiveTypes[value];
+  } else if (t.is<core::PointerType>(ts) or t.is<BufferPointerType>(ts)) {
+    return core::Bytes::Get<void*>();
+  } else if (auto i = t.get_if<core::SizedIntegerType>(ts)) {
+    // TODO: For nonstandard sizes (i.e, not 8, 16, 32, 64, we need to cast up
+    // to the nearest such size).
+    return core::Bytes{static_cast<int64_t>(i->bits() / CHAR_BIT)};
+  } else if (auto s = t.get_if<SliceType>(ts)) {
+    NOT_YET();
+  } else if (auto a = t.get_if<ArrayType>(ts)) {
+    NOT_YET();
+  } else if (auto f = t.get_if<core::FunctionType>(ts)) {
+    return core::Bytes::Get<void(*)()>();
+  } else {
+    NOT_YET();
+  }
+}
+
+bool PassInRegister(QualifiedType qt, TypeSystem& type_system) {
+  if (qt.type() == Integer) { return false; }
+  // TODO: Avoid hard-coding Jasmin-specific constants here.
+  return SizeOf(qt.type(), type_system) <= core::Bytes{8};
 }
 
 }  // namespace semantic_analysis

@@ -103,7 +103,7 @@ using InstructionSet = jasmin::MakeInstructionSet<
     jasmin::Push, TypeSystem::JasminInstructionSet, core::ParameterType::Begin,
     core::ParameterType::Append, core::ParameterType::AppendNamed,
     core::ParameterType::End<TypeSystem>, core::FunctionType::End<TypeSystem>,
-    jasmin::StackAllocate, jasmin::StackOffset, AllocateTemporary,
+    jasmin::StackAllocate, jasmin::StackOffset, jasmin::Load, AllocateTemporary,
     DeallocateAllTemporaries, BuiltinForeign, InvokeForeignFunction,
     Construct<bool>, Construct<ir::Char>, Construct<int8_t>, Construct<int16_t>,
     Construct<int32_t>, Construct<int64_t>, Construct<ir::Integer>,

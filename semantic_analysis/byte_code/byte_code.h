@@ -34,7 +34,7 @@ std::optional<T> EvaluateAs(Context& context, CompilerState& compiler_state,
   IrFunction f = EmitByteCode(qt, *expr, context, compiler_state);
 
   T result;
-  if (FitsInRegister(qt.type(), compiler_state.type_system())) {
+  if (PassInRegister(qt, compiler_state.type_system())) {
     jasmin::Execute(f, {}, result);
   } else {
     IrFunction wrapper(0, 0);

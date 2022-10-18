@@ -318,7 +318,8 @@ bool WithPrimitiveType(core::Type t, F&& f) {
   return false;
 }
 
-bool FitsInRegister(core::Type type, TypeSystem& type_system);
+bool PassInRegister(QualifiedType type, TypeSystem& type_system);
+core::Bytes SizeOf(core::Type type, TypeSystem& type_system);
 
 }  // namespace semantic_analysis
 
