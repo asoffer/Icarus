@@ -118,6 +118,9 @@ struct Repl {
         return *reinterpret_cast<T const*>(&result);
       }
     } else {
+      for (auto const& [category, name] : consumer_.diagnostics()) {
+        std::cerr << "* [" << category << ": " << name << "]\n";
+      }
       std::cerr << "Failed to find an implementation function.\n";
       std::abort();
     }
@@ -129,6 +132,10 @@ struct Repl {
     return state_.foreign_function_map();
   }
   semantic_analysis::TypeSystem& type_system() { return state_.type_system(); }
+
+  semantic_analysis::IrFunction const* function(ir::Fn f) {
+    return state_.function(f);
+  }
 
  private:
   template <typename T>

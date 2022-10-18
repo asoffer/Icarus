@@ -100,15 +100,15 @@ using ApplyInstruction = jasmin::MakeInstructionSet<I<Ts>...>;
 // TOOD: core::*Type instructions should be registerable and not required to
 // be explicitly added here.
 using InstructionSet = jasmin::MakeInstructionSet<
-    jasmin::Push, TypeSystem::JasminInstructionSet, core::ParameterType::Begin,
+    jasmin::Push, jasmin::DuplicateAt, jasmin::Store,
+    TypeSystem::JasminInstructionSet, core::ParameterType::Begin,
     core::ParameterType::Append, core::ParameterType::AppendNamed,
     core::ParameterType::End<TypeSystem>, core::FunctionType::End<TypeSystem>,
     jasmin::StackAllocate, jasmin::StackOffset, jasmin::Load, AllocateTemporary,
     DeallocateAllTemporaries, BuiltinForeign, InvokeForeignFunction,
-    Construct<bool>, Construct<ir::Char>, Construct<int8_t>, Construct<int16_t>,
-    Construct<int32_t>, Construct<int64_t>, Construct<ir::Integer>,
-    Construct<uint8_t>, Construct<uint16_t>, Construct<uint32_t>,
-    Construct<uint64_t>, Construct<float>, Construct<double>,
+    ApplyInstruction<Construct, bool, ir::Char, int8_t, int16_t, int32_t,
+                     int64_t, ir::Integer, uint8_t, uint16_t, uint32_t,
+                     uint64_t, float, double>,
     Destroy<ir::Integer>, CopyConstruct<ir::Integer>,
     MoveConstruct<ir::Integer>, NegateInteger,
     ApplyInstruction<jasmin::Negate, int8_t, int16_t, int32_t, int64_t, uint8_t,

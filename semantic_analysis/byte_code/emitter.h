@@ -69,7 +69,14 @@ struct ByteCodeValueEmitter : ByteCodeEmitterBase {
     ASSERT(has_error == false);
 
     IrFunction f(0, 1);
+
+    // This `variable_offsets` map is intentionally empty. There will never be
+    // declarations from which data needs to be loaded. Because `EvaluateAs` is
+    // only to be called on constant expressions, any identifier will refer to a
+    // declaration that is constant, and so lookup will happen by loading the
+    // value directly rather than adding instructions which load at runtime.
     base::flyweight_map<ast::Declaration::Id const *, size_t> variable_offsets;
+
     EmitByteCode(expression, FunctionData(f, variable_offsets));
     f.append<jasmin::Return>();
 
@@ -85,9 +92,11 @@ struct ByteCodeValueEmitter : ByteCodeEmitterBase {
 
   void Emit(ast::Call const *node, FunctionData data);
   void Emit(ast::Declaration const *node, FunctionData data);
+  void Emit(ast::FunctionLiteral const *node, FunctionData data);
   void Emit(ast::FunctionType const *node, FunctionData data);
   void Emit(ast::Identifier const *node, FunctionData data);
   void Emit(ast::UnaryOperator const *node, FunctionData data);
+  void Emit(ast::ReturnStmt const *node, FunctionData data);
   void Emit(ast::Terminal const *node, FunctionData data);
 
   void EmitDefaultInitialize(core::Type type, FunctionData data);

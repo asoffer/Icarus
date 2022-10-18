@@ -9,21 +9,15 @@ namespace {
 TEST(Identifier, Evaluation) {
   test::Repl repl;
 
-  EXPECT_EQ(repl.execute<bool>(R"(() -> {
+  EXPECT_EQ(repl.execute<bool>(R"((() -> bool {
     b0: bool
     return b0
-  }())"),
+  })())"),
             false);
-  EXPECT_EQ(repl.execute<bool>(R"(() -> {
-    b1 := true
-    return b1
-  }())"),
-            true);
-
-  EXPECT_EQ(repl.execute<int64_t>(R"(() -> {
+  EXPECT_EQ(repl.execute<int64_t>(R"((() -> i64 {
     n0: i64
     return n0
-  }())"),
+  })())"),
             int64_t{0});
 }
 

@@ -26,8 +26,10 @@ cc_library(
         "default_initialize.cc",
         "identifier.cc",
         "function_type.cc",
-        "unary_operator.cc",
+        "function_literal.cc",
+        "return_stmt.cc",
         "terminal.cc",
+        "unary_operator.cc",
     ],
     deps = [
         "//ast",
@@ -47,6 +49,17 @@ cc_library(
 cc_test(
       name = "call_test",
       srcs = ["call_test.cc"],
+      deps = [
+          ":byte_code",
+          "//semantic_analysis:type_system",
+          "//test:repl",
+          "@com_google_googletest//:gtest_main",
+      ],
+)
+
+cc_test(
+      name = "function_literal_test",
+      srcs = ["function_literal_test.cc"],
       deps = [
           ":byte_code",
           "//semantic_analysis:type_system",

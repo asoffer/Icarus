@@ -24,14 +24,25 @@ struct CompilerState {
   IrFunction const *function(ir::Fn fn_id) const {
     if (fn_id.module() == ir::ModuleId::Foreign()) {
       return foreign_function_map_.ForeignFunction(fn_id.local());
+    } else if (fn_id.module() == ir::ModuleId(0)) {
+      size_t index = fn_id.local().value();
+      ASSERT(index < functions_.size());
+      return &functions_[index];
     } else {
       NOT_YET();
     }
   }
 
+  std::pair<ir::Fn, IrFunction *> create_function(size_t parameters,
+                                                  size_t returns) {
+    ir::Fn fn(ir::ModuleId(0), ir::LocalFnId(functions_.size()));
+    return std::pair(fn, &functions_.emplace_back(parameters, returns));
+  }
+
  private:
   TypeSystem type_system_;
   ForeignFunctionMap foreign_function_map_{type_system_};
+  std::deque<IrFunction> functions_;
 };
 
 }  // namespace semantic_analysis

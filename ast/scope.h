@@ -177,7 +177,6 @@ struct Scope : base::Cast<Scope> {
     if (not span.empty()) { f(span); }
 
     while (iter != ordered_non_constant_declarations_.end()) {
-      ASSERT(iter->template get_if<Scope>() != nullptr);
       iter->template get<Scope>()->ForEachNonConstantDeclarationSpan(f);
 
       auto start = std::next(iter);

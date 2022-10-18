@@ -9,9 +9,8 @@ void ByteCodeValueEmitter::Emit(ast::Declaration const* node, FunctionData data)
         data.function().append<jasmin::StackOffset>(data.OffsetFor(&id));
         EmitDefaultInitialize(context().qualified_type(&id).type(), data);
       }
-      NOT_YET();
-    }
-    default: NOT_YET();
+    } break;
+    default: NOT_YET(node->DebugString());
   }
 }
 

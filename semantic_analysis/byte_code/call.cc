@@ -20,12 +20,19 @@ void ByteCodeValueEmitter::Emit(ast::Call const* node, FunctionData data) {
 
   if (not node->named_arguments().empty()) { NOT_YET(); }
 
-  auto callee = compiler_state().function(context().callee_overload(node));
   for (auto const& argument : node->positional_arguments()) {
     EmitByteCode(&argument.expr(), data);
   }
 
-  data.function().append<jasmin::Push>(callee);
+  IrFunction const* callee;
+  if (node->callee()->is<ast::Identifier>()) {
+    IrFunction const* callee =
+        compiler_state().function(context().callee_overload(node));
+    data.function().append<jasmin::Push>(callee);
+  } else {
+    EmitByteCode(node->callee(), data);
+  }
+
   data.function().append<jasmin::Call>();
 }
 

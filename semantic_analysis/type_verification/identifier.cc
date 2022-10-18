@@ -91,6 +91,8 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
       auto const &[symbol_ref, symbol_qt] = viable[0];
       qt                                  = symbol_qt;
 
+      tv.context().set_symbol(node, symbol_ref);
+
       if (qt.qualifiers() >= Qualifiers::Error()) {
         co_return tv.TypeOf(node, qt);
       }
