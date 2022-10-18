@@ -24,6 +24,7 @@ cc_library(
     srcs = [
         "array_literal.cc",
         "array_type.cc",
+        "builtin.cc",
         "call.cc",
         "declaration.cc",
         "function_literal.cc",
@@ -65,6 +66,16 @@ cc_test(
 cc_test(
     name = "array_type_test",
     srcs = ["array_type_test.cc"],
+    deps = [
+        ":verify",
+        "//test:repl",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "builtin_test",
+    srcs = ["builtin_test.cc"],
     deps = [
         ":verify",
         "//test:repl",

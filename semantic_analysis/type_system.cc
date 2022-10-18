@@ -118,9 +118,16 @@ std::string DebugType(core::Type qt, TypeSystem& ts) {
 
 core::Bytes SizeOf(core::Type t, TypeSystem& ts) {
   if (auto p = t.get_if<PrimitiveType>(ts)) {
-    static constexpr std::array kPrimitiveTypes{core::Bytes{1}, core::Bytes{1},
-                                                core::Bytes{1}, core::Bytes{4},
-                                                core::Bytes{8}, core::Bytes{8}};
+    static constexpr std::array kPrimitiveTypes{
+        core::Bytes{1},                                    // Bool
+        core::Bytes{1},                                    // Char
+        core::Bytes{1},                                    // Byte
+        core::Bytes{4},                                    // F32
+        core::Bytes{8},                                    // F64
+        core::Bytes{8},                                    // Type
+        core::Bytes{std::numeric_limits<int64_t>::max()},  // Integer
+        core::Bytes{8},                                    // Module
+    };
     size_t value =
         static_cast<std::underlying_type_t<decltype(p->value())>>(p->value());
     ASSERT(value < kPrimitiveTypes.size());

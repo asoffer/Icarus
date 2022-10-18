@@ -128,6 +128,7 @@ struct TypeVerifier : VerificationScheduler {
   static VerificationTask VerifyType(TypeVerifier &, ast::ArrayType const *);
   static VerificationTask VerifyType(TypeVerifier &,
                                      ast::BindingDeclaration const *);
+  static VerificationTask VerifyType(TypeVerifier &, ast::Builtin const *);
   static VerificationTask VerifyType(TypeVerifier &, ast::Call const *);
   static VerificationTask VerifyType(TypeVerifier &, ast::Declaration const *);
   static VerificationTask VerifyType(TypeVerifier &,
@@ -146,6 +147,11 @@ struct TypeVerifier : VerificationScheduler {
                                      ast::UnaryOperator const *);
   static VerificationTask VerifyType(TypeVerifier &, ast::Terminal const *);
 
+  // TODO: Access, ArgumentType, Assignment, BinaryAssignmentOperator,
+  //       BinaryOperator, BlockNode, Cast, ComparisonOperator,
+  //       DesignatedInitializer, EnumLiteral, Import, Index, InterfaceLiteral,
+  //       Label, Module, ScopeLiteral, ScopeNode, SliceType, StructLiteral,
+  //       YieldStmt, WhileStmt.
  private:
   CompilerState &compiler_state_;
   Context &context_;

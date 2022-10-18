@@ -90,6 +90,7 @@ struct ByteCodeValueEmitter : ByteCodeEmitterBase {
     NOT_YET(base::meta<NodeType>);
   }
 
+  void Emit(ast::Builtin const *node, FunctionData data);
   void Emit(ast::Call const *node, FunctionData data);
   void Emit(ast::Declaration const *node, FunctionData data);
   void Emit(ast::FunctionLiteral const *node, FunctionData data);
@@ -98,6 +99,12 @@ struct ByteCodeValueEmitter : ByteCodeEmitterBase {
   void Emit(ast::UnaryOperator const *node, FunctionData data);
   void Emit(ast::ReturnStmt const *node, FunctionData data);
   void Emit(ast::Terminal const *node, FunctionData data);
+  // TODO: Access, ArgumentType, Assignment, BinaryAssignmentOperator,
+  //       BinaryOperator, BlockNode,  Cast, ComparisonOperator,
+  //       Declaration::Id, DesignatedInitializer, EnumLiteral, Import, Index,
+  //       InterfaceLiteral, Label, Module, ParameterizedStructLiteral,
+  //       PatternMatch, ProgramArguments, ScopeLiteral, ScopeNode, SliceType,
+  //       ShortFunctionLiteral, StructLiteral, YieldStmt, IfStmt, WhileStmt,
 
   // TODO this is reasonable for types that are generally passed in registers,
   // but not great in general.
