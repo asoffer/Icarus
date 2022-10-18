@@ -44,9 +44,7 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier& tv,
       }
     }
     for (auto const* output : *outputs) {
-      std::optional t = tv.EvaluateAs<core::Type>(output);
-      if (not t) { co_return tv.TypeOf(node, Error()); }
-      return_types.push_back(*t);
+      return_types.push_back(tv.EvaluateAs<core::Type>(output));
     }
 
     absl::Span<core::Type const> specified_return_types = return_types;

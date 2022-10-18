@@ -43,10 +43,9 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
     ASSERT(name_qt.qualifiers() >= Qualifiers::Constant());
     ASSERT(type_qt.type() == Type);
     ASSERT(type_qt.qualifiers() >= Qualifiers::Constant());
-    std::optional fn_type =
+    core::Type fn_type =
         tv.EvaluateAs<core::Type>(&node->arguments()[1].expr());
-    ASSERT(fn_type.has_value() == true);
-    co_return tv.TypeOf(node, Constant(*fn_type));
+    co_return tv.TypeOf(node, Constant(fn_type));
   }
 
   absl::Span<absl::flat_hash_map<core::ParameterType,

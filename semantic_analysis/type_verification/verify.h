@@ -64,7 +64,7 @@ struct TypeVerifier : VerificationScheduler {
   }
 
   template <typename T>
-  std::optional<T> EvaluateAs(ast::Expression const *expression) const {
+  T EvaluateAs(ast::Expression const *expression) const {
     return ::semantic_analysis::EvaluateAs<T>(context(), compiler_state_,
                                               expression);
   }

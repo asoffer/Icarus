@@ -63,7 +63,7 @@ struct ByteCodeValueEmitter : ByteCodeEmitterBase {
   }
 
   template <typename T>
-  std::optional<T> EvaluateAs(ast::Expression const *expression) {
+  T EvaluateAs(ast::Expression const *expression) {
     auto qt        = context().qualified_type(expression);
     bool has_error = (qt.qualifiers() >= Qualifiers::Error());
     ASSERT(has_error == false);

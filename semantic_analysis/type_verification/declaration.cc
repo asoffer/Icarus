@@ -103,9 +103,6 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
         co_return tv.TypeOf(node, Error());
       }
 
-      std::optional t = tv.EvaluateAs<core::Type>(node->type_expr());
-      if (not t) { co_return tv.TypeOf(node, Error()); }
-
       // TODO: If it's a local variable, the type needs to be default
       // initializable. If it's a parameter the type does not need to be default
       // initializable.
@@ -118,7 +115,7 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
       //   });
       // }
 
-      QualifiedType qt(*t);
+      QualifiedType qt(tv.EvaluateAs<core::Type>(node->type_expr()));
       if (node->flags() & ast::Declaration::f_IsConst) { qt = Constant(qt); }
       for (auto const &id : node->ids()) { co_yield tv.TypeOf(&id, qt); }
       co_return tv.TypeOf(node, qt);
@@ -161,12 +158,11 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
         co_return tv.TypeOf(node, Error());
       }
 
-      std::optional t = tv.EvaluateAs<core::Type>(node->type_expr());
-      if (not t) { co_return tv.TypeOf(node, Error()); }
+      core::Type t = tv.EvaluateAs<core::Type>(node->type_expr());
       if (node->flags() & ast::Declaration::f_IsConst) {
-        co_yield tv.TypeOf(node, Constant(*t));
+        co_yield tv.TypeOf(node, Constant(t));
       } else {
-        co_yield tv.TypeOf(node, QualifiedType(*t));
+        co_yield tv.TypeOf(node, QualifiedType(t));
       }
 
       co_await VerifyParametersOf(node->init_val());
@@ -183,11 +179,11 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
         init_qt = Constant(init_qt);
       }
 
-      QualifiedType qt(*t);
+      QualifiedType qt(t);
       if (node->flags() & ast::Declaration::f_IsConst) { qt = Constant(qt); }
       for (auto const &id : node->ids()) { co_yield tv.TypeOf(&id, qt); }
 
-      if (CanCast(init_qt, *t, tv.type_system()) == CastKind::None) {
+      if (CanCast(init_qt, t, tv.type_system()) == CastKind::None) {
         co_return tv.TypeOf(node, Error(qt));
       }
 

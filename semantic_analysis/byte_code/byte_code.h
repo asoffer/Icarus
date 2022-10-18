@@ -25,8 +25,8 @@ IrFunction EmitByteCode(QualifiedType qualified_type,
 // parameter `T` is undefined behavior and not guaranteed to result in a
 // returned value of `std::nullopt`.
 template <typename T>
-std::optional<T> EvaluateAs(Context& context, CompilerState& compiler_state,
-                            ast::Expression const* expr) {
+T EvaluateAs(Context& context, CompilerState& compiler_state,
+             ast::Expression const* expr) {
   auto qt        = context.qualified_type(expr);
   bool has_error = (qt.qualifiers() >= Qualifiers::Error());
   ASSERT(has_error == false);

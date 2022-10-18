@@ -9,12 +9,9 @@ void ByteCodeValueEmitter::Emit(ast::Call const* node, FunctionData data) {
   // bootstrapping step, so we simply hard-code it here, and poorly.
   if (ast::Access const* access = node->callee()->if_as<ast::Access>();
       access and access->member_name() == "foreign") {
-    std::optional fn_type =
-        EvaluateAs<core::Type>(&node->arguments()[1].expr());
-    if (not fn_type) { NOT_YET(); }
-
+    core::Type fn_type = EvaluateAs<core::Type>(&node->arguments()[1].expr());
     EmitByteCode(&node->arguments()[0].expr(), data);
-    data.function().append<BuiltinForeign>(*fn_type, &foreign_function_map());
+    data.function().append<BuiltinForeign>(fn_type, &foreign_function_map());
     return;
   }
 

@@ -74,10 +74,7 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
         // fixing the bug in the conditional statement.
         if (not condition_has_error) {
           if (qt.qualifiers() >= Qualifiers::Constant()) {
-            std::optional<bool> condition =
-                tv.EvaluateAs<bool>(&node->condition());
-            ASSERT(condition.has_value() == true);
-            if (*condition) {
+            if (tv.EvaluateAs<bool>(&node->condition())) {
               for (auto const *stmt : node->true_block()) {
                 co_await VerifyTypeOf(stmt);
               }
