@@ -10,6 +10,12 @@ void ByteCodeValueEmitter::Emit(ast::Declaration const* node, FunctionData data)
         EmitDefaultInitialize(context().qualified_type(&id).type(), data);
       }
     } break;
+    case ast::Declaration::kInferred: {
+      for (auto const& id : node->ids()) {
+        data.function().append<jasmin::StackOffset>(data.OffsetFor(&id));
+      }
+      EmitInitialize(node->init_val(), data);
+    } break;
     default: NOT_YET(node->DebugString());
   }
 }

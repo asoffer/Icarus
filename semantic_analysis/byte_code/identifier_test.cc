@@ -14,6 +14,13 @@ TEST(Identifier, Evaluation) {
     return b0
   })())"),
             false);
+
+  EXPECT_EQ(repl.execute<bool>(R"((() -> bool {
+    b1 := true
+    return b1
+  })())"),
+            true);
+
   EXPECT_EQ(repl.execute<int64_t>(R"((() -> i64 {
     n0: i64
     return n0

@@ -99,6 +99,26 @@ struct ByteCodeValueEmitter : ByteCodeEmitterBase {
   void Emit(ast::ReturnStmt const *node, FunctionData data);
   void Emit(ast::Terminal const *node, FunctionData data);
 
+  // TODO this is reasonable for types that are generally passed in registers,
+  // but not great in general.
+  template <typename NodeType>
+  void EmitInitialize(NodeType const *node, FunctionData data) {
+    EmitByteCode(node, data);
+    absl::Span qts = context().qualified_types(node);
+    if (qts.size() == 1) {
+      data.function().append<jasmin::Store>(
+          SizeOf(qts[0].type(), type_system()).value());
+    } else {
+      for (auto iter = qts.rbegin(); iter != qts.rend(); ++iter) {
+        data.function().append<jasmin::DuplicateAt>(qts.size());
+        data.function().append<jasmin::Swap>();
+        data.function().append<jasmin::Store>(
+            SizeOf(iter->type(), type_system()).value());
+      }
+      data.function().append<jasmin::Drop>(qts.size());
+    }
+  }
+
   void EmitDefaultInitialize(core::Type type, FunctionData data);
 };
 

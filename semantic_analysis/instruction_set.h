@@ -100,8 +100,8 @@ using ApplyInstruction = jasmin::MakeInstructionSet<I<Ts>...>;
 // TOOD: core::*Type instructions should be registerable and not required to
 // be explicitly added here.
 using InstructionSet = jasmin::MakeInstructionSet<
-    jasmin::Push, jasmin::DuplicateAt, jasmin::Store,
-    TypeSystem::JasminInstructionSet, core::ParameterType::Begin,
+    jasmin::Push, jasmin::DuplicateAt, jasmin::Swap, jasmin::Drop,
+    jasmin::Store, TypeSystem::JasminInstructionSet, core::ParameterType::Begin,
     core::ParameterType::Append, core::ParameterType::AppendNamed,
     core::ParameterType::End<TypeSystem>, core::FunctionType::End<TypeSystem>,
     jasmin::StackAllocate, jasmin::StackOffset, jasmin::Load, AllocateTemporary,
