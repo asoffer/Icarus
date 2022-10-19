@@ -23,6 +23,8 @@ struct TrackingConsumer : DiagnosticConsumer {
     return diagnostics_;
   }
 
+  void clear() { diagnostics_.clear(); }
+
  private:
   // TODO: These could be string_view, but currently GoogleTest doesn't support
   // pretty-printing std::string_view, so we're using strings to make the test

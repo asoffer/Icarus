@@ -11,6 +11,7 @@ namespace test {
 
 std::optional<semantic_analysis::IrFunction> Repl::ExecutionFunction(
     std::string&& content) {
+  consumer_.clear();
   source_content_.push_back(std::move(content));
   auto nodes              = frontend::Parse(source_content_.back(), consumer_);
   base::PtrSpan node_span = ast_module_.insert(nodes.begin(), nodes.end());
@@ -28,13 +29,16 @@ std::optional<semantic_analysis::IrFunction> Repl::ExecutionFunction(
 }
 
 Repl::TypeCheckResult Repl::type_check(std::string content) {
+  size_t previously_consumed = consumer_.num_consumed();
   source_content_.push_back(std::move(content));
   auto nodes              = frontend::Parse(source_content_.back(), consumer_);
   base::PtrSpan node_span = ast_module_.insert(nodes.begin(), nodes.end());
-  if (consumer_.num_consumed() != 0) {
+  if (consumer_.num_consumed() != previously_consumed) {
     return TypeCheckResult(source_content_.back(), {semantic_analysis::Error()},
                            consumer_.diagnostics(), *this);
   }
+
+  consumer_.clear();
 
   semantic_analysis::TypeVerifier tv(state_, context_, consumer_);
   for (auto const* node : node_span) { tv.schedule(node); }
