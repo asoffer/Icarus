@@ -1,6 +1,8 @@
 #ifndef ICARUS_SEMANTIC_ANALYSIS_CONTEXT_H
 #define ICARUS_SEMANTIC_ANALYSIS_CONTEXT_H
 
+#include "absl/container/flat_hash_map.h"
+#include "absl/container/node_hash_map.h"
 #include "ast/ast.h"
 #include "ir/value/fn.h"
 #include "semantic_analysis/instruction_set.h"
@@ -53,6 +55,16 @@ struct Context {
   // must not have been previously called with `return_stmt` as an argument.
   void set_return_types(ast::ReturnStmt const *return_stmt,
                         std::vector<core::Type> return_types);
+
+  // Inserts space in this `Context` to hold the constant value represented by
+  // `expr` if no such space exists. Returns a pair consisting of a pointer to the
+  // space associated with the value, and a bool indicating whether the space
+  // was inserted (true) or already existed (false).
+  std::pair<std::vector<std::byte> *, bool> insert_constant(
+      ast::Expression const *expr) {
+    auto [iter, inserted] = constants_.try_emplace(expr);
+    return std::pair<std::vector<std::byte> *, bool>(&iter->second, inserted);
+  }
 
   // Represents a unique identifier for a symbol, potentially within a local
   // scope, or across modules boundaries.
@@ -125,6 +137,9 @@ struct Context {
 
   absl::flat_hash_map<ast::ReturnStmt const *, std::vector<core::Type>>
       returns_;
+
+  absl::node_hash_map<ast::Expression const *, std::vector<std::byte>>
+      constants_;
 };
 
 }  // namespace semantic_analysis

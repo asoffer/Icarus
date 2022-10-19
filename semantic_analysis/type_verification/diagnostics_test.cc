@@ -14,102 +14,33 @@ struct TestCase {
   std::string expected;
 };
 
-using TypeForDiagnosticTest = testing::TestWithParam<TestCase>;
-TEST_P(TypeForDiagnosticTest, Test) {
-  auto const &[context, expr, expected] = GetParam();
+std::string TypeForDiagnostic(std::string_view context, std::string_view expression) {
   test::Repl repl;
-  repl.type_check(absl::StrCat(context, "\n", expr));
-
-  EXPECT_EQ(TypeForDiagnostic(repl.last_expression(), repl.context(),
-                              repl.type_system()),
-            expected);
+  repl.type_check(absl::StrCat(context, "\n", expression));
+  return TypeForDiagnostic(repl.last_expression(), repl.context(),
+                           repl.type_system());
 }
-INSTANTIATE_TEST_SUITE_P(All, TypeForDiagnosticTest,
-                         testing::ValuesIn(std::vector<TestCase> {
-                             {
-                                 .context  = "n: i64",
-                                 .expr     = "n",
-                                 .expected = "i64",
-                             },
-// TODO Reimplement
-#if 0
-                             {
-                                 .context  = R"(Int ::= i64 \\ n: Int)",
-                                 .expr     = "n",
-                                 .expected = "Int",
-                             },
-                             {
-                                 .context  = "b := true",
-                                 .expr     = "b",
-                                 .expected = "bool",
-                             },
-                             {
-                                 .context  = R"(
-                                 S ::= struct {}
-                                 )",
-                                 .expr     = "S.{}",
-                                 .expected = "S",
-                             },
-                             {
-                                 .context  = R"(
-                                 S ::= struct {}
-                                 Alias ::= S
-                                 )",
-                                 .expr     = "Alias.{}",
-                                 .expected = "Alias",
-                             },
-                             {
-                                 .context  = R"(
-                                 E ::= enum { A }
-                                 e := E.A
-                                 )",
-                                 .expr     = "e",
-                                 .expected = "E",
-                             },
-                             {
-                                 .context  = R"(
-                                 F ::= flags { A }
-                                 f := F.A
-                                 )",
-                                 .expr     = "f",
-                                 .expected = "F",
-                             },
-                             {
-                                 .expr     = "[0 as i64]",
-                                 .expected = "[1; i64]",
-                             },
-                             {
-                                 .expr     = "[1, 2, 3]",
-                                 .expected = "[3; integer]",
-                             },
-                             {
-                                 .context  = R"(
-                                 I ::= i64
-                                 n: I
-                                 )",
-                                 .expr     = "[n, n, n]",
-                                 .expected = "[3; I]",
-                             },
-                             {
-                                 .context  = R"(Int ::= i64 \\ n: Int)",
-                                 .expr     = "n + n",
-                                 .expected = "Int",
-                             },
-                             {
-                                 .context  = R"(Int ::= i64 \\ n: Int)",
-                                 .expr     = "-n",
-                                 .expected = "Int",
-                             },
-                             {
-                                 .context  = R"(
-                                 Int ::= i64
-                                 f ::= () -> Int { return 0 }
-                                 )",
-                                 .expr     = "f()",
-                                 .expected = "Int",
-                             },
-#endif
-                         }));
+
+TEST(TypeForDiagnostic, Test) {
+  EXPECT_EQ(TypeForDiagnostic(R"(n: i64)", "n"), "i64");
+  EXPECT_EQ(TypeForDiagnostic(R"(Int ::= i64 \\ n: Int)", "n"), "Int");
+  EXPECT_EQ(TypeForDiagnostic(R"(b := true)", "b"), "bool");
+  EXPECT_EQ(TypeForDiagnostic(R"()", "[0 as i64]"), "[1; i64]");
+  EXPECT_EQ(TypeForDiagnostic(R"()", "[1, 2, 3]"), "[3; integer]");
+  EXPECT_EQ(TypeForDiagnostic(R"(I ::= i64 \\ n: I)", "[n, n, n]"),
+            "[3; I]");
+  // EXPECT_EQ(TypeForDiagnostic(R"(I ::= i64 \\ n: I)", "n + n"), "Int");
+  EXPECT_EQ(TypeForDiagnostic(R"(Int ::= i64 \\ n: Int)", "-n"), "Int");
+  EXPECT_EQ(
+      TypeForDiagnostic(R"(Int ::= i64 \\ f ::= () -> Int { return 0 as i64 })", "f()"),
+      "Int");
+  // EXPECT_EQ(TypeForDiagnostic(R"(I ::= i64 \\ n: I)", "n + n"), "Int");
+  // EXPECT_EQ(TypeForDiagnostic(R"(S ::= struct {})", "S.{}"), "S");
+  // EXPECT_EQ(TypeForDiagnostic(R"(S ::= struct {} \\ Alias ::= S)",
+  // "Alias.{}"), "Alias");
+  // EXPECT_EQ(TypeForDiagnostic(R"(E ::= enum { A } \\ e := E.A)", "e"), "E");
+  // EXPECT_EQ(TypeForDiagnostic(R"(F ::= flags { A } \\ f := F.A)", "f"), "F");
+}
 
 }  // namespace
 }  // namespace semantic_analysis

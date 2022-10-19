@@ -16,8 +16,8 @@ namespace semantic_analysis {
 // Returns an `IrFunction` accepting no parameters and whose execution computes
 // the value associated with `expression`.
 IrFunction EmitByteCode(QualifiedType qualified_type,
-                        ast::Expression const& expression,
-                        Context const& context, CompilerState& compiler_state);
+                        ast::Expression const& expression, Context& context,
+                        CompilerState& compiler_state);
 
 // Evaluates `expr` in the given `context` if possible, returning `std::nullopt`
 // in the event of execution failure. Note that behavior is undefined if `expr`

@@ -34,10 +34,11 @@ struct ByteCodeEmitterBase {
 
   using signature = void(FunctionData);
 
-  explicit ByteCodeEmitterBase(Context const *c, CompilerState &compiler_state)
+  explicit ByteCodeEmitterBase(Context *c, CompilerState &compiler_state)
       : compiler_state_(compiler_state), context_(ASSERT_NOT_NULL(c)) {}
 
   Context const &context() const { return *context_; }
+  Context &context() { return *context_; }
 
   TypeSystem &type_system() const { return compiler_state_.type_system(); }
   auto &foreign_function_map() const {
@@ -47,11 +48,11 @@ struct ByteCodeEmitterBase {
 
  private:
   CompilerState &compiler_state_; 
-  Context const *context_;
+  Context *context_;
 };
 
 struct ByteCodeValueEmitter : ByteCodeEmitterBase {
-  explicit ByteCodeValueEmitter(Context const *c, CompilerState &compiler_state)
+  explicit ByteCodeValueEmitter(Context *c, CompilerState &compiler_state)
       : ByteCodeEmitterBase(c, compiler_state) {}
 
   void operator()(auto const *node, FunctionData data) {
@@ -85,6 +86,40 @@ struct ByteCodeValueEmitter : ByteCodeEmitterBase {
     return result;
   }
 
+  absl::Span<std::byte const> EvaluateConstant(ast::Expression const *expr,
+                                               QualifiedType qt) {
+    ASSERT(qt == context().qualified_type(expr));
+    auto [result_ptr, inserted] = context().insert_constant(expr);
+    if (inserted) {
+      if (PassInRegister(qt, type_system())) {
+        IrFunction f(0, 1);
+
+        // This `variable_offsets` map is intentionally empty. There will never
+        // be declarations from which data needs to be loaded. Because
+        // `EvaluateConstant` is only to be called on constant expressions, any
+        // identifier will refer to a declaration that is constant, and so
+        // lookup will happen by loading the value directly rather than adding
+        // instructions which load at runtime.
+        base::flyweight_map<ast::Declaration::Id const *, size_t>
+            variable_offsets;
+
+        EmitByteCode(expr, FunctionData(f, variable_offsets));
+        f.append<jasmin::Return>();
+
+        jasmin::ValueStack value_stack;
+        jasmin::Execute(f, value_stack);
+        size_t size = SizeOf(qt.type(), type_system()).value();
+        result_ptr->resize(size);
+        jasmin::Value::Store(value_stack.pop_value(), result_ptr->data(), size);
+        return *result_ptr;
+      } else {
+        NOT_YET();
+      }
+    } else {
+      return *result_ptr;
+    }
+  }
+
   template <typename NodeType>
   void Emit(NodeType const *, FunctionData) {
     NOT_YET(base::meta<NodeType>);
@@ -92,6 +127,7 @@ struct ByteCodeValueEmitter : ByteCodeEmitterBase {
 
   void Emit(ast::Builtin const *node, FunctionData data);
   void Emit(ast::Call const *node, FunctionData data);
+  void Emit(ast::Declaration::Id const *node, FunctionData data);
   void Emit(ast::Declaration const *node, FunctionData data);
   void Emit(ast::FunctionLiteral const *node, FunctionData data);
   void Emit(ast::FunctionType const *node, FunctionData data);

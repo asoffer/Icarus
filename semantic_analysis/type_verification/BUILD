@@ -27,6 +27,8 @@ cc_library(
         "//base:debug",
         "//semantic_analysis:context",
         "//semantic_analysis:type_system",
+        "@com_google_absl//absl/cleanup",
+        "@com_google_absl//absl/strings",
     ]
 )
 

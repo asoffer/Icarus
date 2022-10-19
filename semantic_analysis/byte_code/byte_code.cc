@@ -5,8 +5,8 @@
 namespace semantic_analysis {
 
 IrFunction EmitByteCode(QualifiedType qualified_type,
-                        ast::Expression const &expression,
-                        Context const &context, CompilerState &compiler_state) {
+                        ast::Expression const &expression, Context &context,
+                        CompilerState &compiler_state) {
   IrFunction f = PassInRegister(qualified_type, compiler_state.type_system())
                      ? IrFunction(0, 1)
                      : IrFunction(1, 0);

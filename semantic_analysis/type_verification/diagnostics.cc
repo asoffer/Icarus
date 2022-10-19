@@ -1,5 +1,8 @@
 #include "semantic_analysis/type_verification/diagnostics.h"
 
+#include "absl/cleanup/cleanup.h"
+#include "absl/strings/str_cat.h"
+#include "absl/strings/str_join.h"
 #include "ast/ast.h"
 
 namespace semantic_analysis {
@@ -34,7 +37,9 @@ struct StringifyExpression {
 
   std::string operator()(ast::FunctionLiteral const *node) { NOT_YET(); }
 
-  std::string operator()(ast::Identifier const *node) { NOT_YET(); }
+  std::string operator()(ast::Identifier const *node) {
+    return std::string(node->name());
+  }
 
   std::string operator()(ast::Import const *node) { NOT_YET(); }
 
@@ -67,7 +72,14 @@ struct StringifyType {
   std::string operator()(ast::Access const *node) { NOT_YET(); }
 
   std::string operator()(ast::ArrayLiteral const *node) {
-    return "[TODO; TODO]";
+    // TODO: We can probably develop a better heuristic for the element type by
+    // looking at all entries and picking the most common one.
+    //
+    // TODO: For nested arrays it will sometimes make sense to write this in the
+    // form `[N; T]` where `T` is itself an array-type, and other times it will
+    // make sense to write this as `[N, M; T]`.
+    return absl::StrCat("[", node->size(),
+                        "; ", operator()(node->elements()[0]), "]");
   }
 
   std::string operator()(ast::ArrayType const *node) { return "type"; }
@@ -78,7 +90,21 @@ struct StringifyType {
     return ExpressionForDiagnostic(*node->type(), context_, type_system_);
   }
 
-  std::string operator()(ast::Call const *node) { NOT_YET(); }
+  std::string operator()(ast::Call const *node) {
+    auto old_kind = std::exchange(kind_, VisitationKind::ReturnType);
+    absl::Cleanup c([&] { kind_ = old_kind; });
+    // TODO: Handle the case where it's imported.
+    if (auto const *i = node->callee()->if_as<ast::Identifier>()) {
+      auto symbol = context_.symbol(i);
+      if (auto const *id = symbol.get_if<ast::Declaration::Id>()) {
+        return operator()(id);
+      } else {
+        NOT_YET();
+      }
+    } else {
+      NOT_YET();
+    }
+  }
 
   std::string operator()(ast::Declaration::Id const *node) {
     if (node->declaration().ids().size() != 1) { NOT_YET(); }
@@ -91,7 +117,33 @@ struct StringifyType {
 
   std::string operator()(ast::DesignatedInitializer const *node) { NOT_YET(); }
 
-  std::string operator()(ast::FunctionLiteral const *node) { NOT_YET(); }
+  std::string operator()(ast::FunctionLiteral const *node) {
+    switch (kind_) {
+      case VisitationKind::ReturnType: {
+        if (node->outputs()) {
+          auto old_kind = std::exchange(kind_, VisitationKind::Type);
+          absl::Cleanup c([&] { kind_ = old_kind; });
+          std::string comma_separated_types =
+              absl::StrJoin(*node->outputs(), ", ",
+                            [&](std::string *out, ast::Expression const *expr) {
+                              out->append(ExpressionForDiagnostic(
+                                  *expr, context_, type_system_));
+                            });
+
+          if (node->outputs()->size() == 1) {
+            return comma_separated_types;
+          } else {
+            return absl::StrCat("(", comma_separated_types, ")");
+          }
+        } else {
+          NOT_YET();
+        }
+      } break;
+      case VisitationKind::Type: {
+        NOT_YET();
+      } break;
+    }
+  }
 
   std::string operator()(ast::Identifier const *node) {
     auto symbol = context_.symbol(node);
@@ -129,7 +181,34 @@ struct StringifyType {
     }
   }
 
-  std::string operator()(ast::UnaryOperator const *node) { NOT_YET(); }
+  std::string operator()(ast::UnaryOperator const *node) {
+    // TODO: Many of these require correct handling of precedence.
+    switch (node->kind()) {
+      case ast::UnaryOperator::Kind::Init:
+      case ast::UnaryOperator::Kind::Copy:
+      case ast::UnaryOperator::Kind::Move: return (*this)(node->operand());
+      case ast::UnaryOperator::Kind::Destroy: UNREACHABLE();
+      case ast::UnaryOperator::Kind::BufferPointer: return "type";
+      case ast::UnaryOperator::Kind::TypeOf: return "type";
+      case ast::UnaryOperator::Kind::At:
+        return absl::StrCat("@", (*this)(node->operand()));
+      case ast::UnaryOperator::Kind::Pointer: return "type";
+      case ast::UnaryOperator::Kind::Address:
+        return absl::StrCat("*", (*this)(node->operand()));
+      case ast::UnaryOperator::Kind::BlockJump:
+        return absl::StrCat(">> ", (*this)(node->operand()));
+      case ast::UnaryOperator::Kind::Negate:
+      case ast::UnaryOperator::Kind::Not: {
+        core::Type t = context_.qualified_type(node).type();
+        if (t.is<PrimitiveType>(type_system_) or
+            t.is<core::SizedIntegerType>(type_system_)) {
+          return (*this)(node->operand());
+        } else {
+          NOT_YET(node->DebugString(), DebugType(t, type_system_));
+        }
+      } break;
+    }
+  }
 
  private:
   Context const &context_;
