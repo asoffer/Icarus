@@ -132,6 +132,14 @@ struct Repl {
     return state_.foreign_function_map();
   }
   semantic_analysis::TypeSystem& type_system() { return state_.type_system(); }
+  semantic_analysis::Context const& context() const { return context_; }
+  ast::Module const& module() const { return ast_module_; }
+
+  ast::Expression const& last_expression() const {
+    base::PtrSpan stmts = module().stmts();
+    ASSERT(stmts.size() != 0);
+    return stmts.back()->as<ast::Expression>();
+  }
 
   semantic_analysis::IrFunction const* function(ir::Fn f) {
     return state_.function(f);

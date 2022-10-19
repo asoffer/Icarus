@@ -19,6 +19,28 @@ cc_test(
 )
 
 cc_library(
+    name = "diagnostics",
+    hdrs = ["diagnostics.h"],
+    srcs = ["diagnostics.cc"],
+    deps = [
+        "//ast",
+        "//base:debug",
+        "//semantic_analysis:context",
+        "//semantic_analysis:type_system",
+    ]
+)
+
+cc_test(
+    name = "diagnostics_test",
+    srcs = ["diagnostics_test.cc"],
+    deps = [
+        ":diagnostics",
+        "//test:repl",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_library(
     name = "verify",
     hdrs = ["verify.h"],
     srcs = [
@@ -40,6 +62,7 @@ cc_library(
     ],
     deps = [
         ":casting",
+        ":diagnostics",
         "//ast",
         "//base:meta",
         "//compiler:common_diagnostics",

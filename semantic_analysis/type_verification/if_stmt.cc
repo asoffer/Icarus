@@ -36,11 +36,6 @@ struct NonBooleanCondition {
   std::string type;
 };
 
-std::string TypeForDiagnostic(ast::Expression const &expression,
-                              Context const &context) {
-  return "TODO";
-}
-
 }  // namespace
 
 VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
@@ -54,7 +49,7 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
       if (qt.type() != Bool) {
         tv.ConsumeDiagnostic(NonBooleanCondition{
             .view = node->range(),
-            .type = TypeForDiagnostic(node->condition(), tv.context()),
+            .type = tv.TypeForDiagnostic(node->condition()),
         });
         condition_has_error = true;
       }

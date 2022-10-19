@@ -12,11 +12,6 @@ namespace semantic_analysis {
 namespace {
 using namespace compiler;  // TODO: Remove after migration.
 
-std::string TypeForDiagnostic(ast::Expression const &expression,
-                              Context const &context) {
-  return "TODO";
-}
-
 struct UnexpandedUnaryOperatorArgument {
   static constexpr std::string_view kCategory = "type-error";
   static constexpr std::string_view kName =
@@ -172,7 +167,7 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
         if (operand_type != Type) {
           tv.ConsumeDiagnostic(NotAType{
               .view = node->operand()->range(),
-              .type = TypeForDiagnostic(*node->operand(), tv.context()),
+              .type = tv.TypeForDiagnostic(*node->operand()),
           });
           qt = Error(qt);
         }
@@ -189,7 +184,7 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
           qt = QualifiedType(ptr_type->pointee(), Qualifiers::Buffer());
         } else {
           tv.ConsumeDiagnostic(DereferencingNonPointer{
-              .type = TypeForDiagnostic(*node->operand(), tv.context()),
+              .type = tv.TypeForDiagnostic(*node->operand()),
               .view = node->range(),
           });
           qt = Error();
@@ -210,7 +205,7 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
         if (operand_type != Type) {
           tv.ConsumeDiagnostic(NotAType{
               .view = node->operand()->range(),
-              .type = TypeForDiagnostic(*node->operand(), tv.context()),
+              .type = tv.TypeForDiagnostic(*node->operand()),
           });
           qt = Error(qt);
         }
@@ -228,7 +223,7 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
 
           } else {
             tv.ConsumeDiagnostic(NegatingUnsignedInteger{
-                .type = TypeForDiagnostic(*node->operand(), tv.context()),
+                .type = tv.TypeForDiagnostic(*node->operand()),
                 .view = node->range(),
             });
             qt = Error(operand_qualifiers & Qualifiers::Constant());
@@ -236,7 +231,7 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
         } else {
           tv.ConsumeDiagnostic(InvalidUnaryOperatorCall{
               .op   = "-",
-              .type = TypeForDiagnostic(*node->operand(), tv.context()),
+              .type = tv.TypeForDiagnostic(*node->operand()),
               .view = node->range(),
           });
           qt = Error(operand_qualifiers & Qualifiers::Constant());
@@ -252,7 +247,7 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
         } else {
           tv.ConsumeDiagnostic(InvalidUnaryOperatorCall{
               .op   = "not",
-              .type = TypeForDiagnostic(*node->operand(), tv.context()),
+              .type = tv.TypeForDiagnostic(*node->operand()),
               .view = node->range(),
           });
           qt = Error(operand_qualifiers & Qualifiers::Constant());

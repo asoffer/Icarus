@@ -110,7 +110,7 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
       // bool is_default_initializable = t->get()->IsDefaultInitializable();
       // if (not is_parameter and not is_default_initializable) {
       //   tv.ConsumeDiagnostic(NoDefaultValue{
-      //       .type = TypeForDiagnostic(node, tv.context()),
+      //       .type = tv.TypeForDiagnostic(node),
       //       .view = node->range(),
       //   });
       // }

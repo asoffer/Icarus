@@ -11,6 +11,7 @@
 #include "semantic_analysis/instruction_set.h"
 #include "semantic_analysis/task.h"
 #include "semantic_analysis/type_system.h"
+#include "semantic_analysis/type_verification/diagnostics.h"
 
 namespace semantic_analysis {
 
@@ -153,6 +154,13 @@ struct TypeVerifier : VerificationScheduler {
   //       DesignatedInitializer, EnumLiteral, Import, Index, InterfaceLiteral,
   //       Label, Module, ScopeLiteral, ScopeNode, SliceType, StructLiteral,
   //       YieldStmt, WhileStmt.
+
+
+  std::string TypeForDiagnostic(ast::Expression const& expression) const {
+    return ::semantic_analysis::TypeForDiagnostic(expression, context(),
+                                                  type_system());
+  }
+
  private:
   CompilerState &compiler_state_;
   Context &context_;
