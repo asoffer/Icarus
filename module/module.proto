@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package module.internal_proto;
+
+message Function {
+  int32 parameters = 1;
+  int32 returns = 2;
+  bytes content = 3;
+}
+
+message Module {
+  // An identifier for this module unique amongst all modules being linked
+  // together.
+  string identifier = 1;
+
+  // Subroutine at which to begin execution.
+  Function initializer = 2;
+}

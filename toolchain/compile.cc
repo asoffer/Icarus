@@ -13,6 +13,10 @@
 #include "base/file.h"
 #include "base/log.h"
 #include "frontend/parse.h"
+#include "module/module.h"
+#include "semantic_analysis/compiler_state.h"
+#include "semantic_analysis/context.h"
+#include "semantic_analysis/type_verification/verify.h"
 #include "toolchain/flags.h"
 
 ABSL_FLAG(std::vector<std::string>, log, {},
@@ -73,10 +77,10 @@ absl::StatusOr<std::string> LoadFileContent(
 
 bool Compile(std::string const &source_file, std::ofstream &output) {
   frontend::SourceIndexer source_indexer;
-  auto diag =
+  auto diagnostic_consumer =
       toolchain::DiagnosticConsumerFromFlag(FLAGS_diagnostics, source_indexer);
-  if (not diag.ok()) {
-    std::cerr << diag.status().message();
+  if (not diagnostic_consumer.ok()) {
+    std::cerr << diagnostic_consumer.status().message();
     return false;
   }
 
@@ -89,9 +93,25 @@ bool Compile(std::string const &source_file, std::ofstream &output) {
   std::string_view file_content =
       source_indexer.insert(ir::ModuleId(0), *std::move(content));
 
-  auto parsed_nodes = frontend::Parse(file_content, **diag);
-  output << parsed_nodes.size();
-  return true;
+  auto parsed_nodes = frontend::Parse(file_content, **diagnostic_consumer);
+  if ((*diagnostic_consumer)->num_consumed() != 0) { return false; }
+
+  ast::Module ast_module;
+  ast_module.insert(parsed_nodes.begin(), parsed_nodes.end());
+
+  module::Module module;
+  semantic_analysis::CompilerState state(module);
+  semantic_analysis::Context context;
+
+  semantic_analysis::TypeVerifier tv(state, context, **diagnostic_consumer);
+  tv.schedule(&ast_module);
+  tv.complete();
+
+  if ((*diagnostic_consumer)->num_consumed() != 0) { return false; }
+
+  semantic_analysis::EmitByteCodeForModule(ast_module, context, state);
+
+  return module.Serialize(output);
 }
 
 }  // namespace toolchain

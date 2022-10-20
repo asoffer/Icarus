@@ -28,6 +28,7 @@ cc_library(
         "identifier.cc",
         "function_type.cc",
         "function_literal.cc",
+        "module.cc",
         "return_stmt.cc",
         "terminal.cc",
         "unary_operator.cc",

@@ -6,14 +6,20 @@
 #include "core/parameters.h"
 #include "core/type_system/type_system.h"
 #include "ir/value/fn.h"
+#include "module/module.h"
 #include "semantic_analysis/foreign_function_map.h"
 #include "semantic_analysis/type_system.h"
 
 namespace semantic_analysis {
 
 struct CompilerState {
+  explicit CompilerState(module::Module &module) : module_(module) {}
+
   TypeSystem const &type_system() const { return type_system_; }
   TypeSystem &type_system() { return type_system_; }
+
+  module::Module const &module() const { return module_; }
+  module::Module &module() { return module_; }
 
   ForeignFunctionMap const &foreign_function_map() const {
     return foreign_function_map_;
@@ -40,6 +46,7 @@ struct CompilerState {
   }
 
  private:
+  module::Module &module_;
   TypeSystem type_system_;
   ForeignFunctionMap foreign_function_map_{type_system_};
   std::deque<IrFunction> functions_;

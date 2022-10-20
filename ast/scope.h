@@ -31,7 +31,7 @@ struct Scope : base::Cast<Scope> {
   };
 
   explicit Scope(Kind kind);
-  explicit Scope(module::Module *module);
+  explicit Scope();
 
   Kind kind() const { return kind_; }
 

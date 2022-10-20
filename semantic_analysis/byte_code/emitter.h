@@ -2,6 +2,7 @@
 #define ICARUS_SEMANTIC_ANALYSIS_BYTE_CODE_EMITTER_H
 
 #include "ast/expression.h"
+#include "ast/module.h"
 #include "jasmin/execute.h"
 #include "jasmin/function.h"
 #include "jasmin/instructions/core.h"
@@ -25,6 +26,10 @@ struct ByteCodeEmitterBase {
       auto iter = variable_offsets_.find(id);
       ASSERT(iter != variable_offsets_.end());
       return iter->second;
+    }
+
+    base::flyweight_map<ast::Declaration::Id const *, size_t> &offsets() const {
+      return variable_offsets_;
     }
 
    private:
@@ -132,13 +137,14 @@ struct ByteCodeValueEmitter : ByteCodeEmitterBase {
   void Emit(ast::FunctionLiteral const *node, FunctionData data);
   void Emit(ast::FunctionType const *node, FunctionData data);
   void Emit(ast::Identifier const *node, FunctionData data);
+  void Emit(ast::Module const *node, FunctionData data);
   void Emit(ast::UnaryOperator const *node, FunctionData data);
   void Emit(ast::ReturnStmt const *node, FunctionData data);
   void Emit(ast::Terminal const *node, FunctionData data);
   // TODO: Access, ArgumentType, Assignment, BinaryAssignmentOperator,
   //       BinaryOperator, BlockNode,  Cast, ComparisonOperator,
   //       Declaration::Id, DesignatedInitializer, EnumLiteral, Import, Index,
-  //       InterfaceLiteral, Label, Module, ParameterizedStructLiteral,
+  //       InterfaceLiteral, Label, ParameterizedStructLiteral,
   //       PatternMatch, ProgramArguments, ScopeLiteral, ScopeNode, SliceType,
   //       ShortFunctionLiteral, StructLiteral, YieldStmt, IfStmt, WhileStmt,
 

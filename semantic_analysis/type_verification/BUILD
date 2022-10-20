@@ -57,6 +57,7 @@ cc_library(
         "identifier.cc",
         "if_stmt.cc",
         "short_function_literal.cc",
+        "module.cc",
         "program_arguments.cc",
         "return_stmt.cc",
         "unary_operator.cc",

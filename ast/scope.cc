@@ -24,9 +24,7 @@ Scope::Scope(Kind kind) : kind_(kind) {
   executable_descendants_.push_back(this);
 }
 
-Scope::Scope(module::Module *module)
-    : parent_(reinterpret_cast<uintptr_t>(module) | 1),
-      kind_(Kind::BoundaryExecutable) {
+Scope::Scope() : parent_(1), kind_(Kind::BoundaryExecutable) {
   executable_descendants_.push_back(this);
 }
 

@@ -54,8 +54,8 @@ struct StringifyExpression {
   std::string operator()(ast::UnaryOperator const *node) { NOT_YET(); }
 
  private:
-  Context const &context_;
-  TypeSystem &type_system_;
+  [[maybe_unused]] Context const &context_;
+  [[maybe_unused]] TypeSystem &type_system_;
 };
 
 struct StringifyType {

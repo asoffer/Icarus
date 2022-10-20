@@ -4,6 +4,7 @@
 #include <optional>
 
 #include "ast/expression.h"
+#include "ast/module.h"
 #include "base/debug.h"
 #include "jasmin/execute.h"
 #include "semantic_analysis/compiler_state.h"
@@ -12,6 +13,9 @@
 #include "semantic_analysis/type_system.h"
 
 namespace semantic_analysis {
+
+void EmitByteCodeForModule(ast::Module const& module, Context& context,
+                           CompilerState& compiler_state);
 
 // Returns an `IrFunction` accepting no parameters and whose execution computes
 // the value associated with `expression`.
