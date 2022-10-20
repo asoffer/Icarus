@@ -1,4 +1,4 @@
-build --crosstool_top=//toolchain:cc
+build --crosstool_top=//bazel:cc
 build --cpu=clang
 build --host_crosstool_top=@bazel_tools//tools/cpp:toolchain
 build --strip=never

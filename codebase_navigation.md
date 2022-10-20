@@ -34,6 +34,7 @@ This section describes the design of the Icarus codebase, both in its current st
 * `//ir/value` -- Holds everything needed for values used in the intermediate representation.
 * `//frontend` -- All lexing and parsing.
 * `//semantic_analysis` -- All type-checking and bytecode generation is done in this package. There are two subpackage, `//semantic_analysis/type_verification` and `//semantic_analysis/byte_code` which handle type-checking and bytecode generation respectively. Each package has roughly one target for each AST node type.
+* `//bazel` -- Specification of the C++ Toolchain used to compile this project.
 
 ### Expected directory structure changes
 
