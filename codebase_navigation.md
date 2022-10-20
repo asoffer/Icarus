@@ -11,7 +11,6 @@ We use C++20 and a style that is largely based on the [Google Style Guide](https
 * Do not use `std::printf` or similar functions. Prefer `absl::Printf` and variants defined in `@com_google_absl//absl/strings:str_format`.
 * Do not use `std::shared_ptr`. The shared-pointer abstraction should be entirely avoided.
 * Do not use `std::mutex`. Prefer `absl::Mutex`.
-* Do not use C++20 coroutines.
 * All command-line flags must be defined using `ABSL_FLAG` in the same file defining `main()` for the binary.
 * Avoid RTTI except for debugging facilities. In other words, optimized builds should have no use of RTTI.
 
@@ -21,7 +20,7 @@ All code formatting should be handled by clang-format using the checked in [.cla
 
 ## High-level design philosophy
 
-The Icarus project intends to build high-quality libraries and executables for working with the Icarus programming language. This includes an interpreter, compiler, REPL, code formatter, syntax-tree matching library, and several other language extension mechanisms. We wish for the codebase to be strongly modular. Each binary should only require the components it needs. For example, the code formatter may rely the syntax tree, but should not require any type-checking facilities.
+The Icarus project intends to build high-quality libraries and executables for working with the Icarus programming language. This includes an interpreter, compiler, REPL, code formatter, syntax-tree matching library, and several other language extension mechanisms. We wish for the codebase to be strongly modular. Each binary should only require the components it needs. For example, the code formatter may rely on the syntax tree, but should not require any type-checking facilities.
 
 ## Layout of source code
 
@@ -31,17 +30,12 @@ This section describes the design of the Icarus codebase, both in its current st
 
 * `//base` -- Common utilities that might be useful in any project, whether or not that project is related to programming language infrastructure. `//base` depends on nothing outside of its package.
 * `//core` -- Common utilities that are specific to programming language infrastructure. This includes things like strong-types for type sizes and alignment, function parameters and arguments, etc. `//core` may only depend on itself and `//base`.
-* `//type` -- Holds everything corresponding to the Icarus type system.
 * `//ast` -- Holds the entirety of the abstract syntaxt tree.
-* `//ir` -- Holds everything needed for the intermediate representation (values in `//ir/value`, instructions in `//ir/instruction`, basic blocks and functions in `//ir/blocks`, and an interpreter in `//ir/interpreter`). Ideally, nothing in `//ir` would depend on anything outside `//base`, `//core`, other than `type::Type`.
+* `//ir/value` -- Holds everything needed for values used in the intermediate representation.
 * `//frontend` -- All lexing and parsing.
-* `//compiler` -- All type-checking and bytecode generation is done in this package. There are two subpackage, `//compiler/verify` and `//compiler/emit` which handle type-checking and bytecode generation respectively. Each package has roughly one target for each AST node type.
+* `//semantic_analysis` -- All type-checking and bytecode generation is done in this package. There are two subpackage, `//semantic_analysis/type_verification` and `//semantic_analysis/byte_code` which handle type-checking and bytecode generation respectively. Each package has roughly one target for each AST node type.
 
 ### Expected directory structure changes
-
-#### Type system changes
-
-One oddity you may have noticed in the layering described above is that `//ir` is allowed to depend on `//base`, `//core`, and also one particular target in the `//type` package (the one defining the struct `type::Type`). We would like this rule to be clearer by removing this one exception. To do this, we will move `type::Type` into `//core`. This makes sense because `type::Type` (to be renamed to `core::Type`) is a type-erased container for any type used in the language. Instructions and IR values in general need to know about types but not about any specific kind of types, so the type-erased wrapper makes sense here. This migration has been started but is far from finished. We used to have all types represented by a pointer (now named `type::LegacyType*`). One of the changes that needs to be made is to remove the inheritance hierarchy of types, replacing them with a simple type-erasure mechanism, none of which has been started yet.
 
 #### Frontend changes
 

@@ -6,16 +6,7 @@
 #include <utility>
 #include <vector>
 
-#include "absl/container/flat_hash_map.h"
-#include "absl/types/span.h"
-#include "ast/ast.h"
-#include "base/meta.h"
-#include "compiler/context.h"
-#include "compiler/type_for_diagnostic.h"
-#include "core/call.h"
 #include "diagnostic/message.h"
-#include "type/callable.h"
-#include "type/type.h"
 
 namespace compiler {
 
@@ -113,23 +104,6 @@ struct PatternTypeMismatch {
   std::string matched_type;
   std::string_view view;
 };
-
-struct UncallableWithArguments {
-  static constexpr std::string_view kCategory = "type-error";
-  static constexpr std::string_view kName     = "uncallable-with-arguments";
-
-  diagnostic::DiagnosticMessage ToMessage() const;
-
-  core::Arguments<std::string> arguments;
-  absl::flat_hash_map<type::Callable const *, core::CallabilityResult> errors;
-  std::string_view view;
-};
-
-UncallableWithArguments UncallableError(
-    Context const &context, ast::Expression const *name,
-    absl::Span<ast::Call::Argument const> arguments,
-    absl::flat_hash_map<type::Callable const *, core::CallabilityResult>
-        errors);
 
 }  // namespace compiler
 

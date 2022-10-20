@@ -1,8 +1,5 @@
 #include "ast/ast.h"
-#include "compiler/context.h"
 #include "semantic_analysis/type_verification/verify.h"
-#include "type/function.h"
-#include "type/qual_type.h"
 
 namespace semantic_analysis {
 
@@ -24,5 +21,3 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier& tv,
 }
 
 }  // namespace semantic_analysis
-
-

@@ -68,9 +68,9 @@ struct Context {
 
   // Represents a unique identifier for a symbol, potentially within a local
   // scope, or across modules boundaries.
+  struct alignas(8) TODOStruct {};
   using symbol_ref_type =
-      base::PtrUnion<ast::Declaration::Id const,
-                     module::Module::SymbolInformation const>;
+      base::PtrUnion<ast::Declaration::Id const, TODOStruct const>;
 
   // Given an identifier AST node `id`, and a `symbol_ref_type`, establishes the
   // connection that `id` refers to the symbol `symbol`. Requires that `id` not

@@ -1,6 +1,8 @@
 #include "ast/ast.h"
+#include "core/type_system/type.h"
+#include "ir/value/integer.h"
+#include "ir/value/slice.h"
 #include "semantic_analysis/type_verification/verify.h"
-#include "type/type.h"
 
 namespace semantic_analysis {
 namespace {
@@ -8,7 +10,7 @@ namespace {
 core::Type TypeOfNode(ast::Terminal const& node, TypeSystem& type_system) {
   if (node.type() == base::meta<bool>) { return Bool; }
   if (node.type() == base::meta<ir::Char>) { return Char; }
-  if (node.type() == base::meta<type::Type>) { return Type; }
+  if (node.type() == base::meta<core::Type>) { return Type; }
   if (node.type() == base::meta<ir::Integer>) { return Integer; }
   if (node.type() == base::meta<float>) { return F32; }
   if (node.type() == base::meta<double>) { return F64; }

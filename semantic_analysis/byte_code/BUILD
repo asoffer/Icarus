@@ -39,8 +39,6 @@ cc_library(
         "//semantic_analysis:context",
         "//semantic_analysis:instruction_set",
         "//semantic_analysis:type_system",
-        "//type:primitive",
-        "//type:slice",
         "@asoffer_jasmin//jasmin:execute",
         "@asoffer_jasmin//jasmin:function",
         "@asoffer_jasmin//jasmin/instructions:core",

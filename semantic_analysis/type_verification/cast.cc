@@ -1,7 +1,6 @@
 #include "ast/ast.h"
 #include "semantic_analysis/type_verification/casting.h"
 #include "semantic_analysis/type_verification/verify.h"
-#include "type/type.h"
 
 namespace semantic_analysis {
 namespace {

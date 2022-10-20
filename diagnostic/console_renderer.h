@@ -4,6 +4,7 @@
 #include <cstdio>
 #include <type_traits>
 
+#include "base/debug.h"
 #include "diagnostic/message.h"
 #include "frontend/source_indexer.h"
 

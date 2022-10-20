@@ -23,27 +23,12 @@ struct UncapturedIdentifier {
   std::string_view view;
 };
 
-[[maybe_unused]] std::vector<ast::Declaration::Id const *> DeclarationIds(
-    base::PtrUnion<ast::Declaration::Id const,
-                   module::Module::SymbolInformation const>
-        symbol_reference) {
-  std::vector<ast::Declaration::Id const *> v;
-  if (auto const *id = symbol_reference.get_if<ast::Declaration::Id>()) {
-    v.push_back(id);
-  } else {
-    v.push_back(symbol_reference.get<module::Module::SymbolInformation>()->id);
-  }
-  return v;
-}
-
 }  // namespace
 
 VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
                                           ast::Identifier const *node) {
   // TODO: Track cyclic dependencies
-  using symbol_ref_type =
-      base::PtrUnion<ast::Declaration::Id const,
-                     module::Module::SymbolInformation const>;
+  using symbol_ref_type = Context::symbol_ref_type;
   std::vector<std::pair<symbol_ref_type, QualifiedType>> viable;
 
   auto &scope           = *node->scope();

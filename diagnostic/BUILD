@@ -5,7 +5,6 @@ cc_library(
     hdrs = ["message.h"],
     deps = [
         "//base:meta",
-        "//type",
         "@com_google_absl//absl/strings:str_format",
     ],
 )

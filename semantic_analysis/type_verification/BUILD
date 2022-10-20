@@ -68,6 +68,7 @@ cc_library(
         "//ast",
         "//base:meta",
         "//compiler:common_diagnostics",
+        "//core:call",
         "//diagnostic/consumer",
         "//semantic_analysis/byte_code",
         "//semantic_analysis:context",

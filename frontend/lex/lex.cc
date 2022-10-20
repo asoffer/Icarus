@@ -8,12 +8,13 @@
 #include "absl/status/statusor.h"
 #include "ast/ast.h"
 #include "base/meta.h"
+#include "core/type_system/type.h"
 #include "frontend/lex/numbers.h"
 #include "frontend/lex/operators.h"
 #include "frontend/lex/syntax.h"
 #include "ir/value/integer.h"
 #include "ir/value/slice.h"
-#include "type/primitive.h"
+#include "semantic_analysis/type_system.h"
 
 namespace frontend {
 namespace {
@@ -286,16 +287,16 @@ std::optional<std::pair<std::string_view, Operator>> NextSlashInitiatedToken(
   }
 }
 
-static base::Global kReservedTypes =
-    absl::flat_hash_map<std::string_view, type::Type>{
-        {"bool", type::Bool},       {"char", type::Char},
-        {"i8", type::I8},           {"i16", type::I16},
-        {"i32", type::I32},         {"i64", type::I64},
-        {"u8", type::U8},           {"u16", type::U16},
-        {"u32", type::U32},         {"u64", type::U64},
-        {"f32", type::F32},         {"f64", type::F64},
-        {"integer", type::Integer}, {"type", type::Type_},
-        {"module", type::Module}};
+static base::Global kReservedTypes = absl::flat_hash_map<std::string_view,
+                                                         core::Type>{
+    {"bool", semantic_analysis::Bool},       {"char", semantic_analysis::Char},
+    {"i8", semantic_analysis::I(8)},         {"i16", semantic_analysis::I(16)},
+    {"i32", semantic_analysis::I(32)},       {"i64", semantic_analysis::I(64)},
+    {"u8", semantic_analysis::U(8)},         {"u16", semantic_analysis::U(16)},
+    {"u32", semantic_analysis::U(32)},       {"u64", semantic_analysis::U(64)},
+    {"f32", semantic_analysis::F32},         {"f64", semantic_analysis::F64},
+    {"integer", semantic_analysis::Integer}, {"type", semantic_analysis::Type},
+    {"module", semantic_analysis::Module}};
 
 // Consumes as many alpha-numeric or underscore characters as possible, assuming
 // the character under the cursor is an alpha or underscore character. Returns a
@@ -314,7 +315,8 @@ Lexeme ConsumeWord(std::string_view &cursor) {
   } else if (word == "false") {
     return Lexeme(std::make_unique<ast::Terminal>(word, false));
   } else if (word == "byte") {
-    return Lexeme(std::make_unique<ast::Terminal>(word, type::Byte));
+    return Lexeme(
+        std::make_unique<ast::Terminal>(word, semantic_analysis::Byte));
   } else if (word == "null") {
     return Lexeme(std::make_unique<ast::Terminal>(word, ir::Null()));
   } else if (word == "arguments") {

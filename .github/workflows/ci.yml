@@ -1,9 +1,9 @@
 name: CI
 on:
   push:
-    branches: [master, main]
+    branches: [main]
   pull_request:
-    branches: [master, main]
+    branches: [main]
 jobs:
   test:
     runs-on: ubuntu-22.04
@@ -21,8 +21,4 @@ jobs:
           key: ${{ runner.os }}-bazel-cache
       - name: Test
         run: >-
-          bazel test --
-          ast/... base/... compiler/verify/... compiler/emit/... core/...
-          diagnostic/... frontend/... ir/... module/... type/...
-      - name: Smoke Tests
-        run: "./examples/smoke_test.sh"
+          bazel test -- ...

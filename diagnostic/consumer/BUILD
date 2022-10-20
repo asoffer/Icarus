@@ -15,6 +15,7 @@ cc_library(
     name = "consumer",
     hdrs = ["consumer.h"],
     deps = [
+        "//base:cast",
         "//base:debug",
         "//diagnostic:message",
     ],

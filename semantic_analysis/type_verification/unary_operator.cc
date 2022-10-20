@@ -2,11 +2,6 @@
 #include "ast/ast.h"
 #include "compiler/common_diagnostics.h"
 #include "semantic_analysis/type_verification/verify.h"
-#include "type/flags.h"
-#include "type/pointer.h"
-#include "type/primitive.h"
-#include "type/qual_type.h"
-#include "type/struct.h"
 
 namespace semantic_analysis {
 namespace {

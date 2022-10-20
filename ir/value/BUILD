@@ -50,33 +50,6 @@ cc_library(
 )
 
 cc_library(
-    name = "interface",
-    hdrs = ["interface.h"],
-    srcs = ["interface.cc"],
-    deps = [
-        "//base:flyweight_set",
-        "//core:arguments",
-        "//core:call",
-        "//ir:subroutine",
-        "//type",
-        "//type:callable",
-        "//type:pointer",
-        "//type:slice",
-        "@com_google_absl//absl/container:btree",
-    ],
-)
-
-cc_test(
-    name = "interface_test",
-    srcs = ["interface_test.cc"],
-    deps = [
-        ":interface",
-        "//type:primitive",
-        "@com_google_googletest//:gtest_main",
-    ],
-)
-
-cc_library(
     name = "label",
     hdrs = ["label.h"],
     deps = [
@@ -154,47 +127,6 @@ cc_test(
         "@com_google_googletest//:gtest_main",
     ],
 )
-
-
-cc_library(
-    name = "scope",
-    hdrs = ["scope.h"],
-    deps = [
-        ":block",
-        ":reg",
-        "//ir:subroutine",
-        "//base:extend",
-        "//base/extend:absl_format",
-        "//base/extend:absl_hash",
-        "//base/extend:serialize",
-        "//type:scope",
-        "@com_google_absl//absl/types:span",
-    ],
-)
-
-cc_library(
-    name = "scope_context",
-    hdrs = ["scope_context.h"],
-    deps = [
-        ":block",
-        ":reg",
-        ":result_buffer",
-        ":scope",
-        "//base:extend",
-        "//base/extend:absl_format",
-        "//base/extend:absl_hash",
-        "//base/extend:serialize",
-        "//base:ptr_union",
-        "//compiler:work_resources",
-        "//ir:subroutine",
-        "//type:block",
-        "//type:legacy_generic",
-        "//type:scope",
-        "@com_google_absl//absl/functional:any_invocable",
-    ],
-)
-
-#TODO: scope_test
 
 cc_library(
     name = "slice",

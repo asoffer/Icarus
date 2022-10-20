@@ -1,7 +1,6 @@
 #ifndef ICARUS_AST_AST_H
 #define ICARUS_AST_AST_H
 
-#include <memory>
 #include <string>
 #include <string_view>
 #include <type_traits>
@@ -21,7 +20,7 @@
 #include "ir/value/addr.h"
 #include "ir/value/label.h"
 #include "ir/value/result_buffer.h"
-#include "type/primitive.h"
+#include "semantic_analysis/type_system.h"
 
 namespace ast {
 
@@ -907,7 +906,7 @@ struct InterfaceLiteral : Expression, WithScope {
     auto range = context_identifier.range();
     return std::make_unique<Declaration>(
         range, std::vector<Declaration::Id>{std::move(context_identifier)},
-        std::make_unique<Terminal>(range, type::Type_), nullptr,
+        std::make_unique<Terminal>(range, semantic_analysis::Type), nullptr,
         Declaration::f_IsFnParam);
   }
 
@@ -1074,10 +1073,11 @@ struct ScopeLiteral : ParameterizedExpression, WithScope {
   static std::unique_ptr<Declaration> ContextDeclaration(
       Declaration::Id context_identifier) {
     auto range = context_identifier.range();
-    return std::make_unique<Declaration>(
-        range, std::vector<Declaration::Id>{std::move(context_identifier)},
-        std::make_unique<Terminal>(range, type::ScopeContext), nullptr,
-        Declaration::f_IsConst | Declaration::f_IsFnParam);
+    NOT_YET();
+    // return std::make_unique<Declaration>(
+    //     range, std::vector<Declaration::Id>{std::move(context_identifier)},
+    //     std::make_unique<Terminal>(range, type::ScopeContext), nullptr,
+    //     Declaration::f_IsConst | Declaration::f_IsFnParam);
   }
 
   std::unique_ptr<Declaration> context_decl_;

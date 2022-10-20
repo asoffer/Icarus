@@ -2,10 +2,10 @@
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_join.h"
 #include "ast/ast.h"
+#include "core/type_system/type.h"
 #include "ir/value/char.h"
 #include "ir/value/integer.h"
 #include "ir/value/slice.h"
-#include "type/type.h"
 
 namespace ast {
 namespace {
@@ -441,8 +441,8 @@ void Terminal::DebugStrAppend(std::string *out, size_t indent) const {
     absl::StrAppend(out, value().get<double>());
   } else if (type() == base::meta<ir::addr_t>) {
     absl::StrAppend(out, "null");
-  } else if (type() == base::meta<type::Type>) {
-    absl::StrAppend(out, value().get<type::Type>().to_string());
+  } else if (type() == base::meta<core::Type>) {
+    absl::StrAppend(out, range());
   } else if (type() == base::meta<ir::Slice>) {
     ir::Slice s = value().get<ir::Slice>();
     absl::StrAppend(

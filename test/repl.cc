@@ -1,7 +1,6 @@
 #include "test/repl.h"
 
 #include "ast/expression.h"
-#include "compiler/context.h"
 #include "frontend/parse.h"
 #include "jasmin/execute.h"
 #include "semantic_analysis/byte_code/byte_code.h"

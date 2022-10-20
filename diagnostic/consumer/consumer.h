@@ -1,6 +1,7 @@
 #ifndef ICARUS_DIAGNOSTIC_CONSUMER_CONSUMER_H
 #define ICARUS_DIAGNOSTIC_CONSUMER_CONSUMER_H
 
+#include "base/cast.h"
 #include "base/debug.h"
 #include "diagnostic/message.h"
 
