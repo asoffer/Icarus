@@ -158,9 +158,10 @@ struct Repl {
       std::string&& source);
 
   std::deque<std::string> source_content_;
-  ast::Module ast_module_{nullptr};
+  module::Module module_;
+  ast::Module ast_module_;
   semantic_analysis::Context context_;
-  semantic_analysis::CompilerState state_;
+  semantic_analysis::CompilerState state_{module_};
   diagnostic::TrackingConsumer consumer_;
 };
 

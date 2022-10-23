@@ -11,7 +11,16 @@ bool Module::Serialize(std::ostream &output) const {
   initializer.set_parameters(initializer_.parameter_count());
   initializer.set_returns(initializer_.return_count());
   jasmin::Serialize(initializer_, *initializer.mutable_content());
-  return initializer.SerializeToOstream(&output);
+  return proto.SerializeToOstream(&output);
+}
+
+std::optional<Module> Module::Deserialize(std::istream &input) {
+  std::optional<Module> m;
+  internal_proto::Module proto;
+  if (not proto.ParseFromIstream(&input)) { return m; }
+  m.emplace();
+  jasmin::Deserialize(proto.initializer().content(), m->initializer_);
+  return m;
 }
 
 }  // namespace module

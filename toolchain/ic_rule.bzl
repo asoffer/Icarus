@@ -39,8 +39,8 @@ def _module_mapping(deps):
 
 
 def _module_map_file(ctx, mapping):
-    # TODO: Change the formatting so that we do not restrict substrings in file
-    # names or labels.
+# TODO: Change the formatting so that we do not restrict substrings in file
+#names or labels.
     module_map = ctx.actions.declare_file(ctx.label.name + ".module_map")
     ctx.actions.write(
         output = module_map,
@@ -59,45 +59,62 @@ def _ic_binary_impl(ctx):
     target_deps = ctx.attr.deps + getattr(ctx.attr, "_implicit_deps", [])
     module_map = _module_mapping(target_deps)
 
-    outputs = []
-    for src in ctx.attr.srcs:
-        src_file = src.files.to_list()[0]
-        output = ctx.actions.declare_file("{label}-{file}.icm".format(
-            label = ctx.label.name,
-            file = src_file.basename[:-(1 + len(src_file.extension))]
-        ))
-        module_map_file = _module_map_file(ctx, module_map)
+    if len(ctx.attr.srcs) != 1:
+        fail("Binary rules must have exactly one file in 'srcs'.")
+    src = ctx.attr.srcs[0]
 
-        ctx.actions.run(
-            inputs = depset(
-                         [module_map_file] + 
-                         [icm[1] for (src, icm) in module_map.items()],
-                         transitive = [src.files for src in ctx.attr.srcs],
-                     ),
-            outputs = [output],
-            arguments = [
-                "--source={}".format(src_file.path),
-                "--module_identifier={}".format(str(ctx.label)),
-                "--output={}".format(output.path),
-            ],
-            progress_message = "Compiling {}".format(ctx.label.name),
-            executable = ctx.attr._compile[0][DefaultInfo].files_to_run.executable,
+    src_file = src.files.to_list()[0]
+    icm_file = ctx.actions.declare_file("{label}.icm".format(
+        label = ctx.label.name
+    ))
+    module_map_file = _module_map_file(ctx, module_map)
+
+    ctx.actions.run(
+        inputs = depset(
+                     [module_map_file] + 
+                     [icm[1] for (src, icm) in module_map.items()],
+                     transitive = [src.files for src in ctx.attr.srcs],
+                 ),
+        outputs = [icm_file],
+        arguments = [
+            "--source={}".format(src_file.path),
+            "--module_identifier={}".format(str(ctx.label)),
+            "--output={}".format(icm_file.path),
+        ],
+        progress_message = "Compiling {}".format(ctx.label.name),
+        executable = ctx.attr._compile[0][DefaultInfo].files_to_run.executable,
+    )
+
+    executable_path = "{name}%/{name}".format(name = ctx.label.name)
+    executable = ctx.actions.declare_file(executable_path)
+
+    runfiles = ctx.runfiles(files = [icm_file, ctx.executable._run_bytecode])
+    ctx.actions.write(
+        output = executable,
+        is_executable = True,
+        content = """
+        {executable} --input={icm}
+        """.format(
+            executable = ctx.executable._run_bytecode.short_path,
+            icm = icm_file.short_path
         )
-
-        outputs.append(output)
+    )
 
     return [
-        IcarusInfo(
-),
+        IcarusInfo(),
         DefaultInfo(
-            files = depset(outputs),
+            files = depset([icm_file]),
+            executable = executable,
+            runfiles = runfiles,
         ),
     ]
 
 
-
 ic_binary = rule(
     implementation = _ic_binary_impl,
+    exec_groups = {
+        "run_bytecode": exec_group(copy_from_rule = True),
+    },
     attrs = {
         "srcs": attr.label_list(allow_files = [".ic"]),
         "deps": attr.label_list(providers = [IcarusInfo]),
@@ -108,9 +125,15 @@ ic_binary = rule(
             executable = True,
             cfg = _tooling_transition,
         ),
+        "_run_bytecode": attr.label(
+            default = Label("//toolchain:run_bytecode"),
+            allow_single_file = True,
+            executable = True,
+            cfg = _tooling_transition,
+        ),
         "_allowlist_function_transition": attr.label(
             default = "@bazel_tools//tools/allowlists/function_transition_allowlist"
         ),
     },
+    executable = True,
 )
-
