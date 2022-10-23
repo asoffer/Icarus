@@ -8,6 +8,7 @@ cc_library(
     deps = [
         ":module_cc_proto",
         "//semantic_analysis:instruction_set",
+        "@asoffer_jasmin//jasmin:serialization",
     ],
 )
 

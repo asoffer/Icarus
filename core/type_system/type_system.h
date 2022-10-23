@@ -184,7 +184,11 @@ struct TypeSystem : TypeCategories::manager_type... {
   struct Make<Cat, base::type_list<States...>>
       : jasmin::StackMachineInstruction<Make<Cat>> {
     static constexpr Type execute(States... states, TypeSystem* system) {
-      return Cat(*system, states...);
+      if constexpr (std::is_empty_v<typename Cat::manager_type>) {
+        return Cat(base::meta<TypeSystem>, states...);
+      } else {
+        return Cat(*system, states...);
+      }
     }
   };
 

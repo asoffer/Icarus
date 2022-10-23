@@ -104,6 +104,8 @@ struct SizedIntegerType
 
  private:
   friend TypeCategory;
+  template <typename...>
+  friend struct TypeSystem;
 
   constexpr internal_sized_integer::SizedIntegerTypeState const& value() const {
     return std::get<0>(decompose());
