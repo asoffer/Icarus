@@ -9,6 +9,10 @@
 
 namespace ast {
 
+template <typename T>
+concept ExpressionType =
+    std::derived_from<T, Expression> or std::same_as<T, Expression>;
+
 struct Expression : Node {
   Expression(int8_t which, std::string_view range) : Node(which, range) {}
 

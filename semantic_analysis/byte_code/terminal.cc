@@ -3,7 +3,7 @@
 
 namespace semantic_analysis {
 
-void ByteCodeValueEmitter::Emit(ast::Terminal const* node, FunctionData data) {
+void ByteCodeValueEmitter::operator()(ast::Terminal const* node, FunctionData data) {
   QualifiedType qt = context().qualified_type(node);
   if (qt.type() == Bool) {
     data.function().append<jasmin::Push>(node->value().get<bool>());
@@ -25,5 +25,7 @@ void ByteCodeValueEmitter::Emit(ast::Terminal const* node, FunctionData data) {
     NOT_YET(node->DebugString());
   }
 }
+
+void ByteCodeStatementEmitter::operator()(ast::Terminal const*, FunctionData) {}
 
 }  // namespace semantic_analysis

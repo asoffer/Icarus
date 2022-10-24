@@ -4,8 +4,9 @@
 
 namespace semantic_analysis {
 
-void ByteCodeValueEmitter::Emit(ast::Module const* node, FunctionData data) {
-  for (auto const* stmt : node->stmts()) { EmitByteCode(stmt, data); }
+void ByteCodeStatementEmitter::operator()(ast::Module const* node,
+                                          FunctionData data) {
+  for (auto const* stmt : node->stmts()) { Emit(stmt, data); }
 }
 
 }  // namespace semantic_analysis

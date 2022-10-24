@@ -6,7 +6,7 @@ namespace semantic_analysis {
 
 void EmitByteCodeForModule(ast::Module const &module, Context &context,
                            CompilerState &compiler_state) {
-  ByteCodeValueEmitter e(&context, compiler_state);
+  ByteCodeStatementEmitter e(context, compiler_state);
   base::flyweight_map<ast::Declaration::Id const *, size_t> variable_offsets;
   // Populate `variable_offsets`
   core::Bytes offset{};
@@ -40,8 +40,7 @@ void EmitByteCodeForModule(ast::Module const &module, Context &context,
   //       }
   //     });
 
-  e.EmitByteCode(&module,
-                 ByteCodeValueEmitter::FunctionData(f, variable_offsets));
+  e.Emit(&module, FunctionData(f, variable_offsets));
   f.append<jasmin::Return>();
 }
 
@@ -51,10 +50,9 @@ IrFunction EmitByteCode(QualifiedType qualified_type,
   IrFunction f = PassInRegister(qualified_type, compiler_state.type_system())
                      ? IrFunction(0, 1)
                      : IrFunction(1, 0);
-  ByteCodeValueEmitter e(&context, compiler_state);
+  ByteCodeValueEmitter e(context, compiler_state);
   base::flyweight_map<ast::Declaration::Id const *, size_t> variable_offsets;
-  e.EmitByteCode(&expression,
-                 ByteCodeValueEmitter::FunctionData(f, variable_offsets));
+  e.Emit(&expression, FunctionData(f, variable_offsets));
   f.append<jasmin::Return>();
   return f;
 }

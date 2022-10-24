@@ -4,8 +4,7 @@
 
 namespace semantic_analysis {
 
-void ByteCodeValueEmitter::EmitDefaultInitialize(core::Type t,
-                                                 FunctionData data) {
+void EmitterBase::EmitDefaultInitialize(core::Type t, FunctionData data) {
   if (std::optional i = t.get_if<core::SizedIntegerType>(type_system())) {
     if (i->bits() == 64) {
       if (i->is_signed()) {

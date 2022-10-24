@@ -2,8 +2,8 @@
 
 namespace semantic_analysis {
 
-void ByteCodeValueEmitter::Emit(ast::FunctionLiteral const* node,
-                                FunctionData data) {
+void ByteCodeValueEmitter::operator()(ast::FunctionLiteral const* node,
+                                      FunctionData data) {
   auto const& function_type =
       context().qualified_type(node).type().get<core::FunctionType>(
           type_system());
@@ -44,9 +44,14 @@ void ByteCodeValueEmitter::Emit(ast::FunctionLiteral const* node,
       });
 
   FunctionData fn_data(*fn_ptr, variable_offsets);
-  for (auto const* stmt : node->stmts()) { EmitByteCode(stmt, fn_data); }
+  for (auto const* stmt : node->stmts()) {
+    as<ByteCodeStatementEmitter>().Emit(stmt, fn_data);
+  }
 
   data.function().append<jasmin::Push>(fn_ptr);
 }
+
+void ByteCodeStatementEmitter::operator()(ast::FunctionLiteral const*,
+                                          FunctionData) {}
 
 }  // namespace semantic_analysis

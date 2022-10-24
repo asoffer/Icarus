@@ -3,9 +3,9 @@
 namespace semantic_analysis {
 namespace {
 
-void EmitNonconstantDeclaration(ByteCodeValueEmitter& emitter,
+void EmitNonconstantDeclaration(ByteCodeStatementEmitter& emitter,
                                 ast::Declaration const* node,
-                                ByteCodeValueEmitter::FunctionData data) {
+                                ByteCodeStatementEmitter::FunctionData data) {
   switch (node->kind()) {
     case ast::Declaration::kDefaultInit: {
       for (auto const& id : node->ids()) {
@@ -18,14 +18,15 @@ void EmitNonconstantDeclaration(ByteCodeValueEmitter& emitter,
       for (auto const& id : node->ids()) {
         data.function().append<jasmin::StackOffset>(data.OffsetFor(&id));
       }
+      // TODO: Improve this EmitInitialize should be it's own derived CRTP.
       emitter.EmitInitialize(node->init_val(), data);
     } break;
     default: NOT_YET(node->DebugString());
   }
 }
-void EmitConstantDeclaration(ByteCodeValueEmitter& emitter,
+void EmitConstantDeclaration(ByteCodeStatementEmitter& emitter,
                              ast::Declaration const* node,
-                             ByteCodeValueEmitter::FunctionData data) {
+                             ByteCodeStatementEmitter::FunctionData data) {
   switch (node->kind()) {
     case ast::Declaration::kDefaultInit: {
       NOT_YET();
@@ -48,7 +49,8 @@ void EmitConstantDeclaration(ByteCodeValueEmitter& emitter,
 
 }  // namespace
 
-void ByteCodeValueEmitter::Emit(ast::Declaration const* node, FunctionData data) {
+void ByteCodeStatementEmitter::operator()(ast::Declaration const* node,
+                                          FunctionData data) {
   if (node->flags() & ast::Declaration::f_IsConst) {
     EmitConstantDeclaration(*this, node, data);
   } else {
@@ -56,9 +58,15 @@ void ByteCodeValueEmitter::Emit(ast::Declaration const* node, FunctionData data)
   }
 }
 
-void ByteCodeValueEmitter::Emit(ast::Declaration::Id const* node, FunctionData data) {
+void ByteCodeStatementEmitter::operator()(ast::Declaration::Id const* node,
+                                          FunctionData data) {
   if (node->declaration().ids().size() != 1) { NOT_YET(); }
-  EmitByteCode(&node->declaration(), data);
+  Emit(&node->declaration(), data);
+}
+
+void ByteCodeValueEmitter::operator()(ast::Declaration::Id const* node,
+                                          FunctionData data) {
+  as<ByteCodeStatementEmitter>().Emit(&node->declaration(), data);
 }
 
 }  // namespace semantic_analysis

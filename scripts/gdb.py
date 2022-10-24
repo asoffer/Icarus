@@ -24,7 +24,7 @@ def should_display(f):
 
     for pattern in [
             r"^ast::Node::visit",
-            r"^compiler::TypeVerifier::operator",
+            r"^semantic_analysis::Emitter<.*>::Emit",
             r"^base::Visitable",
             r"^std::__invoke",
             r"^std::_[A-Z]",

@@ -13,37 +13,37 @@
 
 namespace semantic_analysis {
 
-struct ByteCodeEmitterBase {
-  struct FunctionData {
-    FunctionData(
-        IrFunction &function,
-        base::flyweight_map<ast::Declaration::Id const *, size_t> &variable_offsets)
-        : function_(function), variable_offsets_(variable_offsets) {}
+struct FunctionData {
+  FunctionData(IrFunction &function,
+               base::flyweight_map<ast::Declaration::Id const *, size_t>
+                   &variable_offsets)
+      : function_(function), variable_offsets_(variable_offsets) {}
 
-    IrFunction &function() { return function_; }
+  IrFunction &function() { return function_; }
 
-    size_t OffsetFor(ast::Declaration::Id const *id) const {
-      auto iter = variable_offsets_.find(id);
-      ASSERT(iter != variable_offsets_.end());
-      return iter->second;
-    }
+  size_t OffsetFor(ast::Declaration::Id const *id) const {
+    auto iter = variable_offsets_.find(id);
+    ASSERT(iter != variable_offsets_.end());
+    return iter->second;
+  }
 
-    base::flyweight_map<ast::Declaration::Id const *, size_t> &offsets() const {
-      return variable_offsets_;
-    }
+  base::flyweight_map<ast::Declaration::Id const *, size_t> &offsets() const {
+    return variable_offsets_;
+  }
 
-   private:
-    IrFunction &function_;
-    base::flyweight_map<ast::Declaration::Id const *, size_t> &variable_offsets_;
-  };
+ private:
+  IrFunction &function_;
+  base::flyweight_map<ast::Declaration::Id const *, size_t> &variable_offsets_;
+};
 
-  using signature = void(FunctionData);
+struct EmitterBase {
+  using FunctionData = FunctionData;
 
-  explicit ByteCodeEmitterBase(Context *c, CompilerState &compiler_state)
-      : compiler_state_(compiler_state), context_(ASSERT_NOT_NULL(c)) {}
+  explicit constexpr EmitterBase(Context &c, CompilerState &compiler_state)
+      : context_(c), compiler_state_(compiler_state) {}
 
-  Context const &context() const { return *context_; }
-  Context &context() { return *context_; }
+  Context const &context() const { return context_; }
+  Context &context() { return context_; }
 
   TypeSystem &type_system() const { return compiler_state_.type_system(); }
   auto &foreign_function_map() const {
@@ -51,125 +51,176 @@ struct ByteCodeEmitterBase {
   }
   auto &compiler_state() const { return compiler_state_; }
 
- private:
-  CompilerState &compiler_state_; 
-  Context *context_;
-};
-
-struct ByteCodeValueEmitter : ByteCodeEmitterBase {
-  explicit ByteCodeValueEmitter(Context *c, CompilerState &compiler_state)
-      : ByteCodeEmitterBase(c, compiler_state) {}
-
-  void operator()(auto const *node, FunctionData data) {
-    return Emit(node, data);
+  template <std::derived_from<EmitterBase> E>
+  E as() const {
+    return E(context_, compiler_state_);
   }
 
-  void EmitByteCode(ast::Node const *node, FunctionData data) {
-    node->visit<ByteCodeValueEmitter>(*this, data);
+  void EmitDefaultInitialize(core::Type type, FunctionData data);
+
+ private:
+  Context &context_;
+  CompilerState &compiler_state_;
+};
+
+template <typename E>
+struct Emitter : EmitterBase {
+  using signature = void(FunctionData);
+
+  explicit constexpr Emitter(Context &c, CompilerState &compiler_state)
+      : EmitterBase(c, compiler_state) {}
+
+  void Emit(ast::Node const *node, FunctionData data) {
+    node->visit<E>(static_cast<E&>(*this), data);
   }
 
   template <typename T>
-  T EvaluateAs(ast::Expression const *expression) {
-    auto qt        = context().qualified_type(expression);
-    bool has_error = (qt.qualifiers() >= Qualifiers::Error());
-    ASSERT(has_error == false);
-
-    IrFunction f(0, 1);
-
-    // This `variable_offsets` map is intentionally empty. There will never be
-    // declarations from which data needs to be loaded. Because `EvaluateAs` is
-    // only to be called on constant expressions, any identifier will refer to a
-    // declaration that is constant, and so lookup will happen by loading the
-    // value directly rather than adding instructions which load at runtime.
-    base::flyweight_map<ast::Declaration::Id const *, size_t> variable_offsets;
-
-    EmitByteCode(expression, FunctionData(f, variable_offsets));
-    f.append<jasmin::Return>();
-
-    T result;
-    jasmin::Execute(f, {}, result);
-    return result;
-  }
+  T EvaluateAs(ast::Expression const *expression);
 
   absl::Span<std::byte const> EvaluateConstant(ast::Expression const *expr,
-                                               QualifiedType qt) {
-    ASSERT(qt == context().qualified_type(expr));
-    auto [result_ptr, inserted] = context().insert_constant(expr);
-    if (inserted) {
-      if (PassInRegister(qt, type_system())) {
-        IrFunction f(0, 1);
+                                               QualifiedType qt);
 
-        // This `variable_offsets` map is intentionally empty. There will never
-        // be declarations from which data needs to be loaded. Because
-        // `EvaluateConstant` is only to be called on constant expressions, any
-        // identifier will refer to a declaration that is constant, and so
-        // lookup will happen by loading the value directly rather than adding
-        // instructions which load at runtime.
-        base::flyweight_map<ast::Declaration::Id const *, size_t>
-            variable_offsets;
+  // TODO this is reasonable for types that are generally passed in registers,
+  // but not great in general.
+  template <typename NodeType>
+  void EmitInitialize(NodeType const *node, FunctionData data);
+};
 
-        EmitByteCode(expr, FunctionData(f, variable_offsets));
-        f.append<jasmin::Return>();
+struct ByteCodeValueEmitter : Emitter<ByteCodeValueEmitter> {
+  explicit ByteCodeValueEmitter(Context &c, CompilerState &compiler_state)
+      : Emitter<ByteCodeValueEmitter>(c, compiler_state) {}
 
-        jasmin::ValueStack value_stack;
-        jasmin::Execute(f, value_stack);
-        size_t size = SizeOf(qt.type(), type_system()).value();
-        result_ptr->resize(size);
-        jasmin::Value::Store(value_stack.pop_value(), result_ptr->data(), size);
-        return *result_ptr;
-      } else {
-        NOT_YET();
-      }
+  template <typename NodeType>
+  void operator()(NodeType const *node, FunctionData) {
+    if (ast::ExpressionType<NodeType>) {
+      NOT_YET(base::meta<NodeType>, node->DebugString());
     } else {
-      return *result_ptr;
+      UNREACHABLE(base::meta<NodeType>);
     }
   }
 
-  template <typename NodeType>
-  void Emit(NodeType const *, FunctionData) {
-    NOT_YET(base::meta<NodeType>);
-  }
 
-  void Emit(ast::Builtin const *node, FunctionData data);
-  void Emit(ast::Call const *node, FunctionData data);
-  void Emit(ast::Declaration::Id const *node, FunctionData data);
-  void Emit(ast::Declaration const *node, FunctionData data);
-  void Emit(ast::FunctionLiteral const *node, FunctionData data);
-  void Emit(ast::FunctionType const *node, FunctionData data);
-  void Emit(ast::Identifier const *node, FunctionData data);
-  void Emit(ast::Module const *node, FunctionData data);
-  void Emit(ast::UnaryOperator const *node, FunctionData data);
-  void Emit(ast::ReturnStmt const *node, FunctionData data);
-  void Emit(ast::Terminal const *node, FunctionData data);
+  void operator()(ast::Builtin const *node, FunctionData data);
+  void operator()(ast::Call const *node, FunctionData data);
+  void operator()(ast::FunctionLiteral const *node, FunctionData data);
+  void operator()(ast::FunctionType const *node, FunctionData data);
+  void operator()(ast::Declaration::Id const *node, FunctionData data);
+  void operator()(ast::Identifier const *node, FunctionData data);
+  void operator()(ast::UnaryOperator const *node, FunctionData data);
+  void operator()(ast::Terminal const *node, FunctionData data);
   // TODO: Access, ArgumentType, Assignment, BinaryAssignmentOperator,
   //       BinaryOperator, BlockNode,  Cast, ComparisonOperator,
   //       Declaration::Id, DesignatedInitializer, EnumLiteral, Import, Index,
   //       InterfaceLiteral, Label, ParameterizedStructLiteral,
   //       PatternMatch, ProgramArguments, ScopeLiteral, ScopeNode, SliceType,
   //       ShortFunctionLiteral, StructLiteral, YieldStmt, IfStmt, WhileStmt,
+};
 
-  // TODO this is reasonable for types that are generally passed in registers,
-  // but not great in general.
+struct ByteCodeStatementEmitter : Emitter<ByteCodeStatementEmitter> {
+  explicit ByteCodeStatementEmitter(Context &c, CompilerState &compiler_state)
+      : Emitter<ByteCodeStatementEmitter>(c, compiler_state) {}
+
   template <typename NodeType>
-  void EmitInitialize(NodeType const *node, FunctionData data) {
-    EmitByteCode(node, data);
-    absl::Span qts = context().qualified_types(node);
-    if (qts.size() == 1) {
-      data.function().append<jasmin::Store>(
-          SizeOf(qts[0].type(), type_system()).value());
-    } else {
-      for (auto iter = qts.rbegin(); iter != qts.rend(); ++iter) {
-        data.function().append<jasmin::DuplicateAt>(qts.size());
-        data.function().append<jasmin::Swap>();
-        data.function().append<jasmin::Store>(
-            SizeOf(iter->type(), type_system()).value());
-      }
-      data.function().append<jasmin::Drop>(qts.size());
-    }
+  void operator()(NodeType const *node, FunctionData) {
+    NOT_YET(base::meta<NodeType>, node->DebugString());
   }
 
-  void EmitDefaultInitialize(core::Type type, FunctionData data);
+  void operator()(ast::Builtin const *node, FunctionData data);
+  void operator()(ast::Declaration::Id const *node, FunctionData data);
+  void operator()(ast::Declaration const *node, FunctionData data);
+  void operator()(ast::FunctionLiteral const *node, FunctionData data);
+  void operator()(ast::FunctionType const *node, FunctionData data);
+  void operator()(ast::Identifier const *node, FunctionData data);
+  void operator()(ast::Module const *node, FunctionData data);
+  void operator()(ast::ReturnStmt const *node, FunctionData data);
+  void operator()(ast::Terminal const *node, FunctionData data);
+  // TODO: Access, ArgumentType, Assignment, BinaryAssignmentOperator,
+  //       BinaryOperator, BlockNode,  Cast, ComparisonOperator,
+  //       Declaration::Id, DesignatedInitializer, EnumLiteral, Import, Index,
+  //       InterfaceLiteral, Label, ParameterizedStructLiteral,
+  //       PatternMatch, ProgramArguments, ScopeLiteral, ScopeNode, SliceType,
+  //       ShortFunctionLiteral, StructLiteral, YieldStmt, IfStmt, WhileStmt,
+  //       Call, Declaration::Id, Declaration, UnaryOperator
 };
+
+template <typename E>
+template <typename T>
+T Emitter<E>::EvaluateAs(ast::Expression const *expression) {
+  auto qt        = context().qualified_type(expression);
+  bool has_error = (qt.qualifiers() >= Qualifiers::Error());
+  ASSERT(has_error == false);
+
+  IrFunction f(0, 1);
+
+  // This `variable_offsets` map is intentionally empty. There will never be
+  // declarations from which data needs to be loaded. Because `EvaluateAs` is
+  // only to be called on constant expressions, any identifier will refer to a
+  // declaration that is constant, and so lookup will happen by loading the
+  // value directly rather than adding instructions which load at runtime.
+  base::flyweight_map<ast::Declaration::Id const *, size_t> variable_offsets;
+
+  this->as<ByteCodeValueEmitter>().Emit(expression,
+                                        FunctionData(f, variable_offsets));
+  f.append<jasmin::Return>();
+
+  T result;
+  jasmin::Execute(f, {}, result);
+  return result;
+}
+
+template <typename E>
+absl::Span<std::byte const> Emitter<E>::EvaluateConstant(
+    ast::Expression const *expr, QualifiedType qt) {
+  ASSERT(qt == context().qualified_type(expr));
+  auto [result_ptr, inserted] = context().insert_constant(expr);
+  if (inserted) {
+    if (PassInRegister(qt, type_system())) {
+      IrFunction f(0, 1);
+
+      // This `variable_offsets` map is intentionally empty. There will never
+      // be declarations from which data needs to be loaded. Because
+      // `EvaluateConstant` is only to be called on constant expressions, any
+      // identifier will refer to a declaration that is constant, and so
+      // lookup will happen by loading the value directly rather than adding
+      // instructions which load at runtime.
+      base::flyweight_map<ast::Declaration::Id const *, size_t>
+          variable_offsets;
+
+      as<ByteCodeValueEmitter>().Emit(expr, FunctionData(f, variable_offsets));
+      f.append<jasmin::Return>();
+
+      jasmin::ValueStack value_stack;
+      jasmin::Execute(f, value_stack);
+      size_t size = SizeOf(qt.type(), type_system()).value();
+      result_ptr->resize(size);
+      jasmin::Value::Store(value_stack.pop_value(), result_ptr->data(), size);
+      return *result_ptr;
+    } else {
+      NOT_YET();
+    }
+  } else {
+    return *result_ptr;
+  }
+}
+
+template <typename E>
+template <typename NodeType>
+void Emitter<E>::EmitInitialize(NodeType const *node, FunctionData data) {
+  as<ByteCodeValueEmitter>().Emit(node, data);
+  absl::Span qts = context().qualified_types(node);
+  if (qts.size() == 1) {
+    data.function().append<jasmin::Store>(
+        SizeOf(qts[0].type(), type_system()).value());
+  } else {
+    for (auto iter = qts.rbegin(); iter != qts.rend(); ++iter) {
+      data.function().append<jasmin::DuplicateAt>(qts.size());
+      data.function().append<jasmin::Swap>();
+      data.function().append<jasmin::Store>(
+          SizeOf(iter->type(), type_system()).value());
+    }
+    data.function().append<jasmin::Drop>(qts.size());
+  }
+}
 
 }  // namespace semantic_analysis
 

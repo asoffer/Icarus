@@ -2,8 +2,8 @@
 
 namespace semantic_analysis {
 
-void ByteCodeValueEmitter::Emit(ast::Identifier const* node,
-                                FunctionData data) {
+void ByteCodeValueEmitter::operator()(ast::Identifier const* node,
+                                      FunctionData data) {
   auto symbol = context().symbol(node);
   if (auto const* id = symbol.get_if<ast::Declaration::Id const>()) {
     auto qt = context().qualified_type(id);
@@ -24,5 +24,7 @@ void ByteCodeValueEmitter::Emit(ast::Identifier const* node,
   }
 }
 
+void ByteCodeStatementEmitter::operator()(ast::Identifier const*,
+                                          FunctionData) {}
 
 }  // namespace semantic_analysis
