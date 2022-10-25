@@ -3,9 +3,43 @@ syntax = "proto3";
 package module.internal_proto;
 
 message Function {
-  int32 parameters = 1;
-  int32 returns = 2;
+  uint32 parameters = 1;
+  uint32 returns = 2;
   bytes content = 3;
+}
+
+message Type {
+  uint32 category = 1;
+  oneof o {
+    uint32 index = 2;
+    uint64 value = 3;
+  }
+}
+
+message TypeSystem {
+  message ParameterType {
+    message Parameter {
+      string name = 1;
+      Type type = 2;
+    }
+    repeated Parameter parameter = 1;
+  }
+
+  repeated ParameterType parameters = 1;
+  repeated Type pointers = 2;
+  repeated Type buffer_pointers = 3;
+  message ArrayType {
+    Type type = 1;
+    uint64 length = 2;
+  }
+  repeated ArrayType arrays = 4;
+  repeated Type slices  = 5;
+
+  message FunctionType {
+    uint32 parameters = 1;
+    repeated Type return_type = 2;
+  }
+  repeated FunctionType functions = 6;
 }
 
 message Module {
@@ -15,4 +49,10 @@ message Module {
 
   // Subroutine at which to begin execution.
   Function initializer = 2;
+
+  // Defining information for all types referenced by this module.
+  TypeSystem type_system = 3;
+
+  // All functions, excluding the main entry point.
+  repeated Function functions = 4;
 }

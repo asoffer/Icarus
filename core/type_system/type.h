@@ -65,6 +65,10 @@ struct Type {
            ((uint64_t{1} << CategoryBits) - 1);
   }
 
+  constexpr uint64_t index() const {
+    return representation_ >> (CategoryBits + QualifierBits);
+  }
+
   // Returns `true` if and only if `*this` type was created from the type
   // category `Cat`.
   template <typename Category>
@@ -111,9 +115,6 @@ struct Type {
   friend struct QualifiedType;
 
   constexpr uint64_t representation() const { return representation_; }
-  constexpr uint64_t value() const {
-    return representation_ >> (CategoryBits + QualifierBits);
-  }
 
   constexpr void set_category(uint8_t v) {
     constexpr uint64_t mask =

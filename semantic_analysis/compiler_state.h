@@ -15,8 +15,8 @@ namespace semantic_analysis {
 struct CompilerState {
   explicit CompilerState(module::Module &module) : module_(module) {}
 
-  TypeSystem const &type_system() const { return type_system_; }
-  TypeSystem &type_system() { return type_system_; }
+  TypeSystem const &type_system() const { return module_.type_system(); }
+  TypeSystem &type_system() { return module_.type_system(); }
 
   module::Module const &module() const { return module_; }
   module::Module &module() { return module_; }
@@ -47,8 +47,7 @@ struct CompilerState {
 
  private:
   module::Module &module_;
-  TypeSystem type_system_;
-  ForeignFunctionMap foreign_function_map_{type_system_};
+  ForeignFunctionMap foreign_function_map_{module_.type_system()};
   std::deque<IrFunction> functions_;
 };
 

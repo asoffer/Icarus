@@ -42,11 +42,24 @@ struct TypeCategory {
       (std::is_trivially_copyable_v<StateTypes> and ...);
 
   template <bool InlineStorage>
-  struct manager_type_impl {};
+  struct manager_type_impl {
+    template <typename TS>
+    void visit_all_stored(TS& sys, auto const& invocable) {}
+  };
 
   template <>
   struct manager_type_impl<false>
       : private base::flyweight_set<state_type_tuple> {
+    template <typename TS>
+    void visit_all_stored(TS& sys, auto const& invocable) {
+      Type t;
+      t.set_category(TS::template index<CrtpDerived>());
+      for (size_t i = 0; i < this->size(); ++i) {
+        t.set_value(i);
+        invocable(TypeCategory::Construct(t, sys));
+      }
+    }
+
    private:
     friend TypeCategory;
 
@@ -84,13 +97,18 @@ struct TypeCategory {
             .first));
   }
 
+  static constexpr bool has_inline_storage() { return kStoreInline; }
+
   constexpr operator Type() const { return type_; }
 
+  uint64_t category() const { return type_.category(); }
+  uint64_t index() const { return type_.index(); }
+
   constexpr state_type_tuple decompose() const requires(kStoreInline) {
-    return state_type_tuple(get_inline_value(type_.value()));
+    return state_type_tuple(get_inline_value(type_.index()));
   }
   state_type_tuple const& decompose() const requires(not kStoreInline) {
-    return manager_->from_index(type_.value());
+    return manager_->from_index(type_.index());
   }
 
   template <typename H>
@@ -113,6 +131,10 @@ struct TypeCategory {
 
  private:
   friend Type;
+  friend manager_type;
+
+  TypeCategory(Type type, manager_type* manager)
+      : type_(type), manager_(manager) {}
 
   static CrtpDerived Construct(Type t,
                                TypeSystemSupporting<CrtpDerived> auto& sys) {
@@ -128,13 +150,13 @@ struct TypeCategory {
     // without the extra lookup.
     if constexpr (kStoreInline) {
       return CrtpDerived(base::meta<std::decay_t<decltype(sys)>>,
-                         get_inline_value(t.value()));
+                         get_inline_value(t.index()));
     } else {
       return std::apply(
           [&]<typename... Args>(Args&&... args) {
             return CrtpDerived(sys, std::forward<Args>(args)...);
           },
-          static_cast<manager_type&>(sys).from_index(t.value()));
+          static_cast<manager_type&>(sys).from_index(t.index()));
     }
   }
 
@@ -192,6 +214,12 @@ struct TypeSystem : TypeCategories::manager_type... {
     }
   };
 
+  void visit_all_stored(auto const& invocable) {
+    (static_cast<typename TypeCategories::manager_type&>(*this)
+         .template visit_all_stored(*this, invocable),
+     ...);
+  }
+
   template <typename F>
   auto visit(Type t, F&& invocable) {
     using return_type = std::invoke_result_t<F, base::first<TypeCategories...>>;
@@ -199,6 +227,14 @@ struct TypeSystem : TypeCategories::manager_type... {
                                  sizeof...(TypeCategories)>{
            &TypeSystem::visit_one<TypeCategories, F>...})[t.category()];
     return (this->*member_fn)(t, std::forward<F>(invocable));
+  }
+
+  // Returns whether the type category indexed by `category_index` has inline
+  // storage.
+  static constexpr bool has_inline_storage(size_t category_index) {
+    constexpr std::array kHasInlineStorage{
+        TypeCategories::has_inline_storage()...};
+    return kHasInlineStorage[category_index];
   }
 
  private:
