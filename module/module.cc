@@ -115,27 +115,76 @@ void DeserializeTypeSystem(internal_proto::TypeSystem const& proto,
   }
 }
 
+void SerializeForeignSymbols(semantic_analysis::TypeSystem& type_system,
+                             semantic_analysis::ForeignFunctionMap const& map,
+                             internal_proto::ForeignSymbol& proto) {
+  for (auto const& [key, value] : map) {
+    auto const & [name, type ] = key;
+    proto.set_name(name);
+    SerializeType(type, *proto.mutable_type(),
+                  type_system.has_inline_storage(type.category()));
+  }
+}
+
+void DeserializeForeignSymbols(
+    semantic_analysis::TypeSystem& type_system,
+    google::protobuf::RepeatedPtrField<internal_proto::ForeignSymbol> const&
+        proto,
+    semantic_analysis::ForeignFunctionMap& map) {
+  for (auto const & symbol : proto) {
+    map.ForeignFunction(symbol.name(), DeserializeType(symbol.type()));
+  }
+}
+
+void SerializeFunction(semantic_analysis::IrFunction const& f,
+                       internal_proto::Function& proto) {
+  proto.set_parameters(f.parameter_count());
+  proto.set_returns(f.return_count());
+  jasmin::Serialize(f, *proto.mutable_content());
+}
+
+semantic_analysis::IrFunction DeserializeFunction(
+    internal_proto::Function const& proto) {
+  semantic_analysis::IrFunction f(proto.parameters(), proto.returns());
+
+  jasmin::Deserialize(proto.content(), f);
+  return f;
+}
+
 }  // namespace
 
-bool Module::Serialize(std::ostream &output) const {
+bool Module::Serialize(std::ostream& output) const {
   internal_proto::Module proto;
+
   SerializeTypeSystem(type_system(), *proto.mutable_type_system());
-  auto& initializer = *proto.mutable_initializer();
-  initializer.set_parameters(initializer_.parameter_count());
-  initializer.set_returns(initializer_.return_count());
-  jasmin::Serialize(initializer_, *initializer.mutable_content());
+
+  SerializeForeignSymbols(type_system(), foreign_function_map(),
+                          *proto.add_foreign_symbols());
+
+  SerializeFunction(initializer_, *proto.mutable_initializer());
+  proto.mutable_functions()->Reserve(functions_.size());
+  for (auto const& function : functions_) {
+    SerializeFunction(function, *proto.add_functions());
+  }
+
   return proto.SerializeToOstream(&output);
 }
 
-std::optional<Module> Module::Deserialize(std::istream &input) {
+std::optional<Module> Module::Deserialize(std::istream& input) {
   std::optional<Module> m;
   internal_proto::Module proto;
   if (not proto.ParseFromIstream(&input)) { return m; }
   m.emplace();
-  internal_proto::TypeSystem pp;
+
   DeserializeTypeSystem(proto.type_system(), m->type_system_);
-  SerializeTypeSystem(m->type_system_, pp);
-  jasmin::Deserialize(proto.initializer().content(), m->initializer_);
+
+  DeserializeForeignSymbols(m->type_system(), *proto.mutable_foreign_symbols(),
+                            m->foreign_function_map_);
+
+  m->initializer_ = DeserializeFunction(proto.initializer());
+  for (auto const& function : proto.functions()) {
+    m->functions_.push_back(DeserializeFunction(function));
+  }
   return m;
 }
 

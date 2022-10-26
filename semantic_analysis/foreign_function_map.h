@@ -16,6 +16,13 @@ struct ForeignFunctionMap {
   explicit ForeignFunctionMap(TypeSystem &type_system)
       : type_system_(type_system) {}
 
+  auto begin() { return foreign_functions_.begin(); }
+  auto end() { return foreign_functions_.end(); }
+  auto begin() const { return foreign_functions_.begin(); }
+  auto end() const { return foreign_functions_.end(); }
+  auto cbegin() const { return foreign_functions_.begin(); }
+  auto cend() const { return foreign_functions_.end(); }
+
   std::pair<ir::Fn, IrFunction const *> ForeignFunction(std::string name,
                                                         core::Type t);
   IrFunction const *ForeignFunction(ir::LocalFnId id) const;
