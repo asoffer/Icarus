@@ -1,4 +1,4 @@
 // The smallest possible program is an empty file and does nothing. This file
-// has no executable code, only comments. Anywhere a `\\` is encountered in
+// has no executable code, only comments. Anywhere a `//` is encountered in
 // source, from there until the next newline character is considered to be a
 // comment and ignored by the compiler.
