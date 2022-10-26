@@ -58,6 +58,19 @@ struct Type {
   // space is available as well.
   static constexpr size_t QualifierBits = internal_type::QualifierBits;
 
+  constexpr Type() = default;
+
+  // Constructs a type in the given `category` with value/index equal to
+  // `index`. Note: It is the responsibility of the caller to make sure this
+  // construction is valid (i.e., that such a value is valid for the category,
+  // or that there exists stored data representing that type within the category
+  // at the given index) before the type is used.
+  //
+  // TODO: Figure out who actually needs access to this and scope it down.
+  constexpr Type(uint64_t category, uint64_t index)
+      : representation_(((index << CategoryBits) | category) << QualifierBits) {
+  }
+
   // Returns an integer representing the index of the type category within the
   // `TypeSystem` that created this `Type`.
   constexpr uint64_t category() const {

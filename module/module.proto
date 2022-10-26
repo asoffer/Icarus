@@ -22,7 +22,7 @@ message TypeSystem {
       string name = 1;
       Type type = 2;
     }
-    repeated Parameter parameter = 1;
+    repeated Parameter parameters = 1;
   }
 
   repeated ParameterType parameters = 1;
@@ -37,7 +37,7 @@ message TypeSystem {
 
   message FunctionType {
     uint32 parameters = 1;
-    repeated Type return_type = 2;
+    repeated Type return_types = 2;
   }
   repeated FunctionType functions = 6;
 }
