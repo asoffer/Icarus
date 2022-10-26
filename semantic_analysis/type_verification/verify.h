@@ -6,6 +6,7 @@
 #include "ast/module.h"
 #include "diagnostic/consumer/consumer.h"
 #include "jasmin/execute.h"
+#include "module/module.h"
 #include "semantic_analysis/byte_code/byte_code.h"
 #include "semantic_analysis/context.h"
 #include "semantic_analysis/instruction_set.h"
@@ -48,26 +49,25 @@ inline auto VerifyParametersOf(ast::Node const *node) {
 struct TypeVerifier : VerificationScheduler {
   using signature = VerificationTask();
 
-  explicit TypeVerifier(CompilerState &compiler_state, Context &c,
+  explicit TypeVerifier(module::Module &module, Context &c,
                         diagnostic::DiagnosticConsumer &d)
       : VerificationScheduler([](VerificationScheduler &s,
                                  ast::Node const *node) -> VerificationTask {
           return node->visit(static_cast<TypeVerifier &>(s));
         }),
-        compiler_state_(compiler_state),
+        module_(module),
         context_(c),
         diagnostic_consumer_(d) {}
 
   Context &context() const { return context_; }
-  TypeSystem &type_system() const { return compiler_state_.type_system(); }
+  TypeSystem &type_system() const { return module_.type_system(); }
   ForeignFunctionMap &foreign_function_map() const {
-    return compiler_state_.foreign_function_map();
+    return module_.foreign_function_map();
   }
 
   template <typename T>
   T EvaluateAs(ast::Expression const *expression) const {
-    return ::semantic_analysis::EvaluateAs<T>(context(), compiler_state_,
-                                              expression);
+    return ::semantic_analysis::EvaluateAs<T>(context(), module_, expression);
   }
 
   template <typename D>
@@ -156,14 +156,13 @@ struct TypeVerifier : VerificationScheduler {
   //       Label, ScopeLiteral, ScopeNode, SliceType, StructLiteral,
   //       YieldStmt, WhileStmt.
 
-
-  std::string TypeForDiagnostic(ast::Expression const& expression) const {
+  std::string TypeForDiagnostic(ast::Expression const &expression) const {
     return ::semantic_analysis::TypeForDiagnostic(expression, context(),
                                                   type_system());
   }
 
  private:
-  CompilerState &compiler_state_;
+  module::Module &module_;
   Context &context_;
   diagnostic::DiagnosticConsumer &diagnostic_consumer_;
 };

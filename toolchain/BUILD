@@ -23,7 +23,6 @@ cc_binary(
         "//base:log",
         "//frontend:parse",
         "//module",
-        "//semantic_analysis:compiler_state",
         "//semantic_analysis:context",
         "//semantic_analysis/type_verification:verify",
         "@com_google_absl//absl/debugging:failure_signal_handler",

@@ -42,6 +42,11 @@ message TypeSystem {
   repeated FunctionType functions = 6;
 }
 
+message ForeignSymbol {
+  string name = 1;
+  Type type = 2;
+}
+
 message Module {
   // An identifier for this module unique amongst all modules being linked
   // together.
@@ -53,6 +58,9 @@ message Module {
   // Defining information for all types referenced by this module.
   TypeSystem type_system = 3;
 
+  // All symbols declared via `builtin.foreign`.
+  repeated ForeignSymbol foreign_symbols = 4;
+
   // All functions, excluding the main entry point.
-  repeated Function functions = 4;
+  repeated Function functions = 5;
 }

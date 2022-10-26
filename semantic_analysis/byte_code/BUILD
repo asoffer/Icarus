@@ -7,7 +7,7 @@ cc_library(
     deps = [
         ":emitter",
         "//ast:expression",
-        "//semantic_analysis:compiler_state",
+        "//module",
         "//semantic_analysis:context",
         "//semantic_analysis:instruction_set",
         "//semantic_analysis:type_system",
@@ -36,7 +36,7 @@ cc_library(
     deps = [
         "//ast",
         "//ir/value:slice",
-        "//semantic_analysis:compiler_state",
+        "//module",
         "//semantic_analysis:context",
         "//semantic_analysis:instruction_set",
         "//semantic_analysis:type_system",

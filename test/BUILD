@@ -26,7 +26,7 @@ cc_library(
     deps = [
         "//ast:module",
         "//ast:expression",
-        "//semantic_analysis:compiler_state",
+        "//module",
         "//semantic_analysis:context",
         "//semantic_analysis/byte_code",
         "//diagnostic/consumer:tracking",

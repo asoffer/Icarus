@@ -9,7 +9,7 @@
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "jasmin/execute.h"
-#include "semantic_analysis/compiler_state.h"
+#include "module/module.h"
 #include "semantic_analysis/context.h"
 #include "semantic_analysis/foreign_function_map.h"
 #include "semantic_analysis/instruction_set.h"
@@ -129,9 +129,9 @@ struct Repl {
   TypeCheckResult type_check(std::string source);
 
   semantic_analysis::ForeignFunctionMap& foreign_function_map() {
-    return state_.foreign_function_map();
+    return module_.foreign_function_map();
   }
-  semantic_analysis::TypeSystem& type_system() { return state_.type_system(); }
+  semantic_analysis::TypeSystem& type_system() { return module_.type_system(); }
   semantic_analysis::Context const& context() const { return context_; }
   ast::Module const& module() const { return ast_module_; }
 
@@ -142,7 +142,7 @@ struct Repl {
   }
 
   semantic_analysis::IrFunction const* function(ir::Fn f) {
-    return state_.function(f);
+    return module_.function(f);
   }
 
  private:
@@ -161,7 +161,6 @@ struct Repl {
   module::Module module_;
   ast::Module ast_module_;
   semantic_analysis::Context context_;
-  semantic_analysis::CompilerState state_{module_};
   diagnostic::TrackingConsumer consumer_;
 };
 

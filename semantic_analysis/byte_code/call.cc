@@ -25,7 +25,7 @@ void ByteCodeValueEmitter::operator()(ast::Call const* node,
   IrFunction const* callee;
   if (node->callee()->is<ast::Identifier>()) {
     IrFunction const* callee =
-        compiler_state().function(context().callee_overload(node));
+        module().function(context().callee_overload(node));
     data.function().append<jasmin::Push>(callee);
   } else {
     Emit(node->callee(), data);

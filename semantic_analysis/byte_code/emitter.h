@@ -6,7 +6,7 @@
 #include "jasmin/execute.h"
 #include "jasmin/function.h"
 #include "jasmin/instructions/core.h"
-#include "semantic_analysis/compiler_state.h"
+#include "module/module.h"
 #include "semantic_analysis/context.h"
 #include "semantic_analysis/instruction_set.h"
 #include "semantic_analysis/type_system.h"
@@ -39,39 +39,37 @@ struct FunctionData {
 struct EmitterBase {
   using FunctionData = FunctionData;
 
-  explicit constexpr EmitterBase(Context &c, CompilerState &compiler_state)
-      : context_(c), compiler_state_(compiler_state) {}
+  explicit constexpr EmitterBase(Context &c, module::Module &module)
+      : context_(c), module_(module) {}
 
   Context const &context() const { return context_; }
   Context &context() { return context_; }
 
-  TypeSystem &type_system() const { return compiler_state_.type_system(); }
-  auto &foreign_function_map() const {
-    return compiler_state_.foreign_function_map();
-  }
-  auto &compiler_state() const { return compiler_state_; }
+  TypeSystem &type_system() const { return module_.type_system(); }
+  auto &foreign_function_map() const { return module_.foreign_function_map(); }
+  auto &module() const { return module_; }
 
   template <std::derived_from<EmitterBase> E>
   E as() const {
-    return E(context_, compiler_state_);
+    return E(context_, module_);
   }
 
   void EmitDefaultInitialize(core::Type type, FunctionData data);
 
  private:
   Context &context_;
-  CompilerState &compiler_state_;
+  module::Module &module_;
 };
 
 template <typename E>
 struct Emitter : EmitterBase {
   using signature = void(FunctionData);
 
-  explicit constexpr Emitter(Context &c, CompilerState &compiler_state)
-      : EmitterBase(c, compiler_state) {}
+  explicit constexpr Emitter(Context &c, module::Module &module)
+      : EmitterBase(c, module) {}
 
   void Emit(ast::Node const *node, FunctionData data) {
-    node->visit<E>(static_cast<E&>(*this), data);
+    node->visit<E>(static_cast<E &>(*this), data);
   }
 
   template <typename T>
@@ -87,8 +85,8 @@ struct Emitter : EmitterBase {
 };
 
 struct ByteCodeValueEmitter : Emitter<ByteCodeValueEmitter> {
-  explicit ByteCodeValueEmitter(Context &c, CompilerState &compiler_state)
-      : Emitter<ByteCodeValueEmitter>(c, compiler_state) {}
+  explicit ByteCodeValueEmitter(Context &c, module::Module &module)
+      : Emitter<ByteCodeValueEmitter>(c, module) {}
 
   template <typename NodeType>
   void operator()(NodeType const *node, FunctionData) {
@@ -98,7 +96,6 @@ struct ByteCodeValueEmitter : Emitter<ByteCodeValueEmitter> {
       UNREACHABLE(base::meta<NodeType>);
     }
   }
-
 
   void operator()(ast::Builtin const *node, FunctionData data);
   void operator()(ast::Call const *node, FunctionData data);
@@ -117,8 +114,8 @@ struct ByteCodeValueEmitter : Emitter<ByteCodeValueEmitter> {
 };
 
 struct ByteCodeStatementEmitter : Emitter<ByteCodeStatementEmitter> {
-  explicit ByteCodeStatementEmitter(Context &c, CompilerState &compiler_state)
-      : Emitter<ByteCodeStatementEmitter>(c, compiler_state) {}
+  explicit ByteCodeStatementEmitter(Context &c, module::Module &module)
+      : Emitter<ByteCodeStatementEmitter>(c, module) {}
 
   template <typename NodeType>
   void operator()(NodeType const *node, FunctionData) {

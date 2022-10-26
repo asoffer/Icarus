@@ -14,7 +14,6 @@
 #include "base/log.h"
 #include "frontend/parse.h"
 #include "module/module.h"
-#include "semantic_analysis/compiler_state.h"
 #include "semantic_analysis/context.h"
 #include "semantic_analysis/type_verification/verify.h"
 #include "toolchain/flags.h"
@@ -100,16 +99,15 @@ bool Compile(std::string const &source_file, std::ofstream &output) {
   ast_module.insert(parsed_nodes.begin(), parsed_nodes.end());
 
   module::Module module;
-  semantic_analysis::CompilerState state(module);
   semantic_analysis::Context context;
 
-  semantic_analysis::TypeVerifier tv(state, context, **diagnostic_consumer);
+  semantic_analysis::TypeVerifier tv(module, context, **diagnostic_consumer);
   tv.schedule(&ast_module);
   tv.complete();
 
   if ((*diagnostic_consumer)->num_consumed() != 0) { return false; }
 
-  semantic_analysis::EmitByteCodeForModule(ast_module, context, state);
+  semantic_analysis::EmitByteCodeForModule(ast_module, context, module);
 
   return module.Serialize(output);
 }

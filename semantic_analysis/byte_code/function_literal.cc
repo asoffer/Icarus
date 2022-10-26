@@ -9,8 +9,8 @@ void ByteCodeValueEmitter::operator()(ast::FunctionLiteral const* node,
           type_system());
   size_t num_parameters = function_type.parameters().size();
 
-  auto [fn_id, fn_ptr] = compiler_state().create_function(
-      num_parameters, function_type.returns().size());
+  auto [fn_id, fn_ptr] =
+      module().create_function(num_parameters, function_type.returns().size());
 
   base::flyweight_map<ast::Declaration::Id const*, size_t> variable_offsets;
   // Populate `variable_offsets`

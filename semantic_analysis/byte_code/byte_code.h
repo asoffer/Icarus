@@ -7,21 +7,21 @@
 #include "ast/module.h"
 #include "base/debug.h"
 #include "jasmin/execute.h"
-#include "semantic_analysis/compiler_state.h"
+#include "module/module.h"
 #include "semantic_analysis/context.h"
 #include "semantic_analysis/instruction_set.h"
 #include "semantic_analysis/type_system.h"
 
 namespace semantic_analysis {
 
-void EmitByteCodeForModule(ast::Module const& module, Context& context,
-                           CompilerState& compiler_state);
+void EmitByteCodeForModule(ast::Module const& ast_module, Context& context,
+                           module::Module& module);
 
 // Returns an `IrFunction` accepting no parameters and whose execution computes
 // the value associated with `expression`.
 IrFunction EmitByteCode(QualifiedType qualified_type,
                         ast::Expression const& expression, Context& context,
-                        CompilerState& compiler_state);
+                        module::Module& module);
 
 // Evaluates `expr` in the given `context` if possible, returning `std::nullopt`
 // in the event of execution failure. Note that behavior is undefined if `expr`
@@ -29,16 +29,16 @@ IrFunction EmitByteCode(QualifiedType qualified_type,
 // parameter `T` is undefined behavior and not guaranteed to result in a
 // returned value of `std::nullopt`.
 template <typename T>
-T EvaluateAs(Context& context, CompilerState& compiler_state,
+T EvaluateAs(Context& context, module::Module& module,
              ast::Expression const* expr) {
   auto qt        = context.qualified_type(expr);
   bool has_error = (qt.qualifiers() >= Qualifiers::Error());
   ASSERT(has_error == false);
 
-  IrFunction f = EmitByteCode(qt, *expr, context, compiler_state);
+  IrFunction f = EmitByteCode(qt, *expr, context, module);
 
   T result;
-  if (PassInRegister(qt, compiler_state.type_system())) {
+  if (PassInRegister(qt, module.type_system())) {
     jasmin::Execute(f, {}, result);
   } else {
     IrFunction wrapper(0, 0);
