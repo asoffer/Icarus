@@ -35,8 +35,7 @@ void EmitConstantDeclaration(ByteCodeStatementEmitter& emitter,
       if (node->ids().size() != 1) { NOT_YET(); }
       absl::Span<std::byte const> evaluation = emitter.EvaluateConstant(
           node->init_val(), emitter.context().qualified_type(node->init_val()));
-      // TODO: Make this a public constant in Jasmin.
-      if (evaluation.size() <= 8) {
+      if (evaluation.size() <= jasmin::ValueSize) {
         data.function().append<jasmin::Push>(
             jasmin::Value::Load(evaluation.data(), evaluation.size()));
       } else {

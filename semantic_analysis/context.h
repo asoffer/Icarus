@@ -35,15 +35,6 @@ struct Context {
   absl::Span<QualifiedType const> set_qualified_type(
       ast::Expression const *expr, QualifiedType qualified_types);
 
-  // Given a call-expression, returns an `ir::Fn` identifier for the function
-  // being invoked.
-  ir::Fn callee_overload(ast::Call const *call_expr) const;
-
-  // Given a call-expression and an `ir::Fn` identifying the function being
-  // called, stores the association between the call-expression and the `ir::Fn`
-  // to be recalled via `callee_overload`.
-  void set_callee_overload(ast::Call const *call_expr, ir::Fn f);
-
   // Given a return statement, returns a view of a collection of the types
   // returned from that return statement. Requires that `set_return_types` was
   // previously called with `return_stmt` as an argument.
@@ -122,6 +113,18 @@ struct Context {
       std::vector<absl::flat_hash_map<core::ParameterType, CallableIdentifier>>
           parameters);
 
+  // Given `node` representing a call expression, returns a reference to the
+  // `CallableIdentifier` representing the expression which was identified
+  // during overload resoution as the expression being invoked. The member
+  // function `set_callee` must have previously been called with `node` as an
+  // argument.
+  CallableIdentifier const &callee(ast::Call const *node);
+
+  // Associates with `node`, the given `CallableIdentifier` distinguishing which
+  // overload is intended to be called. This member function must not have been
+  // previously called with `node` as an argument.
+  void set_callee(ast::Call const *node, CallableIdentifier const *identifier);
+  
  private:
   absl::flat_hash_map<ast::Expression const *, std::vector<QualifiedType>>
       type_;
@@ -131,7 +134,7 @@ struct Context {
       std::vector<absl::flat_hash_map<core::ParameterType, CallableIdentifier>>>
       parameters_;
 
-  absl::flat_hash_map<ast::Call const *, ir::Fn> callees_;
+  absl::flat_hash_map<ast::Call const *, CallableIdentifier const *> callees_;
 
   absl::flat_hash_map<ast::Identifier const *, symbol_ref_type> symbols_;
 

@@ -5,8 +5,8 @@ IcarusInfo = provider(
 
 def _tooling_transition_impl(settings, attr):
     return {
-        "//command_line_option:compilation_mode": "opt",
-        "//command_line_option:cpu": "clang",
+# 1        "//command_line_option:compilation_mode": "opt",
+# 1        "//command_line_option:cpu": "clang",
     }
 
 _tooling_transition = transition(

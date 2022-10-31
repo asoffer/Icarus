@@ -46,6 +46,7 @@ cc_library(
     name = "verify",
     hdrs = ["verify.h"],
     srcs = [
+        "access.cc",
         "array_literal.cc",
         "array_type.cc",
         "builtin.cc",
@@ -77,6 +78,7 @@ cc_library(
         "//semantic_analysis:type_system",
         "//semantic_analysis:task",
         "@asoffer_jasmin//jasmin:execute",
+        "@com_google_absl//absl/cleanup",
         "@com_google_absl//absl/types:span",
     ],
 )

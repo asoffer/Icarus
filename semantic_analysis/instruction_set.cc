@@ -50,6 +50,7 @@ void InvokeForeignFunction::execute(
     jasmin::ValueStack& value_stack, void (*fn_ptr)(),
     core::Parameter<core::Type> const* parameters, size_t parameter_count,
     core::Type const* maybe_return_type) {
+  LOG("", "Invoking");
   ffi_cif call_interface;
 
   ffi_type* return_type =

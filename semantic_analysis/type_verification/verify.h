@@ -125,6 +125,7 @@ struct TypeVerifier : VerificationScheduler {
     NOT_YET(base::meta<NodeType>);
   }
 
+  static VerificationTask VerifyType(TypeVerifier &, ast::Access const *);
   static VerificationTask VerifyType(TypeVerifier &, ast::ArrayLiteral const *);
   static VerificationTask VerifyType(TypeVerifier &, ast::ArrayType const *);
   static VerificationTask VerifyType(TypeVerifier &,
@@ -150,7 +151,7 @@ struct TypeVerifier : VerificationScheduler {
                                      ast::UnaryOperator const *);
   static VerificationTask VerifyType(TypeVerifier &, ast::Terminal const *);
 
-  // TODO: Access, ArgumentType, Assignment, BinaryAssignmentOperator,
+  // TODO: ArgumentType, Assignment, BinaryAssignmentOperator,
   //       BinaryOperator, BlockNode, Cast, ComparisonOperator,
   //       DesignatedInitializer, EnumLiteral, Import, Index, InterfaceLiteral,
   //       Label, ScopeLiteral, ScopeNode, SliceType, StructLiteral,

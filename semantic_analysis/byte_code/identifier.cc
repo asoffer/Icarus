@@ -9,8 +9,7 @@ void ByteCodeValueEmitter::operator()(ast::Identifier const* node,
     auto qt = context().qualified_type(id);
     if (qt.qualifiers() >= Qualifiers::Constant()) {
       absl::Span<std::byte const> evaluation = EvaluateConstant(id, qt);
-      // TODO: Make this a public constant in Jasmin.
-      if (evaluation.size() <= 8) {
+      if (evaluation.size() <= jasmin::ValueSize) {
         data.function().append<jasmin::Push>(
             jasmin::Value::Load(evaluation.data(), evaluation.size()));
       } else {

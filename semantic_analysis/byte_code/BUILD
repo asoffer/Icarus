@@ -21,6 +21,7 @@ cc_library(
     name = "emitter",
     hdrs = ["emitter.h"],
     srcs = [
+        "access.cc",
         "builtin.cc",
         "call.cc",
         "declaration.cc",
@@ -44,6 +45,17 @@ cc_library(
         "@asoffer_jasmin//jasmin:function",
         "@asoffer_jasmin//jasmin/instructions:core",
     ],
+)
+
+cc_test(
+      name = "access_test",
+      srcs = ["access_test.cc"],
+      deps = [
+          ":byte_code",
+          "//semantic_analysis:type_system",
+          "//test:repl",
+          "@com_google_googletest//:gtest_main",
+      ],
 )
 
 cc_test(

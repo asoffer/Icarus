@@ -1,5 +1,6 @@
 #include "core/call.h"
 
+#include "absl/cleanup/cleanup.h"
 #include "ast/ast.h"
 #include "semantic_analysis/type_system.h"
 #include "semantic_analysis/type_verification/verify.h"
@@ -12,7 +13,8 @@ struct UncallableWithArguments {
   static constexpr std::string_view kName     = "uncallable-with-arguments";
 
   diagnostic::DiagnosticMessage ToMessage() const {
-    return diagnostic::DiagnosticMessage();
+    return diagnostic::DiagnosticMessage(
+        diagnostic::Text("Uncallable with the given agruments."));
   }
 
   core::Arguments<std::string> arguments;
@@ -45,6 +47,12 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
     ASSERT(type_qt.qualifiers() >= Qualifiers::Constant());
     core::Type fn_type =
         tv.EvaluateAs<core::Type>(&node->arguments()[1].expr());
+
+    absl::flat_hash_map<core::ParameterType, Context::CallableIdentifier>
+        parameter_types{
+            {fn_type.get<core::FunctionType>(tv.type_system()).parameter_type(),
+             Context::CallableIdentifier(node->callee())}};
+    co_yield tv.ParametersOf(node, std::move(parameter_types));
     co_return tv.TypeOf(node, Constant(fn_type));
   }
 
@@ -76,7 +84,17 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
   std::vector<
       std::pair<core::ParameterType const, Context::CallableIdentifier> const *>
       parameter_types;
+
+  // We will set `valid_index` to the index of any callee that matches the
+  // provided arguments. We emit an error if there is not exactly one so in the
+  // case that there is one, this index tells us which `CallableIdentifier` is
+  // being called in this `ast::Call` node.
+  size_t valid_index = -1;
+
+  size_t index = 0;
   for (auto const &callee_parameter_type : callee_parameter_types[0]) {
+    absl::Cleanup c = [&] { ++index; };
+
     auto callability_result = core::Callability(
         callee_parameter_type.first.value(), arguments,
         [&](QualifiedType argument_type, core::Type parameter_type) {
@@ -84,8 +102,11 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
           return argument_type.type() == parameter_type;
         });
     if (not callability_result.ok()) { continue; }
+    valid_index = index;
     parameter_types.push_back(&callee_parameter_type);
+
   }
+
   switch (parameter_types.size()) {
     case 0:
       tv.ConsumeDiagnostic(UncallableWithArguments{});
@@ -102,6 +123,7 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
               .returns();
       std::vector<QualifiedType> qts;
       qts.reserve(return_types.size());
+      tv.context().set_callee(node, &parameter_types[valid_index]->second);
       for (core::Type t : return_types) { qts.emplace_back(t); }
       co_return tv.TypeOf(node, std::move(qts));
     }

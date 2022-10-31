@@ -12,6 +12,8 @@ void ByteCodeValueEmitter::operator()(ast::Call const* node,
       access and access->member_name() == "foreign") {
     core::Type fn_type = EvaluateAs<core::Type>(&node->arguments()[1].expr());
     Emit(&node->arguments()[0].expr(), data);
+    auto function_type    = fn_type.get<core::FunctionType>(type_system());
+    size_t num_parameters = function_type.parameters().size();
     data.function().append<BuiltinForeign>(fn_type, &foreign_function_map());
     return;
   }
@@ -22,16 +24,19 @@ void ByteCodeValueEmitter::operator()(ast::Call const* node,
     Emit(&argument.expr(), data);
   }
 
-  IrFunction const* callee;
-  if (node->callee()->is<ast::Identifier>()) {
-    IrFunction const* callee =
-        module().function(context().callee_overload(node));
-    data.function().append<jasmin::Push>(callee);
-  } else {
-    Emit(node->callee(), data);
-  }
+  auto const& callable_identifier = context().callee(node);
+  Emit(&callable_identifier.expression(), data);
 
+  auto* f = data.function().raw_instructions().back().as<IrFunction const*>();
   data.function().append<jasmin::Call>();
+}
+
+void ByteCodeStatementEmitter::operator()(ast::Call const* node,
+                                          FunctionData data) {
+  this->as<ByteCodeValueEmitter>().Emit(node, data);
+  // TODO: Drop any unnecessary return values. Counting is more subtle than
+  // this:
+  data.function().append<jasmin::Drop>(context().qualified_types(node).size());
 }
 
 }  // namespace semantic_analysis

@@ -6,6 +6,11 @@ filegroup(
 )
 
 ic_binary(
+    name = "foreign_function",
+    srcs = ["foreign_function.ic"],
+)
+
+ic_binary(
     name = "minimal_program",
     srcs = ["minimal_program.ic"],
 )

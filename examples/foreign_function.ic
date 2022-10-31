@@ -1,0 +1,13 @@
+// Foreign functions and other symbols can be declared with `builtin.foreign`,
+// which accepts a slice of chars as the name of the symbol to be loaded and
+// the type of the symbol.
+//
+// For example, to use the C standard library functions `puts`, we declare
+puts ::= builtin.foreign("puts", [*]char -> ())
+
+// Then, we can call `puts` ourselves.
+puts("Hello, world!\n".data)
+
+// Note that we've named the function `puts` in our code. While it is common to
+// use the same name for the foreign symbol and the variable to which it is
+// assigned, there is no requirement to do so.

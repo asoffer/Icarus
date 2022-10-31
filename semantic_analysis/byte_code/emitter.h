@@ -97,6 +97,7 @@ struct ByteCodeValueEmitter : Emitter<ByteCodeValueEmitter> {
     }
   }
 
+  void operator()(ast::Access const *node, FunctionData data);
   void operator()(ast::Builtin const *node, FunctionData data);
   void operator()(ast::Call const *node, FunctionData data);
   void operator()(ast::FunctionLiteral const *node, FunctionData data);
@@ -105,7 +106,7 @@ struct ByteCodeValueEmitter : Emitter<ByteCodeValueEmitter> {
   void operator()(ast::Identifier const *node, FunctionData data);
   void operator()(ast::UnaryOperator const *node, FunctionData data);
   void operator()(ast::Terminal const *node, FunctionData data);
-  // TODO: Access, ArgumentType, Assignment, BinaryAssignmentOperator,
+  // TODO: ArgumentType, Assignment, BinaryAssignmentOperator,
   //       BinaryOperator, BlockNode,  Cast, ComparisonOperator,
   //       Declaration::Id, DesignatedInitializer, EnumLiteral, Import, Index,
   //       InterfaceLiteral, Label, ParameterizedStructLiteral,
@@ -122,7 +123,9 @@ struct ByteCodeStatementEmitter : Emitter<ByteCodeStatementEmitter> {
     NOT_YET(base::meta<NodeType>, node->DebugString());
   }
 
+  void operator()(ast::Access const *node, FunctionData data);
   void operator()(ast::Builtin const *node, FunctionData data);
+  void operator()(ast::Call const *node, FunctionData data);
   void operator()(ast::Declaration::Id const *node, FunctionData data);
   void operator()(ast::Declaration const *node, FunctionData data);
   void operator()(ast::FunctionLiteral const *node, FunctionData data);
@@ -130,14 +133,15 @@ struct ByteCodeStatementEmitter : Emitter<ByteCodeStatementEmitter> {
   void operator()(ast::Identifier const *node, FunctionData data);
   void operator()(ast::Module const *node, FunctionData data);
   void operator()(ast::ReturnStmt const *node, FunctionData data);
+  void operator()(ast::UnaryOperator const *node, FunctionData data);
   void operator()(ast::Terminal const *node, FunctionData data);
-  // TODO: Access, ArgumentType, Assignment, BinaryAssignmentOperator,
+  // TODO: ArgumentType, Assignment, BinaryAssignmentOperator,
   //       BinaryOperator, BlockNode,  Cast, ComparisonOperator,
   //       Declaration::Id, DesignatedInitializer, EnumLiteral, Import, Index,
   //       InterfaceLiteral, Label, ParameterizedStructLiteral,
   //       PatternMatch, ProgramArguments, ScopeLiteral, ScopeNode, SliceType,
   //       ShortFunctionLiteral, StructLiteral, YieldStmt, IfStmt, WhileStmt,
-  //       Call, Declaration::Id, Declaration, UnaryOperator
+  //       Call, Declaration::Id, Declaration
 };
 
 template <typename E>

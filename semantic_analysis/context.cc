@@ -44,17 +44,6 @@ Context::set_parameters(
   return iter->second;
 }
 
-void Context::set_callee_overload(ast::Call const *call_expr, ir::Fn f) {
-  [[maybe_unused]] auto [iter, inserted] = callees_.try_emplace(call_expr, f);
-  ASSERT(inserted == true);
-}
-
-ir::Fn Context::callee_overload(ast::Call const *call_expr) const {
-  auto iter = callees_.find(call_expr);
-  ASSERT(iter != callees_.end());
-  return iter->second;
-}
-
 void Context::set_symbol(ast::Identifier const *id, symbol_ref_type symbol) {
   [[maybe_unused]] auto [iter, inserted] = symbols_.try_emplace(id, symbol);
   ASSERT(inserted == true);
@@ -78,6 +67,19 @@ absl::Span<core::Type const> Context::return_types(
   auto iter = returns_.find(return_stmt);
   ASSERT(iter != returns_.end());
   return iter->second;
+}
+
+void Context::set_callee(ast::Call const *node,
+                         Context::CallableIdentifier const *identifier) {
+  [[maybe_unused]] auto [iter, inserted] =
+      callees_.try_emplace(node, identifier);
+  ASSERT(inserted == true);
+}
+
+Context::CallableIdentifier const &Context::callee(ast::Call const *node) {
+  auto iter = callees_.find(node);
+  ASSERT(iter != callees_.end());
+  return *iter->second;
 }
 
 }  // namespace semantic_analysis
