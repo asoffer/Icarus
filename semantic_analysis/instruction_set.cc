@@ -50,7 +50,6 @@ void InvokeForeignFunction::execute(
     jasmin::ValueStack& value_stack, void (*fn_ptr)(),
     core::Parameter<core::Type> const* parameters, size_t parameter_count,
     core::Type const* maybe_return_type) {
-  LOG("", "Invoking");
   ffi_cif call_interface;
 
   ffi_type* return_type =
@@ -105,6 +104,64 @@ void InvokeForeignFunction::execute(
       value_stack.push(Read<char const*>(return_value));
     }
   }
+}
+
+void InvokeForeignFunction::serialize(jasmin::Serializer& serializer,
+                                      std::span<jasmin::Value const> values,
+                                      serialization_state& state) {
+  ASSERT(values.size() == 4);
+  auto parameter_count      = values[2].as<size_t>();
+  auto const& [index, type] = state[values[0].as<void (*)()>()];
+  // Foreign function (as index)
+  serializer(index);
+  // Parameter count.
+  serializer(parameter_count);
+  // Index of function type in the type-system.
+  serializer(type.get<core::FunctionType>(state.type_system()).index());
+}
+
+bool InvokeForeignFunction::deserialize(jasmin::Deserializer& deserializer,
+                                        std::span<jasmin::Value> values,
+                                        serialization_state& state) {
+  ASSERT(values.size() == 4);
+  NOT_YET();
+}
+
+void PushStringLiteral::serialize(jasmin::Serializer& serializer,
+                                  std::span<jasmin::Value const> values,
+                                  serialization_state& state) {
+  ASSERT(values.size() == 2);
+  serializer(state.index(
+      std::string_view(values[0].as<char const*>(), values[1].as<size_t>())));
+}
+
+bool PushStringLiteral::deserialize(jasmin::Deserializer& deserializer,
+                                    std::span<jasmin::Value> values,
+                                    serialization_state& state) {
+  ASSERT(values.size() == 2);
+  size_t index;
+  if (not deserializer(index)) { return false; }
+  std::string_view s = state.string(index);
+  values[0]          = s.data();
+  values[1]          = s.size();
+  return true;
+}
+
+void PushFunction::serialize(jasmin::Serializer& serializer,
+                             std::span<jasmin::Value const> values,
+                             serialization_state& state) {
+  ASSERT(values.size() == 1);
+  serializer(state.index(values[0].as<semantic_analysis::IrFunction*>()));
+}
+
+bool PushFunction::deserialize(jasmin::Deserializer& deserializer,
+                               std::span<jasmin::Value> values,
+                               serialization_state& state) {
+  ASSERT(values.size() == 1);
+  size_t index;
+  if (not deserializer(index)) { return false; }
+  values[0] = state.function(index);
+  return true;
 }
 
 }  // namespace semantic_analysis

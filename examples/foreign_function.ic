@@ -9,5 +9,5 @@ puts ::= builtin.foreign("puts", [*]char -> ())
 puts("Hello, world!\n".data)
 
 // Note that we've named the function `puts` in our code. While it is common to
-// use the same name for the foreign symbol and the variable to which it is
+// use the same name for the foreign symbol and the identifier to which it is
 // assigned, there is no requirement to do so.

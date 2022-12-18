@@ -33,11 +33,17 @@ void EmitConstantDeclaration(ByteCodeStatementEmitter& emitter,
     } break;
     case ast::Declaration::kInferred: {
       if (node->ids().size() != 1) { NOT_YET(); }
+      auto qt = emitter.context().qualified_type(node->init_val());
       absl::Span<std::byte const> evaluation = emitter.EvaluateConstant(
           node->init_val(), emitter.context().qualified_type(node->init_val()));
       if (evaluation.size() <= jasmin::ValueSize) {
-        data.function().append<jasmin::Push>(
-            jasmin::Value::Load(evaluation.data(), evaluation.size()));
+        if (qt.type().is<core::FunctionType>(emitter.type_system())) {
+          data.function().append<PushFunction>(
+              jasmin::Value::Load(evaluation.data(), evaluation.size()));
+        } else {
+          data.function().append<jasmin::Push>(
+              jasmin::Value::Load(evaluation.data(), evaluation.size()));
+        }
       } else {
         NOT_YET();
       }

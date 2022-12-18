@@ -57,6 +57,8 @@ void SerializeTypeSystem(semantic_analysis::TypeSystem& type_system,
       SerializeType(t.pointee(), *proto.add_slices(),
                     type_system.has_inline_storage(t.pointee().category()));
     } else if constexpr (type_category == base::meta<core::FunctionType>) {
+      LOG("", "Adding a function %s",
+          semantic_analysis::DebugType(t, type_system));
       auto& f = *proto.add_functions();
       f.set_parameters(t.parameter_type().index());
       f.mutable_return_types()->Reserve(t.returns().size());
@@ -115,15 +117,22 @@ void DeserializeTypeSystem(internal_proto::TypeSystem const& proto,
   }
 }
 
-void SerializeForeignSymbols(semantic_analysis::TypeSystem& type_system,
-                             semantic_analysis::ForeignFunctionMap const& map,
-                             internal_proto::ForeignSymbol& proto) {
+absl::flat_hash_map<void (*)(), std::pair<size_t, core::Type>>
+SerializeForeignSymbols(
+    semantic_analysis::TypeSystem& type_system,
+    semantic_analysis::ForeignFunctionMap const& map,
+    google::protobuf::RepeatedPtrField<internal_proto::ForeignSymbol>& proto) {
+  absl::flat_hash_map<void (*)(), std::pair<size_t, core::Type>> index_map;
   for (auto const& [key, value] : map) {
-    auto const & [name, type ] = key;
-    proto.set_name(name);
-    SerializeType(type, *proto.mutable_type(),
+    auto const& [name, type]    = key;
+    auto const& [ir_fn, fn_ptr] = value;
+    auto& symbol                = *proto.Add();
+    index_map.try_emplace(fn_ptr, index_map.size(), type);
+    symbol.set_name(name);
+    SerializeType(type, *symbol.mutable_type(),
                   type_system.has_inline_storage(type.category()));
   }
+  return index_map;
 }
 
 void DeserializeForeignSymbols(
@@ -136,19 +145,46 @@ void DeserializeForeignSymbols(
   }
 }
 
+struct SerializationState {
+  template <typename T>
+  T& get() {
+    return std::get<T>(state_);
+  }
+
+ private:
+  std::tuple<semantic_analysis::PushFunction::serialization_state,
+             semantic_analysis::InvokeForeignFunction::serialization_state,
+             semantic_analysis::PushStringLiteral::serialization_state>
+      state_;
+};
+
 void SerializeFunction(semantic_analysis::IrFunction const& f,
-                       internal_proto::Function& proto) {
+                       internal_proto::Function& proto, SerializationState& state) {
   proto.set_parameters(f.parameter_count());
   proto.set_returns(f.return_count());
-  jasmin::Serialize(f, *proto.mutable_content());
+  jasmin::Serialize(f, *proto.mutable_content(), state);
 }
 
 semantic_analysis::IrFunction DeserializeFunction(
-    internal_proto::Function const& proto) {
+    internal_proto::Function const& proto, SerializationState& state) {
   semantic_analysis::IrFunction f(proto.parameters(), proto.returns());
 
-  jasmin::Deserialize(proto.content(), f);
+  jasmin::Deserialize(proto.content(), f, state);
   return f;
+}
+
+void SerializeReadOnlyData(
+    internal_proto::ReadOnlyData & data,
+    semantic_analysis::PushStringLiteral::serialization_state const& state) {
+  for (std::string_view content : state) {
+    *data.add_strings() = std::string(content);
+  }
+}
+
+void DeserializeReadOnlyData(
+    internal_proto::ReadOnlyData const& data,
+    semantic_analysis::PushStringLiteral::serialization_state& state) {
+  for (std::string_view content : data.strings()) { state.index(content); }
 }
 
 }  // namespace
@@ -158,14 +194,33 @@ bool Module::Serialize(std::ostream& output) const {
 
   SerializeTypeSystem(type_system(), *proto.mutable_type_system());
 
-  SerializeForeignSymbols(type_system(), foreign_function_map(),
-                          *proto.add_foreign_symbols());
+  SerializationState state;
 
-  SerializeFunction(initializer_, *proto.mutable_initializer());
+  auto& foreign_state = 
+  state.get<semantic_analysis::InvokeForeignFunction::serialization_state>();
+  foreign_state.set_type_system(&type_system());
+  foreign_state.set_map(SerializeForeignSymbols(
+      type_system(), foreign_function_map(), *proto.mutable_foreign_symbols()));
+
+  SerializeFunction(initializer_, *proto.mutable_initializer(), state);
   proto.mutable_functions()->Reserve(functions_.size());
-  for (auto const& function : functions_) {
-    SerializeFunction(function, *proto.add_functions());
+
+  auto& f_state =
+      state.get<semantic_analysis::PushFunction::serialization_state>();
+
+  for (auto& function : functions_) { f_state.index(&function); }
+  size_t serialized_up_to = 0;
+  // TODO look up iterator invalidation constraints to see if we can process
+  // more than one at a time.
+  while (serialized_up_to != f_state.size()) {
+    auto const& f = **(f_state.begin() + serialized_up_to);
+    SerializeFunction(f, *proto.add_functions(), state);
+    ++serialized_up_to;
   }
+
+  SerializeReadOnlyData(
+      *proto.mutable_read_only(),
+      state.get<semantic_analysis::PushStringLiteral::serialization_state>());
 
   return proto.SerializeToOstream(&output);
 }
@@ -174,16 +229,23 @@ std::optional<Module> Module::Deserialize(std::istream& input) {
   std::optional<Module> m;
   internal_proto::Module proto;
   if (not proto.ParseFromIstream(&input)) { return m; }
+  LOG("", "%s", proto.DebugString());
   m.emplace();
+
+  SerializationState state;
+
+  DeserializeReadOnlyData(
+      proto.read_only(),
+      state.get<semantic_analysis::PushStringLiteral::serialization_state>());
 
   DeserializeTypeSystem(proto.type_system(), m->type_system_);
 
   DeserializeForeignSymbols(m->type_system(), *proto.mutable_foreign_symbols(),
                             m->foreign_function_map_);
 
-  m->initializer_ = DeserializeFunction(proto.initializer());
+  m->initializer_ = DeserializeFunction(proto.initializer(), state);
   for (auto const& function : proto.functions()) {
-    m->functions_.push_back(DeserializeFunction(function));
+    m->functions_.push_back(DeserializeFunction(function, state));
   }
   return m;
 }

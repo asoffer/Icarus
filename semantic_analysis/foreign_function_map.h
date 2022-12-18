@@ -29,6 +29,8 @@ struct ForeignFunctionMap {
   std::type_identity_t<void (*)()> ForeignFunctionPointer(
       ir::LocalFnId id) const;
 
+  TypeSystem &type_system() const { return type_system_; }
+
  private:
   base::flyweight_map<std::pair<std::string, core::Type>,
                       std::pair<IrFunction, void (*)()>>

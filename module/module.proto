@@ -42,6 +42,10 @@ message TypeSystem {
   repeated FunctionType functions = 6;
 }
 
+message ReadOnlyData {
+  repeated string strings = 1;
+}
+
 message ForeignSymbol {
   string name = 1;
   Type type = 2;
@@ -63,4 +67,7 @@ message Module {
 
   // All functions, excluding the main entry point.
   repeated Function functions = 5;
+
+  // All read-only data required in the module.
+  ReadOnlyData read_only = 6;
 }

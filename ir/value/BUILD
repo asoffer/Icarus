@@ -151,3 +151,9 @@ cc_library(
     ],
     testonly = True,
 )
+
+cc_library(
+    name = "serialized_pointer",
+    hdrs = ["serialized_pointer.h"],
+    deps = [],
+)

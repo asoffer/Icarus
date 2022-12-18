@@ -8,9 +8,8 @@ void ByteCodeValueEmitter::operator()(ast::Terminal const* node, FunctionData da
   if (qt.type() == Bool) {
     data.function().append<jasmin::Push>(node->value().get<bool>());
   } else if (qt.type() == SliceType(type_system(), Char)) {
-    ir::Slice slice = node->value().get<ir::Slice>();
-    data.function().append<jasmin::Push>(slice.data());
-    data.function().append<jasmin::Push>(slice.length());
+    std::string_view slice = node->value().get<ir::Slice>();
+    data.function().append<PushStringLiteral>(slice.data(), slice.size());
   } else if (qt.type() == Integer) {
     // TODO: Store the integer in some shared manager type.
     auto* i = new ir::Integer(node->value().get<ir::Integer>());

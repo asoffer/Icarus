@@ -6,6 +6,7 @@
 #include "jasmin/instructions/arithmetic.h"
 #include "jasmin/instructions/core.h"
 #include "jasmin/instructions/stack.h"
+#include "jasmin/serialization.h"
 #include "semantic_analysis/type_system.h"
 
 namespace semantic_analysis {
@@ -20,6 +21,37 @@ struct BuiltinForeign : jasmin::StackMachineInstruction<BuiltinForeign> {
 
 struct InvokeForeignFunction
     : jasmin::StackMachineInstruction<InvokeForeignFunction> {
+
+  struct serialization_state {
+    void set_type_system(TypeSystem* type_system) {
+      type_system_ = type_system;
+    }
+
+    void set_map(
+        absl::flat_hash_map<void (*)(), std::pair<size_t, core::Type>> map) {
+      map_ = std::move(map);
+    }
+
+    std::pair<size_t, core::Type> const& operator[](void (*fn_ptr)()) const {
+      auto iter = map_.find(fn_ptr);
+      ASSERT(iter != map_.end());
+      return iter->second;
+    }
+
+    TypeSystem& type_system() const { return *ASSERT_NOT_NULL(type_system_); }
+
+   private:
+    TypeSystem * type_system_;
+    absl::flat_hash_map<void (*)(), std::pair<size_t, core::Type>> map_;
+  };
+
+  static void serialize(jasmin::Serializer& serializer,
+                        std::span<jasmin::Value const> values,
+                        serialization_state& state);
+  static bool deserialize(jasmin::Deserializer& deserializer,
+                          std::span<jasmin::Value> values,
+                          serialization_state& state);
+
   static void execute(jasmin::ValueStack& value_stack, void (*fn_ptr)(),
                       core::Parameter<core::Type> const* parameters,
                       size_t parameter_count,
@@ -45,6 +77,49 @@ struct AllocateTemporary : jasmin::StackMachineInstruction<AllocateTemporary> {
     auto* p = space.allocate(size_in_bytes);
     value_stack.push(p);
   }
+};
+
+struct PushStringLiteral : jasmin::StackMachineInstruction<PushStringLiteral> {
+  struct serialization_state {
+    size_t index(std::string_view s) {
+      return strings_.index(strings_.insert(s).first);
+    }
+
+    std::string_view string(size_t n) { return strings_.from_index(n); }
+    size_t size() const { return strings_.size(); }
+    auto begin() const { return strings_.begin(); }
+    auto end() const { return strings_.end(); }
+
+   private:
+    base::flyweight_set<std::string_view> strings_;
+  };
+  static constexpr void execute(jasmin::ValueStack& value_stack,
+                                char const* ptr, size_t length) {
+    value_stack.push(ptr);
+    value_stack.push(length);
+  }
+
+  static void serialize(jasmin::Serializer& serializer,
+                        std::span<jasmin::Value const> values,
+                        serialization_state& state);
+  static bool deserialize(jasmin::Deserializer& deserializer,
+                          std::span<jasmin::Value> values,
+                          serialization_state& state);
+};
+
+struct PushFunction : jasmin::StackMachineInstruction<PushFunction> {
+  struct serialization_state;
+
+  static constexpr void execute(jasmin::ValueStack& value_stack, jasmin::Value value) {
+    value_stack.push(value);
+  }
+
+  static void serialize(jasmin::Serializer& serializer,
+                        std::span<jasmin::Value const> values,
+                        serialization_state& state);
+  static bool deserialize(jasmin::Deserializer& deserializer,
+                          std::span<jasmin::Value> values,
+                          serialization_state& state);
 };
 
 template <typename T>
@@ -106,6 +181,7 @@ using InstructionSet = jasmin::MakeInstructionSet<
     core::ParameterType::End<TypeSystem>, core::FunctionType::End<TypeSystem>,
     jasmin::StackAllocate, jasmin::StackOffset, jasmin::Load, AllocateTemporary,
     DeallocateAllTemporaries, BuiltinForeign, InvokeForeignFunction,
+    PushStringLiteral, PushFunction,
     ApplyInstruction<Construct, bool, ir::Char, int8_t, int16_t, int32_t,
                      int64_t, ir::Integer, uint8_t, uint16_t, uint32_t,
                      uint64_t, float, double>,
@@ -117,6 +193,21 @@ using InstructionSet = jasmin::MakeInstructionSet<
 }  // namespace internal_byte_code
 
 using IrFunction = jasmin::Function<internal_byte_code::InstructionSet>;
+
+struct PushFunction::serialization_state {
+  size_t index(IrFunction const* s) {
+    return functions_.index(functions_.insert(s).first);
+  }
+
+  IrFunction const* function(size_t n) { return functions_.from_index(n); }
+
+  size_t size() const { return functions_.size(); }
+  auto begin() const { return functions_.begin(); }
+  auto end() const { return functions_.end(); }
+
+ private:
+  base::flyweight_set<IrFunction const*> functions_;
+};
 
 }  // namespace semantic_analysis
 
