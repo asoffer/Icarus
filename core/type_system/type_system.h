@@ -104,6 +104,11 @@ struct TypeCategory {
   uint64_t category() const { return type_.category(); }
   uint64_t index() const { return type_.index(); }
 
+  static CrtpDerived FromIndex(size_t index,
+                               TypeSystemSupporting<CrtpDerived> auto& sys) {
+    return Construct(Type(sys.template index<CrtpDerived>(), index), sys);
+  }
+
   constexpr state_type_tuple decompose() const requires(kStoreInline) {
     return state_type_tuple(get_inline_value(type_.index()));
   }

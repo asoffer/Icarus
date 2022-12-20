@@ -106,16 +106,24 @@ void InvokeForeignFunction::execute(
   }
 }
 
+std::type_identity_t<void (*)()>
+InvokeForeignFunction::serialization_state::FunctionPointer(
+    size_t index) const {
+  return ASSERT_NOT_NULL(foreign_function_map_)
+      ->ForeignFunctionPointer(ir::LocalFnId(index));
+}
+
+TypeSystem& InvokeForeignFunction::serialization_state::type_system() const {
+  return ASSERT_NOT_NULL(foreign_function_map_)->type_system();
+}
+
 void InvokeForeignFunction::serialize(jasmin::Serializer& serializer,
                                       std::span<jasmin::Value const> values,
                                       serialization_state& state) {
   ASSERT(values.size() == 4);
-  auto parameter_count      = values[2].as<size_t>();
   auto const& [index, type] = state[values[0].as<void (*)()>()];
   // Foreign function (as index)
   serializer(index);
-  // Parameter count.
-  serializer(parameter_count);
   // Index of function type in the type-system.
   serializer(type.get<core::FunctionType>(state.type_system()).index());
 }
@@ -124,7 +132,16 @@ bool InvokeForeignFunction::deserialize(jasmin::Deserializer& deserializer,
                                         std::span<jasmin::Value> values,
                                         serialization_state& state) {
   ASSERT(values.size() == 4);
-  NOT_YET();
+  size_t index,  function_index;
+  if (not deserializer(index)) { return false; }
+  if (not deserializer(function_index)) { return false; }
+  auto ft = core::FunctionType::FromIndex(index, state.type_system());
+
+  values[0] = state.FunctionPointer(index);
+  values[1] = ft.parameters().data();
+  values[2] = ft.parameters().size();
+  values[3] = ft.returns().empty() ? nullptr : &ft.returns()[0];
+  return true;
 }
 
 void PushStringLiteral::serialize(jasmin::Serializer& serializer,

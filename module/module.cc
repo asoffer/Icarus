@@ -57,8 +57,6 @@ void SerializeTypeSystem(semantic_analysis::TypeSystem& type_system,
       SerializeType(t.pointee(), *proto.add_slices(),
                     type_system.has_inline_storage(t.pointee().category()));
     } else if constexpr (type_category == base::meta<core::FunctionType>) {
-      LOG("", "Adding a function %s",
-          semantic_analysis::DebugType(t, type_system));
       auto& f = *proto.add_functions();
       f.set_parameters(t.parameter_type().index());
       f.mutable_return_types()->Reserve(t.returns().size());
@@ -165,14 +163,6 @@ void SerializeFunction(semantic_analysis::IrFunction const& f,
   jasmin::Serialize(f, *proto.mutable_content(), state);
 }
 
-semantic_analysis::IrFunction DeserializeFunction(
-    internal_proto::Function const& proto, SerializationState& state) {
-  semantic_analysis::IrFunction f(proto.parameters(), proto.returns());
-
-  jasmin::Deserialize(proto.content(), f, state);
-  return f;
-}
-
 void SerializeReadOnlyData(
     internal_proto::ReadOnlyData & data,
     semantic_analysis::PushStringLiteral::serialization_state const& state) {
@@ -198,7 +188,7 @@ bool Module::Serialize(std::ostream& output) const {
 
   auto& foreign_state = 
   state.get<semantic_analysis::InvokeForeignFunction::serialization_state>();
-  foreign_state.set_type_system(&type_system());
+  foreign_state.set_foreign_function_map(&foreign_function_map());
   foreign_state.set_map(SerializeForeignSymbols(
       type_system(), foreign_function_map(), *proto.mutable_foreign_symbols()));
 
@@ -229,7 +219,6 @@ std::optional<Module> Module::Deserialize(std::istream& input) {
   std::optional<Module> m;
   internal_proto::Module proto;
   if (not proto.ParseFromIstream(&input)) { return m; }
-  LOG("", "%s", proto.DebugString());
   m.emplace();
 
   SerializationState state;
@@ -243,10 +232,28 @@ std::optional<Module> Module::Deserialize(std::istream& input) {
   DeserializeForeignSymbols(m->type_system(), *proto.mutable_foreign_symbols(),
                             m->foreign_function_map_);
 
-  m->initializer_ = DeserializeFunction(proto.initializer(), state);
+  // Populate the PushFunction state map.
+  auto& f_state =
+      state.get<semantic_analysis::PushFunction::serialization_state>();
   for (auto const& function : proto.functions()) {
-    m->functions_.push_back(DeserializeFunction(function, state));
+    auto [id, f_ptr] =
+        m->create_function(function.parameters(), function.returns());
+    size_t index = f_state.index(f_ptr);
+    ASSERT(id.local().value() == index);
   }
+
+  auto& foreign_state =
+      state
+          .get<semantic_analysis::InvokeForeignFunction::serialization_state>();
+  foreign_state.set_foreign_function_map(&m->foreign_function_map());
+
+  jasmin::Deserialize(proto.initializer().content(), m->initializer_, state);
+  size_t fn_index = 0;
+  for (auto const& function : proto.functions()) {
+    jasmin::Deserialize(function.content(), m->functions_[fn_index], state);
+    ++fn_index;
+  }
+
   return m;
 }
 

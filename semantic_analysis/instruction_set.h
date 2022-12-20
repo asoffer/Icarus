@@ -23,8 +23,8 @@ struct InvokeForeignFunction
     : jasmin::StackMachineInstruction<InvokeForeignFunction> {
 
   struct serialization_state {
-    void set_type_system(TypeSystem* type_system) {
-      type_system_ = type_system;
+    void set_foreign_function_map(ForeignFunctionMap const* foreign_function_map) {
+      foreign_function_map_ = foreign_function_map;
     }
 
     void set_map(
@@ -38,10 +38,12 @@ struct InvokeForeignFunction
       return iter->second;
     }
 
-    TypeSystem& type_system() const { return *ASSERT_NOT_NULL(type_system_); }
+    std::type_identity_t<void (*)()> FunctionPointer(size_t index) const;
+
+    TypeSystem& type_system() const;
 
    private:
-    TypeSystem * type_system_;
+    ForeignFunctionMap const* foreign_function_map_;
     absl::flat_hash_map<void (*)(), std::pair<size_t, core::Type>> map_;
   };
 
