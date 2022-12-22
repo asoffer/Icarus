@@ -2,9 +2,9 @@
 #define ICARUS_CORE_CALL_H
 
 #include <algorithm>
+#include <span>
 #include <vector>
 
-#include "absl/types/span.h"
 #include "base/extend.h"
 #include "base/extend/equality.h"
 #include "core/arguments.h"

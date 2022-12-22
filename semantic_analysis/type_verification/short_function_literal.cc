@@ -8,7 +8,7 @@ VerificationTask TypeVerifier::VerifyType(
   core::Parameters<core::Type> parameters;
   bool has_error = false;
   for (auto const& parameter : node->parameters()) {
-    absl::Span parameter_qts = co_await VerifyTypeOf(&parameter.value);
+    std::span parameter_qts = co_await VerifyTypeOf(&parameter.value);
     if (parameter_qts.size() != 1) {
       NOT_YET("Log an error.", parameter_qts.size());
       has_error = true;
@@ -26,7 +26,7 @@ VerificationTask TypeVerifier::VerifyType(
 
   if (has_error) { co_return tv.TypeOf(node, Error()); }
 
-  absl::Span body_qualified_types = co_await VerifyTypeOf(node->body());
+  std::span body_qualified_types = co_await VerifyTypeOf(node->body());
 
   std::vector<core::Type> body_types;
   body_types.reserve(body_qualified_types.size());

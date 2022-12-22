@@ -10,4 +10,3 @@ void ByteCodeStatementEmitter::operator()(ast::Module const* node,
 }
 
 }  // namespace semantic_analysis
-

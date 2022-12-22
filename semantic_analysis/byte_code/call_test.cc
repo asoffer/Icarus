@@ -5,7 +5,7 @@
 
 extern "C" {
 int32_t MyFunction(int32_t n) { return n * n; }
-} 
+}
 
 namespace semantic_analysis {
 namespace {

@@ -4,8 +4,8 @@
 #include <concepts>
 #include <iterator>
 #include <optional>
+#include <span>
 
-#include "absl/types/span.h"
 #include "base/debug.h"
 #include "base/meta.h"
 #include "base/raw_iterator.h"
@@ -14,20 +14,21 @@ namespace base {
 
 template <typename S>
 concept Serializer = requires(S s) {
-  { (void)s.write_bytes(std::declval<absl::Span<std::byte const>>()) }
-  ->std::same_as<void>;
+  {
+    (void)s.write_bytes(std::declval<std::span<std::byte const>>())
+    } -> std::same_as<void>;
 };
 
 template <typename D>
 concept Deserializer = requires(D d) {
-  { d.read_bytes(std::declval<size_t>()) }
-  ->std::convertible_to<absl::Span<std::byte const>>;
+  {
+    d.read_bytes(std::declval<size_t>())
+    } -> std::convertible_to<std::span<std::byte const>>;
 };
 
 template <typename S, typename T>
 concept SupportsDelayed = (Serializer<S> and requires(S s, T t) {
-  { s.template delayed<T>().set(t) }
-  ->std::same_as<void>;
+  { s.template delayed<T>().set(t) } -> std::same_as<void>;
 });
 
 // Primary entry-points to this library. `Serialize` accepts an object `s`
@@ -43,7 +44,7 @@ void Serialize(base::Serializer auto& s, auto const&... values);
 bool Deserialize(base::Deserializer auto& d, base::Assignable auto&... values);
 
 template <typename T, typename S>
-concept SerializableBy = Serializer<S>and requires(T t, S s) {
+concept SerializableBy = Serializer<S> and requires(T t, S s) {
   base::Serialize(s, t);
 };
 
@@ -201,8 +202,9 @@ bool DeserializeOne(base::Deserializer auto& d, value_type& value) {
     return d.read(value);
 
   } else if constexpr (requires {
-                         { BaseDeserialize(d, value) }
-                         ->std::convertible_to<bool>;
+                         {
+                           BaseDeserialize(d, value)
+                           } -> std::convertible_to<bool>;
                        }) {
     return BaseDeserialize(d, value);
 

@@ -21,9 +21,9 @@ struct BuiltinForeign : jasmin::StackMachineInstruction<BuiltinForeign> {
 
 struct InvokeForeignFunction
     : jasmin::StackMachineInstruction<InvokeForeignFunction> {
-
   struct serialization_state {
-    void set_foreign_function_map(ForeignFunctionMap const* foreign_function_map) {
+    void set_foreign_function_map(
+        ForeignFunctionMap const* foreign_function_map) {
       foreign_function_map_ = foreign_function_map;
     }
 
@@ -112,7 +112,8 @@ struct PushStringLiteral : jasmin::StackMachineInstruction<PushStringLiteral> {
 struct PushFunction : jasmin::StackMachineInstruction<PushFunction> {
   struct serialization_state;
 
-  static constexpr void execute(jasmin::ValueStack& value_stack, jasmin::Value value) {
+  static constexpr void execute(jasmin::ValueStack& value_stack,
+                                jasmin::Value value) {
     value_stack.push(value);
   }
 

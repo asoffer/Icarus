@@ -57,10 +57,10 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
                                           ast::ArrayType const *node) {
   std::vector<QualifiedType> length_results;
   length_results.reserve(node->lengths().size());
-  bool error = false;
+  bool error    = false;
   bool constant = true;
   for (auto const *length : node->lengths()) {
-    absl::Span result = co_await VerifyTypeOf(length);
+    std::span result = co_await VerifyTypeOf(length);
     if (result.size() != 1) { NOT_YET(); }
     if (not(result[0].qualifiers() >= Qualifiers::Constant())) {
       constant = false;
@@ -73,7 +73,7 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
     }
   }
 
-  absl::Span data_qts = co_await VerifyTypeOf(&node->data_type());
+  std::span data_qts = co_await VerifyTypeOf(&node->data_type());
 
   if (data_qts.size() != 1) { NOT_YET(); }
   if (data_qts[0].type() != Type) {

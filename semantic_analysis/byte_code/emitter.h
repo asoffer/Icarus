@@ -75,8 +75,8 @@ struct Emitter : EmitterBase {
   template <typename T>
   T EvaluateAs(ast::Expression const *expression);
 
-  absl::Span<std::byte const> EvaluateConstant(ast::Expression const *expr,
-                                               QualifiedType qt);
+  std::span<std::byte const> EvaluateConstant(ast::Expression const *expr,
+                                              QualifiedType qt);
 
   // TODO this is reasonable for types that are generally passed in registers,
   // but not great in general.
@@ -170,7 +170,7 @@ T Emitter<E>::EvaluateAs(ast::Expression const *expression) {
 }
 
 template <typename E>
-absl::Span<std::byte const> Emitter<E>::EvaluateConstant(
+std::span<std::byte const> Emitter<E>::EvaluateConstant(
     ast::Expression const *expr, QualifiedType qt) {
   ASSERT(qt == context().qualified_type(expr));
   auto [result_ptr, inserted] = context().insert_constant(expr);
@@ -208,7 +208,7 @@ template <typename E>
 template <typename NodeType>
 void Emitter<E>::EmitInitialize(NodeType const *node, FunctionData data) {
   as<ByteCodeValueEmitter>().Emit(node, data);
-  absl::Span qts = context().qualified_types(node);
+  std::span qts = context().qualified_types(node);
   if (qts.size() == 1) {
     data.function().append<jasmin::Store>(
         SizeOf(qts[0].type(), type_system()).value());

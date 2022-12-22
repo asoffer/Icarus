@@ -14,7 +14,8 @@ struct TestCase {
   std::string expected;
 };
 
-std::string TypeForDiagnostic(std::string_view context, std::string_view expression) {
+std::string TypeForDiagnostic(std::string_view context,
+                              std::string_view expression) {
   test::Repl repl;
   repl.type_check(absl::StrCat(context, "\n", expression));
   return TypeForDiagnostic(repl.last_expression(), repl.context(),
@@ -27,13 +28,12 @@ TEST(TypeForDiagnostic, Test) {
   EXPECT_EQ(TypeForDiagnostic(R"(b := true)", "b"), "bool");
   EXPECT_EQ(TypeForDiagnostic(R"()", "[0 as i64]"), "[1; i64]");
   EXPECT_EQ(TypeForDiagnostic(R"()", "[1, 2, 3]"), "[3; integer]");
-  EXPECT_EQ(TypeForDiagnostic(R"(I ::= i64 \\ n: I)", "[n, n, n]"),
-            "[3; I]");
+  EXPECT_EQ(TypeForDiagnostic(R"(I ::= i64 \\ n: I)", "[n, n, n]"), "[3; I]");
   // EXPECT_EQ(TypeForDiagnostic(R"(I ::= i64 \\ n: I)", "n + n"), "Int");
   EXPECT_EQ(TypeForDiagnostic(R"(Int ::= i64 \\ n: Int)", "-n"), "Int");
-  EXPECT_EQ(
-      TypeForDiagnostic(R"(Int ::= i64 \\ f ::= () -> Int { return 0 as i64 })", "f()"),
-      "Int");
+  EXPECT_EQ(TypeForDiagnostic(
+                R"(Int ::= i64 \\ f ::= () -> Int { return 0 as i64 })", "f()"),
+            "Int");
   // EXPECT_EQ(TypeForDiagnostic(R"(I ::= i64 \\ n: I)", "n + n"), "Int");
   // EXPECT_EQ(TypeForDiagnostic(R"(S ::= struct {})", "S.{}"), "S");
   // EXPECT_EQ(TypeForDiagnostic(R"(S ::= struct {} \\ Alias ::= S)",

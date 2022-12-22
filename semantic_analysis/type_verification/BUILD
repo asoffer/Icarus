@@ -79,7 +79,6 @@ cc_library(
         "//semantic_analysis:task",
         "@asoffer_jasmin//jasmin:execute",
         "@com_google_absl//absl/cleanup",
-        "@com_google_absl//absl/types:span",
     ],
 )
 

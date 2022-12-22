@@ -1,7 +1,8 @@
 #ifndef ICARUS_SEMANTIC_ANALYSIS_TYPE_VERIFICATION_VERIFY_H
 #define ICARUS_SEMANTIC_ANALYSIS_TYPE_VERIFICATION_VERIFY_H
 
-#include "absl/types/span.h"
+#include <span>
+
 #include "ast/ast.h"
 #include "ast/module.h"
 #include "diagnostic/consumer/consumer.h"
@@ -26,9 +27,9 @@ enum class TypeVerificationPhase {
 namespace internal_verify {
 
 using Types =
-    std::tuple<absl::Span<absl::flat_hash_map<
+    std::tuple<std::span<absl::flat_hash_map<
                    core::ParameterType, Context::CallableIdentifier> const>,
-               absl::Span<QualifiedType const>, void, void>;
+               std::span<QualifiedType const>, void, void>;
 template <TypeVerificationPhase P>
 using ReturnType = std::tuple_element_t<static_cast<int>(P), Types>;
 
@@ -89,7 +90,7 @@ struct TypeVerifier : VerificationScheduler {
         node, context().set_qualified_types(node, std::move(qualified_types)));
   }
   auto TypeOf(ast::Expression const *node,
-              absl::Span<QualifiedType const> qualified_types) {
+              std::span<QualifiedType const> qualified_types) {
     return VerificationTask::YieldResult<TypeVerificationPhase::VerifyType>(
         node,
         context().set_qualified_types(

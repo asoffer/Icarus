@@ -6,7 +6,7 @@ namespace semantic_analysis {
 
 VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
                                           ast::Access const *node) {
-  absl::Span operand_qts = co_await VerifyTypeOf(node->operand());
+  std::span operand_qts = co_await VerifyTypeOf(node->operand());
   if (operand_qts.size() != 1) { NOT_YET("log an error"); }
   QualifiedType qt = operand_qts[0];
   if (qt.type() == Module) {

@@ -51,7 +51,7 @@ void Scope::declaration_ancestor_iterator::FindNext(std::string_view name) {
         ids_.begin(), ids_.end(), [](ast::Declaration::Id const *id) {
           return id->declaration().flags() & ast::Declaration::f_IsConst;
         });
-    ids_.remove_prefix(std::distance(ids_.begin(), iter));
+    ids_ = ids_.subspan(std::distance(ids_.begin(), iter));
   }
 
   if (ids_.empty()) { IncrementScope(name); }
@@ -80,7 +80,7 @@ void Scope::declaration_ancestor_iterator::IncrementScope(
   p_ = p_->parent();
 
   if (not p_) {
-    ids_ = absl::Span<Declaration::Id const *const>(nullptr, 0);
+    ids_ = std::span<Declaration::Id const *const>();
   } else {
     GetDeclsAndFindNext(name);
   }

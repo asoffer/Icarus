@@ -12,7 +12,7 @@ using ::testing::ElementsAre;
 TEST(CycleTracker, NoErrors) {
   CycleTracker<int> tracker;
 
-  testing::MockFunction<void(absl::Span<int const>)> function;
+  testing::MockFunction<void(std::span<int const>)> function;
   EXPECT_CALL(function, Call(_)).Times(0);
 
   tracker.push(1, function.AsStdFunction());
@@ -26,7 +26,7 @@ TEST(CycleTracker, NoErrors) {
 TEST(CycleTracker, Cycle) {
   CycleTracker<int> tracker;
 
-  testing::MockFunction<void(absl::Span<int const>)> function;
+  testing::MockFunction<void(std::span<int const>)> function;
   EXPECT_CALL(function, Call(ElementsAre(2, 3))).Times(1);
 
   tracker.push(1, function.AsStdFunction());

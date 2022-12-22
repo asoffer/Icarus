@@ -5,7 +5,6 @@
 namespace semantic_analysis {
 namespace {
 
-
 struct NonTypeInDeclaration {
   static constexpr std::string_view kCategory = "type-error";
   static constexpr std::string_view kName     = "non-type-in-cast";
@@ -24,7 +23,7 @@ struct NonTypeInDeclaration {
 
 struct NonConstantTypeInDeclaration {
   static constexpr std::string_view kCategory = "type-error";
-  static constexpr std::string_view kName = "non-constant-type-in-cast";
+  static constexpr std::string_view kName     = "non-constant-type-in-cast";
 
   diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(
@@ -50,12 +49,11 @@ struct NoViableCast {
   std::string_view view;
 };
 
-
 }  // namespace
 
 VerificationTask TypeVerifier::VerifyType(TypeVerifier& tv,
                                           ast::Cast const* node) {
-  absl::Span type_qts = co_await VerifyTypeOf(node->type());
+  std::span type_qts = co_await VerifyTypeOf(node->type());
   if (type_qts.size() != 1) { NOT_YET("Log an error"); }
 
   if (type_qts[0].type() != Type) {
@@ -71,7 +69,7 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier& tv,
     co_return tv.TypeOf(node, Error());
   }
 
-  absl::Span expr_qts = co_await VerifyTypeOf(node->expr());
+  std::span expr_qts = co_await VerifyTypeOf(node->expr());
   if (expr_qts.size() != 1) { NOT_YET("Log an error"); }
   QualifiedType qt = expr_qts[0];
 

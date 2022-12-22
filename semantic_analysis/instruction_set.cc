@@ -38,8 +38,8 @@ T Read(ffi_arg const& value) {
 
 void BuiltinForeign::execute(jasmin::ValueStack& value_stack, core::Type t,
                              ForeignFunctionMap* foreign_function_map) {
-  size_t length        = value_stack.pop<size_t>();
-  char const* data     = value_stack.pop<char const*>();
+  size_t length    = value_stack.pop<size_t>();
+  char const* data = value_stack.pop<char const*>();
   auto [fn_id, fn_ptr] =
       foreign_function_map->ForeignFunction(std::string(data, length), t);
   if (fn_ptr == nullptr) { NOT_YET(); }
@@ -132,7 +132,7 @@ bool InvokeForeignFunction::deserialize(jasmin::Deserializer& deserializer,
                                         std::span<jasmin::Value> values,
                                         serialization_state& state) {
   ASSERT(values.size() == 4);
-  size_t index,  function_index;
+  size_t index, function_index;
   if (not deserializer(index)) { return false; }
   if (not deserializer(function_index)) { return false; }
   auto ft = core::FunctionType::FromIndex(index, state.type_system());

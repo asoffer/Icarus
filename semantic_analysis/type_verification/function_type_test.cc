@@ -37,4 +37,4 @@ TEST(FunctionType, NonTypeParameter) {
 }
 
 }  // namespace
-}  // namespace compiler
+}  // namespace semantic_analysis

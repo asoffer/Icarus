@@ -46,7 +46,7 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
   element_qualified_types.reserve(node->elements().size());
   bool error = false;
   for (auto const *elem : node->elements()) {
-    absl::Span qts = co_await VerifyTypeOf(elem);
+    std::span qts = co_await VerifyTypeOf(elem);
     if (qts.size() != 1) { NOT_YET(); }
     if (qts[0].qualifiers() >= Qualifiers::Error()) {
       error = true;

@@ -32,4 +32,3 @@ TEST(TypeSystem, ParameterType) {
 
 }  // namespace
 }  // namespace core
-

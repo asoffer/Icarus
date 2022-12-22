@@ -1,10 +1,10 @@
 #include "base/meta.h"
 
 #include <array>
+#include <span>
 #include <type_traits>
 #include <vector>
 
-#include "absl/types/span.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 
@@ -65,8 +65,8 @@ TEST(Meta, Container) {
     void end() {}
   };
   EXPECT_TRUE(Container<std::vector<int>>);
-  EXPECT_TRUE(Container<absl::Span<int>>);
-  EXPECT_TRUE(Container<absl::Span<int const>>);
+  EXPECT_TRUE(Container<std::span<int>>);
+  EXPECT_TRUE(Container<std::span<int const>>);
   EXPECT_FALSE(Container<S>);
 }
 
@@ -121,7 +121,8 @@ TEST(Meta, AllOf) {
 TEST(Meta, Filter) {
   EXPECT_EQ((meta<filter<type_list<>, True>>), meta<type_list<>>);
   EXPECT_EQ((meta<filter<type_list<int>, True>>), meta<type_list<int>>);
-  EXPECT_EQ((meta<filter<type_list<int, bool>, True>>), (meta<type_list<int, bool>>));
+  EXPECT_EQ((meta<filter<type_list<int, bool>, True>>),
+            (meta<type_list<int, bool>>));
 
   EXPECT_EQ((meta<filter<type_list<>, False>>), meta<type_list<>>);
   EXPECT_EQ((meta<filter<type_list<int>, False>>), meta<type_list<>>);

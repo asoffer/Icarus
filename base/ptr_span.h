@@ -13,7 +13,7 @@ namespace base {
 // This is a utility that allows iterating over contiguous ranges of
 // `std::unique_ptr<T>`s, giving access to the underlying `T` without needing
 // the user to be concerned with the precise ownership model.  This template
-// is much like absl::Span, but automatically calls `.get()` on each contained
+// is much like std::span, but automatically calls `.get()` on each contained
 // element when accessed.
 //
 // Example usage:

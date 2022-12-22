@@ -55,11 +55,11 @@ struct Repl {
 
  public:
   struct TypeCheckResult : ResultBase {
-    absl::Span<std::pair<std::string, std::string> const> diagnostics() const {
+    std::span<std::pair<std::string, std::string> const> diagnostics() const {
       return diagnostics_;
     }
 
-    absl::Span<semantic_analysis::QualifiedType const> qualified_types() const {
+    std::span<semantic_analysis::QualifiedType const> qualified_types() const {
       return qts_;
     }
 
@@ -87,8 +87,8 @@ struct Repl {
 
     explicit TypeCheckResult(
         std::string_view content,
-        absl::Span<semantic_analysis::QualifiedType const> qts,
-        absl::Span<std::pair<std::string, std::string> const> diagnostics,
+        std::span<semantic_analysis::QualifiedType const> qts,
+        std::span<std::pair<std::string, std::string> const> diagnostics,
         Repl& repl)
         : ResultBase(content),
           qts_(qts.begin(), qts.end()),

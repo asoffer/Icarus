@@ -1,12 +1,12 @@
 #ifndef ICARUS_AST_AST_H
 #define ICARUS_AST_AST_H
 
+#include <span>
 #include <string>
 #include <string_view>
 #include <type_traits>
 #include <vector>
 
-#include "absl/types/span.h"
 #include "ast/build_param_dependency_graph.h"
 #include "ast/declaration.h"
 #include "ast/expression.h"
@@ -291,7 +291,7 @@ struct ParameterizedExpression : Expression {
 
   // Returns a sequence of (parameter-index, dependency-node) pairs ordered in
   // such a way that each has no dependencies on any that come after it.
-  absl::Span<std::pair<int, core::DependencyNode<Declaration>> const>
+  std::span<std::pair<int, core::DependencyNode<Declaration>> const>
   ordered_dependency_nodes() const {
     return ordered_dependency_nodes_;
   }
@@ -494,7 +494,7 @@ struct BlockNode : ParameterizedExpression, WithScope {
       param.value.flags() |= Declaration::f_IsBlockParam;
     }
   }
-  BlockNode(BlockNode &&) noexcept = default;
+  BlockNode(BlockNode &&) noexcept            = default;
   BlockNode &operator=(BlockNode &&) noexcept = default;
 
   std::string_view name() const { return name_range(); }
@@ -570,24 +570,26 @@ struct Call : Expression {
   }
   Expression const *callee() const { return callee_.get(); }
 
-  absl::Span<Argument const> prefix_arguments() const {
-    return absl::MakeConstSpan(arguments_.data(), prefix_split_);
+  std::span<Argument const> prefix_arguments() const {
+    return std::span<Argument const>(arguments_.begin(),
+                                     arguments_.begin() + prefix_split_);
   }
 
-  absl::Span<Argument const> postfix_arguments() const {
-    return absl::MakeConstSpan(arguments_.data() + prefix_split_,
-                               arguments_.size() - prefix_split_);
+  std::span<Argument const> postfix_arguments() const {
+    return std::span<Argument const>(arguments_.begin() + prefix_split_,
+                                     arguments_.end());
   }
 
-  absl::Span<Argument const> arguments() const { return arguments_; }
+  std::span<Argument const> arguments() const { return arguments_; }
 
-  absl::Span<Argument const> named_arguments() const {
-    return absl::MakeConstSpan(arguments_.data() + positional_split_,
-                               arguments_.size() - positional_split_);
+  std::span<Argument const> named_arguments() const {
+    return std::span<Argument const>(arguments_.begin() + positional_split_,
+                                     arguments_.end());
   }
 
-  absl::Span<Argument const> positional_arguments() const {
-    return absl::MakeConstSpan(arguments_.data(), positional_split_);
+  std::span<Argument const> positional_arguments() const {
+    return std::span<Argument const>(arguments_.begin(),
+                                     arguments_.begin() + positional_split_);
   }
 
   auto extract() && {
@@ -652,7 +654,7 @@ struct ComparisonOperator : Expression {
   }
 
   base::PtrSpan<Expression const> exprs() const { return exprs_; }
-  absl::Span<frontend::Operator const> ops() const { return ops_; }
+  std::span<frontend::Operator const> ops() const { return ops_; }
 
   // Returns a source range consisting of the `i`th (zero-indexed) operator and
   // surrounding expressions in this chain of comparison operators.
@@ -713,9 +715,7 @@ struct EnumLiteral : Expression, WithScope {
         enumerators_(std::move(enumerators)),
         values_(std::move(values)),
         kind_(kind) {}
-  absl::Span<std::string_view const> enumerators() const {
-    return enumerators_;
-  }
+  std::span<std::string_view const> enumerators() const { return enumerators_; }
   absl::flat_hash_map<std::string_view, std::unique_ptr<Expression>> const &
   specified_values() const {
     return values_;
@@ -960,9 +960,9 @@ struct ParameterizedStructLiteral : ParameterizedExpression, WithScope {
         WithScope(Scope::Kind::Declarative),
         fields_(std::move(fields)) {}
 
-  absl::Span<Declaration const> fields() const { return fields_; }
+  std::span<Declaration const> fields() const { return fields_; }
 
-  ParameterizedStructLiteral &operator        =(
+  ParameterizedStructLiteral &operator=(
       ParameterizedStructLiteral &&) noexcept = default;
 
   void DebugStrAppend(std::string *out, size_t indent) const override;
@@ -1106,9 +1106,9 @@ struct ScopeNode : Expression {
         blocks_(WithThisAsParent(std::move(blocks))) {}
 
   Expression const *name() const { return name_.get(); }
-  absl::Span<Call::Argument const> arguments() const { return args_; }
+  std::span<Call::Argument const> arguments() const { return args_; }
 
-  absl::Span<BlockNode const> blocks() const { return blocks_; }
+  std::span<BlockNode const> blocks() const { return blocks_; }
 
   Label const *label() const { return label_ ? &*label_ : nullptr; }
   void set_label(Label label) { label_ = std::move(label); }
@@ -1219,7 +1219,7 @@ struct StructLiteral : Expression, WithScope {
         WithScope(Scope::Kind::Declarative),
         fields_(std::move(fields)) {}
 
-  absl::Span<Declaration const> fields() const { return fields_; }
+  std::span<Declaration const> fields() const { return fields_; }
 
   StructLiteral &operator=(StructLiteral &&) noexcept = default;
 
@@ -1286,7 +1286,7 @@ struct YieldStmt : Node {
         args_(std::move(args)),
         label_(std::move(label)) {}
 
-  absl::Span<Call::Argument const> arguments() const { return args_; }
+  std::span<Call::Argument const> arguments() const { return args_; }
   Label const *label() const { return label_.get(); }
 
   void DebugStrAppend(std::string *out, size_t indent) const override;

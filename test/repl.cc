@@ -32,8 +32,10 @@ Repl::TypeCheckResult Repl::type_check(std::string content) {
   source_content_.push_back(std::move(content));
   auto nodes              = frontend::Parse(source_content_.back(), consumer_);
   base::PtrSpan node_span = ast_module_.insert(nodes.begin(), nodes.end());
+
+  semantic_analysis::QualifiedType error = semantic_analysis::Error();
   if (consumer_.num_consumed() != previously_consumed) {
-    return TypeCheckResult(source_content_.back(), {semantic_analysis::Error()},
+    return TypeCheckResult(source_content_.back(), std::span(&error, 1),
                            consumer_.diagnostics(), *this);
   }
 

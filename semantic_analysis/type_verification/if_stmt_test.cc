@@ -58,13 +58,13 @@ TEST(IfStmt, Invalid) {
   }
   {
     test::Repl repl;
-    EXPECT_THAT(
-        repl.type_check(R"(
+    EXPECT_THAT(repl.type_check(R"(
         b: bool
         #{const} if (b) {} else {}
         )"),
-        AllOf(HasQualTypes(),
-              HasDiagnostics(Pair("type-error", "non-constant-condition-error"))));
+                AllOf(HasQualTypes(),
+                      HasDiagnostics(
+                          Pair("type-error", "non-constant-condition-error"))));
   }
 }
 
@@ -143,4 +143,3 @@ TEST(IfStmt, ErrorsInBody) {
 
 }  // namespace
 }  // namespace semantic_analysis
-

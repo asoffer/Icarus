@@ -143,7 +143,7 @@ core::Bytes SizeOf(core::Type t, TypeSystem& ts) {
   } else if (auto a = t.get_if<ArrayType>(ts)) {
     NOT_YET();
   } else if (auto f = t.get_if<core::FunctionType>(ts)) {
-    return core::Bytes::Get<void(*)()>();
+    return core::Bytes::Get<void (*)()>();
   } else {
     NOT_YET();
   }

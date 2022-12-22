@@ -1,12 +1,12 @@
 #ifndef ICARUS_DIAGNOSTIC_CONSUMER_TRACKING_H
 #define ICARUS_DIAGNOSTIC_CONSUMER_TRACKING_H
 
+#include <span>
 #include <string>
 #include <string_view>
 #include <utility>
 #include <vector>
 
-#include "absl/types/span.h"
 #include "diagnostic/consumer/consumer.h"
 
 namespace diagnostic {
@@ -19,7 +19,7 @@ struct TrackingConsumer : DiagnosticConsumer {
     diagnostics_.emplace_back(category, name);
   }
 
-  absl::Span<std::pair<std::string, std::string> const> diagnostics() const {
+  std::span<std::pair<std::string, std::string> const> diagnostics() const {
     return diagnostics_;
   }
 

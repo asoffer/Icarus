@@ -115,7 +115,6 @@ TEST(Scheduler, ReturningSelfReferential) {
   EXPECT_EQ(n2_counter, 11);
 }
 
-
 ReturningTask SkipPhaseZero(ReturnTestScheduler &, Node n) {
   ++*n.counter;
   co_yield ReturningTask::YieldResult<Phase::One>(n, "hello");

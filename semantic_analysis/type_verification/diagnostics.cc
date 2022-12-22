@@ -49,7 +49,9 @@ struct StringifyExpression {
 
   std::string operator()(ast::PatternMatch const *node) { NOT_YET(); }
 
-  std::string operator()(ast::Terminal const *node) { return std::string(node->range()); }
+  std::string operator()(ast::Terminal const *node) {
+    return std::string(node->range());
+  }
 
   std::string operator()(ast::UnaryOperator const *node) { NOT_YET(); }
 

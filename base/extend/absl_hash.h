@@ -13,7 +13,7 @@ struct AbslHashExtension {
   template <typename H>
   friend H AbslHashValue(H h, T const &t) {
     return std::apply(
-        [&](auto const &... fields) {
+        [&](auto const &...fields) {
           return H::combine(std::move(h), fields...);
         },
         t.field_refs());

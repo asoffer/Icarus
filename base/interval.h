@@ -50,7 +50,7 @@ struct IntervalSet {
 
  public:
   struct const_iterator {
-    const_iterator operator++() { return ++++iter_; }
+    const_iterator operator++() { return ++ ++iter_; }
     const_iterator operator++(int) { return iter_++ ++; }
 
     Interval<T> operator*() const { return Interval<T>(*iter_, *(iter_ + 1)); }

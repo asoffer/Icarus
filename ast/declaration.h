@@ -2,11 +2,11 @@
 #define ICARUS_AST_DECLARATION_H
 
 #include <memory>
+#include <span>
 #include <string>
 #include <utility>
 #include <vector>
 
-#include "absl/types/span.h"
 #include "ast/expression.h"
 #include "ast/node.h"
 
@@ -122,7 +122,7 @@ struct Declaration : Expression {
     return static_cast<Kind>(k);
   }
 
-  absl::Span<Id const> ids() const { return ids_; }
+  std::span<Id const> ids() const { return ids_; }
 
   Expression const *type_expr() const { return type_expr_.get(); }
   Expression const *init_val() const { return init_val_.get(); }

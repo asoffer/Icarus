@@ -14,7 +14,6 @@ TEST(FunctionLiteral, NoParameters) {
   bool result;
   jasmin::Execute(f, {}, result);
   EXPECT_TRUE(result);
-
 }
 
 TEST(FunctionLiteral, OneParameter) {

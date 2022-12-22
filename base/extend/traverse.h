@@ -10,7 +10,7 @@ template <typename T>
 struct BaseTraverseExtension {
   template <typename Tr>
   friend void BaseTraverse(Tr &tr, T &t) {
-    std::apply([&](auto &... fields) { base::Traverse(tr, fields...); },
+    std::apply([&](auto &...fields) { base::Traverse(tr, fields...); },
                t.field_refs());
   }
 };

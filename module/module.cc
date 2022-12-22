@@ -138,7 +138,7 @@ void DeserializeForeignSymbols(
     google::protobuf::RepeatedPtrField<internal_proto::ForeignSymbol> const&
         proto,
     semantic_analysis::ForeignFunctionMap& map) {
-  for (auto const & symbol : proto) {
+  for (auto const& symbol : proto) {
     map.ForeignFunction(symbol.name(), DeserializeType(symbol.type()));
   }
 }
@@ -157,14 +157,15 @@ struct SerializationState {
 };
 
 void SerializeFunction(semantic_analysis::IrFunction const& f,
-                       internal_proto::Function& proto, SerializationState& state) {
+                       internal_proto::Function& proto,
+                       SerializationState& state) {
   proto.set_parameters(f.parameter_count());
   proto.set_returns(f.return_count());
   jasmin::Serialize(f, *proto.mutable_content(), state);
 }
 
 void SerializeReadOnlyData(
-    internal_proto::ReadOnlyData & data,
+    internal_proto::ReadOnlyData& data,
     semantic_analysis::PushStringLiteral::serialization_state const& state) {
   for (std::string_view content : state) {
     *data.add_strings() = std::string(content);
@@ -186,8 +187,9 @@ bool Module::Serialize(std::ostream& output) const {
 
   SerializationState state;
 
-  auto& foreign_state = 
-  state.get<semantic_analysis::InvokeForeignFunction::serialization_state>();
+  auto& foreign_state =
+      state
+          .get<semantic_analysis::InvokeForeignFunction::serialization_state>();
   foreign_state.set_foreign_function_map(&foreign_function_map());
   foreign_state.set_map(SerializeForeignSymbols(
       type_system(), foreign_function_map(), *proto.mutable_foreign_symbols()));

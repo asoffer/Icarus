@@ -46,7 +46,7 @@ template <typename... Args>
 void Log(absl::FormatSpec<uintptr_t, std::string_view, size_t,
                           std::string_view> const &log_line_fmt,
          std::experimental::source_location loc, std::string_view fn_name,
-         absl::FormatSpec<Args...> const &fmt, Args const &... args) {
+         absl::FormatSpec<Args...> const &fmt, Args const &...args) {
   absl::MutexLock lock(&base::internal_logging::logger_mtx_);
   absl::FPrintF(stderr, log_line_fmt, CurrentThreadId(),
                 std::string_view(loc.file_name()),
@@ -73,7 +73,7 @@ void DisableLogging(std::string_view key);
           }());                                                                \
           return is_on.load(std::memory_order_relaxed);                        \
         }(k)) {                                                                \
-      [](auto const &... args) {                                               \
+      [](auto const &...args) {                                                \
         ::base::internal_logging::Log(                                         \
             ::base::internal_logging::kDefaultLogFormat,                       \
             ::std::experimental::source_location::current(), kFunc, fmt "\n",  \

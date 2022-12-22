@@ -19,7 +19,7 @@ namespace toolchain {
 bool HelpFilter(std::string_view module) { return true; }
 
 bool Execute(std::string const &input_file,
-             absl::Span<std::string_view const> arguments) {
+             std::span<std::string_view const> arguments) {
   std::ifstream stream(input_file);
   if (not stream.is_open()) {
     std::cerr << "Failed to open '" << input_file << "'.\n";
@@ -57,5 +57,3 @@ int main(int argc, char *argv[]) {
   bool success = toolchain::Execute(absl::GetFlag(FLAGS_input), arguments);
   return success ? 0 : 1;
 }
-
-

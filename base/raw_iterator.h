@@ -2,9 +2,9 @@
 #define ICARUS_BASE_RAW_ITERATOR_H
 
 #include <compare>
+#include <span>
 #include <string>
 
-#include "absl/types/span.h"
 #include "base/unaligned_ref.h"
 
 namespace base::internal {
@@ -58,14 +58,15 @@ struct raw_iterator : raw_const_iterator {
 namespace base {
 
 template <typename T>
-absl::Span<std::byte const> RawConstSpanFrom(T const &value) {
-  return absl::MakeConstSpan(reinterpret_cast<std::byte const *>(&value),
-                             sizeof(T));
+std::span<std::byte const> RawConstSpanFrom(T const &value) {
+  auto const *p = reinterpret_cast<std::byte const *>(&value);
+  return std::span<std::byte const>(p, p + sizeof(T));
 }
 
 template <typename T>
-absl::Span<std::byte> RawSpanFrom(T &value) {
-  return absl::MakeSpan(reinterpret_cast<std::byte *>(&value), sizeof(T));
+std::span<std::byte> RawSpanFrom(T &value) {
+  auto *p = reinterpret_cast<std::byte *>(&value);
+  return std::span<std::byte>(p, p + sizeof(T));
 }
 
 }  // namespace base

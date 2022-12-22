@@ -11,13 +11,13 @@ struct BaseSerializeExtension {
   template <base::Deserializer D>
   friend bool BaseDeserialize(D &d, T &t) {
     return std::apply(
-        [&](auto &... fields) { return base::Deserialize(d, fields...); },
+        [&](auto &...fields) { return base::Deserialize(d, fields...); },
         t.field_refs());
   }
 
   template <base::Serializer S>
   friend void BaseSerialize(S &s, T const &t) {
-    std::apply([&](auto const &... fields) { base::Serialize(s, fields...); },
+    std::apply([&](auto const &...fields) { base::Serialize(s, fields...); },
                t.field_refs());
   }
 };

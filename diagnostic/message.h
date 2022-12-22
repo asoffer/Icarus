@@ -2,6 +2,7 @@
 #define ICARUS_DIAGNOSTIC_MESSAGE_H
 
 #include <algorithm>
+#include <span>
 #include <string>
 #include <variant>
 
@@ -49,7 +50,7 @@ struct Text {
       : message_(absl::StrFormat(format, args...)) {}
 
   char const* c_str() const { return message_.c_str(); }
-  operator std::string const &() const { return message_; }
+  operator std::string const&() const { return message_; }
 
  private:
   std::string message_;
@@ -57,7 +58,7 @@ struct Text {
 
 struct List {
   explicit List(std::vector<std::string> items) : items_(std::move(items)) {}
-  absl::Span<std::string const> items() const { return items_; }
+  std::span<std::string const> items() const { return items_; }
 
  private:
   std::vector<std::string> items_;

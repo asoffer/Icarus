@@ -8,7 +8,6 @@ cc_library(
         "//base:no_destructor",
         "//diagnostic/consumer",
         "//frontend/lex:tag",
-        "@com_google_absl//absl/types:span",
     ],
     test_deps = None,
 )

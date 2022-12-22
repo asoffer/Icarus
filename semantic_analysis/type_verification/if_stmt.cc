@@ -40,7 +40,7 @@ struct NonBooleanCondition {
 
 VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
                                           ast::IfStmt const *node) {
-  absl::Span condition_qts = co_await VerifyTypeOf(&node->condition());
+  std::span condition_qts = co_await VerifyTypeOf(&node->condition());
   switch (condition_qts.size()) {
     case 0: NOT_YET("Log an error");
     case 1: {

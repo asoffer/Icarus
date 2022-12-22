@@ -4,6 +4,7 @@
 #include <coroutine>
 #include <optional>
 #include <queue>
+#include <span>
 #include <utility>
 #include <vector>
 
@@ -333,7 +334,7 @@ struct Scheduler {
       awaiting_.emplace_back(handle, result);
     }
 
-    absl::Span<std::pair<std::coroutine_handle<promise_type>, void*> const>
+    std::span<std::pair<std::coroutine_handle<promise_type>, void*> const>
     awaiting() const {
       return awaiting_;
     }

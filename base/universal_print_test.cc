@@ -4,9 +4,9 @@
 #include <limits>
 #include <map>
 #include <set>
+#include <span>
 #include <vector>
 
-#include "absl/types/span.h"
 #include "gtest/gtest.h"
 
 namespace base {
@@ -154,7 +154,7 @@ TEST(UniversalPrint, Enum) {
 
 TEST(UniversalPrint, AbslSpan) {
   std::vector v{1, 2, 3, 4};
-  absl::Span<int const> span = v;
+  std::span<int const> span = v;
   EXPECT_EQ(UniversalPrintToString(span), "[1, 2, 3, 4]");
 }
 

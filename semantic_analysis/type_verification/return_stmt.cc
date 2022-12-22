@@ -7,7 +7,7 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier& tv,
                                           ast::ReturnStmt const* node) {
   std::vector<core::Type> return_types;
   for (auto const* expr : node->exprs()) {
-    absl::Span qts = co_await VerifyTypeOf(expr);
+    std::span qts = co_await VerifyTypeOf(expr);
     for (QualifiedType qt : qts) {
       if (qt.qualifiers() >= Qualifiers::Error()) {
         NOT_YET();

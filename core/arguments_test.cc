@@ -5,6 +5,7 @@
 
 namespace core {
 namespace {
+using ::testing::ElementsAre;
 using ::testing::Pair;
 using ::testing::UnorderedElementsAre;
 
@@ -44,7 +45,7 @@ TEST(ArgumentsTest, MutableAccess) {
 
 TEST(ArgumentsTest, ConstAccess) {
   Arguments<int> const args({1, 4, 9}, {{"hello", -3}, {"world", -5}});
-  EXPECT_EQ(args.pos(), (std::vector{1, 4, 9}));
+  EXPECT_THAT(args.pos(), ElementsAre(1, 4, 9));
   EXPECT_THAT(args.named(),
               UnorderedElementsAre(Pair("hello", -3), Pair("world", -5)));
   EXPECT_EQ(args.at_or_null("world!"), nullptr);

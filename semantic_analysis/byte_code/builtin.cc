@@ -3,7 +3,8 @@
 
 namespace semantic_analysis {
 
-void ByteCodeValueEmitter::operator()(ast::Builtin const* node, FunctionData data) {
+void ByteCodeValueEmitter::operator()(ast::Builtin const* node,
+                                      FunctionData data) {
   data.function().append<jasmin::Push>(ir::ModuleId::Builtin());
 }
 

@@ -11,7 +11,7 @@ IrFunction ConstructIrFunction(TypeSystem& type_system, core::Type t,
                                void (*fn_ptr)()) {
   auto fn_type           = t.get<core::FunctionType>(type_system);
   auto const& parameters = fn_type.parameters();
-  absl::Span returns     = fn_type.returns();
+  std::span returns      = fn_type.returns();
   IrFunction f(parameters.size(), returns.size());
   ASSERT(returns.size() <= 1);
   f.append<InvokeForeignFunction>(fn_ptr, parameters.data(), parameters.size(),

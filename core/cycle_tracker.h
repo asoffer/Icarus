@@ -3,12 +3,12 @@
 
 #include <algorithm>
 #include <iterator>
+#include <span>
 #include <utility>
 #include <vector>
 
 #include "absl/container/flat_hash_set.h"
 #include "absl/functional/function_ref.h"
-#include "absl/types/span.h"
 #include "base/debug.h"
 
 namespace core {
@@ -22,11 +22,10 @@ struct CycleTracker {
   // If `t` is already tracked by the `CycleTracker`, call `process` with a span
   // of tracked nodes. Otherwise, add `t` as a dependency.
   void push(tracked_type t,
-            absl::FunctionRef<void(absl::Span<tracked_type const>)> process) {
+            absl::FunctionRef<void(std::span<tracked_type const>)> process) {
     if (auto iter = std::find(dependencies_.begin(), dependencies_.end(), t);
         iter != dependencies_.end()) {
-      process(absl::MakeConstSpan(&*iter,
-                                  std::distance(iter, dependencies_.end())));
+      process(std::span<tracked_type const>(iter, dependencies_.end()));
 
       for (; iter != dependencies_.end(); ++iter) {
         error_elements_.insert(*iter);

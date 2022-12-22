@@ -58,7 +58,7 @@ void ValidateOutputPath(std::string_view output) {
 }
 
 absl::StatusOr<std::string> LoadFileContent(
-    std::string const &file_name, absl::Span<std::string const> lookup_paths) {
+    std::string const &file_name, std::span<std::string const> lookup_paths) {
   if (!file_name.starts_with("/")) {
     for (std::string_view base_path : lookup_paths) {
       if (auto maybe_content =

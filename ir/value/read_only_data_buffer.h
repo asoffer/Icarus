@@ -26,7 +26,7 @@ struct ReadOnlyDataBuffer {
                             data.size());
   }
 
-  absl::flat_hash_map<std::string,size_t> data_;
+  absl::flat_hash_map<std::string, size_t> data_;
 };
 
 }  // namespace ir

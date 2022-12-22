@@ -30,14 +30,14 @@ static_assert(not std::is_trivially_copyable_v<TreatedSpecially>);
 struct Serializer {
   explicit Serializer(std::string *output) : output_(output) {}
 
-  void write_bytes(absl::Span<std::byte const> bytes) {
+  void write_bytes(std::span<std::byte const> bytes) {
     output_->append(reinterpret_cast<char const *>(bytes.data()), bytes.size());
   }
 
   template <typename T>
   void write(T const &t) requires(std::is_trivially_copyable_v<T>) {
     auto const *p = reinterpret_cast<std::byte const *>(&t);
-    write_bytes(absl::MakeConstSpan(p, p + sizeof(T)));
+    write_bytes(std::span<std::byte const>(p, p + sizeof(T)));
   }
 
   void write(TreatedSpecially t) { output_->push_back(t.value()); }
@@ -50,9 +50,9 @@ struct Deserializer {
   explicit Deserializer(std::string *input)
       : iter_(input->cbegin()), end_(input->cend()) {}
 
-  absl::Span<std::byte const> read_bytes(size_t num_bytes) {
+  std::span<std::byte const> read_bytes(size_t num_bytes) {
     auto start = std::exchange(iter_, iter_ + num_bytes);
-    return absl::Span<std::byte const>(
+    return std::span<std::byte const>(
         reinterpret_cast<std::byte const *>(&*start), num_bytes);
   }
 
@@ -183,7 +183,7 @@ TEST(RoundTrip, SpecialTreatment) {
 struct SerializerWithDelay {
   explicit SerializerWithDelay(std::string *output) : output_(output) {}
 
-  void write_bytes(absl::Span<std::byte const> bytes) {
+  void write_bytes(std::span<std::byte const> bytes) {
     output_->append(reinterpret_cast<char const *>(bytes.data()), bytes.size());
   }
 
@@ -201,7 +201,7 @@ struct SerializerWithDelay {
 
   void write(int n) {
     auto const *p = reinterpret_cast<std::byte const *>(&n);
-    write_bytes(absl::MakeConstSpan(p, p + sizeof(int)));
+    write_bytes(std::span<std::byte const>(p, p + sizeof(int)));
   }
 
  private:
@@ -212,9 +212,9 @@ struct DeserializerWithDelay {
   explicit DeserializerWithDelay(std::string *input)
       : iter_(input->cbegin()), end_(input->cend()) {}
 
-  absl::Span<std::byte const> read_bytes(size_t num_bytes) {
+  std::span<std::byte const> read_bytes(size_t num_bytes) {
     auto start = std::exchange(iter_, iter_ + num_bytes);
-    return absl::Span<std::byte const>(
+    return std::span<std::byte const>(
         reinterpret_cast<std::byte const *>(&*start), num_bytes);
   }
 

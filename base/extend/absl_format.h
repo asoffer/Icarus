@@ -15,7 +15,7 @@ struct AbslFormatExtension {
   AbslFormatConvert(T const &t, const absl::FormatConversionSpec &spec,
                     absl::FormatSink *s) {
     std::apply(
-        [&](auto const &... fields) {
+        [&](auto const &...fields) {
           s->Append(absl::StrFormat(T::kAbslFormatString, fields...));
         },
         t.field_refs());

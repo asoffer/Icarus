@@ -37,14 +37,14 @@ struct Writer {
   explicit Writer(base::untyped_buffer *buffer)
       : buffer_(*ASSERT_NOT_NULL(buffer)) {}
 
-  void write_bytes(absl::Span<std::byte const> bytes) {
+  void write_bytes(std::span<std::byte const> bytes) {
     buffer_.write(buffer_.size(), bytes.data(), bytes.size());
   }
 
   template <typename T>
   void write(T const &t) requires(std::is_trivially_copyable_v<T>) {
     auto const *p = reinterpret_cast<std::byte const *>(&t);
-    write_bytes(absl::MakeConstSpan(p, p + sizeof(T)));
+    write_bytes(std::span<std::byte const>(p, p + sizeof(T)));
   }
 
  private:
@@ -54,8 +54,8 @@ struct Writer {
 struct Reader {
   explicit Reader(base::untyped_buffer_view::const_iterator iter)
       : iter_(iter) {}
-  absl::Span<std::byte const> read_bytes(size_t count) {
-    absl::Span<std::byte const> span(iter_.raw(), count);
+  std::span<std::byte const> read_bytes(size_t count) {
+    std::span<std::byte const> span(iter_.raw(), count);
     iter_.skip(count);
     return span;
   }
@@ -170,7 +170,7 @@ struct CompleteResultBuffer {
   CompleteResultBuffer() = default;
 
   template <typename... Args>
-  explicit CompleteResultBuffer(Args const &... args) {
+  explicit CompleteResultBuffer(Args const &...args) {
     reserve_bytes(sizeof...(Args), (sizeof(Args) + ... + 0));
     (append(args), ...);
   }
@@ -206,8 +206,8 @@ struct CompleteResultBuffer {
   template <typename S>
   friend void BaseSerialize(S &s, CompleteResultBuffer const &buffer) {
     base::Serialize(s, buffer.offsets_, buffer.buffer_.size());
-    s.write_bytes(absl::Span<std::byte const>(buffer.buffer_.data(),
-                                              buffer.buffer_.size()));
+    s.write_bytes(std::span<std::byte const>(buffer.buffer_.data(),
+                                             buffer.buffer_.size()));
   }
 
   template <typename D>
@@ -252,7 +252,7 @@ struct PartialResultBuffer {
   PartialResultBuffer(CompleteResultBuffer buffer);
 
   template <typename... Args>
-  PartialResultBuffer(Args const &... args) {
+  PartialResultBuffer(Args const &...args) {
     (append(args), ...);
   }
 
@@ -298,8 +298,8 @@ struct PartialResultBuffer {
   template <typename S>
   friend void BaseSerialize(S &s, PartialResultBuffer const &buffer) {
     base::Serialize(s, buffer.offsets_, buffer.buffer_.size());
-    s.write_bytes(absl::Span<std::byte const>(buffer.buffer_.data(),
-                                              buffer.buffer_.size()));
+    s.write_bytes(std::span<std::byte const>(buffer.buffer_.data(),
+                                             buffer.buffer_.size()));
   }
 
   template <typename D>

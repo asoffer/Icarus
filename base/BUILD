@@ -164,7 +164,6 @@ cc_test(
     srcs = ["meta_test.cc"],
     deps = [
         ":meta",
-        "@com_google_absl//absl/types:span",
         "@com_google_googletest//:gtest_main",
     ],
 )
@@ -212,7 +211,6 @@ cc_library(
     hdrs = ["raw_iterator.h"],
     deps = [
         ":unaligned_ref",
-        "@com_google_absl//absl/types:span",
     ],
 )
 
@@ -247,7 +245,6 @@ cc_library(
         ":debug",
         ":meta",
         ":raw_iterator",
-        "@com_google_absl//absl/types:span",
     ],
 )
 
@@ -309,7 +306,6 @@ cc_test(
     srcs = ["universal_print_test.cc"],
     deps = [
         ":universal_print",
-        "@com_google_absl//absl/types:span",
         "@com_google_googletest//:gtest_main",
     ],
 )

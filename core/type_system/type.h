@@ -2,10 +2,10 @@
 #define ICARUS_CORE_TYPE_SYSTEM_TYPE_H
 
 #include <climits>
-#include <optional>
 #include <concepts>
 #include <cstdint>
 #include <cstring>
+#include <optional>
 
 #include "base/meta.h"
 
@@ -18,7 +18,7 @@ constexpr size_t QualifierBits = 8;
 
 // Each kind of type (e.g., sized-integer, pointer, etc) must use the CRTP base
 // `TypeCategory` declared here and defined in "core/type_system.h"
-template <typename , typename... >
+template <typename, typename...>
 struct TypeCategory;
 
 // A `TypeSystem` (declared here and defined in "core/type_system.h") represents

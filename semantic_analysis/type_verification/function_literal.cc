@@ -8,7 +8,7 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier& tv,
   core::Parameters<core::Type> parameters;
   bool has_error = false;
   for (auto const& parameter : node->parameters()) {
-    absl::Span parameter_qts = co_await VerifyTypeOf(&parameter.value);
+    std::span parameter_qts = co_await VerifyTypeOf(&parameter.value);
     if (parameter_qts.size() != 1) {
       NOT_YET("Log an error.", parameter_qts.size());
       has_error = true;
@@ -29,7 +29,7 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier& tv,
   if (std::optional outputs = node->outputs()) {
     std::vector<core::Type> return_types;
     for (auto const* output : *outputs) {
-      absl::Span qualified_types = co_await VerifyTypeOf(output);
+      std::span qualified_types = co_await VerifyTypeOf(output);
       for (QualifiedType qt : qualified_types) {
         if (not(qt.qualifiers() >= Qualifiers::Constant())) {
           NOT_YET("Log an error.");
@@ -44,7 +44,7 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier& tv,
       return_types.push_back(tv.EvaluateAs<core::Type>(output));
     }
 
-    absl::Span<core::Type const> specified_return_types = return_types;
+    std::span<core::Type const> specified_return_types = return_types;
 
     co_yield tv.TypeOf(
         node, Constant(core::FunctionType(tv.type_system(), parameter_type,
@@ -53,7 +53,7 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier& tv,
     for (auto const* stmt : node->stmts()) { co_await VerifyTypeOf(stmt); }
 
     for (auto const* return_stmt : node->returns()) {
-      absl::Span returned_types = tv.context().return_types(return_stmt);
+      std::span returned_types = tv.context().return_types(return_stmt);
 
       if (specified_return_types.size() != returned_types.size()) { NOT_YET(); }
       for (size_t i = 0; i < specified_return_types.size(); ++i) {

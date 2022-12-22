@@ -2,11 +2,11 @@
 #define ICARUS_AST_SCOPE_H
 
 #include <concepts>
+#include <span>
 #include <vector>
 
 #include "absl/container/flat_hash_map.h"
 #include "absl/container/flat_hash_set.h"
-#include "absl/types/span.h"
 #include "ast/ast_fwd.h"
 #include "ast/declaration.h"
 #include "base/cast.h"
@@ -74,7 +74,7 @@ struct Scope : base::Cast<Scope> {
 
     declaration_ancestor_iterator operator++() {
       std::string_view name = ids_[0]->name();
-      ids_.remove_prefix(1);
+      ids_ = ids_.subspan(1);
       FindNext(name);
       return *this;
     }
@@ -100,7 +100,7 @@ struct Scope : base::Cast<Scope> {
     // TODO: We can improve efficiency by stashing `only_constants_` in the low
     // bit of `p_`.
     Scope const *p_;
-    absl::Span<Declaration::Id const *const> ids_;
+    std::span<Declaration::Id const *const> ids_;
     uint8_t only_constants_ : 1 = 0;
     uint8_t only_visible_ : 1   = 0;
   };
@@ -168,12 +168,12 @@ struct Scope : base::Cast<Scope> {
   }
 
   void ForEachNonConstantDeclarationSpan(
-      std::invocable<absl::Span<code_location_t const>> auto &&f) const {
+      std::invocable<std::span<code_location_t const>> auto &&f) const {
     auto start = ordered_non_constant_declarations_.begin();
     auto iter  = std::find_if(
-        start, ordered_non_constant_declarations_.end(),
-        [](code_location_t loc) -> bool { return loc.get_if<Scope>(); });
-    absl::Span<code_location_t const> span(&*start, std::distance(start, iter));
+         start, ordered_non_constant_declarations_.end(),
+         [](code_location_t loc) -> bool { return loc.get_if<Scope>(); });
+    std::span<code_location_t const> span(&*start, std::distance(start, iter));
     if (not span.empty()) { f(span); }
 
     while (iter != ordered_non_constant_declarations_.end()) {
@@ -181,20 +181,20 @@ struct Scope : base::Cast<Scope> {
 
       auto start = std::next(iter);
       iter       = std::find_if(
-          start, ordered_non_constant_declarations_.end(),
-          [](code_location_t loc) -> bool { return loc.get_if<Scope>(); });
-      absl::Span<code_location_t const> span(&*start,
-                                             std::distance(start, iter));
+                start, ordered_non_constant_declarations_.end(),
+                [](code_location_t loc) -> bool { return loc.get_if<Scope>(); });
+      std::span<code_location_t const> span(&*start,
+                                            std::distance(start, iter));
       if (not span.empty()) { f(span); }
     }
   }
 
-  absl::Span<Declaration::Id const *const> VisibleChildren(
+  std::span<Declaration::Id const *const> VisibleChildren(
       std::string_view name) const {
     if (auto iter = child_decls_.find(name); iter != child_decls_.end()) {
       return iter->second;
     }
-    return absl::Span<Declaration::Id const *const>();
+    return std::span<Declaration::Id const *const>();
   }
 
   void embed(module::Module *module) { embedded_modules_.insert(module); }
@@ -205,7 +205,7 @@ struct Scope : base::Cast<Scope> {
 
   // Returns all scopes that are part of the executable scope. Requires that
   // this scope be a root of execution (i.e., have Kind BoundaryExecutable).
-  absl::Span<Scope *const> executable_descendants() const {
+  std::span<Scope *const> executable_descendants() const {
     ASSERT(kind_ == Kind::BoundaryExecutable);
     return executable_descendants_;
   }

@@ -50,7 +50,7 @@ SourceIndexer::Entry &SourceIndexer::EntryFor(std::string_view subcontent) {
   UNREACHABLE();
 }
 
-absl::Span<size_t const> SourceIndexer::Entry::line_starts() {
+std::span<size_t const> SourceIndexer::Entry::line_starts() {
   if (line_terminators_) { return *line_terminators_; }
   line_terminators_.emplace(1, 0);
 
@@ -67,23 +67,23 @@ absl::Span<size_t const> SourceIndexer::Entry::line_starts() {
 
 std::string_view SourceIndexer::Entry::line(size_t n) {
   ASSERT(n > 0);
-  absl::Span line_start_indices = line_starts();
-  size_t start_index            = line_start_indices[n - 1];
-  size_t end_index              = line_start_indices[n];
+  std::span line_start_indices = line_starts();
+  size_t start_index           = line_start_indices[n - 1];
+  size_t end_index             = line_start_indices[n];
   return std::string_view(content_.data() + start_index,
                           end_index - start_index - 1);
 }
 
 size_t SourceIndexer::Entry::line_containing(char const *p) {
-  absl::Span line_start_indices = line_starts();
-  auto iter                     = std::upper_bound(line_start_indices.begin(),
-                               line_start_indices.end(), p - content_.data());
+  std::span line_start_indices = line_starts();
+  auto iter                    = std::upper_bound(line_start_indices.begin(),
+                                                  line_start_indices.end(), p - content_.data());
   return std::distance(line_start_indices.begin(), iter);
 }
 
 std::pair<size_t, size_t> SourceIndexer::Entry::lines_containing(
     std::string_view s) {
-  absl::Span line_start_indices = line_starts();
+  std::span line_start_indices = line_starts();
   auto iter1 =
       std::upper_bound(line_start_indices.begin(), line_start_indices.end(),
                        s.data() - content_.data());

@@ -28,9 +28,9 @@ struct RegOr {
   constexpr RegOr(Reg reg) : reg_(reg), is_reg_(true) {}
   constexpr RegOr(type val) : val_(val), is_reg_(false) {}
 
-  RegOr(RegOr &&)      = default;
-  RegOr(RegOr const &) = default;
-  RegOr &operator=(RegOr &&) = default;
+  RegOr(RegOr &&)                 = default;
+  RegOr(RegOr const &)            = default;
+  RegOr &operator=(RegOr &&)      = default;
   RegOr &operator=(RegOr const &) = default;
 
   constexpr bool is_reg() const { return is_reg_; }

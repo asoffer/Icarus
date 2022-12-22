@@ -33,9 +33,9 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
   if (ast::Access const *access = node->callee()->if_as<ast::Access>();
       access and access->member_name() == "foreign") {
     ASSERT(node->arguments().size() == 2);
-    absl::Span name_argument_qts =
+    std::span name_argument_qts =
         co_await VerifyTypeOf(&node->arguments()[0].expr());
-    absl::Span type_argument_qts =
+    std::span type_argument_qts =
         co_await VerifyTypeOf(&node->arguments()[1].expr());
     ASSERT(name_argument_qts.size() == 1);
     ASSERT(type_argument_qts.size() == 1);
@@ -56,15 +56,15 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
     co_return tv.TypeOf(node, Constant(fn_type));
   }
 
-  absl::Span<absl::flat_hash_map<core::ParameterType,
-                                 Context::CallableIdentifier> const>
+  std::span<absl::flat_hash_map<core::ParameterType,
+                                Context::CallableIdentifier> const>
       callee_parameter_types = co_await VerifyParametersOf(node->callee());
   ASSERT(callee_parameter_types.size() == 1);
 
   core::Arguments<QualifiedType> arguments;
   bool has_error = false;
   for (auto const &argument : node->arguments()) {
-    absl::Span argument_qts = co_await VerifyTypeOf(&argument.expr());
+    std::span argument_qts = co_await VerifyTypeOf(&argument.expr());
     if (argument_qts.size() != 1) {
       NOT_YET("Log an error");
       has_error = true;
@@ -104,7 +104,6 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
     if (not callability_result.ok()) { continue; }
     valid_index = index;
     parameter_types.push_back(&callee_parameter_type);
-
   }
 
   switch (parameter_types.size()) {
@@ -113,10 +112,10 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
       co_return tv.TypeOf(node, Error());
     case 1: {
       auto const &[parameter_type, callable_identifier] = *parameter_types[0];
-      absl::Span callee_qts =
+      std::span callee_qts =
           co_await VerifyTypeOf(&callable_identifier.expression());
       if (callee_qts.size() != 1) { NOT_YET(); }
-      absl::Span<core::Type const> return_types =
+      std::span<core::Type const> return_types =
           callee_qts[0]
               .type()
               .get<core::FunctionType>(tv.type_system())

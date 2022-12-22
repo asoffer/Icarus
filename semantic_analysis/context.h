@@ -15,7 +15,7 @@ namespace semantic_analysis {
 struct Context {
   // Returns the qualified types associated with `expr`. Requires that `expr`
   // already have some qualified types associated with it on this `Context`.
-  absl::Span<QualifiedType const> qualified_types(
+  std::span<QualifiedType const> qualified_types(
       ast::Expression const *expr) const;
 
   // Returns the qualified type associated with `expr`. Requires that `expr`
@@ -26,19 +26,19 @@ struct Context {
   // Sets the qualified types associated with `expr` to be `qualified_types`.
   // Requires that `expr` does not yet have any qualified types associated with
   // it on this `Context.`
-  absl::Span<QualifiedType const> set_qualified_types(
+  std::span<QualifiedType const> set_qualified_types(
       ast::Expression const *expr, std::vector<QualifiedType> qualified_types);
 
   // Sets the qualified types associated with `expr` to be a sequence consisting
   // of just the one value `qualified_type`. Requires that `expr` does not yet
   // have any qualified types associated with it on this `Context.`
-  absl::Span<QualifiedType const> set_qualified_type(
+  std::span<QualifiedType const> set_qualified_type(
       ast::Expression const *expr, QualifiedType qualified_types);
 
   // Given a return statement, returns a view of a collection of the types
   // returned from that return statement. Requires that `set_return_types` was
   // previously called with `return_stmt` as an argument.
-  absl::Span<core::Type const> return_types(
+  std::span<core::Type const> return_types(
       ast::ReturnStmt const *return_stmt) const;
 
   // Given a return statement, and a sequence of types returned from that return
@@ -48,9 +48,9 @@ struct Context {
                         std::vector<core::Type> return_types);
 
   // Inserts space in this `Context` to hold the constant value represented by
-  // `expr` if no such space exists. Returns a pair consisting of a pointer to the
-  // space associated with the value, and a bool indicating whether the space
-  // was inserted (true) or already existed (false).
+  // `expr` if no such space exists. Returns a pair consisting of a pointer to
+  // the space associated with the value, and a bool indicating whether the
+  // space was inserted (true) or already existed (false).
   std::pair<std::vector<std::byte> *, bool> insert_constant(
       ast::Expression const *expr) {
     auto [iter, inserted] = constants_.try_emplace(expr);
@@ -106,8 +106,8 @@ struct Context {
 
   // Sets the parameter types associated with a `ast::ParameterizedExpression`
   // node that can be used to invoke the expression.
-  absl::Span<absl::flat_hash_map<core::ParameterType,
-                                 Context::CallableIdentifier> const>
+  std::span<absl::flat_hash_map<core::ParameterType,
+                                Context::CallableIdentifier> const>
   set_parameters(
       ast::Expression const *expr,
       std::vector<absl::flat_hash_map<core::ParameterType, CallableIdentifier>>
@@ -124,7 +124,7 @@ struct Context {
   // overload is intended to be called. This member function must not have been
   // previously called with `node` as an argument.
   void set_callee(ast::Call const *node, CallableIdentifier const *identifier);
-  
+
  private:
   absl::flat_hash_map<ast::Expression const *, std::vector<QualifiedType>>
       type_;

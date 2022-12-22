@@ -53,4 +53,3 @@ TEST(ProgramArguments, DISABLED_CannotUseAsIdentifier) {
 
 }  // namespace
 }  // namespace semantic_analysis
-

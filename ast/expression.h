@@ -16,9 +16,9 @@ concept ExpressionType =
 struct Expression : Node {
   Expression(int8_t which, std::string_view range) : Node(which, range) {}
 
-  Expression(Expression &&) noexcept      = default;
-  Expression(Expression const &) noexcept = default;
-  Expression &operator=(Expression &&) noexcept = default;
+  Expression(Expression &&) noexcept                 = default;
+  Expression(Expression const &) noexcept            = default;
+  Expression &operator=(Expression &&) noexcept      = default;
   Expression &operator=(Expression const &) noexcept = default;
 
   virtual ~Expression() {}

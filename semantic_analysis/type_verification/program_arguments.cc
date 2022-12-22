@@ -41,4 +41,3 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
 }
 
 }  // namespace semantic_analysis
-

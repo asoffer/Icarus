@@ -22,18 +22,17 @@ TEST(ShortFunctionLiteral, NoParameters) {
 
 TEST(ShortFunctionLiteral, OneParameter) {
   test::Repl repl;
-  EXPECT_THAT(repl.type_check(R"((n: i64) => n)"),
-              AllOf(HasQualTypes(Constant(core::FunctionType(
-                        repl.type_system(),
-                        core::ParameterType(repl.type_system(),
-                                            core::Parameters<core::Type>{
-                                                core::Parameter<core::Type>{
-                                                    .name  = "n",
-                                                    .value = I(64)
-                                                },
-                                            }),
-                        {I(64)}))),
-                    HasDiagnostics()));
+  EXPECT_THAT(
+      repl.type_check(R"((n: i64) => n)"),
+      AllOf(HasQualTypes(Constant(core::FunctionType(
+                repl.type_system(),
+                core::ParameterType(repl.type_system(),
+                                    core::Parameters<core::Type>{
+                                        core::Parameter<core::Type>{
+                                            .name = "n", .value = I(64)},
+                                    }),
+                {I(64)}))),
+            HasDiagnostics()));
 }
 
 TEST(ShortFunctionLiteral, MultipleParameter) {

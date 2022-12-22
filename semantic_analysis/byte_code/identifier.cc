@@ -8,7 +8,7 @@ void ByteCodeValueEmitter::operator()(ast::Identifier const* node,
   if (auto const* id = symbol.get_if<ast::Declaration::Id const>()) {
     auto qt = context().qualified_type(id);
     if (qt.qualifiers() >= Qualifiers::Constant()) {
-      absl::Span<std::byte const> evaluation = EvaluateConstant(id, qt);
+      std::span<std::byte const> evaluation = EvaluateConstant(id, qt);
       if (evaluation.size() <= jasmin::ValueSize) {
         data.function().append<jasmin::Push>(
             jasmin::Value::Load(evaluation.data(), evaluation.size()));

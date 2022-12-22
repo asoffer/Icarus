@@ -138,7 +138,7 @@ struct DereferencingNonPointer {
 
 VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
                                           ast::UnaryOperator const *node) {
-  absl::Span operand_qts = co_await VerifyTypeOf(node->operand());
+  std::span operand_qts = co_await VerifyTypeOf(node->operand());
 
   QualifiedType qt;
 

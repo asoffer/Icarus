@@ -50,9 +50,9 @@ struct untyped_buffer {
     return result;
   }
 
-  untyped_buffer(untyped_buffer &&that) noexcept      = default;
-  untyped_buffer(untyped_buffer const &that) noexcept = default;
-  untyped_buffer &operator=(untyped_buffer &&that) noexcept = default;
+  untyped_buffer(untyped_buffer &&that) noexcept                 = default;
+  untyped_buffer(untyped_buffer const &that) noexcept            = default;
+  untyped_buffer &operator=(untyped_buffer &&that) noexcept      = default;
   untyped_buffer &operator=(untyped_buffer const &that) noexcept = default;
 
   operator untyped_buffer_view() const {

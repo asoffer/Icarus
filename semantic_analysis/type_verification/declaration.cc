@@ -67,7 +67,7 @@ struct NoValidCast {
 
 struct OutOfBoundsConstantInteger {
   static constexpr std::string_view kCategory = "cast-error";
-  static constexpr std::string_view kName     = "out-of-bounds-constant-integer";
+  static constexpr std::string_view kName = "out-of-bounds-constant-integer";
 
   diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(
@@ -82,13 +82,12 @@ struct OutOfBoundsConstantInteger {
   std::string type;
 };
 
-
 }  // namespace
 
 VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
                                           ast::Declaration const *node) {
-  absl::Span<QualifiedType const> initial_value_qts(nullptr, 0);
-  absl::Span<QualifiedType const> type_expr_qts(nullptr, 0);
+  std::span<QualifiedType const> initial_value_qts;
+  std::span<QualifiedType const> type_expr_qts;
 
   switch (node->kind()) {
     case ast::Declaration::kDefaultInit: {
@@ -122,7 +121,7 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
     } break;
     case ast::Declaration::kInferred: {
       // Syntactically: `var := value`, or `var ::= value`
-      if (absl::Span parameters = co_await VerifyParametersOf(node->init_val());
+      if (std::span parameters = co_await VerifyParametersOf(node->init_val());
           parameters.data() != nullptr) {
         ASSERT(parameters.size() == node->ids().size());
         size_t i = 0;

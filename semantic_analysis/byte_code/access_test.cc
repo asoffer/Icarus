@@ -14,5 +14,3 @@ TEST(Access, Evaluation) {
 
 }  // namespace
 }  // namespace semantic_analysis
-
-

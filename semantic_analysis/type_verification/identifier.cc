@@ -37,7 +37,7 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
   absl::flat_hash_map<core::ParameterType, Context::CallableIdentifier>
       parameters_options;
   for (auto const &id : scope.visible_ancestor_declaration_id_named(name)) {
-    absl::Span parameters = co_await VerifyParametersOf(&id);
+    std::span parameters = co_await VerifyParametersOf(&id);
     if (parameters.data() == nullptr) { continue; }
 
     ASSERT(parameters.size() == 1);
@@ -51,7 +51,7 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
   co_yield tv.ParametersOf(node, std::move(parameters_options));
 
   for (auto const &id : scope.visible_ancestor_declaration_id_named(name)) {
-    absl::Span qts = co_await VerifyTypeOf(&id);
+    std::span qts = co_await VerifyTypeOf(&id);
     ASSERT(qts.size() == 1);
 
     if (qts[0].qualifiers() >= Qualifiers::Error()) {
@@ -103,7 +103,7 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
       }
       qt = Error();
       co_return tv.TypeOf(node, qt);
-    } 
+    }
     default: {
       Qualifiers qualifiers = Qualifiers::Constant();
       absl::flat_hash_set<core::Type> member_types;

@@ -37,7 +37,7 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
   Qualifiers qualifiers = Qualifiers::Constant();
 
   for (auto const *p : node->parameters()) {
-    absl::Span parameter_qts = co_await VerifyTypeOf(p);
+    std::span parameter_qts = co_await VerifyTypeOf(p);
     if (parameter_qts.size() != 1) { NOT_YET("log an error"); }
     QualifiedType qt = parameter_qts[0];
     if (qt.qualifiers() >= Qualifiers::Error()) {
@@ -57,7 +57,7 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
   }
 
   for (auto const *out : node->outputs()) {
-    absl::Span out_qts = co_await VerifyTypeOf(out);
+    std::span out_qts = co_await VerifyTypeOf(out);
     if (out_qts.size() != 1) { NOT_YET("log an error"); }
     QualifiedType qt = out_qts[0];
     if (qt.qualifiers() >= Qualifiers::Error()) {

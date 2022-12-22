@@ -2,11 +2,11 @@
 #define ICARUS_FRONTEND_SOURCE_INDEXER_H
 
 #include <memory>
+#include <span>
 #include <string>
 #include <string_view>
 
 #include "absl/container/flat_hash_map.h"
-#include "absl/types/span.h"
 #include "ir/value/module_id.h"
 
 namespace frontend {
@@ -27,10 +27,10 @@ struct SourceIndexer {
   }
 
   struct Entry {
-    Entry(Entry const &) = delete;
-    Entry(Entry &&)      = delete;
+    Entry(Entry const &)            = delete;
+    Entry(Entry &&)                 = delete;
     Entry &operator=(Entry const &) = delete;
-    Entry &operator=(Entry &&) = delete;
+    Entry &operator=(Entry &&)      = delete;
 
     explicit Entry(ir::ModuleId module, std::string content)
         : module_(module), content_(std::move(content)) {}
@@ -55,7 +55,7 @@ struct SourceIndexer {
    private:
     // Returns a span of offsets into `this->content()` determining the indices
     // in `content_` of the first character of each line of text.
-    absl::Span<size_t const> line_starts();
+    std::span<size_t const> line_starts();
 
     std::optional<std::vector<size_t>> line_terminators_;
     const ir::ModuleId module_;

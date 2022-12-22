@@ -13,7 +13,7 @@ struct Visitable {
   constexpr explicit Visitable(int8_t which) : which_(which) {}
 
   template <typename V, typename... Args>
-  auto visit(V &v, Args &&... args) const {
+  auto visit(V &v, Args &&...args) const {
     return vtable<V>(Nodes{},
                      static_cast<typename V::signature *>(nullptr))[which_](
         static_cast<T const *>(this), v, std::forward<Args>(args)...);

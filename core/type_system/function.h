@@ -2,9 +2,9 @@
 #define ICARUS_CORE_TYPE_SYSTEM_FUNCTION_H
 
 #include <memory>
+#include <span>
 #include <utility>
 
-#include "absl/types/span.h"
 #include "core/parameters.h"
 #include "core/type_system/parameter.h"
 #include "core/type_system/type_system.h"
@@ -23,7 +23,7 @@ struct FunctionType
     return parameter_type().value();
   }
 
-  absl::Span<Type const> returns() const { return std::get<1>(decompose()); }
+  std::span<Type const> returns() const { return std::get<1>(decompose()); }
 
   template <TypeSystemSupporting<FunctionType> TS>
   struct End : jasmin::StackMachineInstruction<End<TS>> {

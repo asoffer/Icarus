@@ -2,13 +2,13 @@
 #define ICARUS_CORE_ARGUMENTS_H
 
 #include <concepts>
+#include <span>
 #include <string>
 #include <string_view>
 #include <type_traits>
 #include <vector>
 
 #include "absl/container/flat_hash_map.h"
-#include "absl/types/span.h"
 #include "base/debug.h"
 #include "base/meta.h"
 #include "base/universal_print.h"
@@ -33,7 +33,7 @@ struct Arguments {
   Arguments(std::vector<T> pos, absl::flat_hash_map<StringType, T> named)
       : pos_(std::move(pos)), named_(std::move(named)) {}
 
-  absl::Span<T const> pos() const & { return pos_; }
+  std::span<T const> pos() const & { return pos_; }
   std::vector<T> &&pos() && { return std::move(pos_); }
   std::vector<T> &pos() & { return pos_; }
 
@@ -42,12 +42,12 @@ struct Arguments {
   absl::flat_hash_map<StringType, T> &named() & { return named_; }
 
   template <typename... Args>
-  void pos_emplace(Args &&... args) & {
+  void pos_emplace(Args &&...args) & {
     pos_.emplace_back(std::forward<Args>(args)...);
   }
 
   template <typename... Args>
-  void named_emplace(Args &&... args) & {
+  void named_emplace(Args &&...args) & {
     named_.emplace(std::forward<Args>(args)...);
   }
 
@@ -203,8 +203,7 @@ struct Arguments {
 
   friend std::ostream &operator<<(
       std::ostream &os, Arguments const &arguments) requires(requires {
-    { os << std::declval<T>() }
-    ->std::same_as<std::ostream &>;
+    { os << std::declval<T>() } -> std::same_as<std::ostream &>;
   }) {
     os << "arguments(";
     std::string_view separator = "";
