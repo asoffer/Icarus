@@ -49,9 +49,11 @@ cc_library(
         "access.cc",
         "array_literal.cc",
         "array_type.cc",
+        "binary_operator.cc",
         "builtin.cc",
         "call.cc",
         "cast.cc",
+        "comparison_operator.cc",
         "declaration.cc",
         "function_literal.cc",
         "function_type.cc",
@@ -125,6 +127,16 @@ cc_test(
 cc_test(
     name = "call_test",
     srcs = ["call_test.cc"],
+    deps = [
+        ":verify",
+        "//test:repl",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "comparison_operator_test",
+    srcs = ["comparison_operator_test.cc"],
     deps = [
         ":verify",
         "//test:repl",

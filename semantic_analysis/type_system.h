@@ -223,6 +223,7 @@ inline core::Type U(uint32_t bits) {
 }
 
 bool IsIntegral(core::Type t);
+bool IsNumeric(core::Type t);
 
 std::string DebugQualifiedType(QualifiedType qt, TypeSystem& ts);
 std::string DebugType(core::Type t, TypeSystem& ts);
