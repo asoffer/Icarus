@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <deque>
 #include <optional>
 #include <ostream>
@@ -39,15 +40,21 @@ struct Repl {
               ->size() -
           indentation;
 
-      std::string boundary(length + 2, '-');
-      os << "    +" << boundary << "+\n";
+      os << "    \u256d";
+      std::fill_n(std::ostream_iterator<std::string_view>(os), length + 2,
+                  "\u2500");
+      os << "\u256e\n";
       for (std::string_view line : lines) {
         if (line.size() > indentation) { line.remove_prefix(indentation); }
         ASSERT(length >= line.size());
-        os << "    | " << line << std::string(length - line.size(), ' ')
-           << " |\n";
+        os << "    \u2502 " << line << std::string(length - line.size(), ' ')
+           << " \u2502\n";
       }
-      return os << "    +" << boundary << "+\n";
+      os << "    \u2570";
+      std::fill_n(std::ostream_iterator<std::string_view>(os), length + 2,
+                  "\u2500");
+
+      return os << "\u256f\n";
     }
 
     std::string_view content_;
