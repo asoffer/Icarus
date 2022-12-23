@@ -24,13 +24,43 @@ struct ComparingIncomparables {
   std::string_view view;
 };
 
-bool CanCompare(core::Type lhs, core::Type rhs, frontend::Operator op,
-                TypeSystem &ts) {
+enum class Relation { Unordered, Comparable, Ordered };
+
+Relation Comparison(core::Type lhs, core::Type rhs, TypeSystem &ts) {
   // TODO: This implementation is incomplete and incorrect.
-  if (IsIntegral(lhs) and IsIntegral(rhs)) {
-    return lhs == rhs or lhs == Integer or rhs == Integer;
+  if (IsIntegral(lhs)) {
+    if (IsIntegral(rhs)) { return Relation::Ordered; }
+    if (rhs.is<PrimitiveType>(ts)) { return Relation::Unordered; }
+  } else if (auto lp = lhs.get_if<BufferPointerType>(ts)) {
+    if (lhs == rhs) { return Relation::Ordered; }
+    if (auto rp = rhs.get_if<core::PointerType>(ts)) {
+      return lp->pointee() == rp->pointee() ? Relation::Comparable
+                                            : Relation::Unordered;
+    } else {
+      return Relation::Unordered;
+    }
+  } else if (auto lp = lhs.get_if<core::PointerType>(ts)) {
+    if (auto rp = rhs.get_if<BufferPointerType>(ts)) {
+      return lp->pointee() == rp->pointee() ? Relation::Comparable
+                                            : Relation::Unordered;
+    } else if (auto rp = rhs.get_if<core::PointerType>(ts)) {
+      return lp->pointee() == rp->pointee() ? Relation::Comparable
+                                            : Relation::Unordered;
+    } else {
+      return Relation::Unordered;
+    }
+  } else if (lhs.is<PrimitiveType>(ts)) {
+    if (lhs == Bool or lhs == Char or lhs == Byte or lhs == Type or
+        lhs == Module) {
+      return lhs == rhs ? Relation::Comparable : Relation::Unordered;
+    } else if (lhs== F32 or lhs == F64) {
+      // TODO: Support comparisons to integral types that can be done cheaply.
+      return (rhs == F32 or rhs == F64) ? Relation::Ordered
+                                        : Relation::Unordered;
+    }
   }
-  NOT_YET();
+
+  NOT_YET(DebugType(lhs, ts), DebugType(rhs, ts));
 }
 
 }  // namespace
@@ -58,14 +88,27 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
     auto const *rhs = node->exprs()[i + 1];
     auto lhs_type  = operand_types[i];
     auto rhs_type  = operand_types[i + 1];
+    auto op = node->ops()[i];
 
-    if (not CanCompare(lhs_type, rhs_type, node->ops()[i], tv.type_system())) {
-      tv.ConsumeDiagnostic(ComparingIncomparables{
-          .lhs  = tv.TypeForDiagnostic(*lhs),
-          .rhs  = tv.TypeForDiagnostic(*rhs),
-          .view = node->binary_range(i),
-      });
-      qt = Error(Bool);
+    switch (Comparison(lhs_type, rhs_type, tv.type_system())) {
+      case Relation::Unordered: {
+        tv.ConsumeDiagnostic(ComparingIncomparables{
+            .lhs  = tv.TypeForDiagnostic(*lhs),
+            .rhs  = tv.TypeForDiagnostic(*rhs),
+            .view = node->binary_range(i),
+        });
+        qt = Error(Bool);
+      } break;
+      case Relation::Comparable:
+        if (op != frontend::Operator::Eq and op != frontend::Operator::Ne) {
+          tv.ConsumeDiagnostic(ComparingIncomparables{
+              .lhs  = tv.TypeForDiagnostic(*lhs),
+              .rhs  = tv.TypeForDiagnostic(*rhs),
+              .view = node->binary_range(i),
+          });
+          qt = Error(Bool);
+        }
+      case Relation::Ordered: break;
     }
   }
   co_return tv.TypeOf(node, qt);

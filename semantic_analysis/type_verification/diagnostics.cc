@@ -53,7 +53,10 @@ struct StringifyExpression {
     return std::string(node->range());
   }
 
-  std::string operator()(ast::UnaryOperator const *node) { NOT_YET(); }
+  std::string operator()(ast::UnaryOperator const *node) {
+    // TODO
+    return std::string(node->range());
+  }
 
  private:
   [[maybe_unused]] Context const &context_;
