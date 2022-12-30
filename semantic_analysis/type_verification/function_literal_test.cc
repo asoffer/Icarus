@@ -38,6 +38,16 @@ TEST(FunctionLiteral, Correct) {
                     HasDiagnostics()));
 }
 
+TEST(FunctionLiteral, ConversionInReturn) {
+  test::Repl repl;
+
+  EXPECT_THAT(repl.type_check(R"(() -> i32 { return 0 })"),
+              AllOf(HasQualTypes(Constant(core::FunctionType(
+                        repl.type_system(),
+                        core::ParameterType(repl.type_system(), {}), {I(32)}))),
+                    HasDiagnostics()));
+}
+
 TEST(FunctionLiteral, DISABLED_MissingReturnTypes) {
   test::Repl repl;
 

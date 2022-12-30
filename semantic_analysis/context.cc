@@ -56,13 +56,13 @@ Context::symbol_ref_type Context::symbol(ast::Identifier const *id) const {
 }
 
 void Context::set_return_types(ast::ReturnStmt const *return_stmt,
-                               std::vector<core::Type> return_types) {
+                               std::vector<QualifiedType> return_types) {
   [[maybe_unused]] auto [iter, inserted] =
       returns_.try_emplace(return_stmt, std::move(return_types));
   ASSERT(inserted == true);
 }
 
-std::span<core::Type const> Context::return_types(
+std::span<QualifiedType const> Context::return_types(
     ast::ReturnStmt const *return_stmt) const {
   auto iter = returns_.find(return_stmt);
   ASSERT(iter != returns_.end());

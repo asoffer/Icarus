@@ -35,17 +35,18 @@ struct Context {
   std::span<QualifiedType const> set_qualified_type(
       ast::Expression const *expr, QualifiedType qualified_types);
 
-  // Given a return statement, returns a view of a collection of the types
-  // returned from that return statement. Requires that `set_return_types` was
-  // previously called with `return_stmt` as an argument.
-  std::span<core::Type const> return_types(
+  // Given a return statement, returns a view of a collection of the qualified
+  // types returned from that return statement. Requires that `set_return_types`
+  // was previously called with `return_stmt` as an argument.
+  std::span<QualifiedType const> return_types(
       ast::ReturnStmt const *return_stmt) const;
 
-  // Given a return statement, and a sequence of types returned from that return
-  // statement, stores that association in this `Context`. This member function
-  // must not have been previously called with `return_stmt` as an argument.
+  // Given a return statement, and a sequence of qualified types returned from
+  // that return statement, stores that association in this `Context`. This
+  // member function must not have been previously called with `return_stmt` as
+  // an argument.
   void set_return_types(ast::ReturnStmt const *return_stmt,
-                        std::vector<core::Type> return_types);
+                        std::vector<QualifiedType> return_types);
 
   // Inserts space in this `Context` to hold the constant value represented by
   // `expr` if no such space exists. Returns a pair consisting of a pointer to
@@ -138,7 +139,7 @@ struct Context {
 
   absl::flat_hash_map<ast::Identifier const *, symbol_ref_type> symbols_;
 
-  absl::flat_hash_map<ast::ReturnStmt const *, std::vector<core::Type>>
+  absl::flat_hash_map<ast::ReturnStmt const *, std::vector<QualifiedType>>
       returns_;
 
   absl::node_hash_map<ast::Expression const *, std::vector<std::byte>>

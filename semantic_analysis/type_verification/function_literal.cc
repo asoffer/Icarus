@@ -1,5 +1,6 @@
 #include "ast/ast.h"
 #include "semantic_analysis/type_verification/verify.h"
+#include "semantic_analysis/type_verification/casting.h"
 
 namespace semantic_analysis {
 
@@ -57,9 +58,15 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier& tv,
 
       if (specified_return_types.size() != returned_types.size()) { NOT_YET(); }
       for (size_t i = 0; i < specified_return_types.size(); ++i) {
-        if (specified_return_types[i] != returned_types[i]) {
-          NOT_YET(DebugType(specified_return_types[i], tv.type_system()),
-                  DebugType(returned_types[i], tv.type_system()));
+        switch (CanCast(returned_types[i], specified_return_types[i],
+                        tv.type_system())) {
+          case CastKind::None:
+          case CastKind::Explicit:
+            NOT_YET(DebugType(specified_return_types[i], tv.type_system()),
+                    DebugQualifiedType(returned_types[i], tv.type_system()));
+
+          case CastKind::Implicit:
+          case CastKind::InPlace: continue;
         }
       }
     }

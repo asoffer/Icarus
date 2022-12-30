@@ -5,14 +5,14 @@ namespace semantic_analysis {
 
 VerificationTask TypeVerifier::VerifyType(TypeVerifier& tv,
                                           ast::ReturnStmt const* node) {
-  std::vector<core::Type> return_types;
+  std::vector<QualifiedType> return_types;
   for (auto const* expr : node->exprs()) {
     std::span qts = co_await VerifyTypeOf(expr);
     for (QualifiedType qt : qts) {
       if (qt.qualifiers() >= Qualifiers::Error()) {
         NOT_YET();
       } else {
-        return_types.push_back(qt.type());
+        return_types.push_back(qt);
       }
     }
   }
