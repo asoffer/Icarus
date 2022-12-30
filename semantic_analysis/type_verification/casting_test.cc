@@ -129,5 +129,46 @@ TEST(CanCast, Pointers) {
   EXPECT_EQ(CanCast(QualifiedType(ppi), ppf, type_system), CastKind::None);
 }
 
+TEST(CanCast, Slices) {
+  TypeSystem type_system;
+
+  core::Type bi = BufferPointerType(type_system, I(32));
+  core::Type pi = core::PointerType(type_system, I(32));
+
+  core::Type sbi  = SliceType(type_system, bi);
+  core::Type spi  = SliceType(type_system, pi);
+  core::Type sf32 = SliceType(type_system, F32);
+  core::Type sf64 = SliceType(type_system, F64);
+
+  EXPECT_EQ(CanCast(QualifiedType(sbi), sbi, type_system), CastKind::InPlace);
+  EXPECT_EQ(CanCast(QualifiedType(sbi), spi, type_system), CastKind::InPlace);
+  EXPECT_EQ(CanCast(QualifiedType(sbi), I(32), type_system), CastKind::None);
+  EXPECT_EQ(CanCast(QualifiedType(sbi), bi, type_system), CastKind::None);
+  EXPECT_EQ(CanCast(QualifiedType(sbi), pi, type_system), CastKind::None);
+  EXPECT_EQ(CanCast(QualifiedType(sbi), sf64, type_system), CastKind::None);
+
+  EXPECT_EQ(CanCast(Constant(sbi), sbi, type_system), CastKind::InPlace);
+  EXPECT_EQ(CanCast(Constant(sbi), spi, type_system), CastKind::InPlace);
+  EXPECT_EQ(CanCast(Constant(sbi), I(32), type_system), CastKind::None);
+  EXPECT_EQ(CanCast(Constant(sbi), bi, type_system), CastKind::None);
+  EXPECT_EQ(CanCast(Constant(sbi), pi, type_system), CastKind::None);
+  EXPECT_EQ(CanCast(Constant(sbi), sf64, type_system), CastKind::None);
+
+  EXPECT_EQ(CanCast(QualifiedType(spi), sbi, type_system), CastKind::None);
+  EXPECT_EQ(CanCast(QualifiedType(spi), spi, type_system), CastKind::InPlace);
+  EXPECT_EQ(CanCast(QualifiedType(spi), I(32), type_system), CastKind::None);
+  EXPECT_EQ(CanCast(QualifiedType(spi), bi, type_system), CastKind::None);
+  EXPECT_EQ(CanCast(QualifiedType(spi), pi, type_system), CastKind::None);
+  EXPECT_EQ(CanCast(QualifiedType(spi), sf64, type_system), CastKind::None);
+
+  EXPECT_EQ(CanCast(QualifiedType(sf64), sbi, type_system), CastKind::None);
+  EXPECT_EQ(CanCast(QualifiedType(sf64), spi, type_system), CastKind::None);
+  EXPECT_EQ(CanCast(QualifiedType(sf64), I(32), type_system), CastKind::None);
+  EXPECT_EQ(CanCast(QualifiedType(sf64), bi, type_system), CastKind::None);
+  EXPECT_EQ(CanCast(QualifiedType(sf64), pi, type_system), CastKind::None);
+  EXPECT_EQ(CanCast(QualifiedType(sf64), sf64, type_system), CastKind::InPlace);
+  EXPECT_EQ(CanCast(QualifiedType(sf64), sf32, type_system), CastKind::None);
+}
+
 }  // namespace
 }  // namespace semantic_analysis

@@ -106,6 +106,16 @@ CastKind CanCast(QualifiedType from, core::Type to, TypeSystem& type_system) {
         return CastKind::InPlace;
       } else {
         return CastKind::None;
+     }
+    } else if constexpr (category_type == base::meta<SliceType>) {
+      auto to_slice = to.get_if<SliceType>(type_system);
+      if (to_slice and
+          CanCast(
+              QualifiedType(from.type().get<SliceType>(type_system).pointee()),
+              to_slice->pointee(), type_system) == CastKind::InPlace) {
+        return CastKind::InPlace;
+      } else {
+        return CastKind::None;
       }
     } else {
       NOT_YET(DebugQualifiedType(from, type_system), " -> ",
