@@ -61,6 +61,10 @@ CastKind CanCast(QualifiedType from, core::Type to, TypeSystem& type_system) {
             // Type-checking must additionally compute the value and determine
             // if the value is within range.
             return CastKind::Implicit;
+          } else if (to == F32 or to == F64) {
+            // Type-checking must additionally compute the value and determine
+            // if the value is within range.
+            return CastKind::Implicit;
           } else {
             return CastKind::None;
           }

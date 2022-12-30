@@ -231,6 +231,14 @@ struct BinaryOperator : Expression {
   Expression const &rhs() const { return *rhs_; }
   Kind kind() const { return kind_; }
 
+  std::string_view operator_range() const {
+    auto start = lhs().range().end();
+    auto end   = rhs().range().rbegin();
+    while (std::isspace(*start)) { ++start; }
+    while (std::isspace(*end)) { ++end; }
+    return std::string_view(start, end.base());
+  }
+
   auto extract() && { return std::pair{std::move(lhs_), std::move(rhs_)}; }
 
   void DebugStrAppend(std::string *out, size_t indent) const override;

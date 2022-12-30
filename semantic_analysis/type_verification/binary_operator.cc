@@ -24,6 +24,23 @@ struct UnexpandedBinaryOperatorArgument {
   std::string_view view;
 };
 
+struct LogicalBinaryOperatorNeedsBool {
+  static constexpr std::string_view kCategory = "type-error";
+  static constexpr std::string_view kName =
+      "logical-binary-operator-needs-bool";
+
+  diagnostic::DiagnosticMessage ToMessage() const {
+    return diagnostic::DiagnosticMessage(
+        diagnostic::Text("Operator '%s' must be called with boolean arguments.",
+                         ast::BinaryOperator::Symbol(kind)),
+        diagnostic::SourceQuote().Highlighted(view,
+                                              diagnostic::Style::ErrorText()));
+  }
+
+  ast::BinaryOperator::Kind kind;
+  std::string_view view;
+};
+
 template <char Op>
 core::Type VerifyArithmeticOperatorImpl(TypeVerifier &tv,
                                         ast::BinaryOperator const *node,
@@ -33,6 +50,18 @@ core::Type VerifyArithmeticOperatorImpl(TypeVerifier &tv,
     if (lhs == rhs) { return lhs; }
     if (lhs == Integer) { return rhs; }
     if (rhs == Integer) { return lhs; }
+    NOT_YET();
+  } else if (lhs == F64) {
+    if (rhs == F64 or rhs == Integer) { return F64; }
+    NOT_YET();
+  } else if (rhs == F64) {
+    if (lhs == Integer) { return F64; }
+    NOT_YET();
+  } else if (lhs == F32) {
+    if (rhs == F32 or rhs == Integer) { return F32; }
+    NOT_YET();
+  } else if (rhs == F32) {
+    if (lhs == Integer) { return F32; }
     NOT_YET();
   } else {
     NOT_YET();
@@ -45,7 +74,7 @@ QualifiedType VerifyArithmeticOperator(TypeVerifier &tv,
                                        QualifiedType lhs, QualifiedType rhs) {
   auto t = VerifyArithmeticOperatorImpl<Op>(tv, node, lhs.type(), rhs.type());
   return QualifiedType(
-      t, lhs.qualifiers() & rhs.qualifiers() & Qualifiers::Constant());
+      t, lhs.qualifiers() & rhs.qualifiers() & Qualifiers::Temporary());
 }
 
 }  // namespace
@@ -53,9 +82,9 @@ QualifiedType VerifyArithmeticOperator(TypeVerifier &tv,
 VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
                                           ast::BinaryOperator const *node) {
   std::span lhs_qts = co_await VerifyTypeOf(&node->lhs());
-  std::span rhs_qts = co_await VerifyTypeOf(&node->lhs());
+  std::span rhs_qts = co_await VerifyTypeOf(&node->rhs());
 
-  bool can_continue;
+  bool can_continue = true;
   if (lhs_qts.size() != 1) {
     tv.ConsumeDiagnostic(UnexpandedBinaryOperatorArgument{
         .num_arguments = lhs_qts.size(),
@@ -96,15 +125,26 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
     } break;
     case ast::BinaryOperator::Kind::And:
     case ast::BinaryOperator::Kind::Or:
-    case ast::BinaryOperator::Kind::Xor:
+    case ast::BinaryOperator::Kind::Xor: {
+      if (lhs_qt.type() == Bool and rhs_qt.type() == Bool) {
+        qt = QualifiedType(Bool, lhs_qt.qualifiers() & rhs_qt.qualifiers() &
+                                     Qualifiers::Temporary());
+      } else {
+        // `and`, `or`, and `xor` cannot be overloaded.
+        tv.ConsumeDiagnostic(LogicalBinaryOperatorNeedsBool{
+            .kind = node->kind(),
+            .view = node->operator_range(),
+        });
+        qt = Error();
+      }
+    } break;
     case ast::BinaryOperator::Kind::SymbolAnd:
     case ast::BinaryOperator::Kind::SymbolOr:
     case ast::BinaryOperator::Kind::SymbolXor:
     case ast::BinaryOperator::Kind::BlockJump: NOT_YET();
   }
+
   co_return tv.TypeOf(node, qt);
 }
 
 }  // namespace semantic_analysis
-
-

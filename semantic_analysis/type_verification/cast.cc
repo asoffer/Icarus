@@ -36,7 +36,7 @@ struct NonConstantTypeInDeclaration {
 
 struct NoViableCast {
   static constexpr std::string_view kCategory = "type-error";
-  static constexpr std::string_view kName     = "non-viable-cast";
+  static constexpr std::string_view kName     = "no-viable-cast";
 
   diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(

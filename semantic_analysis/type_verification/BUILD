@@ -105,6 +105,16 @@ cc_test(
 )
 
 cc_test(
+    name = "binary_operator_test",
+    srcs = ["binary_operator_test.cc"],
+    deps = [
+        ":verify",
+        "//test:repl",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_test(
     name = "builtin_test",
     srcs = ["builtin_test.cc"],
     deps = [

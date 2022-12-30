@@ -33,6 +33,10 @@ struct Qualifiers {
   // buffer, making it meaningful to do arithmetic on the the address.
   static constexpr Qualifiers Buffer() { return Qualifiers(0b0110); }
 
+  // Qualifiers::Temporary() is a qualifier indicating the corresponding
+  // expressions has no guaranteed location in memory.
+  static constexpr Qualifiers Temporary() { return ~Buffer(); }
+
   // Qualifiers::Error() is a qualifier indicating the an error was found during
   // type-checking of the corresponding expression. There was sufficient
   // information that we can reasonably proceed with the expression's computed
