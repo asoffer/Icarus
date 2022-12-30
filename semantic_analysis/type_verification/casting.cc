@@ -74,6 +74,39 @@ CastKind CanCast(QualifiedType from, core::Type to, TypeSystem& type_system) {
         case Primitive::Module:
         case Primitive::Error: return CastKind::None;
       }
+    } else if constexpr (category_type == base::meta<BufferPointerType>) {
+      if (auto to_ptr = to.get_if<BufferPointerType>(type_system)) {
+        if (CanCast(
+                QualifiedType(
+                    from.type().get<BufferPointerType>(type_system).pointee()),
+                to_ptr->pointee(), type_system) == CastKind::InPlace) {
+          return CastKind::InPlace;
+        } else {
+          return CastKind::None;
+        }
+      }
+
+      if (auto to_ptr = to.get_if<core::PointerType>(type_system)) {
+        if (CanCast(
+                QualifiedType(
+                    from.type().get<BufferPointerType>(type_system).pointee()),
+                to_ptr->pointee(), type_system) == CastKind::InPlace) {
+          return CastKind::InPlace;
+        } else {
+          return CastKind::None;
+        }
+      }
+    } else if constexpr (category_type == base::meta<core::PointerType>) {
+      auto to_ptr = to.get_if<core::PointerType>(type_system);
+      if (to_ptr and
+          CanCast(
+              QualifiedType(
+                  from.type().get<core::PointerType>(type_system).pointee()),
+              to_ptr->pointee(), type_system) == CastKind::InPlace) {
+        return CastKind::InPlace;
+      } else {
+        return CastKind::None;
+      }
     } else {
       NOT_YET(DebugQualifiedType(from, type_system), " -> ",
               DebugType(to, type_system));
