@@ -69,5 +69,17 @@ TEST(CanCast, Integers) {
             CastKind::None);
 }
 
+TEST(CanCast, FloatingPoint) {
+  TypeSystem type_system;
+  EXPECT_EQ(CanCast(QualifiedType(F32), F32, type_system), CastKind::InPlace);
+  EXPECT_EQ(CanCast(QualifiedType(F32), F64, type_system), CastKind::Implicit);
+  EXPECT_EQ(CanCast(QualifiedType(F64), F32, type_system), CastKind::None);
+  EXPECT_EQ(CanCast(QualifiedType(F64), F64, type_system), CastKind::InPlace);
+  EXPECT_EQ(CanCast(Constant(F32), F32, type_system), CastKind::InPlace);
+  EXPECT_EQ(CanCast(Constant(F32), F64, type_system), CastKind::Implicit);
+  EXPECT_EQ(CanCast(Constant(F64), F32, type_system), CastKind::None);
+  EXPECT_EQ(CanCast(Constant(F64), F64, type_system), CastKind::InPlace);
+}
+
 }  // namespace
 }  // namespace semantic_analysis

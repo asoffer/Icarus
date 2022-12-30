@@ -53,8 +53,9 @@ CastKind CanCast(QualifiedType from, core::Type to, TypeSystem& type_system) {
         case Primitive::Bool: NOT_YET();
         case Primitive::Char: NOT_YET();
         case Primitive::Byte: NOT_YET();
-        case Primitive::F32: NOT_YET();
-        case Primitive::F64: NOT_YET();
+        case Primitive::F32:
+          return to == F64 ? CastKind::Implicit : CastKind::None;
+        case Primitive::F64: return CastKind::None;
         case Primitive::Integer:
           if (from.qualifiers() >= Qualifiers::Constant() and
               to.is<core::SizedIntegerType>(type_system)) {
