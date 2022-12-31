@@ -5,6 +5,7 @@
 #include <string>
 #include <string_view>
 #include <type_traits>
+#include <variant>
 #include <vector>
 
 #include "ast/build_param_dependency_graph.h"
@@ -16,8 +17,10 @@
 #include "base/untyped_buffer.h"
 #include "core/arguments.h"
 #include "core/parameters.h"
+#include "core/type_system/type.h"
 #include "frontend/lex/operators.h"
 #include "ir/value/addr.h"
+#include "ir/value/integer.h"
 #include "ir/value/label.h"
 #include "ir/value/result_buffer.h"
 #include "semantic_analysis/type_system.h"
@@ -1031,20 +1034,32 @@ struct ReturnStmt : Node {
 // typically numeric literals, or expressions that are also keywords such as
 // `true`, `false`, or `null`.
 struct Terminal : Expression {
+ private:
+  using variant_type = std::variant<bool, ir::Char, ir::Integer, double,
+                                    ir::addr_t, core::Type, std::string>;
+ public:
+  explicit Terminal(std::string_view range, variant_type value)
+      : Expression(IndexOf<Terminal>(), range), value_(std::move(value)) {}
+
   template <typename T>
-  explicit Terminal(std::string_view range, T const &value)
-      : Expression(IndexOf<Terminal>(), range), type_(base::meta<T>) {
-    value_.append(value);
+  T const &value() const {
+    return std::get<T>(value_);
   }
-  ir::CompleteResultRef value() const { return value_[0]; }
-  base::MetaValue type() const { return type_; }
+
+  base::MetaValue type() const {
+    static std::array<base::MetaValue, 7> Types{
+        base::meta<bool>,       base::meta<ir::Char>,   base::meta<ir::Integer>,
+        base::meta<double>,     base::meta<ir::addr_t>, base::meta<core::Type>,
+        base::meta<std::string>};
+
+    return Types[value_.index()];
+  };
 
   void DebugStrAppend(std::string *out, size_t indent) const override;
   void Initialize(Node::Initializer &initializer) override;
 
  private:
-  ir::CompleteResultBuffer value_;
-  base::MetaValue type_;
+  variant_type value_;
 };
 
 // ScopeLiteral:

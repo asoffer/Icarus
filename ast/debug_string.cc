@@ -407,49 +407,7 @@ void ParameterizedStructLiteral::DebugStrAppend(std::string *out,
 }
 
 void Terminal::DebugStrAppend(std::string *out, size_t indent) const {
-  if (type() == base::meta<ir::Integer>) {
-    absl::StrAppend(out, value().get<ir::Integer>().value());
-  } else if (type() == base::meta<bool>) {
-    absl::StrAppend(out, value().get<bool>() ? "true" : "false");
-  } else if (type() == base::meta<ir::Char>) {
-    char c = value().get<ir::Char>();
-    out->push_back('!');
-    switch (c) {
-      case '\a':
-        out->push_back('\\');
-        out->push_back('a');
-        break;
-      case '\b':
-        out->push_back('\\');
-        out->push_back('b');
-        break;
-      case '\n':
-        out->push_back('\\');
-        out->push_back('n');
-        break;
-      case '\t':
-        out->push_back('\\');
-        out->push_back('t');
-        break;
-      case '\v':
-        out->push_back('\\');
-        out->push_back('v');
-        break;
-      default: out->push_back(c); break;
-    }
-  } else if (type() == base::meta<double>) {
-    absl::StrAppend(out, value().get<double>());
-  } else if (type() == base::meta<ir::addr_t>) {
-    absl::StrAppend(out, "null");
-  } else if (type() == base::meta<core::Type>) {
-    absl::StrAppend(out, range());
-  } else if (type() == base::meta<ir::Slice>) {
-    ir::Slice s = value().get<ir::Slice>();
-    absl::StrAppend(
-        out,
-        std::string_view(reinterpret_cast<char const *>(s.data()), s.length()));
-  }
-  // TODO: Make this better
+  out->append(range());
 }
 
 void UnaryOperator::DebugStrAppend(std::string *out, size_t indent) const {

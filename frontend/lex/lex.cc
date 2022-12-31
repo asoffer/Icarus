@@ -517,7 +517,7 @@ restart:
 
       auto iter = GlobalStringTable.insert(std::move(str)).first;
       return Lexeme(std::make_unique<ast::Terminal>(
-          range, ir::Slice(ir::Addr(iter->data()), iter->size())));
+          range, *iter));
 
     } break;
     case '#': {
