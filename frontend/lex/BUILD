@@ -12,7 +12,6 @@ cc_library(
         "//diagnostic/consumer",
         "//ir/value:hashtag",
         "//ir/value:integer",
-        "//ir/value:slice",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/container:node_hash_set",
         "@com_google_absl//absl/status:statusor",

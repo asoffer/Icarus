@@ -39,7 +39,6 @@ cc_library(
     ],
     deps = [
         "//ast",
-        "//ir/value:slice",
         "//module",
         "//semantic_analysis:context",
         "//semantic_analysis:instruction_set",

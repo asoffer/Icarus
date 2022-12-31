@@ -13,7 +13,6 @@
 #include "frontend/lex/operators.h"
 #include "frontend/lex/syntax.h"
 #include "ir/value/integer.h"
-#include "ir/value/slice.h"
 #include "semantic_analysis/type_system.h"
 
 namespace frontend {

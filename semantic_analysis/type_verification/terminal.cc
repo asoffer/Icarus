@@ -1,7 +1,6 @@
 #include "ast/ast.h"
 #include "core/type_system/type.h"
 #include "ir/value/integer.h"
-#include "ir/value/slice.h"
 #include "semantic_analysis/type_verification/verify.h"
 
 namespace semantic_analysis {

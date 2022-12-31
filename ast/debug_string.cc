@@ -5,7 +5,6 @@
 #include "core/type_system/type.h"
 #include "ir/value/char.h"
 #include "ir/value/integer.h"
-#include "ir/value/slice.h"
 
 namespace ast {
 namespace {

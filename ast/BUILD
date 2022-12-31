@@ -47,8 +47,6 @@ cc_library(
         "//ir/value:char",
         "//ir/value:integer",
         "//ir/value:label",
-        "//ir/value:result_buffer",
-        "//ir/value:slice",
         "//semantic_analysis:type_system",
         "@com_google_absl//absl/cleanup",
         "@com_google_absl//absl/container:node_hash_map",

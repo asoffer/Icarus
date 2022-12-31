@@ -22,7 +22,6 @@
 #include "ir/value/addr.h"
 #include "ir/value/integer.h"
 #include "ir/value/label.h"
-#include "ir/value/result_buffer.h"
 #include "semantic_analysis/type_system.h"
 
 namespace ast {

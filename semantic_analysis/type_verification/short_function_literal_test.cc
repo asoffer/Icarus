@@ -1,6 +1,5 @@
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
-#include "ir/value/slice.h"
 #include "semantic_analysis/type_verification/verify.h"
 #include "test/repl.h"
 
