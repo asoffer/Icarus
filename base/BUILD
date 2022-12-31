@@ -11,7 +11,7 @@ cc_library(
     hdrs = ["debug.h"],
     deps = [
         ":log",
-        ":universal_print",
+        "@com_google_absl//absl/strings",
     ],
 )
 

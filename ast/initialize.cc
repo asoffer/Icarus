@@ -36,7 +36,7 @@ OrderedDependencyNodes(ast::ParameterizedExpression const* node) {
   BuildParamDependencyGraph(node->parameters())
       .topologically([&](auto dep_node) {
         if (not deps.contains(dep_node)) { return; }
-        LOG("OrderedDependencyNodes", "adding %s`%s`", dep_node,
+        LOG("OrderedDependencyNodes", "adding %v`%v`", dep_node,
             absl::StrJoin(dep_node.node()->ids(), ", ",
                           [](std::string* out, ast::Declaration::Id const& id) {
                             absl::StrAppend(out, id.name());

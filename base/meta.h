@@ -85,6 +85,11 @@ struct MetaValue {
   template <typename T>
   friend struct Meta;
 
+  template <typename S>
+  friend void AbslStringify(S& stringifier, MetaValue m) {
+    stringifier.Append(m.name());
+  }
+
   friend std::ostream& operator<<(std::ostream& os, MetaValue m) {
     return os << m.name();
   }
@@ -111,6 +116,11 @@ struct Meta {
   /* implicit */ operator MetaValue() const { return value(); }
 
   char const* name() const { return name_; }
+
+  template <typename S>
+  friend void AbslStringify(S& stringifier, Meta) {
+    stringifier.Append(name_);
+  }
 
   friend std::ostream& operator<<(std::ostream& os, Meta) {
     return os << name_;

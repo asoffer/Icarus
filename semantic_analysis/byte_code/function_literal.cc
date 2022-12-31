@@ -24,7 +24,6 @@ void ByteCodeValueEmitter::operator()(ast::FunctionLiteral const* node,
         }
       });
   fn_ptr->append<jasmin::StackAllocate>(offset.value());
-  fn_ptr->append<MyStore>();
 
   size_t parameter_index = 0;
   node->body_scope().ForEachNonConstantDeclaration(

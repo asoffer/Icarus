@@ -1,8 +1,8 @@
 #ifndef ICARUS_BASE_DEBUG_H
 #define ICARUS_BASE_DEBUG_H
 
+#include "absl/strings/str_cat.h"
 #include "base/log.h"
-#include "base/universal_print.h"
 
 #if defined(ICARUS_DEBUG)
 
@@ -99,18 +99,13 @@ struct Asserter {
           "    \033[0;1;37mExpected:\033[0m %s\n"
           "         \033[0;1;37mLHS:\033[0m %s\n"
           "         \033[0;1;37mRHS:\033[0m %s\n",
-          result.expr_string, ::base::UniversalPrintToString(result.lhs),
-          ::base::UniversalPrintToString(result.rhs));
+          result.expr_string, result.lhs, result.rhs);
     }
     return result.matched;
   }
 };
 
 }  // namespace debug
-
-// TODO: On both of the calls below, we could improve performance. Rather than
-// UniversalPrintToString, we could add a LogPrinter that printed directly to
-// the log without the intermediate string type.
 
 #define ASSERT_NOT_NULL(expr)                                                  \
   ([](auto&& ptr,                                                              \
@@ -124,8 +119,11 @@ struct Asserter {
 
 #define UNREACHABLE(...)                                                       \
   do {                                                                         \
-    LOG("", "Unreachable code-path.\n%s",                                      \
-        ::base::UniversalPrintToString(std::forward_as_tuple(__VA_ARGS__)));   \
+    LOG("", "Unreachable code-path.\n%s", [&](auto&&... args) {                \
+      std::string s;                                                           \
+      absl::StrAppend(&s, args...);                                            \
+      return s;                                                                \
+    }(__VA_ARGS__));                                                           \
     std::abort();                                                              \
   } while (false)
 
@@ -144,8 +142,11 @@ struct Asserter {
 
 #define NOT_YET(...)                                                           \
   do {                                                                         \
-    LOG("", "Not yet implemented.\n%s",                                        \
-        ::base::UniversalPrintToString(std::forward_as_tuple(__VA_ARGS__)));   \
+    LOG("", "Not yet implemented.\n%s", [&](auto&&... args) {                  \
+      std::string s;                                                           \
+      absl::StrAppend(&s, args...);                                            \
+      return s;                                                                \
+    }(__VA_ARGS__));                                                           \
     std::abort();                                                              \
   } while (false)
 

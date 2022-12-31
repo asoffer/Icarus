@@ -45,9 +45,6 @@ CastKind CanCast(QualifiedType from, core::Type to, TypeSystem& type_system) {
           }
         }
       }
-
-      LOG("", "%s", DebugType(from_type, type_system));
-
     } else if constexpr (category_type == base::meta<PrimitiveType>) {
       switch (from_type.value()) {
         case Primitive::Bool: NOT_YET();

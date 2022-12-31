@@ -19,7 +19,6 @@ void ByteCodeValueEmitter::operator()(ast::Identifier const* node,
       data.function().append<jasmin::StackOffset>(data.OffsetFor(id));
       core::Bytes bytes_to_load = SizeOf(qt.type(), type_system());
       data.function().append<jasmin::Load>(bytes_to_load.value());
-      LOG("", "Here");
     }
   }
 }

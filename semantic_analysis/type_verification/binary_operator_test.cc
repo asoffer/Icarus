@@ -44,12 +44,6 @@ TEST_P(BinaryOperatorSameTypeTest, ConstantSuccess) {
 TEST_P(BinaryOperatorSameTypeTest, MixedConstnessSuccess) {
   test::Repl repl;
   auto [type, op] = GetParam();
-  LOG("", R"(
-  x ::= 1 as %s
-  y := 2 as %s
-  x %s y
-  )",
-      StringOf(type), StringOf(type), op);
   EXPECT_THAT(
       repl.type_check(absl::StrFormat(R"(
   x ::= 1 as %s
@@ -127,12 +121,6 @@ TEST_P(LogicOperatorTest, ConstantSuccess) {
 
 TEST_P(LogicOperatorTest, MixedConstnessSuccess) {
   test::Repl repl;
-  LOG("", R"(
-  x ::= true
-  y := false
-  x %s y
-  )",
-        GetParam());
   EXPECT_THAT(repl.type_check(absl::StrFormat(R"(
   x ::= true
   y := false

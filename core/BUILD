@@ -76,6 +76,7 @@ cc_library(
     deps = [
         "//base:extend",
         "//base/extend:absl_hash",
+        "@com_google_absl//absl/strings:str_format",
     ]
 )
 

@@ -1,5 +1,6 @@
 #include "base/untyped_buffer.h"
 
+#include "base/universal_print.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 

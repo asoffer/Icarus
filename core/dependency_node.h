@@ -4,6 +4,7 @@
 #include <ostream>
 #include <utility>
 
+#include "absl/strings/str_format.h"
 #include "base/extend.h"
 #include "base/extend/absl_hash.h"
 
@@ -50,14 +51,22 @@ struct DependencyNode
     return static_cast<DependencyNodeKind>(node_ & 3);
   }
 
+  template <typename S>
+  friend void AbslStringify(S &stringifier, DependencyNode n) {
+    stringifier.Append(Prefixes[static_cast<int>(n.kind())]);
+    stringifier.Append(absl::StrFormat("%p", n.node()));
+  }
+
   friend std::ostream &operator<<(std::ostream &os, DependencyNode n) {
-    static constexpr std::array<char const *, 4> prefixes = {
-        "param-type-", "param-value-", "arg-type-", "arg-value-"};
-    return os << prefixes[static_cast<int>(n.kind())] << n.node();
+    return os << Prefixes[static_cast<int>(n.kind())] << n.node();
   }
 
  private:
   friend base::EnableExtensions;
+
+  static constexpr std::array<char const *, 4> Prefixes = {
+      "param-type-", "param-value-", "arg-type-", "arg-value-"};
+
   uintptr_t node_;
 };
 
