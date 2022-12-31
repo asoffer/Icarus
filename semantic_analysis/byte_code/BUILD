@@ -22,11 +22,14 @@ cc_library(
     hdrs = ["emitter.h"],
     srcs = [
         "access.cc",
+        "assignment.cc",
         "builtin.cc",
         "call.cc",
+        "cast.cc",
         "declaration.cc",
         "default_initialize.cc",
         "identifier.cc",
+        "if_stmt.cc",
         "function_type.cc",
         "function_literal.cc",
         "module.cc",
@@ -43,6 +46,7 @@ cc_library(
         "//semantic_analysis:type_system",
         "@asoffer_jasmin//jasmin:execute",
         "@asoffer_jasmin//jasmin:function",
+        "@asoffer_jasmin//jasmin:op_code",
         "@asoffer_jasmin//jasmin/instructions:core",
     ],
 )
@@ -50,6 +54,17 @@ cc_library(
 cc_test(
       name = "access_test",
       srcs = ["access_test.cc"],
+      deps = [
+          ":byte_code",
+          "//semantic_analysis:type_system",
+          "//test:repl",
+          "@com_google_googletest//:gtest_main",
+      ],
+)
+
+cc_test(
+      name = "assignment_test",
+      srcs = ["assignment_test.cc"],
       deps = [
           ":byte_code",
           "//semantic_analysis:type_system",
@@ -105,6 +120,17 @@ cc_test(
 cc_test(
       name = "identifier_test",
       srcs = ["identifier_test.cc"],
+      deps = [
+          ":byte_code",
+          "//semantic_analysis:type_system",
+          "//test:repl",
+          "@com_google_googletest//:gtest_main",
+      ],
+)
+
+cc_test(
+      name = "if_stmt_test",
+      srcs = ["if_stmt_test.cc"],
       deps = [
           ":byte_code",
           "//semantic_analysis:type_system",

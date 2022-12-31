@@ -35,11 +35,14 @@ struct PtrSpan {
  public:
   using value_type = T *;
 
+
   struct const_iterator {
     T *operator*() { return ptr_->get(); }
     T *operator->() { return ptr_->get(); }
     const_iterator operator++() { return const_iterator{++ptr_}; }
     const_iterator operator++(int) { return const_iterator{ptr_++}; }
+    const_iterator operator--() { return const_iterator{--ptr_}; }
+    const_iterator operator--(int) { return const_iterator{ptr_--}; }
 
     friend bool operator==(const_iterator lhs, const_iterator rhs) {
       return lhs.ptr_ == rhs.ptr_;
@@ -54,8 +57,46 @@ struct PtrSpan {
     pointer_type *ptr_ = nullptr;
   };
 
-  const_iterator begin() const { return const_iterator{ptr_}; }
-  const_iterator end() const { return const_iterator{ptr_ + size_}; }
+  struct const_reverse_iterator {
+    T *operator*() { return ptr_->get(); }
+    T *operator->() { return ptr_->get(); }
+    const_reverse_iterator operator++() {
+      return const_reverse_iterator{--ptr_};
+    }
+    const_reverse_iterator operator++(int) {
+      return const_reverse_iterator{ptr_--};
+    }
+    const_reverse_iterator operator--() {
+      return const_reverse_iterator{++ptr_};
+    }
+    const_reverse_iterator operator--(int) {
+      return const_reverse_iterator{ptr_++};
+    }
+
+    friend bool operator==(const_reverse_iterator lhs,
+                           const_reverse_iterator rhs) {
+      return lhs.ptr_ == rhs.ptr_;
+    }
+    friend bool operator!=(const_reverse_iterator lhs,
+                           const_reverse_iterator rhs) {
+      return not(lhs == rhs);
+    }
+
+   private:
+    friend struct PtrSpan<T>;
+    explicit const_reverse_iterator(pointer_type *ptr) : ptr_(ptr) {}
+    pointer_type *ptr_ = nullptr;
+  };
+
+  auto cbegin() const { return const_iterator{ptr_}; }
+  auto cend() const { return const_iterator{ptr_ + size_}; }
+  auto begin() const { return cbegin(); }
+  auto end() const { return cend(); }
+  auto rbegin() const { return crbegin(); }
+  auto rend() const { return crend(); }
+  auto crbegin() const { return const_reverse_iterator{ptr_ + (size_ - 1)}; }
+  auto crend() const { return const_reverse_iterator{ptr_ - 1}; }
+
   size_t size() const { return size_; }
   bool empty() const { return size_ == 0; }
 

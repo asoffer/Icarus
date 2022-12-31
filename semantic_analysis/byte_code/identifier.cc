@@ -19,11 +19,25 @@ void ByteCodeValueEmitter::operator()(ast::Identifier const* node,
       data.function().append<jasmin::StackOffset>(data.OffsetFor(id));
       core::Bytes bytes_to_load = SizeOf(qt.type(), type_system());
       data.function().append<jasmin::Load>(bytes_to_load.value());
+      LOG("", "Here");
     }
   }
 }
 
 void ByteCodeStatementEmitter::operator()(ast::Identifier const*,
                                           FunctionData) {}
+
+void ByteCodeReferenceEmitter::operator()(ast::Identifier const* node,
+                                          FunctionData data) {
+  auto symbol = context().symbol(node);
+  if (auto const* id = symbol.get_if<ast::Declaration::Id const>()) {
+    auto qt = context().qualified_type(id);
+    if (qt.qualifiers() >= Qualifiers::Constant()) {
+      NOT_YET();
+    } else {
+      data.function().append<jasmin::StackOffset>(data.OffsetFor(id));
+    }
+  }
+}
 
 }  // namespace semantic_analysis

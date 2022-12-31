@@ -9,6 +9,12 @@
 #include "jasmin/serialization.h"
 #include "semantic_analysis/type_system.h"
 
+struct MyStore : jasmin::StackMachineInstruction<MyStore> {
+  static void execute(jasmin::ValueStack& value_stack) {
+    LOG("", "stack size = %u", value_stack.size());
+  }
+};
+
 namespace semantic_analysis {
 // Defined in "semantic_analysis/foreign_function_map.h", in the same build
 // target.
@@ -179,7 +185,7 @@ using ApplyInstruction = jasmin::MakeInstructionSet<I<Ts>...>;
 // be explicitly added here.
 using InstructionSet = jasmin::MakeInstructionSet<
     jasmin::Push, jasmin::DuplicateAt, jasmin::Swap, jasmin::Drop,
-    jasmin::Store, TypeSystem::JasminInstructionSet, core::ParameterType::Begin,
+    jasmin::Store, MyStore, TypeSystem::JasminInstructionSet, core::ParameterType::Begin,
     core::ParameterType::Append, core::ParameterType::AppendNamed,
     core::ParameterType::End<TypeSystem>, core::FunctionType::End<TypeSystem>,
     jasmin::StackAllocate, jasmin::StackOffset, jasmin::Load, AllocateTemporary,

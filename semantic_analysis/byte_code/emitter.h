@@ -98,20 +98,23 @@ struct ByteCodeValueEmitter : Emitter<ByteCodeValueEmitter> {
   }
 
   void operator()(ast::Access const *node, FunctionData data);
+  void operator()(ast::Assignment const *node, FunctionData data);
   void operator()(ast::Builtin const *node, FunctionData data);
   void operator()(ast::Call const *node, FunctionData data);
+  void operator()(ast::Cast const *node, FunctionData data);
   void operator()(ast::FunctionLiteral const *node, FunctionData data);
   void operator()(ast::FunctionType const *node, FunctionData data);
   void operator()(ast::Declaration::Id const *node, FunctionData data);
   void operator()(ast::Identifier const *node, FunctionData data);
+  void operator()(ast::IfStmt const *node, FunctionData data);
   void operator()(ast::UnaryOperator const *node, FunctionData data);
   void operator()(ast::Terminal const *node, FunctionData data);
-  // TODO: ArgumentType, Assignment, BinaryAssignmentOperator,
-  //       BinaryOperator, BlockNode,  Cast, ComparisonOperator,
-  //       Declaration::Id, DesignatedInitializer, EnumLiteral, Import, Index,
-  //       InterfaceLiteral, Label, ParameterizedStructLiteral,
-  //       PatternMatch, ProgramArguments, ScopeLiteral, ScopeNode, SliceType,
-  //       ShortFunctionLiteral, StructLiteral, YieldStmt, IfStmt, WhileStmt,
+  // TODO: ArgumentType, BinaryAssignmentOperator, BinaryOperator, BlockNode,
+  //       ComparisonOperator, DesignatedInitializer,
+  //       EnumLiteral, Import, Index, InterfaceLiteral, Label,
+  //       ParameterizedStructLiteral, PatternMatch, ProgramArguments,
+  //       ScopeLiteral, ScopeNode, SliceType, ShortFunctionLiteral,
+  //       StructLiteral, YieldStmt, WhileStmt,
 };
 
 struct ByteCodeStatementEmitter : Emitter<ByteCodeStatementEmitter> {
@@ -124,6 +127,7 @@ struct ByteCodeStatementEmitter : Emitter<ByteCodeStatementEmitter> {
   }
 
   void operator()(ast::Access const *node, FunctionData data);
+  void operator()(ast::Assignment const *node, FunctionData data);
   void operator()(ast::Builtin const *node, FunctionData data);
   void operator()(ast::Call const *node, FunctionData data);
   void operator()(ast::Declaration::Id const *node, FunctionData data);
@@ -131,17 +135,62 @@ struct ByteCodeStatementEmitter : Emitter<ByteCodeStatementEmitter> {
   void operator()(ast::FunctionLiteral const *node, FunctionData data);
   void operator()(ast::FunctionType const *node, FunctionData data);
   void operator()(ast::Identifier const *node, FunctionData data);
+  void operator()(ast::IfStmt const *node, FunctionData data);
   void operator()(ast::Module const *node, FunctionData data);
   void operator()(ast::ReturnStmt const *node, FunctionData data);
   void operator()(ast::UnaryOperator const *node, FunctionData data);
   void operator()(ast::Terminal const *node, FunctionData data);
-  // TODO: ArgumentType, Assignment, BinaryAssignmentOperator,
-  //       BinaryOperator, BlockNode,  Cast, ComparisonOperator,
-  //       Declaration::Id, DesignatedInitializer, EnumLiteral, Import, Index,
-  //       InterfaceLiteral, Label, ParameterizedStructLiteral,
+  // TODO: ArgumentType, BinaryAssignmentOperator, BinaryOperator, BlockNode,
+  //       Cast, ComparisonOperator, DesignatedInitializer, EnumLiteral, Import,
+  //       Index, InterfaceLiteral, Label, ParameterizedStructLiteral,
   //       PatternMatch, ProgramArguments, ScopeLiteral, ScopeNode, SliceType,
-  //       ShortFunctionLiteral, StructLiteral, YieldStmt, IfStmt, WhileStmt,
-  //       Call, Declaration::Id, Declaration
+  //       ShortFunctionLiteral, StructLiteral, YieldStmt, WhileStmt
+};
+
+struct ByteCodeReferenceEmitter : Emitter<ByteCodeReferenceEmitter> {
+  explicit ByteCodeReferenceEmitter(Context &c, module::Module &module)
+      : Emitter<ByteCodeReferenceEmitter>(c, module) {}
+
+  template <typename NodeType>
+  void operator()(NodeType const *node, FunctionData) {
+    NOT_YET(base::meta<NodeType>, node->DebugString());
+  }
+
+
+  void operator()(ast::Identifier const *node, FunctionData data);
+
+  // Unreachable operators.
+  void operator()(ast::ArgumentType const *, FunctionData) { UNREACHABLE(); }
+  void operator()(ast::BlockNode const *, FunctionData) { UNREACHABLE(); }
+  void operator()(ast::Builtin const *, FunctionData) { UNREACHABLE(); }
+  void operator()(ast::Declaration const *, FunctionData) { UNREACHABLE(); }
+  void operator()(ast::Declaration::Id const *, FunctionData) { UNREACHABLE(); }
+  void operator()(ast::DesignatedInitializer const *, FunctionData) {
+    UNREACHABLE();
+  }
+  void operator()(ast::EnumLiteral const *, FunctionData) { UNREACHABLE(); }
+  void operator()(ast::FunctionLiteral const *, FunctionData) { UNREACHABLE(); }
+  void operator()(ast::Import const *, FunctionData) { UNREACHABLE(); }
+  void operator()(ast::InterfaceLiteral const *, FunctionData) {
+    UNREACHABLE();
+  }
+  void operator()(ast::Label const *, FunctionData) { UNREACHABLE(); }
+  void operator()(ast::ParameterizedStructLiteral const *, FunctionData) {
+    UNREACHABLE();
+  }
+  void operator()(ast::PatternMatch const *, FunctionData) { UNREACHABLE(); }
+  void operator()(ast::ProgramArguments const *, FunctionData) {
+    UNREACHABLE();
+  }
+  void operator()(ast::ScopeLiteral const *, FunctionData) { UNREACHABLE(); }
+  void operator()(ast::SliceType const *, FunctionData) { UNREACHABLE(); }
+  void operator()(ast::ShortFunctionLiteral const *, FunctionData) {
+    UNREACHABLE();
+  }
+  void operator()(ast::StructLiteral const *, FunctionData) { UNREACHABLE(); }
+  void operator()(ast::YieldStmt const *, FunctionData) { UNREACHABLE(); }
+  // TODO: Access, BinaryAssignmentOperator, BinaryOperator, Call, Cast,
+  //       ComparisonOperator, Index, ScopeNode, IfStmt, WhileStmt, UnaryOperator
 };
 
 template <typename E>
@@ -175,7 +224,8 @@ std::span<std::byte const> Emitter<E>::EvaluateConstant(
   ASSERT(qt == context().qualified_type(expr));
   auto [result_ptr, inserted] = context().insert_constant(expr);
   if (inserted) {
-    if (PassInRegister(qt, type_system())) {
+    // TODO: Integers are an annoying special case at the moment.
+    if (PassInRegister(qt, type_system()) or qt.type() == Integer) {
       IrFunction f(0, 1);
 
       // This `variable_offsets` map is intentionally empty. There will never
