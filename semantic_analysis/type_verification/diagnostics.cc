@@ -181,8 +181,10 @@ struct StringifyType {
         NOT_YET();
       }
       return result;
+    } else if (auto i = t.get_if<SliceType>(type_system_)) {
+      return "[/]char";
     } else {
-      NOT_YET();
+      NOT_YET(node->DebugString());
     }
   }
 

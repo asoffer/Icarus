@@ -10,11 +10,7 @@ namespace {
 using ::test::HasDiagnostics;
 using ::test::HasQualTypes;
 using ::testing::AllOf;
-using ::testing::ElementsAre;
-using ::testing::IsEmpty;
 using ::testing::Pair;
-using ::testing::Pointee;
-using ::testing::UnorderedElementsAre;
 
 TEST(BufferPointer, Success) {
   test::Repl repl;

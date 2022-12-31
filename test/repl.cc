@@ -45,10 +45,11 @@ Repl::TypeCheckResult Repl::type_check(std::string content) {
   for (auto const* node : node_span) { tv.schedule(node); }
   tv.complete();
 
-  return TypeCheckResult(
-      source_content_.back(),
-      context_.qualified_types(&node_span.back()->as<ast::Expression>()),
-      consumer_.diagnostics(), *this);
+  auto* e = node_span.back()->if_as<ast::Expression>();
+  return TypeCheckResult(source_content_.back(),
+                         e ? context_.qualified_types(e)
+                           : std::vector<semantic_analysis::QualifiedType>{},
+                         consumer_.diagnostics(), *this);
 }
 
 }  // namespace test

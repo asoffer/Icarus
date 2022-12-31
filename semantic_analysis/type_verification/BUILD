@@ -49,6 +49,7 @@ cc_library(
         "access.cc",
         "array_literal.cc",
         "array_type.cc",
+        "assignment.cc",
         "binary_operator.cc",
         "builtin.cc",
         "call.cc",
@@ -97,6 +98,16 @@ cc_test(
 cc_test(
     name = "array_type_test",
     srcs = ["array_type_test.cc"],
+    deps = [
+        ":verify",
+        "//test:repl",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "assignment_test",
+    srcs = ["assignment_test.cc"],
     deps = [
         ":verify",
         "//test:repl",
