@@ -6,16 +6,6 @@ cc_library(
 )
 
 cc_library(
-    name = "block",
-    hdrs = ["block.h"],
-    deps = [
-        "//base:extend",
-        "//base/extend:absl_format",
-        "//base/extend:absl_hash",
-    ],
-)
-
-cc_library(
     name = "char",
     hdrs = ["char.h"],
     deps = [
