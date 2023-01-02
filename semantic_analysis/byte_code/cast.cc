@@ -38,4 +38,17 @@ void ByteCodeValueEmitter::operator()(ast::Cast const* node,
   }
 }
 
+void ByteCodeStatementEmitter::operator()(ast::Cast const* node,
+                                          FunctionData data) {
+  core::Type from_type = context().qualified_type(node->expr()).type();
+  core::Type to_type   = context().qualified_type(node).type();
+  if (IsNumeric(from_type) and IsNumeric(to_type)) {
+    Emit(node->expr(), data);
+  } else {
+    as<ByteCodeValueEmitter>().Emit(node->expr(), data);
+    data.function().append<jasmin::Drop>(
+        SizeOf(to_type, type_system()).value());
+  }
+}
+
 }  // namespace semantic_analysis

@@ -62,4 +62,27 @@ TEST(QualifiedType, Constant) {
   EXPECT_EQ(Constant(Constant(Bool)).qualifiers(), Qualifiers::Constant());
 }
 
+TEST(Predicates, IsIntegral) {
+  TypeSystem ts;
+  EXPECT_TRUE(IsIntegral(I(7)));
+  EXPECT_TRUE(IsIntegral(U(7)));
+  EXPECT_TRUE(IsIntegral(I(32)));
+  EXPECT_TRUE(IsIntegral(U(32)));
+  EXPECT_TRUE(IsIntegral(Integer));
+  EXPECT_FALSE(IsIntegral(Bool));
+  EXPECT_FALSE(IsIntegral(F32));
+  EXPECT_FALSE(IsIntegral(F64));
+  EXPECT_FALSE(IsIntegral(core::PointerType(ts, I(32))));
+
+  EXPECT_TRUE(IsNumeric(I(7)));
+  EXPECT_TRUE(IsNumeric(U(7)));
+  EXPECT_TRUE(IsNumeric(I(32)));
+  EXPECT_TRUE(IsNumeric(U(32)));
+  EXPECT_TRUE(IsNumeric(Integer));
+  EXPECT_FALSE(IsNumeric(Bool));
+  EXPECT_TRUE(IsNumeric(F32));
+  EXPECT_TRUE(IsNumeric(F64));
+  EXPECT_FALSE(IsNumeric(core::PointerType(ts, I(32))));
+}
+
 }  // namespace semantic_analysis

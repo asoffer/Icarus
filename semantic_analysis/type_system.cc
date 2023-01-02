@@ -104,6 +104,8 @@ bool IsIntegral(core::Type t) {
          t.category() == TypeSystem::index<core::SizedIntegerType>();
 }
 
+bool IsNumeric(core::Type t) { return IsIntegral(t) or t == F32 or t == F64; }
+
 std::string DebugQualifiedType(QualifiedType qt, TypeSystem& ts) {
   std::stringstream ss;
   DebugQualifiedType(ss, qt, ts);
