@@ -4,6 +4,8 @@
 #include "ir/value/integer.h"
 #include "jasmin/function.h"
 #include "jasmin/instructions/arithmetic.h"
+#include "jasmin/instructions/bool.h"
+#include "jasmin/instructions/compare.h"
 #include "jasmin/instructions/core.h"
 #include "jasmin/instructions/stack.h"
 #include "jasmin/serialization.h"
@@ -178,13 +180,22 @@ using ApplyInstruction = jasmin::MakeInstructionSet<I<Ts>...>;
 // TOOD: core::*Type instructions should be registerable and not required to
 // be explicitly added here.
 using InstructionSet = jasmin::MakeInstructionSet<
-    jasmin::Push, jasmin::DuplicateAt, jasmin::Swap, jasmin::Drop,
-    jasmin::Store, TypeSystem::JasminInstructionSet, core::ParameterType::Begin,
-    core::ParameterType::Append, core::ParameterType::AppendNamed,
-    core::ParameterType::End<TypeSystem>, core::FunctionType::End<TypeSystem>,
-    jasmin::StackAllocate, jasmin::StackOffset, jasmin::Load, AllocateTemporary,
+    jasmin::Push, jasmin::DuplicateAt, jasmin::Duplicate, jasmin::Swap,
+    jasmin::Not, jasmin::Drop, jasmin::Store, TypeSystem::JasminInstructionSet,
+    core::ParameterType::Begin, core::ParameterType::Append,
+    core::ParameterType::AppendNamed, core::ParameterType::End<TypeSystem>,
+    core::FunctionType::End<TypeSystem>, jasmin::StackAllocate,
+    jasmin::StackOffset, jasmin::Load, AllocateTemporary,
     DeallocateAllTemporaries, BuiltinForeign, InvokeForeignFunction,
     PushStringLiteral, PushFunction,
+    ApplyInstruction<jasmin::Equal, int8_t, int16_t, int32_t, int64_t, uint8_t,
+                     uint16_t, uint32_t, uint64_t, float, double>,
+    ApplyInstruction<jasmin::LessThan, int8_t, int16_t, int32_t, int64_t,
+                     uint8_t, uint16_t, uint32_t, uint64_t, float, double>,
+    ApplyInstruction<jasmin::AppendEqual, int8_t, int16_t, int32_t, int64_t,
+                     uint8_t, uint16_t, uint32_t, uint64_t, float, double>,
+    ApplyInstruction<jasmin::AppendLessThan, int8_t, int16_t, int32_t, int64_t,
+                     uint8_t, uint16_t, uint32_t, uint64_t, float, double>,
     ApplyInstruction<Construct, bool, ir::Char, int8_t, int16_t, int32_t,
                      int64_t, ir::Integer, uint8_t, uint16_t, uint32_t,
                      uint64_t, float, double>,

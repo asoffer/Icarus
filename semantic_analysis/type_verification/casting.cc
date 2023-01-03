@@ -122,4 +122,9 @@ CastKind CanCast(QualifiedType from, core::Type to, TypeSystem& type_system) {
   });
 }
 
+core::Type CommonType(core::Type lhs, core::Type rhs, TypeSystem& type_system) {
+  if (lhs == rhs) { return lhs; }
+  NOT_YET();
+}
+
 }  // namespace semantic_analysis

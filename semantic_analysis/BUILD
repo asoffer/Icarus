@@ -30,6 +30,8 @@ cc_library(
         "//ir/value:integer",
         "@asoffer_jasmin//jasmin:function",
         "@asoffer_jasmin//jasmin/instructions:arithmetic",
+        "@asoffer_jasmin//jasmin/instructions:bool",
+        "@asoffer_jasmin//jasmin/instructions:compare",
         "@asoffer_jasmin//jasmin/instructions:core",
         "@asoffer_jasmin//jasmin/instructions:stack",
         "@asoffer_jasmin//jasmin:serialization",

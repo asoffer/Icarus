@@ -43,6 +43,18 @@ struct PtrSpan {
     const_iterator operator++(int) { return const_iterator{ptr_++}; }
     const_iterator operator--() { return const_iterator{--ptr_}; }
     const_iterator operator--(int) { return const_iterator{ptr_--}; }
+    friend const_iterator operator+(const_iterator lhs, ptrdiff_t rhs) {
+      return const_iterator{lhs.ptr_ + rhs};
+    }
+    friend const_iterator operator+(ptrdiff_t lhs, const_iterator rhs) {
+      return rhs + lhs;
+    }
+    friend const_iterator operator-(const_iterator lhs, ptrdiff_t rhs) {
+      return const_iterator{lhs.ptr_ - rhs};
+    }
+    friend const_iterator operator-(ptrdiff_t lhs, const_iterator rhs) {
+      return rhs + lhs;
+    }
 
     friend bool operator==(const_iterator lhs, const_iterator rhs) {
       return lhs.ptr_ == rhs.ptr_;
@@ -71,6 +83,18 @@ struct PtrSpan {
     }
     const_reverse_iterator operator--(int) {
       return const_reverse_iterator{ptr_++};
+    }
+    friend const_reverse_iterator operator+(const_reverse_iterator lhs, ptrdiff_t rhs) {
+      return const_reverse_iterator{lhs.ptr_ - rhs};
+    }
+    friend const_reverse_iterator operator+(ptrdiff_t lhs, const_reverse_iterator rhs) {
+      return rhs + lhs;
+    }
+    friend const_reverse_iterator operator-(const_reverse_iterator lhs, ptrdiff_t rhs) {
+      return const_reverse_iterator{lhs.ptr_ + rhs};
+    }
+    friend const_reverse_iterator operator-(ptrdiff_t lhs, const_reverse_iterator rhs) {
+      return rhs - lhs;
     }
 
     friend bool operator==(const_reverse_iterator lhs,

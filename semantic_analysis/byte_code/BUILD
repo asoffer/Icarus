@@ -26,6 +26,7 @@ cc_library(
         "builtin.cc",
         "call.cc",
         "cast.cc",
+        "comparison_operator.cc",
         "declaration.cc",
         "default_initialize.cc",
         "identifier.cc",
@@ -43,6 +44,7 @@ cc_library(
         "//semantic_analysis:context",
         "//semantic_analysis:instruction_set",
         "//semantic_analysis:type_system",
+        "//semantic_analysis/type_verification:casting",
         "@asoffer_jasmin//jasmin:execute",
         "@asoffer_jasmin//jasmin:function",
         "@asoffer_jasmin//jasmin:op_code",
@@ -86,6 +88,17 @@ cc_test(
 cc_test(
       name = "call_test",
       srcs = ["call_test.cc"],
+      deps = [
+          ":byte_code",
+          "//semantic_analysis:type_system",
+          "//test:repl",
+          "@com_google_googletest//:gtest_main",
+      ],
+)
+
+cc_test(
+      name = "comparison_operator_test",
+      srcs = ["comparison_operator_test.cc"],
       deps = [
           ":byte_code",
           "//semantic_analysis:type_system",

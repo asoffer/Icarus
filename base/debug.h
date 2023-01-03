@@ -8,9 +8,6 @@
 
 #define ICARUS_DEBUG_ONLY(...) __VA_ARGS__
 
-#define ICARUS_CONSTEXPR inline
-#define ICARUS_PRIVATE
-
 #define ASSERT(expr)                                                           \
   do {                                                                         \
     if (not ::debug::Asserter{}(::debug::internal_matcher::ExprStealer{#expr}  \
@@ -96,10 +93,8 @@ struct Asserter {
       base::internal_logging::Log(
           ::base::internal_logging::kLogWithoutFunctionNameFormat, src_loc, "",
           "\033[0;1;31mAssertion failed\n"
-          "    \033[0;1;37mExpected:\033[0m %s\n"
-          "         \033[0;1;37mLHS:\033[0m %s\n"
-          "         \033[0;1;37mRHS:\033[0m %s\n",
-          result.expr_string, result.lhs, result.rhs);
+          "    \033[0;1;37mExpected:\033[0m %s\n",
+          result.expr_string);
     }
     return result.matched;
   }
@@ -130,9 +125,6 @@ struct Asserter {
 #else  // defined(ICARUS_DEBUG)
 
 #define ICARUS_DEBUG_ONLY(...)
-
-#define ICARUS_CONSTEXPR constexpr
-#define ICARUS_PRIVATE private:
 
 #define ASSERT(...) static_assert(true)
 #define ASSERT_NOT_NULL(...) (__VA_ARGS__)

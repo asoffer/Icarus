@@ -102,6 +102,7 @@ struct ByteCodeValueEmitter : Emitter<ByteCodeValueEmitter> {
   void operator()(ast::Builtin const *node, FunctionData data);
   void operator()(ast::Call const *node, FunctionData data);
   void operator()(ast::Cast const *node, FunctionData data);
+  void operator()(ast::ComparisonOperator const *node, FunctionData data);
   void operator()(ast::FunctionLiteral const *node, FunctionData data);
   void operator()(ast::FunctionType const *node, FunctionData data);
   void operator()(ast::Declaration::Id const *node, FunctionData data);
@@ -110,9 +111,8 @@ struct ByteCodeValueEmitter : Emitter<ByteCodeValueEmitter> {
   void operator()(ast::UnaryOperator const *node, FunctionData data);
   void operator()(ast::Terminal const *node, FunctionData data);
   // TODO: ArgumentType, BinaryAssignmentOperator, BinaryOperator, BlockNode,
-  //       ComparisonOperator, DesignatedInitializer,
-  //       EnumLiteral, Import, Index, InterfaceLiteral, Label,
-  //       ParameterizedStructLiteral, PatternMatch, ProgramArguments,
+  //       DesignatedInitializer, EnumLiteral, Import, Index, InterfaceLiteral,
+  //       Label, ParameterizedStructLiteral, PatternMatch, ProgramArguments,
   //       ScopeLiteral, ScopeNode, SliceType, ShortFunctionLiteral,
   //       StructLiteral, YieldStmt, WhileStmt,
 };
@@ -131,6 +131,7 @@ struct ByteCodeStatementEmitter : Emitter<ByteCodeStatementEmitter> {
   void operator()(ast::Builtin const *node, FunctionData data);
   void operator()(ast::Call const *node, FunctionData data);
   void operator()(ast::Cast const *node, FunctionData data);
+  void operator()(ast::ComparisonOperator const *node, FunctionData data);
   void operator()(ast::Declaration::Id const *node, FunctionData data);
   void operator()(ast::Declaration const *node, FunctionData data);
   void operator()(ast::FunctionLiteral const *node, FunctionData data);
@@ -142,10 +143,10 @@ struct ByteCodeStatementEmitter : Emitter<ByteCodeStatementEmitter> {
   void operator()(ast::UnaryOperator const *node, FunctionData data);
   void operator()(ast::Terminal const *node, FunctionData data);
   // TODO: ArgumentType, BinaryAssignmentOperator, BinaryOperator, BlockNode,
-  //       ComparisonOperator, DesignatedInitializer, EnumLiteral, Import,
-  //       Index, InterfaceLiteral, Label, ParameterizedStructLiteral,
-  //       PatternMatch, ProgramArguments, ScopeLiteral, ScopeNode, SliceType,
-  //       ShortFunctionLiteral, StructLiteral, YieldStmt, WhileStmt
+  //       DesignatedInitializer, EnumLiteral, Import, Index, InterfaceLiteral,
+  //       Label, ParameterizedStructLiteral, PatternMatch, ProgramArguments,
+  //       ScopeLiteral, ScopeNode, SliceType, ShortFunctionLiteral,
+  //       StructLiteral, YieldStmt, WhileStmt
 };
 
 struct ByteCodeReferenceEmitter : Emitter<ByteCodeReferenceEmitter> {
