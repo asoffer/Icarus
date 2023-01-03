@@ -33,7 +33,7 @@ void ConsoleRenderer::Flush() {
 }
 
 void ConsoleRenderer::WriteSourceQuote(SourceQuote const &quote) {
-  ASSERT(quote.highlights.empty() == false);
+  ASSERT(not quote.highlights.empty());
 
   // TODO: We should just keep them sorted. In a flat_set or something.
   auto highlights = quote.highlights;

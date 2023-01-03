@@ -1,106 +1,142 @@
 #ifndef ICARUS_BASE_DEBUG_H
 #define ICARUS_BASE_DEBUG_H
 
+#include <sstream>
+
 #include "absl/strings/str_cat.h"
+#include "absl/strings/str_format.h"
 #include "base/log.h"
 
 #if defined(ICARUS_DEBUG)
 
-#define ICARUS_DEBUG_ONLY(...) __VA_ARGS__
-
-#define ASSERT(expr)                                                           \
-  do {                                                                         \
-    if (not ::debug::Asserter{}(::debug::internal_matcher::ExprStealer{#expr}  \
-                                << expr)) {                                    \
-      std::abort();                                                            \
+#define ASSERT(...)                                                            \
+  ([](auto const& value) {                                                     \
+    if (not value.result) {                                                    \
+      ::debug::internal::LogAndAbort(value, #__VA_ARGS__);                     \
     }                                                                          \
-  } while (false)
+  }(::debug::internal::Stealer{} << __VA_ARGS__                                \
+                                 << ::debug::internal::Stealer{}));
 
-namespace debug {
-namespace internal_matcher {
+namespace debug::internal {
 
 template <typename L, typename R>
-struct ExprMatchResult {
-  char const* expr_string = nullptr;
-  bool matched;
-  L const& lhs;
-  R const& rhs;
+struct AssertionResult {
+  bool result;
+  L const& l;
+  R const& r;
 };
 
 template <typename T>
-struct StolenExpr {
-  StolenExpr(char const* expr_string, T const& expr)
-      : expr_string_(expr_string), expr_(expr) {}
-
-  char const* expr_string_;
-  T const& expr_;
+struct AssertionResult<T, void> {
+  bool result;
+  T const& t;
 };
 
-struct ExprStealer {
-  char const* expr_string_;
-};
-
+struct StolenBase {};
 template <typename T>
-StolenExpr<T> operator<<(ExprStealer expr_stealer, T const& expr) {
-  return {expr_stealer.expr_string_, expr};
-}
+struct Stolen : StolenBase {
+  using value_type = T;
+  explicit Stolen(T const& value) : value_(value) {}
 
-template <typename T, typename U>
-ExprMatchResult<T, U> operator==(StolenExpr<T> expr, U const& rhs) {
-  bool matched = (expr.expr_ == rhs);
-  return {expr.expr_string_, matched, expr.expr_, rhs};
-}
+  T const& value() const { return value_; }
 
-template <typename T, typename U>
-ExprMatchResult<T, U> operator!=(StolenExpr<T> expr, U const& rhs) {
-  bool matched = (expr.expr_ != rhs);
-  return {expr.expr_string_, matched, expr.expr_, rhs};
-}
+ private:
+  T const& value_;
+};
 
-template <typename T, typename U>
-ExprMatchResult<T, U> operator<(StolenExpr<T> expr, U const& rhs) {
-  bool matched = (expr.expr_ < rhs);
-  return {expr.expr_string_, matched, expr.expr_, rhs};
-}
+struct Stealer {
+  template <typename T>
+  friend Stolen<T> operator<<(Stealer, T const& value) {
+    return Stolen<T>(value);
+  }
 
-template <typename T, typename U>
-ExprMatchResult<T, U> operator>(StolenExpr<T> expr, U const& rhs) {
-  bool matched = (expr.expr_ > rhs);
-  return {expr.expr_string_, matched, expr.expr_, rhs};
-}
-
-template <typename T, typename U>
-ExprMatchResult<T, U> operator<=(StolenExpr<T> expr, U const& rhs) {
-  bool matched = (expr.expr_ <= rhs);
-  return {expr.expr_string_, matched, expr.expr_, rhs};
-}
-
-template <typename T, typename U>
-ExprMatchResult<T, U> operator>=(StolenExpr<T> expr, U const& rhs) {
-  bool matched = (expr.expr_ >= rhs);
-  return {expr.expr_string_, matched, expr.expr_, rhs};
-}
-
-}  // namespace internal_matcher
-
-struct Asserter {
-  template <typename L, typename R>
-  bool operator()(
-      ::debug::internal_matcher::ExprMatchResult<L, R> const& result,
-      std::experimental::source_location src_loc =
-          std::experimental::source_location::current()) const {
-    if (not result.matched) {
-      base::internal_logging::Log(
-          ::base::internal_logging::kLogWithoutFunctionNameFormat, src_loc, "",
-          "\033[0;1;31mAssertion failed\n"
-          "    \033[0;1;37mExpected:\033[0m %s\n",
-          result.expr_string);
+  template <typename T>
+  friend auto operator<<(T const& value, Stealer) {
+    if constexpr (std::is_base_of_v<StolenBase, T>) {
+      return AssertionResult<typename T::value_type, void>{
+          .result = static_cast<bool>(value.value()),
+          .t      = value.value(),
+      };
+    } else {
+      return Stolen<T>(value);
     }
-    return result.matched;
   }
 };
 
-}  // namespace debug
+template <typename L, typename R>
+AssertionResult<L, R> operator==(Stolen<L> l, Stolen<R> r) {
+  return {.result = l.value() == r.value(), .l = l.value(), .r = r.value()};
+}
+
+template <typename L, typename R>
+AssertionResult<L, R> operator!=(Stolen<L> l, Stolen<R> r) {
+  return {.result = l.value() != r.value(), .l = l.value(), .r = r.value()};
+}
+
+template <typename L, typename R>
+AssertionResult<L, R> operator>(Stolen<L> l, Stolen<R> r) {
+  return {.result = l.value() > r.value(), .l = l.value(), .r = r.value()};
+}
+
+template <typename L, typename R>
+AssertionResult<L, R> operator>=(Stolen<L> l, Stolen<R> r) {
+  return {.result = l.value() >= r.value(), .l = l.value(), .r = r.value()};
+}
+
+template <typename L, typename R>
+AssertionResult<L, R> operator<(Stolen<L> l, Stolen<R> r) {
+  return {.result = l.value() < r.value(), .l = l.value(), .r = r.value()};
+}
+
+template <typename L, typename R>
+AssertionResult<L, R> operator<=(Stolen<L> l, Stolen<R> r) {
+  return {.result = l.value() <= r.value(), .l = l.value(), .r = r.value()};
+}
+
+auto wrap(auto const & arg) -> decltype(auto) {
+  using type = std::decay_t<decltype(arg)>;
+  if constexpr (std::is_same_v<type, char const*>) {
+    return std::string_view(arg);
+  } else if constexpr (std::is_same_v<type, std::nullptr_t>) {
+    return std::string_view("null");
+  } else if constexpr (std::is_pointer_v<type>) {
+    return absl::StrFormat("%p", arg);
+  } else if constexpr (std::is_enum_v<type>) {
+    return absl::StrFormat("(%s)%d", typeid(type).name(),
+                           static_cast<int>(arg));
+  } else if constexpr (requires { absl::StrCat(arg); }) {
+    return arg;
+  } else {
+    return absl::StrCat("[unprintable value of type ", typeid(type).name(), "]");
+  }
+}
+
+template <typename L, typename R>
+[[noreturn]] void LogAndAbort(
+    AssertionResult<L, R> assertion_result, std::string_view expression,
+    std::experimental::source_location src_loc =
+        std::experimental::source_location::current()) {
+  int n;
+  if constexpr (std::is_void_v<R>) {
+    base::internal_logging::Log(
+        ::base::internal_logging::kLogWithoutFunctionNameFormat, src_loc, "",
+        "\e[0;1;31mAssertion failed\n"
+        "    \e[0;1;37mExpected:\e[0m %s\n",
+        expression);
+  } else {
+    base::internal_logging::Log(
+        ::base::internal_logging::kLogWithoutFunctionNameFormat, src_loc, "",
+        "\e[0;1;31mAssertion failed\n"
+        "    \e[0;1;37mExpected:\e[0m %s\n"
+        "    \e[0;1;37m     LHS:\e[0m %v\n"
+        "    \e[0;1;37m     RHS:\e[0m %v\n",
+        expression, ::debug::internal::wrap(assertion_result.l),
+        ::debug::internal::wrap(assertion_result.r));
+  }
+  std::abort();
+}
+
+}  // namespace debug::internal
 
 #define ASSERT_NOT_NULL(expr)                                                  \
   ([](auto&& ptr,                                                              \
@@ -123,8 +159,6 @@ struct Asserter {
   } while (false)
 
 #else  // defined(ICARUS_DEBUG)
-
-#define ICARUS_DEBUG_ONLY(...)
 
 #define ASSERT(...) static_assert(true)
 #define ASSERT_NOT_NULL(...) (__VA_ARGS__)

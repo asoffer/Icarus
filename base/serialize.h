@@ -139,7 +139,7 @@ struct DeserializingIterator {
 
  private:
   void ReadValue() {
-    ASSERT(value_.has_value() == false);
+    ASSERT(not value_.has_value());
     if constexpr (base::Assignable<value_type>) {
       value_.emplace();
       ok_ = base::Deserialize(*deserializer_, *value_);
@@ -154,7 +154,7 @@ struct DeserializingIterator {
   }
 
   void ClearValue() {
-    ASSERT(value_.has_value() == true);
+    ASSERT(value_.has_value());
     value_.reset();
   }
 
@@ -247,7 +247,7 @@ template <base::Assignable value_type>
 value_type Deserialize(base::Deserializer auto& d) {
   value_type value;
   bool ok = base::internal_serialize::DeserializeOne(d, value);
-  ASSERT(ok == true);
+  ASSERT(ok);
   return value;
 }
 

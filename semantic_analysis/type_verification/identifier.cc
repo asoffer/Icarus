@@ -45,7 +45,7 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
       auto [iter, inserted] = parameters_options.emplace(p, &id);
       // TODO: Error: ambiguity? There are other forms of ambiguity too
       // though.
-      ASSERT(inserted == true);
+      ASSERT(inserted);
     }
   }
   co_yield tv.ParametersOf(node, std::move(parameters_options));

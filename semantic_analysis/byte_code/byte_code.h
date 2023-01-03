@@ -33,7 +33,7 @@ T EvaluateAs(Context& context, module::Module& module,
              ast::Expression const* expr) {
   auto qt        = context.qualified_type(expr);
   bool has_error = (qt.qualifiers() >= Qualifiers::Error());
-  ASSERT(has_error == false);
+  ASSERT(not has_error);
 
   IrFunction f = EmitByteCode(qt, *expr, context, module);
 

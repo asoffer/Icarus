@@ -200,7 +200,7 @@ template <typename T>
 T Emitter<E>::EvaluateAs(ast::Expression const *expression) {
   auto qt        = context().qualified_type(expression);
   bool has_error = (qt.qualifiers() >= Qualifiers::Error());
-  ASSERT(has_error == false);
+  ASSERT(not has_error);
 
   IrFunction f(0, 1);
 

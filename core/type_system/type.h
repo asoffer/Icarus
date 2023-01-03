@@ -95,7 +95,7 @@ struct Type {
   // `t == static_cast<Type>(t.get<Category>(sys))`
   template <typename Category>
   Category get(TypeSystemSupporting<Category> auto& sys) const {
-    ASSERT(this->is<Category>(sys) == true);
+    ASSERT(this->is<Category>(sys));
     return Category::Construct(*this, sys);
   }
 

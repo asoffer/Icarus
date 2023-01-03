@@ -130,7 +130,7 @@ struct TypeCategory {
     ASSERT([&] {
       return lhs.manager_ == rhs.manager_ or lhs.manager_ == nullptr or
              rhs.manager_ == nullptr;
-    }() == true);
+    }());
     return lhs.type_ != rhs.type_;
   }
 
@@ -143,7 +143,7 @@ struct TypeCategory {
 
   static CrtpDerived Construct(Type t,
                                TypeSystemSupporting<CrtpDerived> auto& sys) {
-    ASSERT(t.template is<CrtpDerived>(sys) == true);
+    ASSERT(t.template is<CrtpDerived>(sys));
     static_assert(std::is_standard_layout_v<CrtpDerived>);
     static_assert(sizeof(CrtpDerived) == sizeof(TypeCategory));
     // TODO: These requirements *should* make it safe to type-pun the object

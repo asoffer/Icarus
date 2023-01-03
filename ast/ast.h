@@ -437,7 +437,7 @@ struct DesignatedInitializer : Expression {
         assignments_(std::move(assignments)) {
     for (auto const *assignment : this->assignments()) {
       for (auto const *expr : assignment->lhs()) {
-        ASSERT(expr->is<Identifier>() == true);
+        ASSERT(expr->is<Identifier>());
       }
     }
   }
@@ -1339,7 +1339,7 @@ struct IfStmt : Expression {
         last_if_(this) {}
 
   void SetFalseBlock(std::vector<std::unique_ptr<Node>> false_block) {
-    ASSERT(last_if_->has_false_block_ == false);
+    ASSERT(not last_if_->has_false_block_);
     last_if_->false_block_     = std::move(false_block);
     last_if_->has_false_block_ = true;
     last_if_                   = nullptr;
@@ -1350,7 +1350,7 @@ struct IfStmt : Expression {
   // the inner `if` ScopeNode checking `condition2` would be appended to.
   void AppendElseBlock(std::unique_ptr<ast::IfStmt> node) {
     auto *ptr = node.get();
-    ASSERT(last_if_->has_false_block_ == false);
+    ASSERT(not last_if_->has_false_block_);
     last_if_->false_block_.push_back(std::move(node));
     last_if_->has_false_block_ = true;
     last_if_                   = ptr;

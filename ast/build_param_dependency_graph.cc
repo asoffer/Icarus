@@ -251,7 +251,7 @@ struct ParamDependencyGraphBuilder {
 
   void operator()(PatternMatch const *node,
                   core::DependencyNode<Declaration const *> d) {
-    ASSERT(node->is_binary() == false);
+    ASSERT(not node->is_binary());
     (*this)(&node->pattern(), d);
   }
 

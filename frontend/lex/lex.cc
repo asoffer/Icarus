@@ -302,7 +302,7 @@ static base::Global kReservedTypes = absl::flat_hash_map<std::string_view,
 // Lexeme representing either an identifier or the builtin keyword or value for
 // this word.
 Lexeme ConsumeWord(std::string_view &cursor) {
-  ASSERT(IsAlphaOrUnderscore(cursor[0]) == true);
+  ASSERT(IsAlphaOrUnderscore(cursor[0]));
 
   // Because we have already verified that the character locateted at `cursor`
   // is not numeric, it is safe to consume alhpanumeric and underscore
