@@ -6,6 +6,7 @@
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_format.h"
 #include "base/log.h"
+#include "base/universal_print.h"
 
 #if defined(ICARUS_DEBUG)
 
@@ -107,7 +108,7 @@ auto wrap(auto const & arg) -> decltype(auto) {
   } else if constexpr (requires { absl::StrCat(arg); }) {
     return arg;
   } else {
-    return absl::StrCat("[unprintable value of type ", typeid(type).name(), "]");
+    return ::base::UniversalPrintToString(arg);
   }
 }
 

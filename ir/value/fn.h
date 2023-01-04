@@ -7,17 +7,14 @@
 #include "base/extend.h"
 #include "base/extend/absl_format.h"
 #include "base/extend/absl_hash.h"
-#include "base/extend/serialize.h"
 #include "ir/value/module_id.h"
 
 namespace ir {
 
 // An identifier usable to find the byte code for a function within a given
 // (implicit module).
-struct LocalFnId
-    : base::Extend<LocalFnId, 1>::With<base::AbslHashExtension,
-                                       base::AbslFormatExtension,
-                                       base::BaseSerializeExtension> {
+struct LocalFnId : base::Extend<LocalFnId, 1>::With<base::AbslHashExtension,
+                                                    base::AbslFormatExtension> {
   using underlying_type = uint32_t;
 
   static constexpr std::string_view kAbslFormatString = "LocalFnId(%u)";
@@ -38,8 +35,7 @@ struct LocalFnId
 
 // An identifier usable to find the byte code for a function within an entire
 // program.
-struct Fn : base::Extend<Fn, 2>::With<base::AbslHashExtension,
-                                      base::BaseSerializeExtension> {
+struct Fn : base::Extend<Fn, 2>::With<base::AbslHashExtension> {
   Fn() : Fn(ModuleId::Invalid(), LocalFnId::Invalid()) {}
   explicit Fn(ModuleId mod, LocalFnId fn) : module_id_(mod), function_id_(fn) {}
 

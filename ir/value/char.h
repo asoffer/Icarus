@@ -5,8 +5,6 @@
 #include <iostream>
 #include <type_traits>
 
-#include "base/serialize.h"
-
 namespace ir {
 
 // We use `int8_t` and `uint8_t` to represent signed and unsigned integers
@@ -27,14 +25,6 @@ struct Char {
   template <std::integral T>
   T as_type() const {
     return data_;
-  }
-
-  friend void BaseSerialize(base::Serializer auto& s, Char c) {
-    base::Serialize(s, c.data_);
-  }
-
-  friend bool BaseDeserialize(base::Deserializer auto& d, Char& c) {
-    return base::Deserialize(d, c.data_);
   }
 
   template <typename H>

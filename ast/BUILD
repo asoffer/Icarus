@@ -37,7 +37,6 @@ cc_library(
         "//base:debug",
         "//base:graph",
         "//base:ptr_span",
-        "//base:untyped_buffer",
         "//core:arguments",
         "//core:dependency_node",
         "//core:parameters",

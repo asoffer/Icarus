@@ -11,6 +11,7 @@ cc_library(
     hdrs = ["debug.h"],
     deps = [
         ":log",
+        ":universal_print",
         "@com_google_absl//absl/strings",
     ],
 )
@@ -207,77 +208,6 @@ cc_test(
 )
 
 cc_library(
-    name = "raw_iterator",
-    hdrs = ["raw_iterator.h"],
-    deps = [
-        ":unaligned_ref",
-    ],
-)
-
-cc_test(
-    name = "raw_iterator_test",
-    srcs = ["raw_iterator_test.cc"],
-    deps = [
-        ":raw_iterator",
-        "@com_google_googletest//:gtest_main",
-    ],
-)
-
-cc_library(
-    name = "scope",
-    hdrs = ["scope.h"],
-    deps = [":macros"],
-)
-
-cc_test(
-    name = "scope_test",
-    srcs = ["scope_test.cc"],
-    deps = [
-        ":scope",
-        "@com_google_googletest//:gtest_main",
-    ],
-)
-
-cc_library(
-    name = "serialize",
-    hdrs = ["serialize.h"],
-    deps = [
-        ":debug",
-        ":meta",
-        ":raw_iterator",
-    ],
-)
-
-cc_test(
-    name = "serialize_test",
-    srcs = ["serialize_test.cc"],
-    deps = [
-        ":serialize",
-        "@com_google_absl//absl/container:flat_hash_map",
-        "@com_google_googletest//:gtest_main",
-    ],
-)
-
-cc_library(
-    name = "traverse",
-    hdrs = ["traverse.h"],
-    deps = [
-        ":debug",
-        ":meta",
-    ],
-)
-
-cc_test(
-    name = "traverse_test",
-    srcs = ["traverse_test.cc"],
-    deps = [
-        ":traverse",
-        "@com_google_absl//absl/container:flat_hash_map",
-        "@com_google_googletest//:gtest_main",
-    ],
-)
-
-cc_library(
     name = "unaligned_ref",
     hdrs = ["unaligned_ref.h"],
     deps = [],
@@ -306,45 +236,6 @@ cc_test(
     srcs = ["universal_print_test.cc"],
     deps = [
         ":universal_print",
-        "@com_google_googletest//:gtest_main",
-    ],
-)
-
-cc_library(
-    name = "untyped_buffer",
-    hdrs = ["untyped_buffer.h"],
-    deps = [
-        ":debug",
-        ":raw_iterator",
-        ":unaligned_ref",
-        ":untyped_buffer_view",
-    ],
-)
-
-cc_test(
-    name = "untyped_buffer_test",
-    srcs = ["untyped_buffer_test.cc"],
-    deps = [
-        ":untyped_buffer",
-        "@com_google_googletest//:gtest_main",
-    ],
-)
-
-cc_library(
-    name = "untyped_buffer_view",
-    hdrs = ["untyped_buffer_view.h"],
-    deps = [
-        ":debug",
-        ":raw_iterator",
-    ],
-)
-
-cc_test(
-    name = "untyped_buffer_view_test",
-    srcs = ["untyped_buffer_view_test.cc"],
-    deps = [
-        ":untyped_buffer",
-        ":untyped_buffer_view",
         "@com_google_googletest//:gtest_main",
     ],
 )

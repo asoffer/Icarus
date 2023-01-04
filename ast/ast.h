@@ -14,7 +14,6 @@
 #include "ast/node.h"
 #include "ast/scope.h"
 #include "base/ptr_span.h"
-#include "base/untyped_buffer.h"
 #include "core/arguments.h"
 #include "core/parameters.h"
 #include "core/type_system/type.h"

@@ -8,7 +8,6 @@
 
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_format.h"
-#include "base/serialize.h"
 
 namespace ir {
 
@@ -51,11 +50,6 @@ struct Integer {
                     absl::FormatSink *s) {
     s->Append(absl::StrCat(n.data_));
     return {true};
-  }
-
-  friend void BaseSerialize(auto &s, Integer n) { base::Serialize(s, n.data_); }
-  friend bool BaseDeserialize(auto &d, Integer &n) {
-    return base::Deserialize(d, n.data_);
   }
 
   friend std::ostream &operator<<(std::ostream &os, Integer const &n) {

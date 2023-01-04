@@ -8,9 +8,7 @@ cc_library(
 cc_library(
     name = "char",
     hdrs = ["char.h"],
-    deps = [
-        "//base:serialize",
-    ],
+    deps = [],
 )
 
 cc_library(
@@ -20,7 +18,6 @@ cc_library(
         ":module_id",
         "//base:extend",
         "//base/extend:absl_hash",
-        "//base/extend:serialize",
     ],
 )
 
@@ -33,7 +30,6 @@ cc_library(
     name = "integer",
     hdrs = ["integer.h"],
     deps = [
-        "//base:serialize",
         "@com_google_absl//absl/strings:str_format",
         "@com_google_absl//absl/strings",
     ],

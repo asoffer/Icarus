@@ -11,9 +11,7 @@
 #include "base/extend.h"
 #include "base/extend/absl_hash.h"
 #include "base/extend/equality.h"
-#include "base/extend/serialize.h"
 #include "base/macros.h"
-#include "base/serialize.h"
 #include "base/universal_print.h"
 
 namespace core {
@@ -81,14 +79,6 @@ struct ParameterFlags {
     return H::combine(std::move(h), f.flags_);
   }
 
-  friend void BaseSerialize(base::Serializer auto& s, ParameterFlags f) {
-    base::Serialize(s, f.flags_);
-  }
-
-  friend bool BaseDeserialize(base::Deserializer auto& d, ParameterFlags& f) {
-    return base::Deserialize(d, f.flags_);
-  }
-
   static constexpr ParameterFlags FromValue(uint8_t value) {
     return ParameterFlags(value);
   }
@@ -106,8 +96,7 @@ struct ParameterFlags {
 // parameterized entity.
 template <typename T>
 struct Parameter
-    : base::Extend<Parameter<T>>::template With<base::AbslHashExtension,
-                                                base::BaseSerializeExtension> {
+    : base::Extend<Parameter<T>>::template With<base::AbslHashExtension> {
   using value_type = T;
 
   friend std::ostream& operator<<(std::ostream& os, Parameter const& param) {
