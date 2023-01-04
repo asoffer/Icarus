@@ -208,21 +208,6 @@ cc_test(
 )
 
 cc_library(
-    name = "unaligned_ref",
-    hdrs = ["unaligned_ref.h"],
-    deps = [],
-)
-
-cc_test(
-    name = "unaligned_ref_test",
-    srcs = ["unaligned_ref_test.cc"],
-    deps = [
-        ":unaligned_ref",
-        "@com_google_googletest//:gtest_main",
-    ],
-)
-
-cc_library(
     name = "universal_print",
     hdrs = ["universal_print.h"],
     deps = [
