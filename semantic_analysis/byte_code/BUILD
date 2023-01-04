@@ -23,6 +23,7 @@ cc_library(
     srcs = [
         "access.cc",
         "assignment.cc",
+        "binary_operator.cc",
         "builtin.cc",
         "call.cc",
         "cast.cc",
@@ -66,6 +67,17 @@ cc_test(
 cc_test(
       name = "assignment_test",
       srcs = ["assignment_test.cc"],
+      deps = [
+          ":byte_code",
+          "//semantic_analysis:type_system",
+          "//test:repl",
+          "@com_google_googletest//:gtest_main",
+      ],
+)
+
+cc_test(
+      name = "binary_operator_test",
+      srcs = ["binary_operator_test.cc"],
       deps = [
           ":byte_code",
           "//semantic_analysis:type_system",

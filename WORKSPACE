@@ -80,7 +80,7 @@ http_archive(
 
 http_archive(
   name = "asoffer_jasmin",
-  urls = ["https://github.com/asoffer/jasmin/archive/4d99d6b7e2cdda3cb431b870db415714c4ab615b.zip"],
-  strip_prefix = "jasmin-4d99d6b7e2cdda3cb431b870db415714c4ab615b",
-  sha256 = "ec00db7dfefbc91bd3a028c508096b10f18e78407785d8af63c8986dbf510aa4",
+  urls = ["https://github.com/asoffer/jasmin/archive/9fdbbd8d1d0151ff4e170e3567ddd4922145a657.zip"],
+  strip_prefix = "jasmin-9fdbbd8d1d0151ff4e170e3567ddd4922145a657",
+  sha256 = "e512cc082d898c59886c4c665849d7cc0d2f68b430dfea8964a0554256fb2269",
 )

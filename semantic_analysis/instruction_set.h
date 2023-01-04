@@ -181,11 +181,11 @@ using ApplyInstruction = jasmin::MakeInstructionSet<I<Ts>...>;
 // be explicitly added here.
 using InstructionSet = jasmin::MakeInstructionSet<
     jasmin::Push, jasmin::DuplicateAt, jasmin::Duplicate, jasmin::Swap,
-    jasmin::Not, jasmin::Drop, jasmin::Store, TypeSystem::JasminInstructionSet,
-    core::ParameterType::Begin, core::ParameterType::Append,
-    core::ParameterType::AppendNamed, core::ParameterType::End<TypeSystem>,
-    core::FunctionType::End<TypeSystem>, jasmin::StackAllocate,
-    jasmin::StackOffset, jasmin::Load, AllocateTemporary,
+    jasmin::Not, jasmin::Drop, jasmin::Store, jasmin::Xor,
+    TypeSystem::JasminInstructionSet, core::ParameterType::Begin,
+    core::ParameterType::Append, core::ParameterType::AppendNamed,
+    core::ParameterType::End<TypeSystem>, core::FunctionType::End<TypeSystem>,
+    jasmin::StackAllocate, jasmin::StackOffset, jasmin::Load, AllocateTemporary,
     DeallocateAllTemporaries, BuiltinForeign, InvokeForeignFunction,
     PushStringLiteral, PushFunction,
     ApplyInstruction<jasmin::Equal, int8_t, int16_t, int32_t, int64_t, uint8_t,
@@ -201,6 +201,16 @@ using InstructionSet = jasmin::MakeInstructionSet<
                      uint64_t, float, double>,
     Destroy<ir::Integer>, CopyConstruct<ir::Integer>,
     MoveConstruct<ir::Integer>, NegateInteger,
+    ApplyInstruction<jasmin::Add, int8_t, int16_t, int32_t, int64_t, uint8_t,
+                     uint16_t, uint32_t, uint64_t, float, double>,
+    ApplyInstruction<jasmin::Subtract, int8_t, int16_t, int32_t, int64_t,
+                     uint8_t, uint16_t, uint32_t, uint64_t, float, double>,
+    ApplyInstruction<jasmin::Multiply, int8_t, int16_t, int32_t, int64_t,
+                     uint8_t, uint16_t, uint32_t, uint64_t, float, double>,
+    ApplyInstruction<jasmin::Divide, int8_t, int16_t, int32_t, int64_t, uint8_t,
+                     uint16_t, uint32_t, uint64_t, float, double>,
+    ApplyInstruction<jasmin::Mod, int8_t, int16_t, int32_t, int64_t, uint8_t,
+                     uint16_t, uint32_t, uint64_t>,
     ApplyInstruction<jasmin::Negate, int8_t, int16_t, int32_t, int64_t, uint8_t,
                      uint16_t, uint32_t, uint64_t, float, double>>;
 

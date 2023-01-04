@@ -99,6 +99,7 @@ struct ByteCodeValueEmitter : Emitter<ByteCodeValueEmitter> {
 
   void operator()(ast::Access const *node, FunctionData data);
   void operator()(ast::Assignment const *node, FunctionData data);
+  void operator()(ast::BinaryOperator const *node, FunctionData data);
   void operator()(ast::Builtin const *node, FunctionData data);
   void operator()(ast::Call const *node, FunctionData data);
   void operator()(ast::Cast const *node, FunctionData data);
@@ -110,7 +111,7 @@ struct ByteCodeValueEmitter : Emitter<ByteCodeValueEmitter> {
   void operator()(ast::IfStmt const *node, FunctionData data);
   void operator()(ast::UnaryOperator const *node, FunctionData data);
   void operator()(ast::Terminal const *node, FunctionData data);
-  // TODO: ArgumentType, BinaryAssignmentOperator, BinaryOperator, BlockNode,
+  // TODO: ArgumentType, BinaryAssignmentOperator, BlockNode,
   //       DesignatedInitializer, EnumLiteral, Import, Index, InterfaceLiteral,
   //       Label, ParameterizedStructLiteral, PatternMatch, ProgramArguments,
   //       ScopeLiteral, ScopeNode, SliceType, ShortFunctionLiteral,
@@ -128,6 +129,7 @@ struct ByteCodeStatementEmitter : Emitter<ByteCodeStatementEmitter> {
 
   void operator()(ast::Access const *node, FunctionData data);
   void operator()(ast::Assignment const *node, FunctionData data);
+  void operator()(ast::BinaryOperator const *node, FunctionData data);
   void operator()(ast::Builtin const *node, FunctionData data);
   void operator()(ast::Call const *node, FunctionData data);
   void operator()(ast::Cast const *node, FunctionData data);
@@ -142,7 +144,7 @@ struct ByteCodeStatementEmitter : Emitter<ByteCodeStatementEmitter> {
   void operator()(ast::ReturnStmt const *node, FunctionData data);
   void operator()(ast::UnaryOperator const *node, FunctionData data);
   void operator()(ast::Terminal const *node, FunctionData data);
-  // TODO: ArgumentType, BinaryAssignmentOperator, BinaryOperator, BlockNode,
+  // TODO: ArgumentType, BinaryAssignmentOperator, BlockNode,
   //       DesignatedInitializer, EnumLiteral, Import, Index, InterfaceLiteral,
   //       Label, ParameterizedStructLiteral, PatternMatch, ProgramArguments,
   //       ScopeLiteral, ScopeNode, SliceType, ShortFunctionLiteral,
