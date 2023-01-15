@@ -13,12 +13,8 @@
 
 namespace base {
 
-template <typename T>
-struct DeductionBlocker {
-  using type = T;
-};
-template <typename T>
-using DeductionBlockerT = typename DeductionBlocker<T>::type;
+template <typename... Ts>
+using type_list = void (*)(Ts...);
 
 template <typename... Ts>
 struct first;
@@ -30,16 +26,6 @@ struct first<T, Ts...> {
 
 template <typename... Ts>
 using first_t = typename first<Ts...>::type;
-
-template <typename T>
-struct identity {
-  using type = T;
-};
-template <typename T>
-using identity_t = typename identity<T>::type;
-
-template <typename... Ts>
-using type_list = void (*)(Ts...);
 
 namespace internal {
 
@@ -79,18 +65,8 @@ constexpr auto Length(type_list<Ts...>) {
 }
 constexpr void Length(void*) {}
 
-template <typename T, typename U>
-concept different_from = not std::same_as<T, U>;
-
 template <typename T, typename... Ts>
 concept one_of = (std::same_as<T, Ts> or ...);
-
-template <typename T, typename... Ts>
-concept convertible_to_exactly_one_of = (((std::convertible_to<T, Ts> ? 1 : 0) +
-                                          ...) == 1);
-
-template <typename T, typename TypeList>
-concept contained_in = Contains<TypeList, T>();
 
 template <typename T>
 constexpr bool always_false() {
@@ -98,9 +74,6 @@ constexpr bool always_false() {
 }
 
 constexpr bool always_false(nth::Type auto) { return false; }
-
-template <typename T>
-concept Assignable = std::assignable_from<T&, T>;
 
 template <typename T>
 concept SatisfiesTupleProtocol =
@@ -113,9 +86,6 @@ concept Container = requires(T t) {
   *t.begin();
   ++std::declval<typename T::iterator&>();
 };
-
-template <typename T, template <typename> typename Template>
-concept is_a = (nth::type<T>.template is_a<Template>());
 
 template <typename T>
 concept is_enum = std::is_enum_v<T>;
@@ -138,13 +108,6 @@ constexpr ssize_t Index(type_list<Ts...>) {
 }
 
 namespace internal_nth::type {
-template <template <typename> typename F, typename TL>
-struct array_transform_impl;
-template <template <typename> typename F, typename... Ts>
-struct array_transform_impl<F, type_list<Ts...>> {
-  static constexpr std::array<decltype(F<first<Ts...>>::value), sizeof...(Ts)>
-      value{F<Ts>::value...};
-};
 
 template <typename>
 struct tail_impl;
@@ -188,10 +151,6 @@ struct filter_impl<type_list<T, Ts...>, Predicate>
 
 }  // namespace internal_nth::type
 
-template <template <typename> typename F, typename TL>
-inline constexpr auto array_transform =
-    internal_nth::type::array_transform_impl<F, TL>::value;
-
 template <typename TL, template <typename> typename Predicate>
 inline constexpr bool all_of = internal_nth::type::all_of_impl<TL, Predicate>::value;
 
@@ -204,9 +163,6 @@ using tail = typename internal_nth::type::tail_impl<TL>::type;
 template <typename H, typename T>
 concept Hasher = std::invocable<H, T> and
     std::convertible_to<std::invoke_result_t<H, T>, size_t>;
-
-template <typename T, typename U>
-concept DecaysTo = std::is_same_v<std::decay_t<T>, U>;
 
 }  // namespace base
 

@@ -20,11 +20,6 @@ TEST(Meta, First) {
   EXPECT_TRUE((std::is_same_v<first_t<bool, int>, bool>));
 }
 
-TEST(Meta, Identity) {
-  EXPECT_TRUE((std::is_same_v<identity_t<int>, int>));
-  EXPECT_TRUE((std::is_same_v<identity_t<bool>, bool>));
-}
-
 TEST(Meta, TypeList) {
   EXPECT_TRUE((std::is_same_v<type_list<>, type_list<>>));
   EXPECT_TRUE(not(std::is_same_v<type_list<int>, type_list<>>));
@@ -74,19 +69,6 @@ TEST(Meta, Index) {
   EXPECT_EQ(1, Index<bool>(type_list<char, bool, int, bool>{}));
 }
 
-template <typename T>
-struct Size {
-  static constexpr size_t value = sizeof(T);
-};
-
-TEST(Meta, ArrayTransform) {
-  EXPECT_THAT((array_transform<Size, type_list<>>), ElementsAre());
-  EXPECT_THAT((array_transform<Size, type_list<int>>),
-              ElementsAre(sizeof(int)));
-  EXPECT_THAT((array_transform<Size, type_list<int, bool>>),
-              ElementsAre(sizeof(int), sizeof(bool)));
-}
-
 template <typename>
 struct True {
   static constexpr bool value = true;
@@ -115,18 +97,22 @@ TEST(Meta, AllOf) {
 
 TEST(Meta, Filter) {
   EXPECT_EQ((nth::type<filter<type_list<>, True>>), nth::type<type_list<>>);
-  EXPECT_EQ((nth::type<filter<type_list<int>, True>>), nth::type<type_list<int>>);
+  EXPECT_EQ((nth::type<filter<type_list<int>, True>>),
+            nth::type<type_list<int>>);
   EXPECT_EQ((nth::type<filter<type_list<int, bool>, True>>),
             (nth::type<type_list<int, bool>>));
 
   EXPECT_EQ((nth::type<filter<type_list<>, False>>), nth::type<type_list<>>);
   EXPECT_EQ((nth::type<filter<type_list<int>, False>>), nth::type<type_list<>>);
-  EXPECT_EQ((nth::type<filter<type_list<int, bool>, False>>), nth::type<type_list<>>);
+  EXPECT_EQ((nth::type<filter<type_list<int, bool>, False>>),
+            nth::type<type_list<>>);
 
   EXPECT_EQ((nth::type<filter<type_list<>, OneByte>>), nth::type<type_list<>>);
-  EXPECT_EQ((nth::type<filter<type_list<int>, OneByte>>), nth::type<type_list<>>);
-  EXPECT_EQ((nth::type<filter<type_list<int, char, float, std::byte>, OneByte>>),
-            (nth::type<type_list<char, std::byte>>));
+  EXPECT_EQ((nth::type<filter<type_list<int>, OneByte>>),
+            nth::type<type_list<>>);
+  EXPECT_EQ(
+      (nth::type<filter<type_list<int, char, float, std::byte>, OneByte>>),
+      (nth::type<type_list<char, std::byte>>));
 }
 
 }  // namespace
