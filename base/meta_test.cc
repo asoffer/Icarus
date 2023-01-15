@@ -54,11 +54,6 @@ TEST(Meta, TypeListConcatenation) {
           type_list<bool, int, char, int>>));
 }
 
-TEST(Meta, Comparison) {
-  EXPECT_EQ(meta<int>, meta<int>);
-  EXPECT_NE(meta<int>, meta<bool>);
-}
-
 TEST(Meta, Container) {
   struct S {
     void begin() {}
@@ -119,19 +114,19 @@ TEST(Meta, AllOf) {
 }
 
 TEST(Meta, Filter) {
-  EXPECT_EQ((meta<filter<type_list<>, True>>), meta<type_list<>>);
-  EXPECT_EQ((meta<filter<type_list<int>, True>>), meta<type_list<int>>);
-  EXPECT_EQ((meta<filter<type_list<int, bool>, True>>),
-            (meta<type_list<int, bool>>));
+  EXPECT_EQ((nth::type<filter<type_list<>, True>>), nth::type<type_list<>>);
+  EXPECT_EQ((nth::type<filter<type_list<int>, True>>), nth::type<type_list<int>>);
+  EXPECT_EQ((nth::type<filter<type_list<int, bool>, True>>),
+            (nth::type<type_list<int, bool>>));
 
-  EXPECT_EQ((meta<filter<type_list<>, False>>), meta<type_list<>>);
-  EXPECT_EQ((meta<filter<type_list<int>, False>>), meta<type_list<>>);
-  EXPECT_EQ((meta<filter<type_list<int, bool>, False>>), meta<type_list<>>);
+  EXPECT_EQ((nth::type<filter<type_list<>, False>>), nth::type<type_list<>>);
+  EXPECT_EQ((nth::type<filter<type_list<int>, False>>), nth::type<type_list<>>);
+  EXPECT_EQ((nth::type<filter<type_list<int, bool>, False>>), nth::type<type_list<>>);
 
-  EXPECT_EQ((meta<filter<type_list<>, OneByte>>), meta<type_list<>>);
-  EXPECT_EQ((meta<filter<type_list<int>, OneByte>>), meta<type_list<>>);
-  EXPECT_EQ((meta<filter<type_list<int, char, float, std::byte>, OneByte>>),
-            (meta<type_list<char, std::byte>>));
+  EXPECT_EQ((nth::type<filter<type_list<>, OneByte>>), nth::type<type_list<>>);
+  EXPECT_EQ((nth::type<filter<type_list<int>, OneByte>>), nth::type<type_list<>>);
+  EXPECT_EQ((nth::type<filter<type_list<int, char, float, std::byte>, OneByte>>),
+            (nth::type<type_list<char, std::byte>>));
 }
 
 }  // namespace

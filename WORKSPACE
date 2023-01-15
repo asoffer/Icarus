@@ -79,6 +79,13 @@ http_archive(
 )
 
 http_archive(
+  name = "asoffer_nth",
+  urls = ["https://github.com/asoffer/nth/archive/f6e20e1d65c36800d76f1e487249bcdf71b050f0.zip"],
+  strip_prefix = "nth-f6e20e1d65c36800d76f1e487249bcdf71b050f0",
+  sha256 = "b6829eecfd7f735644f91bb678f6e31d6b5453938cf5ddc362795dddc4170b9c",
+)
+
+http_archive(
   name = "asoffer_jasmin",
   urls = ["https://github.com/asoffer/jasmin/archive/9fdbbd8d1d0151ff4e170e3567ddd4922145a657.zip"],
   strip_prefix = "jasmin-9fdbbd8d1d0151ff4e170e3567ddd4922145a657",

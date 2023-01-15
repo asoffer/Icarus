@@ -91,9 +91,9 @@ struct ByteCodeValueEmitter : Emitter<ByteCodeValueEmitter> {
   template <typename NodeType>
   void operator()(NodeType const *node, FunctionData) {
     if (ast::ExpressionType<NodeType>) {
-      NOT_YET(base::meta<NodeType>, node->DebugString());
+      NOT_YET(nth::type<NodeType>, node->DebugString());
     } else {
-      UNREACHABLE(base::meta<NodeType>);
+      UNREACHABLE(nth::type<NodeType>);
     }
   }
 
@@ -124,7 +124,7 @@ struct ByteCodeStatementEmitter : Emitter<ByteCodeStatementEmitter> {
 
   template <typename NodeType>
   void operator()(NodeType const *node, FunctionData) {
-    NOT_YET(base::meta<NodeType>, node->DebugString());
+    NOT_YET(nth::type<NodeType>, node->DebugString());
   }
 
   void operator()(ast::Access const *node, FunctionData data);
@@ -157,7 +157,7 @@ struct ByteCodeReferenceEmitter : Emitter<ByteCodeReferenceEmitter> {
 
   template <typename NodeType>
   void operator()(NodeType const *node, FunctionData) {
-    NOT_YET(base::meta<NodeType>, node->DebugString());
+    NOT_YET(nth::type<NodeType>, node->DebugString());
   }
 
 

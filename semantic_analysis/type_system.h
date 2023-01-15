@@ -199,25 +199,25 @@ using TypeSystem =
                      core::FunctionType>;
 
 inline constexpr core::Type Bool =
-    PrimitiveType(base::meta<TypeSystem>, Primitive::Bool);
+    PrimitiveType(nth::type<TypeSystem>, Primitive::Bool);
 inline constexpr core::Type Char =
-    PrimitiveType(base::meta<TypeSystem>, Primitive::Char);
+    PrimitiveType(nth::type<TypeSystem>, Primitive::Char);
 inline constexpr core::Type Byte =
-    PrimitiveType(base::meta<TypeSystem>, Primitive::Byte);
+    PrimitiveType(nth::type<TypeSystem>, Primitive::Byte);
 inline constexpr core::Type F32 =
-    PrimitiveType(base::meta<TypeSystem>, Primitive::F32);
+    PrimitiveType(nth::type<TypeSystem>, Primitive::F32);
 inline constexpr core::Type F64 =
-    PrimitiveType(base::meta<TypeSystem>, Primitive::F64);
+    PrimitiveType(nth::type<TypeSystem>, Primitive::F64);
 inline constexpr core::Type Type =
-    PrimitiveType(base::meta<TypeSystem>, Primitive::Type);
+    PrimitiveType(nth::type<TypeSystem>, Primitive::Type);
 inline constexpr core::Type Integer =
-    PrimitiveType(base::meta<TypeSystem>, Primitive::Integer);
+    PrimitiveType(nth::type<TypeSystem>, Primitive::Integer);
 inline constexpr core::Type Module =
-    PrimitiveType(base::meta<TypeSystem>, Primitive::Module);
+    PrimitiveType(nth::type<TypeSystem>, Primitive::Module);
 inline constexpr core::Type EmptyArray =
-    PrimitiveType(base::meta<TypeSystem>, Primitive::EmptyArray);
+    PrimitiveType(nth::type<TypeSystem>, Primitive::EmptyArray);
 inline constexpr core::Type ErrorType =
-    PrimitiveType(base::meta<TypeSystem>, Primitive::Error);
+    PrimitiveType(nth::type<TypeSystem>, Primitive::Error);
 
 inline core::Type I(uint32_t bits) {
   return core::SizedIntegerType::I<TypeSystem>(bits);

@@ -154,8 +154,8 @@ struct Parameters
   // `b` to `e` (including `b`, but excluding `e`).
   template <std::input_iterator Iter>
   Parameters(Iter b, Iter e) requires(
-      base::meta<std::decay_t<decltype(*std::declval<Iter>())>> ==
-      base::meta<parameter_type>)
+      nth::type<std::decay_t<decltype(*std::declval<Iter>())>> ==
+      nth::type<parameter_type>)
       : params_(b, e) {}
 
   // Returns the number of parameters in this object.

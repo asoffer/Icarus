@@ -66,7 +66,7 @@ struct SizedIntegerType
     ASSERT(log_alignment <
            static_cast<size_t>(std::numeric_limits<uint16_t>::max()));
     return SizedIntegerType(
-        base::meta<TS>,
+        nth::type<TS>,
         {.size_in_bits           = bits,
          .log_alignment_in_bytes = static_cast<uint16_t>(log_alignment),
          .is_signed              = true});
@@ -81,7 +81,7 @@ struct SizedIntegerType
     ASSERT(log_alignment <
            static_cast<size_t>(std::numeric_limits<uint16_t>::max()));
     return SizedIntegerType(
-        base::meta<TS>,
+        nth::type<TS>,
         {.size_in_bits           = bits,
          .log_alignment_in_bytes = static_cast<uint16_t>(log_alignment),
          .is_signed              = false});
@@ -111,10 +111,11 @@ struct SizedIntegerType
     return std::get<0>(decompose());
   }
 
-  template <TypeSystemSupporting<SizedIntegerType> TS>
   explicit constexpr SizedIntegerType(
-      base::Meta<TS>, internal_sized_integer::SizedIntegerTypeState t)
-      : TypeCategory(base::meta<TS>, t) {}
+      nth::Type auto t,
+      internal_sized_integer::SizedIntegerTypeState state) requires
+      TypeSystemSupporting<typename decltype(t)::type, SizedIntegerType>
+      : TypeCategory(t, state) {}
 };
 
 }  // namespace core

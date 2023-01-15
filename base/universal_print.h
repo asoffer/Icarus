@@ -44,20 +44,20 @@ void UniversalPrint(Printer auto& printer, auto const& t) {
         t);
     printer(")");
 
-  } else if constexpr (meta<type>.template is_a<std::variant>()) {
+  } else if constexpr (nth::type<type>.template is_a<std::variant>()) {
     std::visit([&](auto const& x) { ::base::UniversalPrint(printer, x); }, t);
 
-  } else if constexpr (meta<type> == meta<std::nullopt_t>) {
+  } else if constexpr (nth::type<type> == nth::type<std::nullopt_t>) {
     printer("nullopt");
 
-  } else if constexpr (meta<type>.template is_a<std::optional>()) {
+  } else if constexpr (nth::type<type>.template is_a<std::optional>()) {
     if (t) {
       ::base::UniversalPrint(printer, *t);
     } else {
       ::base::UniversalPrint(printer, std::nullopt);
     }
 
-  } else if constexpr (meta<type>.template is_a<absl::StatusOr>()) {
+  } else if constexpr (nth::type<type>.template is_a<absl::StatusOr>()) {
     if (t.ok()) {
       ::base::UniversalPrint(*t);
     } else {

@@ -11,8 +11,8 @@ CastKind CanCast(QualifiedType from, core::Type to, TypeSystem& type_system) {
   if (from.type() == to) { return CastKind::InPlace; }
 
   return type_system.visit(from.type(), [&](auto from_type) -> CastKind {
-    auto category_type = base::meta<std::decay_t<decltype(from_type)>>;
-    if constexpr (category_type == base::meta<core::SizedIntegerType>) {
+    auto category_type = nth::type<std::decay_t<decltype(from_type)>>;
+    if constexpr (category_type == nth::type<core::SizedIntegerType>) {
       if (to == Integer) {
         if (from.qualifiers() >= Qualifiers::Constant()) {
           return CastKind::Implicit;
@@ -45,7 +45,7 @@ CastKind CanCast(QualifiedType from, core::Type to, TypeSystem& type_system) {
           }
         }
       }
-    } else if constexpr (category_type == base::meta<PrimitiveType>) {
+    } else if constexpr (category_type == nth::type<PrimitiveType>) {
       switch (from_type.value()) {
         case Primitive::Bool: NOT_YET();
         case Primitive::Char: NOT_YET();
@@ -71,7 +71,7 @@ CastKind CanCast(QualifiedType from, core::Type to, TypeSystem& type_system) {
         case Primitive::Module:
         case Primitive::Error: return CastKind::None;
       }
-    } else if constexpr (category_type == base::meta<BufferPointerType>) {
+    } else if constexpr (category_type == nth::type<BufferPointerType>) {
       if (auto to_ptr = to.get_if<BufferPointerType>(type_system)) {
         if (CanCast(
                 QualifiedType(
@@ -93,7 +93,7 @@ CastKind CanCast(QualifiedType from, core::Type to, TypeSystem& type_system) {
           return CastKind::None;
         }
       }
-    } else if constexpr (category_type == base::meta<core::PointerType>) {
+    } else if constexpr (category_type == nth::type<core::PointerType>) {
       auto to_ptr = to.get_if<core::PointerType>(type_system);
       if (to_ptr and
           CanCast(
@@ -104,7 +104,7 @@ CastKind CanCast(QualifiedType from, core::Type to, TypeSystem& type_system) {
       } else {
         return CastKind::None;
      }
-    } else if constexpr (category_type == base::meta<SliceType>) {
+    } else if constexpr (category_type == nth::type<SliceType>) {
       auto to_slice = to.get_if<SliceType>(type_system);
       if (to_slice and
           CanCast(

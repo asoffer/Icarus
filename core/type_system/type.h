@@ -31,7 +31,7 @@ struct TypeSystem;
 // category `T`.
 template <typename TS, typename T>
 concept TypeSystemSupporting =
-    (base::meta<TS>.template is_a<TypeSystem>() and
+    (nth::type<TS>.template is_a<TypeSystem>() and
      std::derived_from<TS, typename T::manager_type>);
 
 // A concept matching any type that can be used as qualifiers for a

@@ -21,12 +21,12 @@ struct TaggedNode {
     auto range = l.range();
     std::visit(
         [&](auto &&x) {
-          constexpr auto type = base::meta<std::decay_t<decltype(x)>>;
-          if constexpr (type == base::meta<Syntax>) {
+          constexpr auto type = nth::type<std::decay_t<decltype(x)>>;
+          if constexpr (type == nth::type<Syntax>) {
             node_ = std::make_unique<Token>(range, false);
-          } else if constexpr (type == base::meta<Operator>) {
+          } else if constexpr (type == nth::type<Operator>) {
             node_ = std::make_unique<Token>(range, false);
-          } else if constexpr (type == base::meta<std::unique_ptr<ast::Node>>) {
+          } else if constexpr (type == nth::type<std::unique_ptr<ast::Node>>) {
             node_ = std::move(x);
           } else {
             node_ = std::make_unique<Token>(range, true);

@@ -138,10 +138,10 @@ struct PtrSpan {
 
   value_type operator[](size_t n) const { return ptr_[n].get(); }
 
-  template <
-      typename Container,
-      std::enable_if_t<
-          not meta<std::decay_t<Container>>.template is_a<PtrSpan>(), int> = 0>
+  template <typename Container,
+            std::enable_if_t<
+                not nth::type<std::decay_t<Container>>.template is_a<PtrSpan>(),
+                int> = 0>
   PtrSpan(Container &&c)
       : ptr_(c.empty() ? nullptr : std::addressof(c[0])), size_(c.size()) {}
 

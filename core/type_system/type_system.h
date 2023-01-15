@@ -79,12 +79,13 @@ struct TypeCategory {
   // the data will be stored inline in the `Type`.
   using manager_type = manager_type_impl<kStoreInline>;
 
-  template <TypeSystemSupporting<CrtpDerived> TS, typename... State>
-  explicit constexpr TypeCategory(base::Meta<TS>,
-                                  State&&... state) requires(kStoreInline)
+  template <typename... State>
+  explicit constexpr TypeCategory(nth::Type auto T, State&&... state) requires(
+      TypeSystemSupporting<typename decltype(T)::type, CrtpDerived>and
+          kStoreInline)
       : type_{}, manager_(nullptr) {
     static_assert(sizeof...(State) == 1);
-    type_.set_category(TS::template index<CrtpDerived>());
+    type_.set_category(nth::type_t<T>::template index<CrtpDerived>());
     write_inline_value(state...);
   }
   template <typename... State>
@@ -154,7 +155,7 @@ struct TypeCategory {
     // to provide the necessary construction API that `Type` can hook into
     // without the extra lookup.
     if constexpr (kStoreInline) {
-      return CrtpDerived(base::meta<std::decay_t<decltype(sys)>>,
+      return CrtpDerived(nth::type<std::decay_t<decltype(sys)>>,
                          get_inline_value(t.index()));
     } else {
       return std::apply(
@@ -212,7 +213,7 @@ struct TypeSystem : TypeCategories::manager_type... {
       : jasmin::StackMachineInstruction<Make<Cat>> {
     static constexpr Type execute(States... states, TypeSystem* system) {
       if constexpr (std::is_empty_v<typename Cat::manager_type>) {
-        return Cat(base::meta<TypeSystem>, states...);
+        return Cat(nth::type<TypeSystem>, states...);
       } else {
         return Cat(*system, states...);
       }

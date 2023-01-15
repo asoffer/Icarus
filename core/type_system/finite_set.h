@@ -13,9 +13,9 @@ namespace core {
 // constructors of `FiniteSetType` instantiations.
 template <base::is_enum E>
 struct FiniteSetType : TypeCategory<FiniteSetType<E>, E> {
-  template <TypeSystemSupporting<FiniteSetType<E>> TS>
-  explicit constexpr FiniteSetType(base::Meta<TS>, E e)
-      : TypeCategory<FiniteSetType<E>, E>(base::meta<TS>, e) {}
+  explicit constexpr FiniteSetType(nth::Type auto t, E e) requires
+      TypeSystemSupporting<typename decltype(t)::type, FiniteSetType<E>>
+      : TypeCategory<FiniteSetType<E>, E>(t, e) {}
 
   constexpr E value() const { return std::get<0>(this->decompose()); }
 };

@@ -157,7 +157,9 @@ cc_library(
 cc_library(
     name = "meta",
     hdrs = ["meta.h"],
-    deps = [],
+    deps = [
+        "@asoffer_nth//nth/meta:type",
+    ],
 )
 
 cc_test(

@@ -15,8 +15,8 @@
 
 namespace core {
 template <typename T>
-concept StringLike = (base::meta<T> == base::meta<std::string> or
-                      base::meta<T> == base::meta<std::string_view>);
+concept StringLike = (nth::type<T> == nth::type<std::string> or
+                      nth::type<T> == nth::type<std::string_view>);
 
 // Arguments represent arguments passed in to a function or other callable
 // object. They contain a collection of positional arguments as well as a

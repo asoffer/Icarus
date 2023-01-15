@@ -14,12 +14,12 @@ void JsonConsumer::ConsumeImpl(std::string_view category, std::string_view name,
   };
   auto &message = error["message"];
   diag.for_each_component([&](auto const &component) {
-    constexpr auto type = base::meta<std::decay_t<decltype(component)>>;
-    if constexpr (type == base::meta<Text>) {
+    constexpr auto type = nth::type<std::decay_t<decltype(component)>>;
+    if constexpr (type == nth::type<Text>) {
       message.emplace_back(component);
-    } else if constexpr (type == base::meta<List>) {
+    } else if constexpr (type == nth::type<List>) {
       message.emplace_back(component.items());
-    } else if constexpr (type == base::meta<SourceQuote>) {
+    } else if constexpr (type == nth::type<SourceQuote>) {
       auto highlights = component.highlights;
       std::sort(highlights.begin(), highlights.end(),
                 [](auto const &l, auto const &r) {

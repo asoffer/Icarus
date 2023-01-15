@@ -446,12 +446,12 @@ Lexeme ConsumeNumber(std::string_view &cursor,
 
   return std::visit(
       [&diag, number_str](auto num) {
-        constexpr auto type = base::meta<decltype(num)>;
-        if constexpr (type == base::meta<ir::Integer>) {
+        constexpr auto type = nth::type<decltype(num)>;
+        if constexpr (type == nth::type<ir::Integer>) {
           return Lexeme(std::make_unique<ast::Terminal>(number_str, num));
-        } else if constexpr (type == base::meta<double>) {
+        } else if constexpr (type == nth::type<double>) {
           return Lexeme(std::make_unique<ast::Terminal>(number_str, num));
-        } else if constexpr (type == base::meta<NumberParsingError>) {
+        } else if constexpr (type == nth::type<NumberParsingError>) {
           // Even though we could try to be helpful by guessing the type, it's
           // unlikely to be useful. The value may also be important if it's used
           // at compile-time (e.g., as an array extent). Generally proceeding

@@ -22,9 +22,9 @@ struct ConvertibleToAnything {
 template <typename T>
 struct ConvertibleToAnythingBut {
   ConvertibleToAnythingBut();
-  template <typename U, std::enable_if_t<meta<T> != meta<U>, int> = 0>
+  template <typename U, std::enable_if_t<nth::type<T> != nth::type<U>, int> = 0>
   operator U &() const;
-  template <typename U, std::enable_if_t<meta<T> != meta<U>, int> = 0>
+  template <typename U, std::enable_if_t<nth::type<T> != nth::type<U>, int> = 0>
   operator U &&() const;
 };
 
@@ -156,11 +156,11 @@ auto DependenciesImpl(type_list<>, type_list<Processed...>) {
 
 template <typename T, typename... Ts, typename... Processed>
 auto DependenciesImpl(type_list<T, Ts...>, type_list<Processed...>) {
-  if constexpr (((meta<T> == meta<Processed>) || ...)) {
+  if constexpr (((nth::type<T> == nth::type<Processed>) || ...)) {
     return DependenciesImpl(type_list<Ts...>{}, type_list<Processed...>{});
   } else {
     using deps = decltype(GetDependencies(static_cast<T *>(nullptr)));
-    if constexpr (meta<deps> == meta<type_list<>>) {
+    if constexpr (nth::type<deps> == nth::type<type_list<>>) {
       return DependenciesImpl(type_list<Ts...>{}, type_list<T, Processed...>{});
     } else {
       return DependenciesImpl(type_list_cat<deps, type_list<Ts...>>{},

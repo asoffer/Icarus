@@ -158,15 +158,15 @@ void ConsoleRenderer::Add(Category cat, DiagnosticMessage const &diag) {
   std::fputs("\033[31;1mError\033[0m:\n", out_);
 
   diag.for_each_component([&](auto const &component) {
-    constexpr auto type = base::meta<std::decay_t<decltype(component)>>;
-    if constexpr (type == base::meta<Text>) {
+    constexpr auto type = nth::type<std::decay_t<decltype(component)>>;
+    if constexpr (type == nth::type<Text>) {
       std::fputs(component.c_str(), out_);
       std::fputs("\n\n", out_);
-    } else if constexpr (type == base::meta<List>) {
+    } else if constexpr (type == nth::type<List>) {
       for (std::string const &item : component.items()) {
         absl::FPrintF(out_, "  * %s\n", item);
       }
-    } else if constexpr (type == base::meta<SourceQuote>) {
+    } else if constexpr (type == nth::type<SourceQuote>) {
       WriteSourceQuote(component);
     } else {
       static_assert(base::always_false(type));

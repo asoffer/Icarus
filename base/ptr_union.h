@@ -83,7 +83,7 @@ struct PtrUnion {
   static constexpr uintptr_t index() {
     uintptr_t i      = 0;
     uintptr_t result = 0;
-    ((base::meta<T const> == base::meta<Ts const> ? result = i : 0, ++i), ...);
+    ((nth::type<T const> == nth::type<Ts const> ? result = i : 0, ++i), ...);
     return result;
   }
 

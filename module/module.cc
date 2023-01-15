@@ -26,11 +26,11 @@ void SerializeTypeSystem(semantic_analysis::TypeSystem& type_system,
                          internal_proto::TypeSystem& proto) {
   type_system.visit_all_stored([&](auto t) {
     using type_category_type     = std::decay_t<decltype(t)>;
-    constexpr auto type_category = base::meta<type_category_type>;
+    constexpr auto type_category = nth::type<type_category_type>;
     constexpr size_t CategoryIndex =
         semantic_analysis::TypeSystem::index<type_category_type>();
 
-    if constexpr (type_category == base::meta<core::ParameterType>) {
+    if constexpr (type_category == nth::type<core::ParameterType>) {
       auto& parameters = *proto.add_parameters();
       for (auto const& parameter : t.value()) {
         auto& param = *parameters.add_parameters();
@@ -39,24 +39,24 @@ void SerializeTypeSystem(semantic_analysis::TypeSystem& type_system,
             parameter.value, *param.mutable_type(),
             type_system.has_inline_storage(parameter.value.category()));
       }
-    } else if constexpr (type_category == base::meta<core::PointerType>) {
+    } else if constexpr (type_category == nth::type<core::PointerType>) {
       SerializeType(t.pointee(), *proto.add_pointers(),
                     type_system.has_inline_storage(t.pointee().category()));
     } else if constexpr (type_category ==
-                         base::meta<semantic_analysis::BufferPointerType>) {
+                         nth::type<semantic_analysis::BufferPointerType>) {
       SerializeType(t.pointee(), *proto.add_buffer_pointers(),
                     type_system.has_inline_storage(t.pointee().category()));
     } else if constexpr (type_category ==
-                         base::meta<semantic_analysis::ArrayType>) {
+                         nth::type<semantic_analysis::ArrayType>) {
       auto& array = *proto.add_arrays();
       array.set_length(t.length());
       SerializeType(t.data_type(), *array.mutable_type(),
                     type_system.has_inline_storage(t.data_type().category()));
     } else if constexpr (type_category ==
-                         base::meta<semantic_analysis::SliceType>) {
+                         nth::type<semantic_analysis::SliceType>) {
       SerializeType(t.pointee(), *proto.add_slices(),
                     type_system.has_inline_storage(t.pointee().category()));
-    } else if constexpr (type_category == base::meta<core::FunctionType>) {
+    } else if constexpr (type_category == nth::type<core::FunctionType>) {
       auto& f = *proto.add_functions();
       f.set_parameters(t.parameter_type().index());
       f.mutable_return_types()->Reserve(t.returns().size());

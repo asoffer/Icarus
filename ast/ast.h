@@ -1044,11 +1044,11 @@ struct Terminal : Expression {
     return std::get<T>(value_);
   }
 
-  base::MetaValue type() const {
-    static std::array<base::MetaValue, 7> Types{
-        base::meta<bool>,       base::meta<ir::Char>,   base::meta<ir::Integer>,
-        base::meta<double>,     base::meta<ir::addr_t>, base::meta<core::Type>,
-        base::meta<std::string>};
+  nth::TypeId type() const {
+    static std::array<nth::TypeId, 7> Types{
+        nth::type<bool>,       nth::type<ir::Char>,   nth::type<ir::Integer>,
+        nth::type<double>,     nth::type<ir::addr_t>, nth::type<core::Type>,
+        nth::type<std::string>};
 
     return Types[value_.index()];
   };

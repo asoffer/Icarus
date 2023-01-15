@@ -8,15 +8,15 @@ using ComparisonOperatorTest = testing::TestWithParam<core::Type>;
 
 template <typename T>
 core::Type TypeFor() {
-  static constexpr auto type = base::meta<T>;
-  if constexpr (type == base::meta<int8_t>) { return I(8); }
-  if constexpr (type == base::meta<int16_t>) { return I(16); }
-  if constexpr (type == base::meta<int32_t>) { return I(32); }
-  if constexpr (type == base::meta<int64_t>) { return I(64); }
-  if constexpr (type == base::meta<uint8_t>) { return U(8); }
-  if constexpr (type == base::meta<uint16_t>) { return U(16); }
-  if constexpr (type == base::meta<uint32_t>) { return U(32); }
-  if constexpr (type == base::meta<uint64_t>) { return U(64); }
+  static constexpr auto type = nth::type<T>;
+  if constexpr (type == nth::type<int8_t>) { return I(8); }
+  if constexpr (type == nth::type<int16_t>) { return I(16); }
+  if constexpr (type == nth::type<int32_t>) { return I(32); }
+  if constexpr (type == nth::type<int64_t>) { return I(64); }
+  if constexpr (type == nth::type<uint8_t>) { return U(8); }
+  if constexpr (type == nth::type<uint16_t>) { return U(16); }
+  if constexpr (type == nth::type<uint32_t>) { return U(32); }
+  if constexpr (type == nth::type<uint64_t>) { return U(64); }
 }
 
 std::string_view StringOf(core::Type t) {

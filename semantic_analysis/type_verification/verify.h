@@ -123,7 +123,7 @@ struct TypeVerifier : VerificationScheduler {
 
   template <typename NodeType>
   static VerificationTask VerifyType(TypeVerifier &tv, NodeType const *) {
-    NOT_YET(base::meta<NodeType>);
+    NOT_YET(nth::type<NodeType>);
   }
 
   static VerificationTask VerifyType(TypeVerifier &, ast::Access const *);

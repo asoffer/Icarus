@@ -43,18 +43,18 @@ struct Lexeme {
     return std::visit(
         [](auto&& x) {
           using T             = std::decay_t<decltype(x)>;
-          constexpr auto type = base::meta<T>;
-          if constexpr (type == base::meta<Syntax>) {
+          constexpr auto type = nth::type<T>;
+          if constexpr (type == nth::type<Syntax>) {
             return TagFrom(x);
-          } else if constexpr (type == base::meta<Operator>) {
+          } else if constexpr (type == nth::type<Operator>) {
             return TagFrom(x);
-          } else if constexpr (type == base::meta<std::unique_ptr<ast::Node>>) {
+          } else if constexpr (type == nth::type<std::unique_ptr<ast::Node>>) {
             if (x->template is<ast::Label>()) {
               return label;
             } else {
               return expr;
             }
-          } else if constexpr (type == base::meta<ir::Hashtag>) {
+          } else if constexpr (type == nth::type<ir::Hashtag>) {
             return hashtag;
           } else {
             static_assert(base::always_false<T>());

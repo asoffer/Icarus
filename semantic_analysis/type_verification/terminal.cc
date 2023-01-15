@@ -7,12 +7,12 @@ namespace semantic_analysis {
 namespace {
 
 core::Type TypeOfNode(ast::Terminal const& node, TypeSystem& type_system) {
-  if (node.type() == base::meta<bool>) { return Bool; }
-  if (node.type() == base::meta<ir::Char>) { return Char; }
-  if (node.type() == base::meta<core::Type>) { return Type; }
-  if (node.type() == base::meta<ir::Integer>) { return Integer; }
-  if (node.type() == base::meta<double>) { return F64; }
-  if (node.type() == base::meta<std::string>) {
+  if (node.type() == nth::type<bool>) { return Bool; }
+  if (node.type() == nth::type<ir::Char>) { return Char; }
+  if (node.type() == nth::type<core::Type>) { return Type; }
+  if (node.type() == nth::type<ir::Integer>) { return Integer; }
+  if (node.type() == nth::type<double>) { return F64; }
+  if (node.type() == nth::type<std::string>) {
     return SliceType(type_system, Char);
   }
   NOT_YET(node.DebugString());
