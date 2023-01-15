@@ -4,10 +4,10 @@
 #include <array>
 
 #include "absl/base/casts.h"
-#include "base/flyweight_set.h"
 #include "base/meta.h"
 #include "core/type_system/type.h"
 #include "jasmin/instruction.h"
+#include "nth/container/flyweight_set.h"
 
 namespace core {
 namespace internal_type_system {
@@ -49,7 +49,7 @@ struct TypeCategory {
 
   template <>
   struct manager_type_impl<false>
-      : private base::flyweight_set<state_type_tuple> {
+      : private nth::flyweight_set<state_type_tuple> {
     template <typename TS>
     void visit_all_stored(TS& sys, auto const& invocable) {
       Type t;
@@ -63,7 +63,7 @@ struct TypeCategory {
    private:
     friend TypeCategory;
 
-    using base_type = base::flyweight_set<state_type_tuple>;
+    using base_type = nth::flyweight_set<state_type_tuple>;
 
     using base_type::from_index;
     using base_type::index;

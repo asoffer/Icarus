@@ -1,5 +1,6 @@
 #include "semantic_analysis/byte_code/byte_code.h"
 
+#include "nth/container/flyweight_map.h"
 #include "semantic_analysis/byte_code/emitter.h"
 
 namespace semantic_analysis {
@@ -7,7 +8,7 @@ namespace semantic_analysis {
 void EmitByteCodeForModule(ast::Module const &ast_module, Context &context,
                            module::Module &module) {
   ByteCodeStatementEmitter e(context, module);
-  base::flyweight_map<ast::Declaration::Id const *, size_t> variable_offsets;
+  nth::flyweight_map<ast::Declaration::Id const *, size_t> variable_offsets;
   // Populate `variable_offsets`
   core::Bytes offset{};
   ast_module.body_scope().ForEachNonConstantDeclaration(
@@ -32,7 +33,7 @@ IrFunction EmitByteCode(QualifiedType qualified_type,
                      ? IrFunction(0, 1)
                      : IrFunction(1, 0);
   ByteCodeValueEmitter e(context, module);
-  base::flyweight_map<ast::Declaration::Id const *, size_t> variable_offsets;
+  nth::flyweight_map<ast::Declaration::Id const *, size_t> variable_offsets;
   e.Emit(&expression, FunctionData(f, variable_offsets));
   f.append<jasmin::Return>();
   return f;

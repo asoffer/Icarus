@@ -50,6 +50,7 @@ cc_library(
         "@asoffer_jasmin//jasmin:function",
         "@asoffer_jasmin//jasmin:op_code",
         "@asoffer_jasmin//jasmin/instructions:core",
+        "@asoffer_nth//nth/container:flyweight_map",
     ],
 )
 

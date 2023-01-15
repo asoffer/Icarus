@@ -7,6 +7,7 @@
 #include "jasmin/function.h"
 #include "jasmin/instructions/core.h"
 #include "module/module.h"
+#include "nth/container/flyweight_map.h"
 #include "semantic_analysis/context.h"
 #include "semantic_analysis/instruction_set.h"
 #include "semantic_analysis/type_system.h"
@@ -15,7 +16,7 @@ namespace semantic_analysis {
 
 struct FunctionData {
   FunctionData(IrFunction &function,
-               base::flyweight_map<ast::Declaration::Id const *, size_t>
+               nth::flyweight_map<ast::Declaration::Id const *, size_t>
                    &variable_offsets)
       : function_(function), variable_offsets_(variable_offsets) {}
 
@@ -27,13 +28,13 @@ struct FunctionData {
     return iter->second;
   }
 
-  base::flyweight_map<ast::Declaration::Id const *, size_t> &offsets() const {
+  nth::flyweight_map<ast::Declaration::Id const *, size_t> &offsets() const {
     return variable_offsets_;
   }
 
  private:
   IrFunction &function_;
-  base::flyweight_map<ast::Declaration::Id const *, size_t> &variable_offsets_;
+  nth::flyweight_map<ast::Declaration::Id const *, size_t> &variable_offsets_;
 };
 
 struct EmitterBase {
@@ -160,7 +161,6 @@ struct ByteCodeReferenceEmitter : Emitter<ByteCodeReferenceEmitter> {
     NOT_YET(nth::type<NodeType>, node->DebugString());
   }
 
-
   void operator()(ast::Identifier const *node, FunctionData data);
 
   // Unreachable operators.
@@ -194,7 +194,8 @@ struct ByteCodeReferenceEmitter : Emitter<ByteCodeReferenceEmitter> {
   void operator()(ast::StructLiteral const *, FunctionData) { UNREACHABLE(); }
   void operator()(ast::YieldStmt const *, FunctionData) { UNREACHABLE(); }
   // TODO: Access, BinaryAssignmentOperator, BinaryOperator, Call, Cast,
-  //       ComparisonOperator, Index, ScopeNode, IfStmt, WhileStmt, UnaryOperator
+  //       ComparisonOperator, Index, ScopeNode, IfStmt, WhileStmt,
+  //       UnaryOperator
 };
 
 template <typename E>
@@ -211,7 +212,7 @@ T Emitter<E>::EvaluateAs(ast::Expression const *expression) {
   // only to be called on constant expressions, any identifier will refer to a
   // declaration that is constant, and so lookup will happen by loading the
   // value directly rather than adding instructions which load at runtime.
-  base::flyweight_map<ast::Declaration::Id const *, size_t> variable_offsets;
+  nth::flyweight_map<ast::Declaration::Id const *, size_t> variable_offsets;
 
   this->as<ByteCodeValueEmitter>().Emit(expression,
                                         FunctionData(f, variable_offsets));
@@ -238,8 +239,7 @@ std::span<std::byte const> Emitter<E>::EvaluateConstant(
       // identifier will refer to a declaration that is constant, and so
       // lookup will happen by loading the value directly rather than adding
       // instructions which load at runtime.
-      base::flyweight_map<ast::Declaration::Id const *, size_t>
-          variable_offsets;
+      nth::flyweight_map<ast::Declaration::Id const *, size_t> variable_offsets;
 
       as<ByteCodeValueEmitter>().Emit(expr, FunctionData(f, variable_offsets));
       f.append<jasmin::Return>();

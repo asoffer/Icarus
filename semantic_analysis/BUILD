@@ -24,7 +24,6 @@ cc_library(
     ],
     deps = [
         ":type_system",
-        "//base:flyweight_map",
         "//core/type_system",
         "//ir/value:fn",
         "//ir/value:integer",
@@ -35,6 +34,8 @@ cc_library(
         "@asoffer_jasmin//jasmin/instructions:core",
         "@asoffer_jasmin//jasmin/instructions:stack",
         "@asoffer_jasmin//jasmin:serialization",
+        "@asoffer_nth//nth/container:flyweight_map",
+        "@asoffer_nth//nth/container:flyweight_set",
     ],
 )
 

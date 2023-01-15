@@ -1,3 +1,4 @@
+#include "nth/container/flyweight_map.h"
 #include "semantic_analysis/byte_code/emitter.h"
 
 namespace semantic_analysis {
@@ -12,7 +13,7 @@ void ByteCodeValueEmitter::operator()(ast::FunctionLiteral const* node,
   auto [fn_id, fn_ptr] =
       module().create_function(num_parameters, function_type.returns().size());
 
-  base::flyweight_map<ast::Declaration::Id const*, size_t> variable_offsets;
+  nth::flyweight_map<ast::Declaration::Id const*, size_t> variable_offsets;
   // Populate `variable_offsets`
   core::Bytes offset{};
   node->body_scope().ForEachNonConstantDeclaration(

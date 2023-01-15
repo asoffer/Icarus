@@ -5,9 +5,9 @@
 #include <string>
 #include <utility>
 
-#include "base/flyweight_map.h"
 #include "core/type_system/type_system.h"
 #include "ir/value/fn.h"
+#include "nth/container/flyweight_map.h"
 #include "semantic_analysis/instruction_set.h"
 
 namespace semantic_analysis {
@@ -32,7 +32,7 @@ struct ForeignFunctionMap {
   TypeSystem &type_system() const { return type_system_; }
 
  private:
-  base::flyweight_map<std::pair<std::string, core::Type>,
+  nth::flyweight_map<std::pair<std::string, core::Type>,
                       std::pair<IrFunction, void (*)()>>
       foreign_functions_;
   TypeSystem &type_system_;

@@ -7,7 +7,7 @@
 #include <cstring>
 #include <optional>
 
-#include "base/meta.h"
+#include "base/debug.h"
 
 namespace core {
 namespace internal_type {

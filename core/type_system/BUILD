@@ -102,7 +102,9 @@ cc_test(
 cc_library(
     name = "type",
     hdrs = ["type.h"],
-    deps = []
+    deps = [
+        "//base:debug",
+    ]
 )
 
 cc_library(
@@ -111,8 +113,8 @@ cc_library(
     deps = [
         ":type",
         "//base:meta",
-        "//base:flyweight_set",
         "@asoffer_jasmin//jasmin:instruction",
+        "@asoffer_nth//nth/container:flyweight_set",
     ]
 )
 

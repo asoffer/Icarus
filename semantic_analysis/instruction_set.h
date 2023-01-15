@@ -9,6 +9,7 @@
 #include "jasmin/instructions/core.h"
 #include "jasmin/instructions/stack.h"
 #include "jasmin/serialization.h"
+#include "nth/container/flyweight_set.h"
 #include "semantic_analysis/type_system.h"
 
 namespace semantic_analysis {
@@ -95,7 +96,7 @@ struct PushStringLiteral : jasmin::StackMachineInstruction<PushStringLiteral> {
     auto end() const { return strings_.end(); }
 
    private:
-    base::flyweight_set<std::string_view> strings_;
+    nth::flyweight_set<std::string_view> strings_;
   };
   static constexpr void execute(jasmin::ValueStack& value_stack,
                                 char const* ptr, size_t length) {
@@ -230,7 +231,7 @@ struct PushFunction::serialization_state {
   auto end() const { return functions_.end(); }
 
  private:
-  base::flyweight_set<IrFunction const*> functions_;
+  nth::flyweight_set<IrFunction const*> functions_;
 };
 
 }  // namespace semantic_analysis
