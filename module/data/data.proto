@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+package module.data;
+
+message IntegerTable {
+  message Integer {
+    bool negative = 1;
+    string words = 2;
+  };
+  repeated Integer integers = 1;
+}

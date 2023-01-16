@@ -44,7 +44,6 @@ message TypeSystem {
 
 message ReadOnlyData {
   repeated string strings = 1;
-  repeated string integers = 2;
 }
 
 message ForeignSymbol {
