@@ -109,20 +109,29 @@ struct Repl {
 
   template <typename T>
   T execute(std::string source) {
-    if (std::optional f = ExecutionFunction(std::move(source))) {
-      if constexpr (FitsInRegister<T>()) {
-        T result;
-        jasmin::Execute(*f, {}, result);
-        return result;
+    constexpr auto t = [] {
+      if constexpr (nth::type<T> == nth::type<nth::Integer>) {
+        return nth::type<nth::Integer*>;
       } else {
-        alignas(T) std::byte result[sizeof(T)];
-        semantic_analysis::IrFunction wrapper(0, 0);
-        wrapper.append<jasmin::Push>(&result);
-        wrapper.append<jasmin::Push>(&*f);
-        wrapper.append<jasmin::Call>();
-        wrapper.append<jasmin::Return>();
-        jasmin::Execute(wrapper, {});
-        return *reinterpret_cast<T const*>(&result);
+        return nth::type<T>;
+      }
+    }();
+    using type = nth::type_t<t>;
+
+    if (std::optional f = ExecutionFunction(std::move(source))) {
+      module::IntegerTable table;
+      jasmin::ExecutionState<semantic_analysis::InstructionSet> state{table};
+
+      if constexpr (FitsInRegister<type>()) {
+        type result;
+        jasmin::Execute(*f, state, {}, result);
+        if constexpr (t == nth::type<T>) {
+          return result;
+        } else {
+          return *result;
+        }
+      } else {
+        static_assert(base::always_false<T>());
       }
     } else {
       for (auto const& [category, name] : consumer_.diagnostics()) {
@@ -155,7 +164,7 @@ struct Repl {
  private:
   template <typename T>
   static constexpr bool FitsInRegister() {
-    return not std::is_same_v<T, ir::Integer>;
+    return not std::is_same_v<T, nth::Integer>;
   }
   void PrintQualifiedType(std::ostream& os,
                           semantic_analysis::QualifiedType qt);

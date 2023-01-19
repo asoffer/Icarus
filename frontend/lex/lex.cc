@@ -12,7 +12,7 @@
 #include "frontend/lex/numbers.h"
 #include "frontend/lex/operators.h"
 #include "frontend/lex/syntax.h"
-#include "ir/value/integer.h"
+#include "nth/numeric/integer.h"
 #include "semantic_analysis/type_system.h"
 
 namespace frontend {
@@ -447,7 +447,7 @@ Lexeme ConsumeNumber(std::string_view &cursor,
   return std::visit(
       [&diag, number_str](auto num) {
         constexpr auto type = nth::type<decltype(num)>;
-        if constexpr (type == nth::type<ir::Integer>) {
+        if constexpr (type == nth::type<nth::Integer>) {
           return Lexeme(std::make_unique<ast::Terminal>(number_str, num));
         } else if constexpr (type == nth::type<double>) {
           return Lexeme(std::make_unique<ast::Terminal>(number_str, num));
@@ -458,7 +458,7 @@ Lexeme ConsumeNumber(std::string_view &cursor,
           // further if we can't lex the input is likely not going to be useful.
           diag.Consume(NumberParsingFailure{.error = num, .range = number_str});
           return Lexeme(
-              std::make_unique<ast::Terminal>(number_str, ir::Integer{}));
+              std::make_unique<ast::Terminal>(number_str, nth::Integer(0)));
         } else {
           static_assert(base::always_false(type));
         }

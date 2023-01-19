@@ -11,7 +11,7 @@ cc_library(
         "//base:global",
         "//diagnostic/consumer",
         "//ir/value:hashtag",
-        "//ir/value:integer",
+        "@asoffer_nth//nth/numeric:integer",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/container:node_hash_set",
         "@com_google_absl//absl/status:statusor",
@@ -47,7 +47,9 @@ cc_library(
     name = "numbers",
     hdrs = ["numbers.h"],
     srcs = ["numbers.cc"],
-    deps = ["//ir/value:integer"],
+    deps = [
+        "@asoffer_nth//nth/numeric:integer",
+    ], 
 )
 
 cc_test(

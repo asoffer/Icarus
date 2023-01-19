@@ -1,7 +1,6 @@
 #ifndef ICARUS_SEMANTIC_ANALYSIS_INSTRUCTION_SET_H
 #define ICARUS_SEMANTIC_ANALYSIS_INSTRUCTION_SET_H
 
-#include "ir/value/integer.h"
 #include "jasmin/function.h"
 #include "jasmin/instructions/arithmetic.h"
 #include "jasmin/instructions/bool.h"
@@ -9,7 +8,9 @@
 #include "jasmin/instructions/core.h"
 #include "jasmin/instructions/stack.h"
 #include "jasmin/serialization.h"
+#include "module/data/integer_table.h"
 #include "nth/container/flyweight_set.h"
+#include "nth/numeric/integer.h"
 #include "semantic_analysis/type_system.h"
 
 namespace semantic_analysis {
@@ -166,10 +167,10 @@ struct DeallocateAllTemporaries
 };
 
 struct NegateInteger : jasmin::StackMachineInstruction<NegateInteger> {
-  static void execute(jasmin::ValueStack& value_stack) {
-    auto& value = *value_stack.pop<ir::Integer*>();
-    value       = -value;
-    value_stack.push(&value);
+  using JasminExecutionState = module::IntegerTable;
+  static nth::Integer const* execute(JasminExecutionState& table,
+                                     nth::Integer const* n) {
+    return table.insert(-*n);
   }
 };
 
@@ -198,10 +199,10 @@ using InstructionSet = jasmin::MakeInstructionSet<
     ApplyInstruction<jasmin::AppendLessThan, int8_t, int16_t, int32_t, int64_t,
                      uint8_t, uint16_t, uint32_t, uint64_t, float, double>,
     ApplyInstruction<Construct, bool, ir::Char, int8_t, int16_t, int32_t,
-                     int64_t, ir::Integer, uint8_t, uint16_t, uint32_t,
+                     int64_t, nth::Integer, uint8_t, uint16_t, uint32_t,
                      uint64_t, float, double>,
-    Destroy<ir::Integer>, CopyConstruct<ir::Integer>,
-    MoveConstruct<ir::Integer>, NegateInteger,
+    Destroy<nth::Integer>, CopyConstruct<nth::Integer>,
+    MoveConstruct<nth::Integer>, NegateInteger,
     ApplyInstruction<jasmin::Add, int8_t, int16_t, int32_t, int64_t, uint8_t,
                      uint16_t, uint32_t, uint64_t, float, double>,
     ApplyInstruction<jasmin::Subtract, int8_t, int16_t, int32_t, int64_t,
@@ -217,6 +218,7 @@ using InstructionSet = jasmin::MakeInstructionSet<
 
 }  // namespace internal_byte_code
 
+using internal_byte_code::InstructionSet;  // TODO: Make public.
 using IrFunction = jasmin::Function<internal_byte_code::InstructionSet>;
 
 struct PushFunction::serialization_state {

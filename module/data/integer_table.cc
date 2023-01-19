@@ -8,13 +8,11 @@ namespace module {
 
 nth::Integer const* IntegerTable::insert(nth::Integer const& n) {
   auto [iter, inserted] = set_.insert(n);
-  PrintTo(n, &std::cerr);
-  std::cerr << " inserted = " << inserted << "\n";
   return &*iter;
 }
 
 void Serialize(IntegerTable const& table, data::IntegerTable& proto) {
-  for (auto const & n : table) {
+  for (auto const& n : table) {
     auto& proto_integer = *proto.add_integers();
     if (n < 0) { proto_integer.set_negative(true); }
     std::span span = n.span();

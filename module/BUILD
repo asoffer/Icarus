@@ -7,6 +7,7 @@ cc_library(
     srcs = ["module.cc"],
     deps = [
         ":module_cc_proto",
+        "//module/data:integer_table",
         "//semantic_analysis:instruction_set",
         "//semantic_analysis:type_system",
         "@asoffer_jasmin//jasmin:serialization",
@@ -16,7 +17,9 @@ cc_library(
 proto_library(
     name = "module_proto",
     srcs = ["module.proto"],
-    deps = [],
+    deps = [
+        "//module/data:data_proto",
+    ],
 )
 
 cc_proto_library(

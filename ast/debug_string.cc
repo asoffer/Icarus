@@ -4,7 +4,6 @@
 #include "ast/ast.h"
 #include "core/type_system/type.h"
 #include "ir/value/char.h"
-#include "ir/value/integer.h"
 
 namespace ast {
 namespace {

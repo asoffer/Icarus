@@ -80,14 +80,14 @@ http_archive(
 
 http_archive(
   name = "asoffer_nth",
-  urls = ["https://github.com/asoffer/nth/archive/4c526e578eaf628d4dbb051d9cfa93acccd6220d.zip"],
-  strip_prefix = "nth-4c526e578eaf628d4dbb051d9cfa93acccd6220d",
-  sha256 = "a5f03e3fb25bda77e6740577e4154861fb111e27ba80252cce8edfc946527bee",
+  urls = ["https://github.com/asoffer/nth/archive/d5c0ab5094a6e7afbfc0ca0f64b544d2a1b67243.zip"],
+  strip_prefix = "nth-d5c0ab5094a6e7afbfc0ca0f64b544d2a1b67243",
+  sha256 = "986cf6055c38250e65da416d5fe6976f46404ac69a2ccfb800c726b3e89cdbdc",
 )
 
 http_archive(
   name = "asoffer_jasmin",
-  urls = ["https://github.com/asoffer/jasmin/archive/9fdbbd8d1d0151ff4e170e3567ddd4922145a657.zip"],
-  strip_prefix = "jasmin-9fdbbd8d1d0151ff4e170e3567ddd4922145a657",
-  sha256 = "e512cc082d898c59886c4c665849d7cc0d2f68b430dfea8964a0554256fb2269",
+  urls = ["https://github.com/asoffer/jasmin/archive/4b72f1e32127be73e770e77a48d3355266c293f5.zip"],
+  strip_prefix = "jasmin-4b72f1e32127be73e770e77a48d3355266c293f5",
+  sha256 = "b5166b679fa375d283d22747cd9ddd41a2cc0e427656e1110de511d7e05016bb",
 )

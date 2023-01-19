@@ -48,21 +48,23 @@ TYPED_TEST(ArithmeticOperatorTest, Add) {
                       StringOf(type), StringOf(type), StringOf(type)));
 
   TypeParam result;
+  module::IntegerTable table;
+  jasmin::ExecutionState<InstructionSet> state{table};
 
-  jasmin::Execute(f, {TypeParam{3}, TypeParam{4}}, result);
+  jasmin::Execute(f, state, {TypeParam{3}, TypeParam{4}}, result);
   EXPECT_EQ(result, TypeParam{7});
 
-  jasmin::Execute(f, {TypeParam{0}, TypeParam{3}}, result);
+  jasmin::Execute(f, state, {TypeParam{0}, TypeParam{3}}, result);
   EXPECT_EQ(result, TypeParam{3});
 
-  jasmin::Execute(f, {TypeParam{3}, TypeParam{0}}, result);
+  jasmin::Execute(f, state, {TypeParam{3}, TypeParam{0}}, result);
   EXPECT_EQ(result, TypeParam{3});
 
   if constexpr (std::is_signed_v<TypeParam>) {
-    jasmin::Execute(f, {TypeParam{3}, TypeParam{-3}}, result);
+    jasmin::Execute(f, state, {TypeParam{3}, TypeParam{-3}}, result);
     EXPECT_EQ(result, TypeParam{0});
 
-    jasmin::Execute(f,
+    jasmin::Execute(f, state,
                     {std::numeric_limits<TypeParam>::max(),
                      -std::numeric_limits<TypeParam>::max()},
                     result);
@@ -78,14 +80,16 @@ TYPED_TEST(ArithmeticOperatorTest, Sub) {
                       StringOf(type), StringOf(type), StringOf(type)));
 
   TypeParam result;
+  module::IntegerTable table;
+  jasmin::ExecutionState<InstructionSet> state{table};
 
-  jasmin::Execute(f, {TypeParam{4}, TypeParam{3}}, result);
+  jasmin::Execute(f, state, {TypeParam{4}, TypeParam{3}}, result);
   EXPECT_EQ(result, TypeParam{1});
 
-  jasmin::Execute(f, {TypeParam{3}, TypeParam{0}}, result);
+  jasmin::Execute(f, state, {TypeParam{3}, TypeParam{0}}, result);
   EXPECT_EQ(result, TypeParam{3});
 
-  jasmin::Execute(f,
+  jasmin::Execute(f, state,
                   {std::numeric_limits<TypeParam>::max(),
                    std::numeric_limits<TypeParam>::max()},
                   result);
@@ -100,17 +104,19 @@ TYPED_TEST(ArithmeticOperatorTest, Mul) {
                       StringOf(type), StringOf(type), StringOf(type)));
 
   TypeParam result;
+  module::IntegerTable table;
+  jasmin::ExecutionState<InstructionSet> state{table};
 
-  jasmin::Execute(f, {TypeParam{4}, TypeParam{3}}, result);
+  jasmin::Execute(f, state, {TypeParam{4}, TypeParam{3}}, result);
   EXPECT_EQ(result, TypeParam{12});
 
-  jasmin::Execute(f, {TypeParam{0}, TypeParam{3}}, result);
+  jasmin::Execute(f, state, {TypeParam{0}, TypeParam{3}}, result);
   EXPECT_EQ(result, TypeParam{0});
 
-  jasmin::Execute(f, {TypeParam{3}, TypeParam{1}}, result);
+  jasmin::Execute(f, state, {TypeParam{3}, TypeParam{1}}, result);
   EXPECT_EQ(result, TypeParam{3});
 
-  jasmin::Execute(f, {TypeParam{1}, TypeParam{3}}, result);
+  jasmin::Execute(f, state, {TypeParam{1}, TypeParam{3}}, result);
   EXPECT_EQ(result, TypeParam{3});
 }
 
@@ -122,21 +128,23 @@ TYPED_TEST(ArithmeticOperatorTest, Div) {
                       StringOf(type), StringOf(type), StringOf(type)));
 
   TypeParam result;
+  module::IntegerTable table;
+  jasmin::ExecutionState<InstructionSet> state{table};
 
-  jasmin::Execute(f, {TypeParam{4}, TypeParam{3}}, result);
+  jasmin::Execute(f, state, {TypeParam{4}, TypeParam{3}}, result);
   EXPECT_EQ(result, TypeParam{1});
 
-  jasmin::Execute(f, {TypeParam{3}, TypeParam{4}}, result);
+  jasmin::Execute(f, state, {TypeParam{3}, TypeParam{4}}, result);
   EXPECT_EQ(result, TypeParam{0});
 
-  jasmin::Execute(f, {TypeParam{6}, TypeParam{3}}, result);
+  jasmin::Execute(f, state, {TypeParam{6}, TypeParam{3}}, result);
   EXPECT_EQ(result, TypeParam{2});
 
-  jasmin::Execute(f, {TypeParam{6}, TypeParam{1}}, result);
+  jasmin::Execute(f, state, {TypeParam{6}, TypeParam{1}}, result);
   EXPECT_EQ(result, TypeParam{6});
 
   if constexpr (std::is_signed_v<TypeParam>) {
-    jasmin::Execute(f, {TypeParam{6}, TypeParam{-1}}, result);
+    jasmin::Execute(f, state, {TypeParam{6}, TypeParam{-1}}, result);
     EXPECT_EQ(result, TypeParam{-6});
   }
 }
@@ -149,17 +157,19 @@ TYPED_TEST(ArithmeticOperatorTest, Mod) {
                       StringOf(type), StringOf(type), StringOf(type)));
 
   TypeParam result;
+  module::IntegerTable table;
+  jasmin::ExecutionState<InstructionSet> state{table};
 
-  jasmin::Execute(f, {TypeParam{4}, TypeParam{3}}, result);
+  jasmin::Execute(f, state, {TypeParam{4}, TypeParam{3}}, result);
   EXPECT_EQ(result, TypeParam{1});
 
-  jasmin::Execute(f, {TypeParam{3}, TypeParam{4}}, result);
+  jasmin::Execute(f, state, {TypeParam{3}, TypeParam{4}}, result);
   EXPECT_EQ(result, TypeParam{3});
 
-  jasmin::Execute(f, {TypeParam{6}, TypeParam{3}}, result);
+  jasmin::Execute(f, state, {TypeParam{6}, TypeParam{3}}, result);
   EXPECT_EQ(result, TypeParam{0});
 
-  jasmin::Execute(f, {TypeParam{6}, TypeParam{1}}, result);
+  jasmin::Execute(f, state, {TypeParam{6}, TypeParam{1}}, result);
   EXPECT_EQ(result, TypeParam{0});
 }
 
@@ -192,10 +202,13 @@ TEST(LogicalOperatorTest, DISABLED_ShortCircuitingAnd) {
   (x: bool, y: bool, n: *i64) -> bool { return x and increment_and_return(y, n) }
   )");
 
+  module::IntegerTable table;
+  jasmin::ExecutionState<InstructionSet> state{table};
+
   {
     int64_t n = 0;
     bool result;
-    jasmin::Execute(f, {true, true, &n}, result);
+    jasmin::Execute(f, state, {true, true, &n}, result);
     EXPECT_TRUE(result);
     EXPECT_EQ(n, 1);
   }
@@ -203,7 +216,7 @@ TEST(LogicalOperatorTest, DISABLED_ShortCircuitingAnd) {
   {
     int64_t n = 0;
     bool result;
-    jasmin::Execute(f, {true, false, &n}, result);
+    jasmin::Execute(f, state, {true, false, &n}, result);
     EXPECT_FALSE(result);
     EXPECT_EQ(n, 1);
   }
@@ -211,7 +224,7 @@ TEST(LogicalOperatorTest, DISABLED_ShortCircuitingAnd) {
   {
     int64_t n = 0;
     bool result;
-    jasmin::Execute(f, {false, true, &n}, result);
+    jasmin::Execute(f, state, {false, true, &n}, result);
     EXPECT_FALSE(result);
     EXPECT_EQ(n, 1);
   }
@@ -219,12 +232,11 @@ TEST(LogicalOperatorTest, DISABLED_ShortCircuitingAnd) {
   {
     int64_t n = 0;
     bool result;
-    jasmin::Execute(f, {false, false, &n}, result);
+    jasmin::Execute(f, state, {false, false, &n}, result);
     EXPECT_FALSE(result);
     EXPECT_EQ(n, 1);
   }
 }
-
 
 TEST(LogicalOperatorTest, DISABLED_ShortCircuitingOr) {
   test::Repl repl;
@@ -237,10 +249,12 @@ TEST(LogicalOperatorTest, DISABLED_ShortCircuitingOr) {
   (x: bool, y: bool, n: *i64) -> bool { return x or increment_and_return(y, n) }
   )");
 
+  module::IntegerTable table;
+  jasmin::ExecutionState<InstructionSet> state{table};
   {
     int64_t n = 0;
     bool result;
-    jasmin::Execute(f, {true, true, &n}, result);
+    jasmin::Execute(f, state, {true, true, &n}, result);
     EXPECT_TRUE(result);
     EXPECT_EQ(n, 1);
   }
@@ -248,7 +262,7 @@ TEST(LogicalOperatorTest, DISABLED_ShortCircuitingOr) {
   {
     int64_t n = 0;
     bool result;
-    jasmin::Execute(f, {true, false, &n}, result);
+    jasmin::Execute(f, state, {true, false, &n}, result);
     EXPECT_FALSE(result);
     EXPECT_EQ(n, 1);
   }
@@ -256,7 +270,7 @@ TEST(LogicalOperatorTest, DISABLED_ShortCircuitingOr) {
   {
     int64_t n = 0;
     bool result;
-    jasmin::Execute(f, {false, true, &n}, result);
+    jasmin::Execute(f, state, {false, true, &n}, result);
     EXPECT_FALSE(result);
     EXPECT_EQ(n, 1);
   }
@@ -264,7 +278,7 @@ TEST(LogicalOperatorTest, DISABLED_ShortCircuitingOr) {
   {
     int64_t n = 0;
     bool result;
-    jasmin::Execute(f, {false, false, &n}, result);
+    jasmin::Execute(f, state, {false, false, &n}, result);
     EXPECT_FALSE(result);
     EXPECT_EQ(n, 1);
   }

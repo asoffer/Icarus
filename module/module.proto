@@ -1,5 +1,7 @@
 syntax = "proto3";
 
+import "module/data/data.proto";
+
 package module.internal_proto;
 
 message Function {
@@ -70,4 +72,6 @@ message Module {
 
   // All read-only data required in the module.
   ReadOnlyData read_only = 6;
+
+  data.IntegerTable integers = 7;
 }

@@ -37,8 +37,8 @@ TEST(UnaryOperator, Pointers) {
 TEST(UnaryOperator, Negation) {
   test::Repl repl;
   EXPECT_EQ(repl.execute<double>("-3.14"), -3.14);
-  EXPECT_EQ(repl.execute<ir::Integer>("-1234"), -ir::Integer(1234));
-  EXPECT_EQ(repl.execute<ir::Integer>("-(-1234)"), ir::Integer(1234));
+  EXPECT_EQ(repl.execute<nth::Integer>("-1234"), -nth::Integer(1234));
+  EXPECT_EQ(repl.execute<nth::Integer>("-(-1234)"), nth::Integer(1234));
 }
 
 }  // namespace

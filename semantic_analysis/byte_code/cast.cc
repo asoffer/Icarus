@@ -11,25 +11,38 @@ void ByteCodeValueEmitter::operator()(ast::Cast const* node,
   if (from_qt.type() == Integer) {
     std::span<std::byte const> evaluation =
         EvaluateConstant(node->expr(), from_qt);
-    ASSERT(sizeof(ir::Integer*) == evaluation.size());
-    ir::Integer *i;
+    ASSERT(sizeof(nth::Integer const*) == evaluation.size());
+    nth::Integer const* i;
     std::memcpy(&i, evaluation.data(), sizeof(i));
+    // TODO: Actually validate that the number is properly bounded.
     if (to_qt.type() == I(8)) {
-      data.function().append<jasmin::Push>(i->as_type<int8_t>());
+      intptr_t value = i->span()[0];
+      if (*i < 0) { value = -value; }
+      data.function().append<jasmin::Push>(static_cast<int8_t>(value));
     } else if (to_qt.type() == I(16)) {
-      data.function().append<jasmin::Push>(i->as_type<int16_t>());
+      intptr_t value = i->span()[0];
+      if (*i < 0) { value = -value; }
+      data.function().append<jasmin::Push>(static_cast<int16_t>(value));
     } else if (to_qt.type() == I(32)) {
-      data.function().append<jasmin::Push>(i->as_type<int32_t>());
+      intptr_t value = i->span()[0];
+      if (*i < 0) { value = -value; }
+      data.function().append<jasmin::Push>(static_cast<int32_t>(value));
     } else if (to_qt.type() == I(64)) {
-      data.function().append<jasmin::Push>(i->as_type<int64_t>());
+      intptr_t value = i->span()[0];
+      if (*i < 0) { value = -value; }
+      data.function().append<jasmin::Push>(static_cast<int64_t>(value));
     } else if (to_qt.type() == U(8)) {
-      data.function().append<jasmin::Push>(i->as_type<uint8_t>());
+      uintptr_t value = i->span()[0];
+      data.function().append<jasmin::Push>(static_cast<uint8_t>(value));
     } else if (to_qt.type() == U(16)) {
-      data.function().append<jasmin::Push>(i->as_type<uint16_t>());
+      uintptr_t value = i->span()[0];
+      data.function().append<jasmin::Push>(static_cast<uint16_t>(value));
     } else if (to_qt.type() == U(32)) {
-      data.function().append<jasmin::Push>(i->as_type<uint32_t>());
+      uintptr_t value = i->span()[0];
+      data.function().append<jasmin::Push>(static_cast<uint32_t>(value));
     } else if (to_qt.type() == U(64)) {
-      data.function().append<jasmin::Push>(i->as_type<uint64_t>());
+      uintptr_t value = i->span()[0];
+      data.function().append<jasmin::Push>(static_cast<uint64_t>(value));
     } else {
       NOT_YET();
     }

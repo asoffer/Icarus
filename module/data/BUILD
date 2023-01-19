@@ -1,4 +1,4 @@
-package(default_visibility = ["//visibility:private"])
+package(default_visibility = ["//module:__subpackages__"])
 
 proto_library(
     name = "data_proto",

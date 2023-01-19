@@ -19,8 +19,8 @@
 #include "core/type_system/type.h"
 #include "frontend/lex/operators.h"
 #include "ir/value/addr.h"
-#include "ir/value/integer.h"
 #include "ir/value/label.h"
+#include "nth/numeric/integer.h"
 #include "semantic_analysis/type_system.h"
 
 namespace ast {
@@ -1033,8 +1033,9 @@ struct ReturnStmt : Node {
 // `true`, `false`, or `null`.
 struct Terminal : Expression {
  private:
-  using variant_type = std::variant<bool, ir::Char, ir::Integer, double,
+  using variant_type = std::variant<bool, ir::Char, nth::Integer, double,
                                     ir::addr_t, core::Type, std::string>;
+
  public:
   explicit Terminal(std::string_view range, variant_type value)
       : Expression(IndexOf<Terminal>(), range), value_(std::move(value)) {}
@@ -1046,7 +1047,7 @@ struct Terminal : Expression {
 
   nth::TypeId type() const {
     static std::array<nth::TypeId, 7> Types{
-        nth::type<bool>,       nth::type<ir::Char>,   nth::type<ir::Integer>,
+        nth::type<bool>,       nth::type<ir::Char>,   nth::type<nth::Integer>,
         nth::type<double>,     nth::type<ir::addr_t>, nth::type<core::Type>,
         nth::type<std::string>};
 

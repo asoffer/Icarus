@@ -27,15 +27,6 @@ cc_library(
 )
 
 cc_library(
-    name = "integer",
-    hdrs = ["integer.h"],
-    deps = [
-        "@com_google_absl//absl/strings:str_format",
-        "@com_google_absl//absl/strings",
-    ],
-)
-
-cc_library(
     name = "label",
     hdrs = ["label.h"],
     deps = [

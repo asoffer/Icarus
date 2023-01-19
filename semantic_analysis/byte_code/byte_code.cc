@@ -29,9 +29,7 @@ void EmitByteCodeForModule(ast::Module const &ast_module, Context &context,
 IrFunction EmitByteCode(QualifiedType qualified_type,
                         ast::Expression const &expression, Context &context,
                         module::Module &module) {
-  IrFunction f = PassInRegister(qualified_type, module.type_system())
-                     ? IrFunction(0, 1)
-                     : IrFunction(1, 0);
+  IrFunction f(0, 1);
   ByteCodeValueEmitter e(context, module);
   nth::flyweight_map<ast::Declaration::Id const *, size_t> variable_offsets;
   e.Emit(&expression, FunctionData(f, variable_offsets));

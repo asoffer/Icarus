@@ -4,7 +4,7 @@
 #include <string_view>
 #include <variant>
 
-#include "ir/value/integer.h"
+#include "nth/numeric/integer.h"
 
 namespace frontend {
 
@@ -19,7 +19,7 @@ enum class NumberParsingError {
   kTooLarge,
 };
 
-std::variant<ir::Integer, double, NumberParsingError> ParseNumber(
+std::variant<nth::Integer, double, NumberParsingError> ParseNumber(
     std::string_view sv);
 
 }  // namespace frontend

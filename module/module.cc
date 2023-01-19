@@ -213,6 +213,7 @@ bool Module::Serialize(std::ostream& output) const {
   SerializeReadOnlyData(
       *proto.mutable_read_only(),
       state.get<semantic_analysis::PushStringLiteral::serialization_state>());
+  ::module::Serialize(integer_table_, *proto.mutable_integers());
 
   return proto.SerializeToOstream(&output);
 }
@@ -225,6 +226,7 @@ std::optional<Module> Module::Deserialize(std::istream& input) {
 
   SerializationState state;
 
+  ::module::Deserialize(proto.integers(), m->integer_table_);
   DeserializeReadOnlyData(
       proto.read_only(),
       state.get<semantic_analysis::PushStringLiteral::serialization_state>());

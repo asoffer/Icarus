@@ -15,8 +15,10 @@ TEST(Assignment, DISABLED_SingleValue) {
     return n
   })");
   int64_t result;
+  module::IntegerTable table;
+  jasmin::ExecutionState<InstructionSet> state{table};
 
-  jasmin::Execute(f, {int64_t{4}}, result);
+  jasmin::Execute(f, state, {int64_t{4}}, result);
   EXPECT_EQ(result, 4);
 }
 
@@ -32,11 +34,13 @@ TEST(Assignment, DISABLED_MultipleValues) {
     return n
   })");
   int64_t result;
+  module::IntegerTable table;
+  jasmin::ExecutionState<InstructionSet> state{table};
 
-  jasmin::Execute(f, {int64_t{4}, int64_t{5}}, result);
+  jasmin::Execute(f, state, {int64_t{4}, int64_t{5}}, result);
   EXPECT_EQ(result, 45);
 
-  jasmin::Execute(f, {int64_t{5}, int64_t{4}}, result);
+  jasmin::Execute(f, state, {int64_t{5}, int64_t{4}}, result);
   EXPECT_EQ(result, 54);
 }
 
@@ -52,8 +56,10 @@ TEST(Assignment, DISABLED_Intertwined) {
     return n
   })");
   int64_t result;
+  module::IntegerTable table;
+  jasmin::ExecutionState<InstructionSet> state{table};
 
-  jasmin::Execute(f, {int64_t{4}, int64_t{5}}, result);
+  jasmin::Execute(f, state, {int64_t{4}, int64_t{5}}, result);
   EXPECT_EQ(result, 45);
 }
 

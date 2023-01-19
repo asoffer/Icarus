@@ -37,16 +37,18 @@ T EvaluateAs(Context& context, module::Module& module,
 
   IrFunction f = EmitByteCode(qt, *expr, context, module);
 
+  module::IntegerTable table;
+  jasmin::ExecutionState<InstructionSet> state{table};
   T result;
   if (PassInRegister(qt, module.type_system())) {
-    jasmin::Execute(f, {}, result);
+    jasmin::Execute(f, state, {}, result);
   } else {
     IrFunction wrapper(0, 0);
     wrapper.append<jasmin::Push>(&result);
     wrapper.append<jasmin::Push>(&f);
     wrapper.append<jasmin::Call>();
     wrapper.append<jasmin::Return>();
-    jasmin::Execute(f, {});
+    jasmin::Execute(f, state, {});
   }
   return result;
 }

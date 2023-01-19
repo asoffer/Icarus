@@ -1,5 +1,5 @@
-#ifndef ICARUS_IR_VALUE_INTEGER_TABLE_H
-#define ICARUS_IR_VALUE_INTEGER_TABLE_H
+#ifndef ICARUS_MODULE_DATA_INTEGER_TABLE_H
+#define ICARUS_MODULE_DATA_INTEGER_TABLE_H
 
 #include <iosfwd>
 
@@ -30,4 +30,4 @@ void Deserialize(data::IntegerTable const& proto, IntegerTable& table);
 
 }  // namespace module
 
-#endif  // ICARUS_IR_VALUE_INTEGER_TABLE_H
+#endif  // ICARUS_MODULE_DATA_INTEGER_TABLE_H

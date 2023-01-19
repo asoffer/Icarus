@@ -10,6 +10,7 @@
 #include "absl/flags/parse.h"
 #include "jasmin/execute.h"
 #include "module/module.h"
+#include "semantic_analysis/instruction_set.h"
 #include "toolchain/flags.h"
 
 ABSL_FLAG(std::string, input, "", "The path to the .icm file to be executed.");
@@ -34,7 +35,11 @@ bool Execute(std::string const &input_file,
   jasmin::ValueStack value_stack;
   value_stack.push(arguments.data());
   value_stack.push(arguments.size());
-  jasmin::Execute(module->initializer(), value_stack);
+  module::IntegerTable table;
+  jasmin::Execute(
+      module->initializer(),
+      jasmin::ExecutionState<semantic_analysis::InstructionSet>{table},
+      value_stack);
   return true;
 }
 

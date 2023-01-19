@@ -19,11 +19,13 @@ TEST(IfStmt, DISABLED_Computation) {
     return n
   })");
   int64_t result;
+  module::IntegerTable table;
+  jasmin::ExecutionState<InstructionSet> state{table};
 
-  jasmin::Execute(f, {true}, result);
+  jasmin::Execute(f, state, {true}, result);
   EXPECT_EQ(result, 3);
 
-  jasmin::Execute(f, {false}, result);
+  jasmin::Execute(f, state, {false}, result);
   EXPECT_EQ(result, 4);
 }
 
