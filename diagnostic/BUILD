@@ -15,7 +15,6 @@ cc_library(
     srcs = ["console_renderer.cc"],
     deps = [
         ":message",
-        "//base:macros",
         "//base:meta",
         "//base:interval",
         "//frontend:source_indexer",

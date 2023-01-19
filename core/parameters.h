@@ -11,7 +11,6 @@
 #include "base/extend.h"
 #include "base/extend/absl_hash.h"
 #include "base/extend/equality.h"
-#include "base/macros.h"
 #include "base/universal_print.h"
 
 namespace core {

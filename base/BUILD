@@ -111,12 +111,6 @@ cc_library(
 )
 
 cc_library(
-    name = "macros",
-    hdrs = ["macros.h"],
-    deps = [],
-)
-
-cc_library(
     name = "meta",
     hdrs = ["meta.h"],
     deps = [

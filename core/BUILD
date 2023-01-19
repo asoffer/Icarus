@@ -116,7 +116,6 @@ cc_library(
         "//base:debug",
         "//base:extend",
         "//base/extend:absl_hash",
-        "//base:macros",
     ],
 )
 

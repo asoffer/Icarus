@@ -6,7 +6,6 @@
 
 #include "absl/strings/str_format.h"
 #include "base/interval.h"
-#include "base/macros.h"
 #include "base/meta.h"
 
 namespace diagnostic {
