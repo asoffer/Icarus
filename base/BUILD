@@ -115,6 +115,7 @@ cc_library(
     hdrs = ["meta.h"],
     deps = [
         "@asoffer_nth//nth/meta:type",
+        "@asoffer_nth//nth/meta:sequence",
     ],
 )
 

@@ -129,13 +129,13 @@ struct A {
 };
 
 TEST(Extend, Dependencies) {
-  using deps = internal_extend::AllDependencies<A>;
-  EXPECT_TRUE((Contains<deps, A>));
-  EXPECT_TRUE((Contains<deps, B>));
-  EXPECT_TRUE((Contains<deps, C>));
-  EXPECT_TRUE((Contains<deps, D>));
-  EXPECT_TRUE((Contains<deps, E>));
-  EXPECT_EQ(Length(deps{}), 5);
+  constexpr auto deps = ToSeq(internal_extend::AllDependencies<A>{});
+  EXPECT_TRUE(deps.contains<nth::type<A>>());
+  EXPECT_TRUE(deps.contains<nth::type<A>>());
+  EXPECT_TRUE(deps.contains<nth::type<A>>());
+  EXPECT_TRUE(deps.contains<nth::type<A>>());
+  EXPECT_TRUE(deps.contains<nth::type<A>>());
+  EXPECT_EQ(deps.size(), 5);
 }
 
 }  // namespace

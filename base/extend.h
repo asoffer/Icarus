@@ -163,8 +163,9 @@ auto DependenciesImpl(type_list<T, Ts...>, type_list<Processed...>) {
     if constexpr (nth::type<deps> == nth::type<type_list<>>) {
       return DependenciesImpl(type_list<Ts...>{}, type_list<T, Processed...>{});
     } else {
-      return DependenciesImpl(type_list_cat<deps, type_list<Ts...>>{},
-                              type_list<T, Processed...>{});
+      return DependenciesImpl(
+          FromSeq<ToSeq(deps{}) + nth::type_sequence<Ts...>>{},
+          type_list<T, Processed...>{});
     }
   }
 }

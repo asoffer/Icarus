@@ -30,25 +30,6 @@ TEST(Meta, TypeList) {
   EXPECT_TRUE((std::is_same_v<type_list<MyInt>, type_list<int>>));
 }
 
-TEST(Meta, TypeListConcatenation) {
-  EXPECT_TRUE((std::is_same_v<type_list_cat<>, type_list<>>));
-  EXPECT_TRUE((std::is_same_v<type_list_cat<type_list<>>, type_list<>>));
-  EXPECT_TRUE((std::is_same_v<type_list_cat<type_list<int, bool>>,
-                              type_list<int, bool>>));
-  EXPECT_TRUE(
-      (std::is_same_v<type_list_cat<type_list<>, type_list<>>, type_list<>>));
-  EXPECT_TRUE((std::is_same_v<type_list_cat<type_list<int>, type_list<>>,
-                              type_list<int>>));
-  EXPECT_TRUE((std::is_same_v<type_list_cat<type_list<>, type_list<int>>,
-                              type_list<int>>));
-  EXPECT_TRUE((std::is_same_v<type_list_cat<type_list<bool>, type_list<int>>,
-                              type_list<bool, int>>));
-  EXPECT_TRUE(
-      (std::is_same_v<
-          type_list_cat<type_list<bool>, type_list<int, char>, type_list<int>>,
-          type_list<bool, int, char, int>>));
-}
-
 TEST(Meta, Container) {
   struct S {
     void begin() {}

@@ -9,6 +9,7 @@
 #include <typeinfo>
 #include <utility>
 
+#include "nth/meta/sequence.h"
 #include "nth/meta/type.h"
 
 namespace base {
@@ -27,43 +28,16 @@ struct first<T, Ts...> {
 template <typename... Ts>
 using first_t = typename first<Ts...>::type;
 
-namespace internal {
-
-template <typename T, typename U>
-struct type_list_pair_catter;
-template <typename... P1s, typename... P2s>
-struct type_list_pair_catter<type_list<P1s...>, type_list<P2s...>> {
-  using type = type_list<P1s..., P2s...>;
-};
-
 template <typename... Ts>
-struct type_list_catter {
-  using type = type_list<>;
-};
-template <typename T, typename... Ts>
-struct type_list_catter<T, Ts...>
-    : type_list_pair_catter<T, typename type_list_catter<Ts...>::type> {};
-
-}  // namespace internal
-
-template <typename... TLs>
-using type_list_cat = typename ::base::internal::type_list_catter<TLs...>::type;
-
-template <typename... Ts, typename T>
-constexpr bool ContainsImpl(type_list<Ts...>, T*) {
-  return ((nth::type<Ts> == nth::type<T>) || ...);
+constexpr auto ToSeq(type_list<Ts...>) {
+  return nth::type_sequence<Ts...>;
 }
 
-template <typename TL, typename T>
-constexpr bool Contains() {
-  return ContainsImpl(TL{}, static_cast<T*>(nullptr));
-}
-
-template <typename... Ts>
-constexpr auto Length(type_list<Ts...>) {
-  return sizeof...(Ts);
-}
-constexpr void Length(void*) {}
+template <nth::Sequence auto seq>
+using FromSeq = decltype(seq.reduce([](auto... ts) {
+  void (*p)(nth::type_t<ts>...) = nullptr;
+  return p;
+}));
 
 template <typename T, typename... Ts>
 concept one_of = (std::same_as<T, Ts> or ...);
@@ -159,10 +133,6 @@ using filter = typename internal_nth::type::filter_impl<TL, Predicate>::type;
 
 template <typename TL>
 using tail = typename internal_nth::type::tail_impl<TL>::type;
-
-template <typename H, typename T>
-concept Hasher = std::invocable<H, T> and
-    std::convertible_to<std::invoke_result_t<H, T>, size_t>;
 
 }  // namespace base
 
