@@ -45,7 +45,7 @@ cc_library(
     hdrs = ["global.h"],
     deps = [
         ":guarded",
-        ":no_destructor",
+        "@asoffer_nth//nth/utility:no_destructor",
     ],
 )
 
@@ -124,20 +124,6 @@ cc_test(
     srcs = ["meta_test.cc"],
     deps = [
         ":meta",
-        "@com_google_googletest//:gtest_main",
-    ],
-)
-
-cc_library(
-    name = "no_destructor",
-    hdrs = ["no_destructor.h"],
-)
-
-cc_test(
-    name = "no_destructor_test",
-    srcs = ["no_destructor_test.cc"],
-    deps = [
-        ":no_destructor",
         "@com_google_googletest//:gtest_main",
     ],
 )

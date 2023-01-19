@@ -2,7 +2,7 @@
 #define ICARUS_BASE_GLOBAL_H
 
 #include "base/guarded.h"
-#include "base/no_destructor.h"
+#include "nth/utility/no_destructor.h"
 
 namespace base {
 
@@ -20,7 +20,7 @@ struct Global {
   auto lock() { return data_->lock(); }
 
  private:
-  NoDestructor<guarded<T>> data_;
+  nth::NoDestructor<guarded<T>> data_;
 };
 
 // Constant globals should still not be destroyed but there's no need to lock
@@ -36,7 +36,7 @@ struct Global<T const> {
   T const& operator*() { return *data_; }
 
  private:
-  NoDestructor<T const> data_;
+  nth::NoDestructor<T const> data_;
 };
 
 template <typename T>

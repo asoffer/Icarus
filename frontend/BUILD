@@ -5,7 +5,6 @@ cc_library(
     hdrs = ["parse_rule.h"],
     deps = [
         "//ast:node",
-        "//base:no_destructor",
         "//diagnostic/consumer",
         "//frontend/lex:tag",
     ],
