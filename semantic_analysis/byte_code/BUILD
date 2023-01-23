@@ -121,6 +121,17 @@ cc_test(
 )
 
 cc_test(
+      name = "cast_test",
+      srcs = ["cast_test.cc"],
+      deps = [
+          ":byte_code",
+          "//semantic_analysis:type_system",
+          "//test:repl",
+          "@com_google_googletest//:gtest_main",
+      ],
+)
+
+cc_test(
       name = "function_literal_test",
       srcs = ["function_literal_test.cc"],
       deps = [

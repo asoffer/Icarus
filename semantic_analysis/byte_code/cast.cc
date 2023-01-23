@@ -7,7 +7,6 @@ void ByteCodeValueEmitter::operator()(ast::Cast const* node,
                                       FunctionData data) {
   QualifiedType from_qt = context().qualified_type(node->expr());
   QualifiedType to_qt   = context().qualified_type(node);
-  if (from_qt.type() == to_qt.type()) { return; }
   if (from_qt.type() == Integer) {
     std::span<std::byte const> evaluation =
         EvaluateConstant(node->expr(), from_qt);
@@ -43,6 +42,31 @@ void ByteCodeValueEmitter::operator()(ast::Cast const* node,
     } else if (to_qt.type() == U(64)) {
       uintptr_t value = i->span()[0];
       data.function().append<jasmin::Push>(static_cast<uint64_t>(value));
+    } else {
+      NOT_YET();
+    }
+  } else if (auto from =
+                 from_qt.type().get_if<core::SizedIntegerType>(type_system())) {
+    Emit(node->expr(), data);
+    if (from_qt.type() == to_qt.type()) { return; }
+
+    if (auto to = to_qt.type().get_if<core::SizedIntegerType>(type_system())) {
+      if (to->is_signed()) {
+        if (from->is_signed()) {
+          data.function().append<ZeroExtend<true, true>>(ZeroExtendOptions{
+              .from_bits = static_cast<uint32_t>(from->bits()),
+              .to_bits   = static_cast<uint32_t>(to->bits())});
+        } else {
+          data.function().append<ZeroExtend<false, true>>(ZeroExtendOptions{
+              .from_bits = static_cast<uint32_t>(from->bits()),
+              .to_bits   = static_cast<uint32_t>(to->bits())});
+        }
+      } else {
+        ASSERT(from->is_signed() == false);
+        data.function().append<ZeroExtend<false, false>>(
+            ZeroExtendOptions{.from_bits = static_cast<uint32_t>(from->bits()),
+                              .to_bits   = static_cast<uint32_t>(to->bits())});
+      }
     } else {
       NOT_YET();
     }

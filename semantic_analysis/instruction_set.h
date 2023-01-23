@@ -64,6 +64,48 @@ struct InvokeForeignFunction
                       core::Type const* maybe_return_type);
 };
 
+struct ZeroExtendOptions {
+  uint32_t from_bits;
+  uint32_t to_bits;
+};
+
+template <bool FromSigned, bool ToSigned>
+struct ZeroExtend
+    : jasmin::StackMachineInstruction<ZeroExtend<FromSigned, ToSigned>> {
+  using Options = ZeroExtendOptions;
+
+  static void execute(jasmin::ValueStack& value_stack, Options options) {
+    std::conditional_t<FromSigned, int64_t, uint64_t> scratch;
+    if (options.from_bits <= 8) {
+      using from_type = std::conditional_t<FromSigned, int8_t, uint8_t>;
+      scratch         = value_stack.pop<from_type>();
+    } else if (options.from_bits <= 16) {
+      using from_type = std::conditional_t<FromSigned, int16_t, uint16_t>;
+      scratch         = value_stack.pop<from_type>();
+    } else if (options.from_bits <= 32) {
+      using from_type = std::conditional_t<FromSigned, int32_t, uint32_t>;
+      scratch         = value_stack.pop<from_type>();
+    } else {
+      using from_type = std::conditional_t<FromSigned, int64_t, uint64_t>;
+      scratch         = value_stack.pop<from_type>();
+    }
+
+    if (options.to_bits <= 8) {
+      using to_type = std::conditional_t<ToSigned, int8_t, uint8_t>;
+      value_stack.push(static_cast<to_type>(scratch));
+    } else if (options.from_bits <= 16) {
+      using to_type = std::conditional_t<ToSigned, int16_t, uint16_t>;
+      value_stack.push(static_cast<to_type>(scratch));
+    } else if (options.from_bits <= 32) {
+      using to_type = std::conditional_t<ToSigned, int32_t, uint32_t>;
+      value_stack.push(static_cast<to_type>(scratch));
+    } else {
+      using to_type = std::conditional_t<ToSigned, int64_t, uint64_t>;
+      value_stack.push(static_cast<to_type>(scratch));
+    }
+  }
+};
+
 struct TemporarySpace {
   // TODO: It is particularly inefficient to separately allocate each of these.
   std::byte* allocate(size_t size_in_bytes) {
@@ -189,7 +231,8 @@ using InstructionSet = jasmin::MakeInstructionSet<
     core::ParameterType::End<TypeSystem>, core::FunctionType::End<TypeSystem>,
     jasmin::StackAllocate, jasmin::StackOffset, jasmin::Load, AllocateTemporary,
     DeallocateAllTemporaries, BuiltinForeign, InvokeForeignFunction,
-    PushStringLiteral, PushFunction,
+    PushStringLiteral, PushFunction, ZeroExtend<true, true>,
+    ZeroExtend<false, true>, ZeroExtend<false, false>,
     ApplyInstruction<jasmin::Equal, int8_t, int16_t, int32_t, int64_t, uint8_t,
                      uint16_t, uint32_t, uint64_t, float, double>,
     ApplyInstruction<jasmin::LessThan, int8_t, int16_t, int32_t, int64_t,

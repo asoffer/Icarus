@@ -231,7 +231,7 @@ std::span<std::byte const> Emitter<E>::EvaluateConstant(
   auto [result_ptr, inserted] = context().insert_constant(expr);
   if (inserted) {
     // TODO: Integers are an annoying special case at the moment.
-    if (PassInRegister(qt, type_system())) {
+    if (PassInRegister(qt, type_system()) or qt.type() == Integer) {
       IrFunction f(0, 1);
 
       // This `variable_offsets` map is intentionally empty. There will never
@@ -249,12 +249,14 @@ std::span<std::byte const> Emitter<E>::EvaluateConstant(
       jasmin::ValueStack value_stack;
       jasmin::Execute(f, jasmin::ExecutionState<InstructionSet>{table},
                       value_stack);
-      size_t size = SizeOf(qt.type(), type_system()).value();
+      size_t size = qt.type() == Integer
+                        ? sizeof(void *)
+                        : SizeOf(qt.type(), type_system()).value();
       result_ptr->resize(size);
       jasmin::Value::Store(value_stack.pop_value(), result_ptr->data(), size);
       return *result_ptr;
     } else {
-      NOT_YET();
+      NOT_YET(DebugQualifiedType(qt, type_system()));
     }
   } else {
     return *result_ptr;
