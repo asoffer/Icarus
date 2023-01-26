@@ -1,193 +1,193 @@
-io ::= import "io.ic"
+// io ::= import "io.ic"
 
 // The purpose of this example is to show all the ways in which functions can
 // be called. This includes things like default arguments, named arguments,
 // and all the combinations thereof.
 
-io.Print("Basic calls:\n")
+// io.Print("Basic calls:\n")
 basic_calls()
-io.Print("----------------------------------------------------------------\n")
-
-io.Print("Non-constants:\n")
+// io.Print("----------------------------------------------------------------\n")
+// 
+// io.Print("Non-constants:\n")
 non_constants()
-io.Print("----------------------------------------------------------------\n")
-
-io.Print("Named arguments:\n")
+// io.Print("----------------------------------------------------------------\n")
+// 
+// io.Print("Named arguments:\n")
 named_arguments()
-io.Print("----------------------------------------------------------------\n")
-
-io.Print("Default arguments:\n")
+// io.Print("----------------------------------------------------------------\n")
+// 
+// io.Print("Default arguments:\n")
 default_arguments()
-io.Print("----------------------------------------------------------------\n")
-
-io.Print("Compile-time arguments:\n")
+// io.Print("----------------------------------------------------------------\n")
+// 
+// io.Print("Compile-time arguments:\n")
 compile_time_arguments()
-io.Print("----------------------------------------------------------------\n")
-
-io.Print("Multiple return values:\n")
+// io.Print("----------------------------------------------------------------\n")
+// 
+// io.Print("Multiple return values:\n")
 multiple_return_values()
-io.Print("----------------------------------------------------------------\n")
+// io.Print("----------------------------------------------------------------\n")
 
 // ============================================================================
 
 basic_calls ::= () -> () {
-  // There are several syntaxes for defining functions. The most verbose uses
-  // the single arrow `->`.
-  squared ::= (n: i64) -> i64 { return n * n }
-
-  // The shortest option is to use the double arrow `=>`. Using this syntax, the
-  // return type is inferred, and the returned value is placed on the right-hand
-  // side of the arrow. 
-  cubed ::= (n: i64) => n * n * n
-
-  // This means that the `=>` is not particularly useful for functions
-  // that are more than a single expression. However, we also allow the return
-  // type to be inferred for longer functions by simply not specifying the
-  // return type:
-  sum ::= (x: i64, y: i64) -> {
-    return x + y
-  }
-
-  // Functions can be called by passing arguments in parentheses after the name
-  // of the function.
-  io.Print("2^2 = ", squared(2), "\n", sum(3, 4))
-
-  // Functions may also be called by following the arguments with a single quote
-  // character ' and then the function name.
-  io.Print("2^3 = ")
-  2'cubed'io.Print
-  "\n"'io.Print
-  (3, 4)'sum'io.Print
-  io.Print("2^3^3 = ")
-  io.Print(2'cubed'cubed)
-  io.Print("\n")
-
-  // There is nothing special here about giving functions a name. Function
-  // literals (often referred to as "lambdas") can be called in exactly the same
-  // way.
-  io.Print("3^2 = ")
-  io.Print(((n: i64) => n * n)(3))
-  io.Print("\n")
-  io.Print("4^2 = ")
-  io.Print(4'((n: i64) => n * n))
-  io.Print("\n")
+//   // There are several syntaxes for defining functions. The most verbose uses
+//   // the single arrow `->`.
+//   squared ::= (n: i64) -> i64 { return n * n }
+// 
+//   // The shortest option is to use the double arrow `=>`. Using this syntax, the
+//   // return type is inferred, and the returned value is placed on the right-hand
+//   // side of the arrow. 
+//   cubed ::= (n: i64) => n * n * n
+// 
+//   // This means that the `=>` is not particularly useful for functions
+//   // that are more than a single expression. However, we also allow the return
+//   // type to be inferred for longer functions by simply not specifying the
+//   // return type:
+//   sum ::= (x: i64, y: i64) -> {
+//     return x + y
+//   }
+// 
+//   // Functions can be called by passing arguments in parentheses after the name
+//   // of the function.
+//   io.Print("2^2 = ", squared(2), "\n", sum(3, 4))
+// 
+//   // Functions may also be called by following the arguments with a single quote
+//   // character ' and then the function name.
+//   io.Print("2^3 = ")
+//   2'cubed'io.Print
+//   "\n"'io.Print
+//   (3, 4)'sum'io.Print
+//   io.Print("2^3^3 = ")
+//   io.Print(2'cubed'cubed)
+//   io.Print("\n")
+// 
+//   // There is nothing special here about giving functions a name. Function
+//   // literals (often referred to as "lambdas") can be called in exactly the same
+//   // way.
+//   io.Print("3^2 = ")
+//   io.Print(((n: i64) => n * n)(3))
+//   io.Print("\n")
+//   io.Print("4^2 = ")
+//   io.Print(4'((n: i64) => n * n))
+//   io.Print("\n")
 }
 
 non_constants ::= () -> () {
-  // So far all examples of functions you have seen have been declared with the
-  // symbol `::=`. The double-colon means that these variable bindings are
-  // compile-time constants. Functions can also be declared as non-constants
-  // with `:=`. This will mean their value can be rebound.
-  f := (n: i64) => n * n
-  io.Print("3 * 3 = ")
-  io.Print(f(3))
-  io.Print("\n")
-
-  f = (n: i64) => n * n * n
-  io.Print("3 * 3 * 3 = ")
-  io.Print(f(3))
-  io.Print("\n")
+//   // So far all examples of functions you have seen have been declared with the
+//   // symbol `::=`. The double-colon means that these variable bindings are
+//   // compile-time constants. Functions can also be declared as non-constants
+//   // with `:=`. This will mean their value can be rebound.
+//   f := (n: i64) => n * n
+//   io.Print("3 * 3 = ")
+//   io.Print(f(3))
+//   io.Print("\n")
+// 
+//   f = (n: i64) => n * n * n
+//   io.Print("3 * 3 * 3 = ")
+//   io.Print(f(3))
+//   io.Print("\n")
 }
-
+// 
 named_arguments ::= () -> () {
-  // The names of function parameters are a part of the function type. This
-  // allows functions to be called with named arguments. You may specify the
-  // names in any order, but once a named argument is used, all further
-  // arguments must also be named.
-  f ::= (a: i64, b: i64, c: i64, d: i64, e: i64) -> () {
-    io.Print("f(a = ", a, ", b = ", b, ", c = ", c,
-             ", d = ", d, ", e = ", e, ")\n")
-  }
-
-  // A call to f using only positional arguments:
-  f(1, 2, 3, 4, 5)
-
-  // A call to f using only named arguments:
-  f(e = 5, d = 4, c = 3, b = 2, a = 1)
-
-  // A call to f with a mix of named and positional arguments:
-  f(1, 2, 3, d = 4, e = 5)
-
-  // Once again, there is nothing special about the fact that we gave a name to
-  // the function f. We colud just as well have called a lambda:
-  (x: i64, y: i64) -> () {
-    io.Print("lambda called with x = ", x, " and y = ", y, "\n")
-  }(y = 3, x = 4)
-
-  // Because parameter names are a part of the function type, even non-constant 
-  // functions can be called with named arguments.
-  g := (a: i64, b: i64) => a + b * b
-  io.Print("4 + 3 * 3 = ", g(a = 4, b = 3), "\n")
+//   // The names of function parameters are a part of the function type. This
+//   // allows functions to be called with named arguments. You may specify the
+//   // names in any order, but once a named argument is used, all further
+//   // arguments must also be named.
+//   f ::= (a: i64, b: i64, c: i64, d: i64, e: i64) -> () {
+//     io.Print("f(a = ", a, ", b = ", b, ", c = ", c,
+//              ", d = ", d, ", e = ", e, ")\n")
+//   }
+// 
+//   // A call to f using only positional arguments:
+//   f(1, 2, 3, 4, 5)
+// 
+//   // A call to f using only named arguments:
+//   f(e = 5, d = 4, c = 3, b = 2, a = 1)
+// 
+//   // A call to f with a mix of named and positional arguments:
+//   f(1, 2, 3, d = 4, e = 5)
+// 
+//   // Once again, there is nothing special about the fact that we gave a name to
+//   // the function f. We colud just as well have called a lambda:
+//   (x: i64, y: i64) -> () {
+//     io.Print("lambda called with x = ", x, " and y = ", y, "\n")
+//   }(y = 3, x = 4)
+// 
+//   // Because parameter names are a part of the function type, even non-constant 
+//   // functions can be called with named arguments.
+//   g := (a: i64, b: i64) => a + b * b
+//   io.Print("4 + 3 * 3 = ", g(a = 4, b = 3), "\n")
 }
-
+// 
 default_arguments ::= () -> () {
-  // Functions can also take default arguments. Default arguments are specified
-  // at the function definition site. The normal declaration rules apply. Here
-  // we are specifying that the parameter `b` gets a default value of 2 if no
-  // argument is provided. We can also infer the type of the parameter as is done
-  // with `c := 3 as i64`.
-  f ::= (a: i64, b: i64 = 2 as i64, c := 3 as i64) -> () {
-    io.Print("f(a = ", a, ", b = ", b, ", c = ", c, ")\n")
-  }
-  f(1)
-  f(1, 20)
-  f(1, 20, 30)
-
-  // This works with named arguments too:
-  f(c = 30, a = 10)
-
-  // If a function call uses a default argument, further arguments must either
-  // use the default if they have one, or be named. In the example below, only
-  // `b` has a default, so if a value for `b` is not provided at the call site,
-  // `c` must be explicitly named.
-  g ::= (a: i64, b := 2 as i64, c: i64) -> () {
-    io.Print("g(a = ", a, ", b = ", b, ", c = ", c, ")\n")
-  }
-  g(10, 20, 30)
-  g(10, c = 30)
-  g(c = 30, a = 10)
-  // Uncomment the following line to get a compilation error:
-  // g(10, 30)
+//   // Functions can also take default arguments. Default arguments are specified
+//   // at the function definition site. The normal declaration rules apply. Here
+//   // we are specifying that the parameter `b` gets a default value of 2 if no
+//   // argument is provided. We can also infer the type of the parameter as is done
+//   // with `c := 3 as i64`.
+//   f ::= (a: i64, b: i64 = 2 as i64, c := 3 as i64) -> () {
+//     io.Print("f(a = ", a, ", b = ", b, ", c = ", c, ")\n")
+//   }
+//   f(1)
+//   f(1, 20)
+//   f(1, 20, 30)
+// 
+//   // This works with named arguments too:
+//   f(c = 30, a = 10)
+// 
+//   // If a function call uses a default argument, further arguments must either
+//   // use the default if they have one, or be named. In the example below, only
+//   // `b` has a default, so if a value for `b` is not provided at the call site,
+//   // `c` must be explicitly named.
+//   g ::= (a: i64, b := 2 as i64, c: i64) -> () {
+//     io.Print("g(a = ", a, ", b = ", b, ", c = ", c, ")\n")
+//   }
+//   g(10, 20, 30)
+//   g(10, c = 30)
+//   g(c = 30, a = 10)
+//   // Uncomment the following line to get a compilation error:
+//   // g(10, 30)
 }
- 
+
 compile_time_arguments ::= () -> () {
-  // So far we have only seen arguments to functions declared with a
-  // single colon. Using `::` marks the argument as required to be known at
-  // compile-time.
-  compile_time_square ::= (n :: i64) => n * n
-  io.Print(compile_time_square(3), "\n")
-
-  // Compile-time arguments do not need to be literals. They can also be
-  // compile-time constants, or expressions known at compile-time.
-  N ::= 17
-  io.Print(compile_time_square(N), "\n")
-  io.Print(compile_time_square(2 * N - 10), "\n")
-
-  // Compile-time arguments work just as well with named or default arguments.
-  f ::= (a: i64, b :: i64 = 2, c: i64) -> () {
-    io.Print("f(a = ", a, ", b = ", b, ", c = ", c, ")\n")
-  }
-  f(1, c = 3)
-  f(1, c = 30, b = 20)
-
-  // One benefit of compile-time arguments is that they can be used in the
-  // return type of a function.
-  default_int_array ::= (len :: integer) -> [len; i64] {
-    result: [len; i64]
-    return result
-  }
-  default_int_array(3)
+//   // So far we have only seen arguments to functions declared with a
+//   // single colon. Using `::` marks the argument as required to be known at
+//   // compile-time.
+//   compile_time_square ::= (n :: i64) => n * n
+//   io.Print(compile_time_square(3), "\n")
+// 
+//   // Compile-time arguments do not need to be literals. They can also be
+//   // compile-time constants, or expressions known at compile-time.
+//   N ::= 17
+//   io.Print(compile_time_square(N), "\n")
+//   io.Print(compile_time_square(2 * N - 10), "\n")
+// 
+//   // Compile-time arguments work just as well with named or default arguments.
+//   f ::= (a: i64, b :: i64 = 2, c: i64) -> () {
+//     io.Print("f(a = ", a, ", b = ", b, ", c = ", c, ")\n")
+//   }
+//   f(1, c = 3)
+//   f(1, c = 30, b = 20)
+// 
+//   // One benefit of compile-time arguments is that they can be used in the
+//   // return type of a function.
+//   default_int_array ::= (len :: integer) -> [len; i64] {
+//     result: [len; i64]
+//     return result
+//   }
+//   default_int_array(3)
 }
- 
+
 multiple_return_values ::= () -> () {
-  // Functions can have multiple return values
-  f ::= (n: i64) -> (i64, i64) {
-    return n, n * n
-  }
-
-  (a, b) := f(3)
-  io.Print(a, "^2 = ", b, "\n")
-
-  (a, b) = f(4)
-  io.Print(a, "^2 = ", b, "\n")
+//   // Functions can have multiple return values
+//   f ::= (n: i64) -> (i64, i64) {
+//     return n, n * n
+//   }
+// 
+//   (a, b) := f(3)
+//   io.Print(a, "^2 = ", b, "\n")
+// 
+//   (a, b) = f(4)
+//   io.Print(a, "^2 = ", b, "\n")
 }

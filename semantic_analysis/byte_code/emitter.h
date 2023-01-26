@@ -89,6 +89,9 @@ struct ByteCodeValueEmitter : Emitter<ByteCodeValueEmitter> {
   explicit ByteCodeValueEmitter(Context &c, module::Module &module)
       : Emitter<ByteCodeValueEmitter>(c, module) {}
 
+  void CastTo(ast::Expression const *node, QualifiedType to_qt,
+              FunctionData data);
+
   template <typename NodeType>
   void operator()(NodeType const *node, FunctionData) {
     if (ast::ExpressionType<NodeType>) {

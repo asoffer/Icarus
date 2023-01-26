@@ -3,6 +3,7 @@
 #include "absl/cleanup/cleanup.h"
 #include "ast/ast.h"
 #include "semantic_analysis/type_system.h"
+#include "semantic_analysis/type_verification/casting.h"
 #include "semantic_analysis/type_verification/verify.h"
 
 namespace semantic_analysis {
@@ -98,8 +99,12 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
     auto callability_result = core::Callability(
         callee_parameter_type.first.value(), arguments,
         [&](QualifiedType argument_type, core::Type parameter_type) {
-          // TODO: Handle implicit conversions.
-          return argument_type.type() == parameter_type;
+          switch (CanCast(argument_type, parameter_type, tv.type_system())) {
+          case CastKind::None:
+          case CastKind::Explicit: return false;
+          case CastKind::Implicit:
+          case CastKind::InPlace: return true;
+          }
         });
     if (not callability_result.ok()) { continue; }
     valid_index = index;

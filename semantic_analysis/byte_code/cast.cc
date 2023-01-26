@@ -3,13 +3,11 @@
 
 namespace semantic_analysis {
 
-void ByteCodeValueEmitter::operator()(ast::Cast const* node,
-                                      FunctionData data) {
-  QualifiedType from_qt = context().qualified_type(node->expr());
-  QualifiedType to_qt   = context().qualified_type(node);
+void ByteCodeValueEmitter::CastTo(ast::Expression const* node,
+                                  QualifiedType to_qt, FunctionData data) {
+  QualifiedType from_qt = context().qualified_type(node);
   if (from_qt.type() == Integer) {
-    std::span<std::byte const> evaluation =
-        EvaluateConstant(node->expr(), from_qt);
+    std::span<std::byte const> evaluation = EvaluateConstant(node, from_qt);
     ASSERT(sizeof(nth::Integer const*) == evaluation.size());
     nth::Integer const* i;
     std::memcpy(&i, evaluation.data(), sizeof(i));
@@ -47,7 +45,7 @@ void ByteCodeValueEmitter::operator()(ast::Cast const* node,
     }
   } else if (auto from =
                  from_qt.type().get_if<core::SizedIntegerType>(type_system())) {
-    Emit(node->expr(), data);
+    Emit(node, data);
     if (from_qt.type() == to_qt.type()) { return; }
 
     if (auto to = to_qt.type().get_if<core::SizedIntegerType>(type_system())) {
@@ -73,6 +71,12 @@ void ByteCodeValueEmitter::operator()(ast::Cast const* node,
   } else {
     NOT_YET();
   }
+}
+
+void ByteCodeValueEmitter::operator()(ast::Cast const* node,
+                                      FunctionData data) {
+  QualifiedType to_qt = context().qualified_type(node);
+  CastTo(node->expr(), to_qt, data);
 }
 
 void ByteCodeStatementEmitter::operator()(ast::Cast const* node,

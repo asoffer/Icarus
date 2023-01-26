@@ -47,9 +47,9 @@ CastKind CanCast(QualifiedType from, core::Type to, TypeSystem& type_system) {
       }
     } else if constexpr (category_type == nth::type<PrimitiveType>) {
       switch (from_type.value()) {
-        case Primitive::Bool: NOT_YET();
-        case Primitive::Char: NOT_YET();
-        case Primitive::Byte: NOT_YET();
+        case Primitive::Bool:
+        case Primitive::Char:
+        case Primitive::Byte: return CastKind::None;
         case Primitive::F32:
           return to == F64 ? CastKind::Implicit : CastKind::None;
         case Primitive::F64: return CastKind::None;
@@ -124,7 +124,9 @@ CastKind CanCast(QualifiedType from, core::Type to, TypeSystem& type_system) {
 
 core::Type CommonType(core::Type lhs, core::Type rhs, TypeSystem& type_system) {
   if (lhs == rhs) { return lhs; }
-  NOT_YET();
+  if (lhs == Integer) { return rhs; }
+  if (rhs == Integer) { return lhs; }
+  NOT_YET(DebugType(lhs, type_system), " ~ ", DebugType(rhs, type_system));
 }
 
 }  // namespace semantic_analysis

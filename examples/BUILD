@@ -11,6 +11,11 @@ ic_binary(
 )
 
 ic_binary(
+    name = "function_calls",
+    srcs = ["function_calls.ic"],
+)
+
+ic_binary(
     name = "minimal_program",
     srcs = ["minimal_program.ic"],
 )

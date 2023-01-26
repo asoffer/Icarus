@@ -48,6 +48,7 @@ void ByteCodeValueEmitter::operator()(ast::FunctionLiteral const* node,
   for (auto const* stmt : node->stmts()) {
     as<ByteCodeStatementEmitter>().Emit(stmt, fn_data);
   }
+  fn_data.function().append<jasmin::Return>();
 
   data.function().append<jasmin::Push>(fn_ptr);
 }

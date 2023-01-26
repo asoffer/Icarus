@@ -76,6 +76,19 @@ TEST(Call, OneParameterWithoutImplicitConversions) {
             HasDiagnostics(Pair("type-error", "uncallable-with-arguments"))));
 }
 
+TEST(Call, OneParameterWithImplicitConversions) {
+  test::Repl repl;
+  EXPECT_THAT(repl.type_check(R"(((n: i64) => n)(3))"),
+              AllOf(HasQualTypes(QualifiedType(I(64))), HasDiagnostics()));
+  EXPECT_THAT(repl.type_check(R"(((n: i64) => n)(n = 3))"),
+              AllOf(HasQualTypes(QualifiedType(I(64))), HasDiagnostics()));
+  EXPECT_THAT(repl.type_check(R"(3'((n: i64) => n))"),
+              AllOf(HasQualTypes(QualifiedType(I(64))), HasDiagnostics()));
+  EXPECT_THAT(repl.type_check(R"((n = 3)'((n: i64) => n))"),
+              AllOf(HasQualTypes(QualifiedType(I(64))), HasDiagnostics()));
+}
+
+
 TEST(Call, OneParameterWithDefaults) {
   test::Repl repl;
   EXPECT_THAT(repl.type_check(R"(((b := true) => b)())"),
