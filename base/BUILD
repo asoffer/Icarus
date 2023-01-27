@@ -28,7 +28,10 @@ cc_library(
 cc_library(
     name = "extend",
     hdrs = ["extend.h"],
-    deps = [":meta"],
+    deps = [
+        "@asoffer_nth//nth/meta:sequence",
+        "@asoffer_nth//nth/meta:type",
+    ],
 )
 
 cc_test(
@@ -156,7 +159,8 @@ cc_library(
     name = "universal_print",
     hdrs = ["universal_print.h"],
     deps = [
-        ":meta",
+        "@asoffer_nth//nth/meta:concepts",
+        "@asoffer_nth//nth/meta:type",
         "@com_google_absl//absl/status:statusor",
     ],
 )

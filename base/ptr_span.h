@@ -9,6 +9,11 @@
 
 namespace base {
 
+template <typename From, typename To>
+concept PtrConvertibleTo = requires(From *f) {
+  { static_cast<To *>(f) } -> std::same_as<To *>;
+};
+
 // PtrSpan<T>:
 // This is a utility that allows iterating over contiguous ranges of
 // `std::unique_ptr<T>`s, giving access to the underlying `T` without needing

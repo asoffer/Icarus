@@ -7,7 +7,7 @@ namespace base {
 
 template <typename T>
 struct TotalOrderExtension {
-  using dependencies = base::type_list<EqualityExtension<T>>;
+  static constexpr auto dependencies = nth::type_sequence<EqualityExtension<T>>;
 
   friend bool operator<(T const &lhs, T const &rhs) {
     return lhs.field_refs() < rhs.field_refs();

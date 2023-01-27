@@ -11,20 +11,22 @@ namespace ast {
 struct Expression;
 struct Scope;
 
-using AllNodeTypes = base::tail<base::type_list<int
+inline constexpr auto AllNodeTypes = nth::type_sequence<int
 #define ICARUS_AST_NODE_X(node) , struct node
 #include "ast/node.xmacro.h"
 #undef ICARUS_AST_NODE_X
-                                                >>;
+                                                >.tail();
 
 template <typename T>
 constexpr ssize_t IndexOf() {
-  return base::Index<T>(AllNodeTypes{});
+  return AllNodeTypes.find_if<[](auto t) { return t == nth::type<T>; }>();
 }
 
-struct Node : base::Visitable<Node, AllNodeTypes>, base::Cast<Node> {
+struct Node : base::Visitable<Node, base::FromSeq<AllNodeTypes>>,
+              base::Cast<Node> {
   explicit constexpr Node(int8_t which, std::string_view range = "")
-      : base::Visitable<Node, AllNodeTypes>(which), range_(range) {}
+      : base::Visitable<Node, base::FromSeq<AllNodeTypes>>(which),
+        range_(range) {}
 
   virtual ~Node() {}
 

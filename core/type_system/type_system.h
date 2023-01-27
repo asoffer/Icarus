@@ -8,13 +8,14 @@
 #include "core/type_system/type.h"
 #include "jasmin/instruction.h"
 #include "nth/container/flyweight_set.h"
+#include "nth/meta/concepts.h"
 
 namespace core {
 namespace internal_type_system {
 
 template <typename T>
 concept RequestedInlineStorage =
-    std::is_void_v<typename T::store_inline> or base::is_enum<T>;
+    std::is_void_v<typename T::store_inline> or nth::enumeration<T>;
 
 // A struct whose size is guaranteed to be `TotalSize`.
 template <typename T, size_t TotalSize, size_t Padding = TotalSize - sizeof(T)>
@@ -32,7 +33,7 @@ struct Padded<T, TotalSize, 0> {
 
 template <typename CrtpDerived, typename... StateTypes>
 struct TypeCategory {
-  using state_types = base::type_list<StateTypes...>;
+  static constexpr auto state_types = nth::type_sequence<StateTypes...>;
 
  private:
   using state_type_tuple = std::tuple<StateTypes...>;
@@ -183,32 +184,21 @@ struct TypeCategory {
   manager_type* manager_;
 };
 
-namespace internal_type_system {
-
-template <typename S>
-using ConvertibleToJasminValue = std::is_convertible<S, jasmin::Value>;
-
-template <typename Cat>
-struct AllStatesConvertibleToJasminValues {
-  static constexpr bool value =
-      base::all_of<typename Cat::state_types, ConvertibleToJasminValue>;
-};
-
-}  // namespace internal_type_system
-
 template <typename... TypeCategories>
 struct TypeSystem : TypeCategories::manager_type... {
   // Returns the index of the type category `Cat` in this type-system.
-  template <base::one_of<TypeCategories...> Cat>
+  template <nth::any_of<TypeCategories...> Cat>
   static constexpr size_t index() {
-    return base::Index<Cat>(base::type_list<TypeCategories...>{});
+    return nth::type_sequence<TypeCategories...>.template find_if<[](auto t) {
+      return t == nth::type<Cat>;
+    }>();
   }
 
-  template <base::one_of<TypeCategories...> Cat,
-            typename = typename Cat::state_types>
+  template <nth::any_of<TypeCategories...> Cat,
+            typename = base::FromSeq<Cat::state_types>>
   struct Make;
 
-  template <base::one_of<TypeCategories...> Cat, typename... States>
+  template <nth::any_of<TypeCategories...> Cat, typename... States>
   struct Make<Cat, base::type_list<States...>>
       : jasmin::StackMachineInstruction<Make<Cat>> {
     static constexpr Type execute(States... states, TypeSystem* system) {
@@ -228,10 +218,11 @@ struct TypeSystem : TypeCategories::manager_type... {
 
   template <typename F>
   auto visit(Type t, F&& invocable) {
-    using return_type = std::invoke_result_t<F, base::first<TypeCategories...>>;
-    auto member_fn    = (std::array<return_type (TypeSystem::*)(Type, F &&),
+    using return_type = std::invoke_result_t<
+        F, nth::type_t<nth::type_sequence<TypeCategories...>.head()>>;
+    auto member_fn = (std::array<return_type (TypeSystem::*)(Type, F &&),
                                  sizeof...(TypeCategories)>{
-           &TypeSystem::visit_one<TypeCategories, F>...})[t.category()];
+        &TypeSystem::visit_one<TypeCategories, F>...})[t.category()];
     return (this->*member_fn)(t, std::forward<F>(invocable));
   }
 
@@ -244,15 +235,12 @@ struct TypeSystem : TypeCategories::manager_type... {
   }
 
  private:
-  using automatic_jasmin_types =
-      base::filter<base::type_list<TypeCategories...>,
-                   internal_type_system::AllStatesConvertibleToJasminValues>;
-  template <typename>
-  struct MakeInstructionSet;
-  template <typename... Cats>
-  struct MakeInstructionSet<base::type_list<Cats...>> {
-    using type = jasmin::MakeInstructionSet<Make<Cats>...>;
-  };
+  static constexpr auto automatic_jasmin_types =
+      nth::type_sequence<TypeCategories...>.template filter<[](auto t) {
+        return nth::type_t<t>::state_types.template all<[](auto u) {
+          return std::is_convertible_v<nth::type_t<u>, jasmin::Value>;
+        }>();
+      }>();
 
   template <typename T, typename F>
   auto visit_one(Type t, F&& invocable) {
@@ -261,7 +249,9 @@ struct TypeSystem : TypeCategories::manager_type... {
 
  public:
   using JasminInstructionSet =
-      typename MakeInstructionSet<automatic_jasmin_types>::type;
+      nth::type_t<automatic_jasmin_types.reduce([](auto... ts) {
+        return nth::type<jasmin::MakeInstructionSet<Make<nth::type_t<ts>>...>>;
+      })>;
 };
 
 }  // namespace core

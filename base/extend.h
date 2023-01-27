@@ -5,7 +5,8 @@
 #include <tuple>
 #include <type_traits>
 
-#include "base/meta.h"
+#include "nth/meta/sequence.h"
+#include "nth/meta/type.h"
 
 namespace base {
 
@@ -22,10 +23,10 @@ struct ConvertibleToAnything {
 template <typename T>
 struct ConvertibleToAnythingBut {
   ConvertibleToAnythingBut();
-  template <typename U, std::enable_if_t<nth::type<T> != nth::type<U>, int> = 0>
-  operator U &() const;
-  template <typename U, std::enable_if_t<nth::type<T> != nth::type<U>, int> = 0>
-  operator U &&() const;
+  template <typename U>
+  requires(nth::type<T> != nth::type<U>) operator U &() const;
+  template <typename U>
+  requires(nth::type<T> != nth::type<U>) operator U &&() const;
 };
 
 struct AcceptAnything {
@@ -145,27 +146,24 @@ struct EnableExtensions {
 
 namespace internal_extend {
 
-template <typename T>
-auto GetDependencies(T *) -> typename T::dependencies;
-auto GetDependencies(void *) -> type_list<>;
-
-template <typename... Processed>
-auto DependenciesImpl(type_list<>, type_list<Processed...>) {
-  return type_list<Processed...>{};
-}
-
-template <typename T, typename... Ts, typename... Processed>
-auto DependenciesImpl(type_list<T, Ts...>, type_list<Processed...>) {
-  if constexpr (((nth::type<T> == nth::type<Processed>) || ...)) {
-    return DependenciesImpl(type_list<Ts...>{}, type_list<Processed...>{});
+constexpr auto DependenciesImpl(nth::Sequence auto unprocessed,
+                                nth::Sequence auto processed) {
+  if constexpr (unprocessed.empty()) {
+    return processed;
   } else {
-    using deps = decltype(GetDependencies(static_cast<T *>(nullptr)));
-    if constexpr (nth::type<deps> == nth::type<type_list<>>) {
-      return DependenciesImpl(type_list<Ts...>{}, type_list<T, Processed...>{});
-    } else {
+    constexpr auto head = unprocessed.head();
+    constexpr auto tail = unprocessed.tail();
+    if constexpr (processed.template contains<head>()) {
+      return DependenciesImpl(tail, processed);
+    } else if constexpr (requires {
+                           nth::type_t<decltype(head){}>::dependencies;
+                         }) {
       return DependenciesImpl(
-          FromSeq<ToSeq(deps{}) + nth::type_sequence<Ts...>>{},
-          type_list<T, Processed...>{});
+          decltype(tail){} + nth::type_t<head>::dependencies,
+          nth::sequence<head> + processed);
+    } else {
+      return DependenciesImpl(decltype(tail){},
+                              nth::sequence<head> + processed);
     }
   }
 }
@@ -173,19 +171,22 @@ auto DependenciesImpl(type_list<T, Ts...>, type_list<Processed...>) {
 template <typename ExtensionsTypeList>
 struct ExtensionSet;
 template <typename... Extensions>
-struct ExtensionSet<type_list<Extensions...>> : Extensions... {};
+struct ExtensionSet<void(Extensions...)> : Extensions... {};
 
 template <typename... Deps>
-using AllDependencies = decltype(internal_extend::DependenciesImpl(
-    type_list<Deps...>{}, type_list<>{}));
+inline constexpr auto AllDependencies = internal_extend::DependenciesImpl(
+    nth::type_sequence<Deps...>, nth::sequence<>);
 
 }  // namespace internal_extend
 
 template <typename T, int NumFields = -1>
 struct Extend final {
   template <template <typename> typename... Extensions>
-  struct With : internal_extend::ExtensionSet<
-                    internal_extend::AllDependencies<Extensions<T>...>> {
+  struct With : internal_extend::ExtensionSet<nth::type_t<
+                    internal_extend::AllDependencies<Extensions<T>...>.reduce(
+                        [](auto... ts) {
+                          return nth::type<void(nth::type_t<ts>...)>;
+                        })>> {
     auto field_refs() & {
       return EnableExtensions::field_refs<T, 1, NumFields>(
           static_cast<T &>(*this));

@@ -11,9 +11,27 @@
 #include <variant>
 
 #include "absl/status/statusor.h"
-#include "base/meta.h"
+#include "nth/meta/concepts.h"
+#include "nth/meta/type.h"
 
 namespace base {
+
+template <typename T>
+concept SatisfiesTupleProtocol =
+    std::integral<std::decay_t<decltype(std::tuple_size<T>::value)>>;
+
+template <typename T>
+concept Container = requires(T t) {
+  typename T::value_type;
+  t.begin() == t.end();
+  *t.begin();
+  ++std::declval<typename T::iterator&>();
+};
+
+template <typename T>
+concept Streamable = requires(T t) {
+  { std::declval<std::ostream&>() << t } -> std::same_as<std::ostream&>;
+};
 
 template <typename P>
 concept Printer = (std::invocable<P, int64_t> and
@@ -97,7 +115,7 @@ namespace internal_universal_print {
 struct StringStreamPrinter {
   StringStreamPrinter() { ss_ << std::boolalpha; }
 
-  void operator()(is_enum auto n) {
+  void operator()(nth::enumeration auto n) {
     using type = std::decay_t<decltype(n)>;
     ss_ << "(" << typeid(type).name() << ")"
         << static_cast<std::underlying_type_t<type>>(n);

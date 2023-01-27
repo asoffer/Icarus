@@ -8,7 +8,7 @@ namespace base {
 
 template <typename T>
 struct AbslHashExtension {
-  using dependencies = base::type_list<EqualityExtension<T>>;
+  static constexpr auto dependencies = nth::type_sequence<EqualityExtension<T>>;
 
   template <typename H>
   friend H AbslHashValue(H h, T const &t) {

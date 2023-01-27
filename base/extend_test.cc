@@ -116,25 +116,25 @@ TEST(Extend, ExplicitCountFieldRefs) {
 
 struct E {};
 struct D {
-  using dependencies = type_list<>;
+  static constexpr auto dependencies = nth::type_sequence<>;
 };
 struct C {
-  using dependencies = type_list<D>;
+  static constexpr auto dependencies = nth::type_sequence<D>;
 };
 struct B {
-  using dependencies = type_list<D, E>;
+  static constexpr auto dependencies = nth::type_sequence<D, E>;
 };
 struct A {
-  using dependencies = type_list<B, C>;
+  static constexpr auto dependencies = nth::type_sequence<B, C>;
 };
 
 TEST(Extend, Dependencies) {
-  constexpr auto deps = ToSeq(internal_extend::AllDependencies<A>{});
+  constexpr auto deps = internal_extend::AllDependencies<A>;
   EXPECT_TRUE(deps.contains<nth::type<A>>());
-  EXPECT_TRUE(deps.contains<nth::type<A>>());
-  EXPECT_TRUE(deps.contains<nth::type<A>>());
-  EXPECT_TRUE(deps.contains<nth::type<A>>());
-  EXPECT_TRUE(deps.contains<nth::type<A>>());
+  EXPECT_TRUE(deps.contains<nth::type<B>>());
+  EXPECT_TRUE(deps.contains<nth::type<C>>());
+  EXPECT_TRUE(deps.contains<nth::type<D>>());
+  EXPECT_TRUE(deps.contains<nth::type<E>>());
   EXPECT_EQ(deps.size(), 5);
 }
 

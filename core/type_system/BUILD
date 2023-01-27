@@ -5,6 +5,7 @@ cc_library(
     hdrs = ["finite_set.h"],
     deps = [
         ":type_system",
+        "@asoffer_nth//nth/meta:concepts",
     ]
 )
 
@@ -115,6 +116,7 @@ cc_library(
         "//base:meta",
         "@asoffer_jasmin//jasmin:instruction",
         "@asoffer_nth//nth/container:flyweight_set",
+        "@asoffer_nth//nth/meta:concepts",
     ]
 )
 

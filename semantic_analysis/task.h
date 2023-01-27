@@ -15,6 +15,7 @@
 #include "base/extend.h"
 #include "base/extend/absl_hash.h"
 #include "base/meta.h"
+#include "nth/meta/concepts.h"
 
 namespace semantic_analysis {
 namespace internal_task {
@@ -35,7 +36,7 @@ using AlwaysVoid = void;
 // `E::Completed` indicating the task has been completed and whose underlying
 // value is largest in the enum.
 template <typename E>
-concept PhaseIdentifier = base::is_enum<E> and requires {
+concept PhaseIdentifier = nth::enumeration<E> and requires {
   { E::Completed } -> std::same_as<E>;
 };
 

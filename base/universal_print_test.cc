@@ -158,5 +158,16 @@ TEST(UniversalPrint, AbslSpan) {
   EXPECT_EQ(UniversalPrintToString(span), "[1, 2, 3, 4]");
 }
 
+TEST(Meta, Container) {
+  struct S {
+    void begin() {}
+    void end() {}
+  };
+  EXPECT_TRUE(Container<std::vector<int>>);
+  EXPECT_TRUE(Container<std::span<int>>);
+  EXPECT_TRUE(Container<std::span<int const>>);
+  EXPECT_FALSE(Container<S>);
+}
+
 }  // namespace
 }  // namespace base
