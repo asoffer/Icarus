@@ -6,7 +6,7 @@
 puts ::= builtin.foreign("puts", [*]char -> ())
 
 // Then, we can call `puts` ourselves.
-puts("Hello, world!\n".data)
+puts("Hello, world!".data)
 
 // Note that we've named the function `puts` in our code. While it is common to
 // use the same name for the foreign symbol and the identifier to which it is
