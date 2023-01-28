@@ -1,15 +1,15 @@
-#include "module/data/integer_table.h"
+#include "data_types/integer.h"
 
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 
-namespace module {
+namespace data_types {
 
 using ::testing::UnorderedElementsAre;
 
 IntegerTable RoundTrip(IntegerTable const& table) {
   IntegerTable result;
-  data::IntegerTable proto;
+  data_types::proto::IntegerTable proto;
   Serialize(table, proto);
   Deserialize(proto, result);
   return result;
@@ -49,4 +49,4 @@ TEST(IntegerTable, MultipleElements) {
       UnorderedElementsAre(-1, 0, 17, std::numeric_limits<intptr_t>::max()));
 }
 
-}  // namespace module
+}  // namespace data_types

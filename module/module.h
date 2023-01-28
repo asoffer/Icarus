@@ -6,7 +6,7 @@
 #include <optional>
 #include <ostream>
 
-#include "module/data/integer_table.h"
+#include "data_types/integer.h"
 #include "semantic_analysis/foreign_function_map.h"
 #include "semantic_analysis/instruction_set.h"
 #include "semantic_analysis/type_system.h"
@@ -33,8 +33,8 @@ struct Module {
     return foreign_function_map_;
   }
 
-  IntegerTable &integer_table() { return integer_table_; }
-  IntegerTable const &integer_table() const { return integer_table_; }
+  data_types::IntegerTable &integer_table() { return integer_table_; }
+  data_types::IntegerTable const &integer_table() const { return integer_table_; }
 
   semantic_analysis::IrFunction const *function(ir::Fn fn_id) const {
     if (fn_id.module() == ir::ModuleId::Foreign()) {
@@ -64,7 +64,7 @@ struct Module {
   std::deque<semantic_analysis::IrFunction> functions_;
 
   // All integer constants used in the module.
-  IntegerTable integer_table_;
+  data_types::IntegerTable integer_table_;
 };
 
 }  // namespace module

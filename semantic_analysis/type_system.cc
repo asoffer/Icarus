@@ -1,7 +1,7 @@
 #include "semantic_analysis/type_system.h"
 
+#include "data_types/integer.h"
 #include "core/arch.h"
-#include "module/data/integer_table.h"
 
 namespace semantic_analysis {
 namespace {
@@ -136,7 +136,7 @@ core::TypeContour ContourOf(core::Type t, TypeSystem& ts) {
         core::TypeContour(core::Bytes{4}, core::Alignment{4}),  // F32
         core::TypeContour(core::Bytes{8}, core::Alignment{8}),  // F64
         core::TypeContour(core::Bytes{8}, core::Alignment{8}),  // Type
-        core::TypeContour::Get<module::IntegerHandle>(),        // Integer
+        core::TypeContour::Get<data_types::IntegerHandle>(),    // Integer
         core::TypeContour(core::Bytes{8}, core::Alignment{8})   // Module
     };
     size_t value =

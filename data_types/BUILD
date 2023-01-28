@@ -1,7 +1,8 @@
-package(default_visibility = ["//module:__subpackages__"])
+package(default_visibility = ["//visibility:private"])
 
 proto_library(
     name = "data_proto",
+    visibility = ["//module:__subpackages__"],
     srcs = ["data.proto"],
     deps = [],
 )
@@ -12,10 +13,10 @@ cc_proto_library(
 )
 
 cc_library(
-    name = "integer_table",
+    name = "integer",
     visibility = ["//visibility:public"],
-    hdrs = ["integer_table.h"],
-    srcs = ["integer_table.cc"],
+    hdrs = ["integer.h"],
+    srcs = ["integer.cc"],
     deps = [
         ":data_cc_proto",
         "//base:debug",
@@ -26,11 +27,10 @@ cc_library(
 )
 
 cc_test(
-    name = "integer_table_test",
-    visibility = ["//visibility:public"],
-    srcs = ["integer_table_test.cc"],
+    name = "integer_test",
+    srcs = ["integer_test.cc"],
     deps = [
-        ":integer_table",
+        ":integer",
         "@com_google_googletest//:gtest_main",
     ],
 )

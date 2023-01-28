@@ -1,6 +1,7 @@
 #ifndef ICARUS_SEMANTIC_ANALYSIS_INSTRUCTION_SET_H
 #define ICARUS_SEMANTIC_ANALYSIS_INSTRUCTION_SET_H
 
+#include "data_types/integer.h"
 #include "jasmin/function.h"
 #include "jasmin/instructions/arithmetic.h"
 #include "jasmin/instructions/bool.h"
@@ -8,7 +9,6 @@
 #include "jasmin/instructions/core.h"
 #include "jasmin/instructions/stack.h"
 #include "jasmin/serialization.h"
-#include "module/data/integer_table.h"
 #include "nth/container/flyweight_set.h"
 #include "nth/numeric/integer.h"
 #include "semantic_analysis/type_system.h"
@@ -234,10 +234,11 @@ using InstructionSet = jasmin::MakeInstructionSet<
     ApplyInstruction<jasmin::AppendLessThan, int8_t, int16_t, int32_t, int64_t,
                      uint8_t, uint16_t, uint32_t, uint64_t, float, double>,
     ApplyInstruction<Construct, bool, ir::Char, int8_t, int16_t, int32_t,
-                     int64_t, module::IntegerHandle, uint8_t, uint16_t,
+                     int64_t, data_types::IntegerHandle, uint8_t, uint16_t,
                      uint32_t, uint64_t, float, double>,
-    Destroy<module::IntegerHandle>, CopyConstruct<module::IntegerHandle>,
-    MoveConstruct<module::IntegerHandle>, module::IntegerHandle::Negate,
+    Destroy<data_types::IntegerHandle>,
+    CopyConstruct<data_types::IntegerHandle>,
+    MoveConstruct<data_types::IntegerHandle>, data_types::IntegerHandle::Negate,
     ApplyInstruction<jasmin::Add, int8_t, int16_t, int32_t, int64_t, uint8_t,
                      uint16_t, uint32_t, uint64_t, float, double>,
     ApplyInstruction<jasmin::Subtract, int8_t, int16_t, int32_t, int64_t,

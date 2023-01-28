@@ -1,17 +1,18 @@
-#include "module/data/integer_table.h"
+#include "data_types/integer.h"
 
 #include <iostream>
 
 #include "base/debug.h"
 
-namespace module {
+namespace data_types {
 
 IntegerHandle IntegerTable::insert(nth::Integer const& n) {
   auto [iter, inserted] = set_.insert(n);
   return IntegerHandle(&*iter);
 }
 
-void Serialize(IntegerTable const& table, data::IntegerTable& proto) {
+void Serialize(IntegerTable const& table,
+               data_types::proto::IntegerTable& proto) {
   for (auto const& n : table) {
     auto& proto_integer = *proto.add_integers();
     if (n < 0) { proto_integer.set_negative(true); }
@@ -24,7 +25,8 @@ void Serialize(IntegerTable const& table, data::IntegerTable& proto) {
   }
 }
 
-void Deserialize(data::IntegerTable const& proto, IntegerTable& table) {
+void Deserialize(data_types::proto::IntegerTable const& proto,
+                 IntegerTable& table) {
   for (auto const& proto_integer : proto.integers()) {
     nth::Integer n;
     std::string_view data = proto_integer.words();
@@ -52,4 +54,4 @@ void PrintTo(IntegerTable const& table, std::ostream* os) {
   *os << "]";
 }
 
-}  // namespace module
+}  // namespace data_types

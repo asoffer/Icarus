@@ -35,7 +35,7 @@ bool Execute(std::string const &input_file,
   jasmin::ValueStack value_stack;
   value_stack.push(arguments.data());
   value_stack.push(arguments.size());
-  module::IntegerTable table;
+  data_types::IntegerTable table;
   jasmin::Execute(
       module->initializer(),
       jasmin::ExecutionState<semantic_analysis::InstructionSet>{table},

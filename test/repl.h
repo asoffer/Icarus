@@ -119,7 +119,7 @@ struct Repl {
     using type = nth::type_t<t>;
 
     if (std::optional f = ExecutionFunction(std::move(source))) {
-      module::IntegerTable table;
+      data_types::IntegerTable table;
       jasmin::ExecutionState<semantic_analysis::InstructionSet> state{table};
 
       if constexpr (FitsInRegister<type>()) {

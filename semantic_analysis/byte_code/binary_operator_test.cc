@@ -48,7 +48,7 @@ TYPED_TEST(ArithmeticOperatorTest, Add) {
                       StringOf(type), StringOf(type), StringOf(type)));
 
   TypeParam result;
-  module::IntegerTable table;
+  data_types::IntegerTable table;
   jasmin::ExecutionState<InstructionSet> state{table};
 
   jasmin::Execute(f, state, {TypeParam{3}, TypeParam{4}}, result);
@@ -80,7 +80,7 @@ TYPED_TEST(ArithmeticOperatorTest, Sub) {
                       StringOf(type), StringOf(type), StringOf(type)));
 
   TypeParam result;
-  module::IntegerTable table;
+  data_types::IntegerTable table;
   jasmin::ExecutionState<InstructionSet> state{table};
 
   jasmin::Execute(f, state, {TypeParam{4}, TypeParam{3}}, result);
@@ -104,7 +104,7 @@ TYPED_TEST(ArithmeticOperatorTest, Mul) {
                       StringOf(type), StringOf(type), StringOf(type)));
 
   TypeParam result;
-  module::IntegerTable table;
+  data_types::IntegerTable table;
   jasmin::ExecutionState<InstructionSet> state{table};
 
   jasmin::Execute(f, state, {TypeParam{4}, TypeParam{3}}, result);
@@ -128,7 +128,7 @@ TYPED_TEST(ArithmeticOperatorTest, Div) {
                       StringOf(type), StringOf(type), StringOf(type)));
 
   TypeParam result;
-  module::IntegerTable table;
+  data_types::IntegerTable table;
   jasmin::ExecutionState<InstructionSet> state{table};
 
   jasmin::Execute(f, state, {TypeParam{4}, TypeParam{3}}, result);
@@ -157,7 +157,7 @@ TYPED_TEST(ArithmeticOperatorTest, Mod) {
                       StringOf(type), StringOf(type), StringOf(type)));
 
   TypeParam result;
-  module::IntegerTable table;
+  data_types::IntegerTable table;
   jasmin::ExecutionState<InstructionSet> state{table};
 
   jasmin::Execute(f, state, {TypeParam{4}, TypeParam{3}}, result);
@@ -202,7 +202,7 @@ TEST(LogicalOperatorTest, DISABLED_ShortCircuitingAnd) {
   (x: bool, y: bool, n: *i64) -> bool { return x and increment_and_return(y, n) }
   )");
 
-  module::IntegerTable table;
+  data_types::IntegerTable table;
   jasmin::ExecutionState<InstructionSet> state{table};
 
   {
@@ -249,7 +249,7 @@ TEST(LogicalOperatorTest, DISABLED_ShortCircuitingOr) {
   (x: bool, y: bool, n: *i64) -> bool { return x or increment_and_return(y, n) }
   )");
 
-  module::IntegerTable table;
+  data_types::IntegerTable table;
   jasmin::ExecutionState<InstructionSet> state{table};
   {
     int64_t n = 0;

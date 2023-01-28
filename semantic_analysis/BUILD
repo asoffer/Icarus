@@ -25,8 +25,8 @@ cc_library(
     deps = [
         ":type_system",
         "//core/type_system",
+        "//data_types:integer",
         "//ir/value:fn",
-        "//module/data:integer_table",
         "@asoffer_nth//nth/numeric:integer",
         "@asoffer_jasmin//jasmin:function",
         "@asoffer_jasmin//jasmin/instructions:arithmetic",
@@ -57,8 +57,8 @@ cc_library(
         "//core/type_system:parameter",
         "//core/type_system:pointer",
         "//core/type_system:sized_integer",
+        "//data_types:integer",
         "//ir/value:char",
-        "//module/data:integer_table",
     ]
 )
 

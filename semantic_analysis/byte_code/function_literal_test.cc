@@ -12,7 +12,7 @@ TEST(FunctionLiteral, NoParameters) {
   IrFunction const& f =
       *repl.execute<IrFunction const*>("() -> bool { return true }");
   bool result;
-  module::IntegerTable table;
+  data_types::IntegerTable table;
   jasmin::ExecutionState<InstructionSet> state{table};
 
   jasmin::Execute(f, state, {}, result);
@@ -25,7 +25,7 @@ TEST(FunctionLiteral, OneParameter) {
   IrFunction const& f =
       *repl.execute<IrFunction const*>("(n: i64) -> i64 { return -n }");
   int64_t result;
-  module::IntegerTable table;
+  data_types::IntegerTable table;
   jasmin::ExecutionState<InstructionSet> state{table};
 
   jasmin::Execute(f, state, {int64_t{3}}, result);

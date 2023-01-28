@@ -37,7 +37,7 @@ T EvaluateAs(Context& context, module::Module& module,
 
   IrFunction f = EmitByteCode(qt, *expr, context, module);
 
-  module::IntegerTable table;
+  data_types::IntegerTable table;
   jasmin::ExecutionState<InstructionSet> state{table};
   T result;
   if (PassInRegister(qt, module.type_system())) {

@@ -222,7 +222,7 @@ T Emitter<E>::EvaluateAs(ast::Expression const *expression) {
   f.append<jasmin::Return>();
 
   T result;
-  module::IntegerTable table;
+  data_types::IntegerTable table;
   jasmin::Execute(f, jasmin::ExecutionState<InstructionSet>{table}, {}, result);
   return result;
 }
@@ -248,7 +248,7 @@ std::span<std::byte const> Emitter<E>::EvaluateConstant(
       as<ByteCodeValueEmitter>().Emit(expr, FunctionData(f, variable_offsets));
       f.append<jasmin::Return>();
 
-      module::IntegerTable table;
+      data_types::IntegerTable table;
       jasmin::ValueStack value_stack;
       jasmin::Execute(f, jasmin::ExecutionState<InstructionSet>{table},
                       value_stack);

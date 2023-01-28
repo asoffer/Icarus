@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package module.data;
+package data_types.proto;
 
 message IntegerTable {
   message Integer {

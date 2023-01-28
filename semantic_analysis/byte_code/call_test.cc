@@ -27,7 +27,7 @@ TEST(Call, BuiltinForeign) {
       repl.foreign_function_map().ForeignFunction(ir::LocalFnId(0));
   EXPECT_EQ(result, fn);
 
-  module::IntegerTable table;
+  data_types::IntegerTable table;
   jasmin::ExecutionState<InstructionSet> state{table};
 
   int32_t value;
