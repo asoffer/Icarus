@@ -11,9 +11,8 @@ void ByteCodeValueEmitter::operator()(ast::Terminal const* node,
     std::string_view slice = node->value<std::string>();
     data.function().append<PushStringLiteral>(slice.data(), slice.size());
   } else if (qt.type() == Integer) {
-    // TODO: Store the integer in some shared manager type.
-    auto const* i = module().integer_table().insert(node->value<nth::Integer>());
-    data.function().append<jasmin::Push>(i);
+    data.function().append<jasmin::Push>(
+        module().integer_table().insert(node->value<nth::Integer>()));
   } else if (qt.type() == F64) {
     // TODO: Long-term these won't be doubles, but rather a "rational" type that
     // is arbitrary-precision.

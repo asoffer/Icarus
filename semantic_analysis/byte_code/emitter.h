@@ -234,7 +234,7 @@ std::span<std::byte const> Emitter<E>::EvaluateConstant(
   auto [result_ptr, inserted] = context().insert_constant(expr);
   if (inserted) {
     // TODO: Integers are an annoying special case at the moment.
-    if (PassInRegister(qt, type_system()) or qt.type() == Integer) {
+    if (PassInRegister(qt, type_system())) {
       IrFunction f(0, 1);
 
       // This `variable_offsets` map is intentionally empty. There will never

@@ -3,18 +3,19 @@
 
 #include <iosfwd>
 
+#include "jasmin/instruction.h"
 #include "module/data/data.pb.h"
 #include "nth/container/flyweight_set.h"
 #include "nth/numeric/integer.h"
 
 namespace module {
 
-// TODO: nth::flyweight_set doesn't yet support erasing elements, so we'll end
-// up keeping and serializing values that were only temporaries.
+struct IntegerHandle;
+
 struct IntegerTable {
   using value_type = nth::Integer;
 
-  nth::Integer const* insert(nth::Integer const& n);
+  IntegerHandle insert(nth::Integer const& n);
 
   auto begin() const { return set_.begin(); }
   auto end() const { return set_.end(); }
@@ -23,6 +24,25 @@ struct IntegerTable {
 
  private:
   nth::flyweight_set<nth::Integer> set_;
+};
+
+struct IntegerHandle {
+  explicit IntegerHandle() = default;
+
+  nth::Integer const& value() const { return *ptr_; }
+
+  struct Negate : jasmin::StackMachineInstruction<Negate> {
+    using JasminExecutionState = module::IntegerTable;
+    static IntegerHandle execute(JasminExecutionState& table,
+                                 IntegerHandle handle) {
+      return table.insert(-handle.value());
+    }
+  };
+
+ private:
+  explicit IntegerHandle(nth::Integer const* ptr) : ptr_(ptr) {}
+  friend IntegerTable;
+  nth::Integer const* ptr_;
 };
 
 void Serialize(IntegerTable const& table, data::IntegerTable& proto);

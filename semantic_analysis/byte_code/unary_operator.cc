@@ -19,7 +19,7 @@ void ByteCodeValueEmitter::operator()(ast::UnaryOperator const *node,
       auto type = context().qualified_type(node).type();
       if (type == Integer) {
         Emit(node->operand(), data);
-        data.function().append<NegateInteger>();
+        data.function().append<module::IntegerHandle::Negate>();
       } else {
         Emit(node->operand(), data);
         bool found = WithPrimitiveType(type, [&]<jasmin::Negatable T> {

@@ -208,14 +208,6 @@ struct DeallocateAllTemporaries
   static void execute(JasminFunctionState& space) { space.free_all(); }
 };
 
-struct NegateInteger : jasmin::StackMachineInstruction<NegateInteger> {
-  using JasminExecutionState = module::IntegerTable;
-  static nth::Integer const* execute(JasminExecutionState& table,
-                                     nth::Integer const* n) {
-    return table.insert(-*n);
-  }
-};
-
 namespace internal_byte_code {
 
 template <template <typename> typename I, typename... Ts>
@@ -242,10 +234,10 @@ using InstructionSet = jasmin::MakeInstructionSet<
     ApplyInstruction<jasmin::AppendLessThan, int8_t, int16_t, int32_t, int64_t,
                      uint8_t, uint16_t, uint32_t, uint64_t, float, double>,
     ApplyInstruction<Construct, bool, ir::Char, int8_t, int16_t, int32_t,
-                     int64_t, nth::Integer, uint8_t, uint16_t, uint32_t,
-                     uint64_t, float, double>,
-    Destroy<nth::Integer>, CopyConstruct<nth::Integer>,
-    MoveConstruct<nth::Integer>, NegateInteger,
+                     int64_t, module::IntegerHandle, uint8_t, uint16_t,
+                     uint32_t, uint64_t, float, double>,
+    Destroy<module::IntegerHandle>, CopyConstruct<module::IntegerHandle>,
+    MoveConstruct<module::IntegerHandle>, module::IntegerHandle::Negate,
     ApplyInstruction<jasmin::Add, int8_t, int16_t, int32_t, int64_t, uint8_t,
                      uint16_t, uint32_t, uint64_t, float, double>,
     ApplyInstruction<jasmin::Subtract, int8_t, int16_t, int32_t, int64_t,

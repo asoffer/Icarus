@@ -1,4 +1,4 @@
-#include "integer_table.h"
+#include "module/data/integer_table.h"
 
 #include <iostream>
 
@@ -6,9 +6,9 @@
 
 namespace module {
 
-nth::Integer const* IntegerTable::insert(nth::Integer const& n) {
+IntegerHandle IntegerTable::insert(nth::Integer const& n) {
   auto [iter, inserted] = set_.insert(n);
-  return &*iter;
+  return IntegerHandle(&*iter);
 }
 
 void Serialize(IntegerTable const& table, data::IntegerTable& proto) {

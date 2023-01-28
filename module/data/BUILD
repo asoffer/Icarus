@@ -21,6 +21,7 @@ cc_library(
         "//base:debug",
         "@asoffer_nth//nth/numeric:integer",
         "@asoffer_nth//nth/container:flyweight_set",
+        "@asoffer_jasmin//jasmin:instruction",
     ],
 )
 

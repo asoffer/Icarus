@@ -58,6 +58,7 @@ cc_library(
         "//core/type_system:pointer",
         "//core/type_system:sized_integer",
         "//ir/value:char",
+        "//module/data:integer_table",
     ]
 )
 
