@@ -5,6 +5,9 @@
 
 #include "base/extend.h"
 #include "base/extend/absl_hash.h"
+#include "core/alignment.h"
+#include "core/bytes.h"
+#include "core/type_contour.h"
 #include "core/type_system/finite_set.h"
 #include "core/type_system/function.h"
 #include "core/type_system/parameter.h"
@@ -325,6 +328,8 @@ bool WithPrimitiveType(core::Type t, F&& f) {
 
 bool PassInRegister(QualifiedType type, TypeSystem& type_system);
 core::Bytes SizeOf(core::Type type, TypeSystem& type_system);
+core::Alignment AlignmentOf(core::Type type, TypeSystem& type_system);
+core::TypeContour ContourOf(core::Type type, TypeSystem& type_system);
 
 }  // namespace semantic_analysis
 

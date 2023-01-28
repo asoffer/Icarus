@@ -1,5 +1,7 @@
 #include "semantic_analysis/type_system.h"
 
+#include "core/arch.h"
+
 namespace semantic_analysis {
 namespace {
 
@@ -119,35 +121,53 @@ std::string DebugType(core::Type qt, TypeSystem& ts) {
 }
 
 core::Bytes SizeOf(core::Type t, TypeSystem& ts) {
+  return ContourOf(t, ts).bytes();
+}
+core::Alignment AlignmentOf(core::Type t, TypeSystem& ts) {
+  return ContourOf(t, ts).alignment();
+}
+core::TypeContour ContourOf(core::Type t, TypeSystem& ts) {
   if (auto p = t.get_if<PrimitiveType>(ts)) {
     static constexpr std::array kPrimitiveTypes{
-        core::Bytes{1},                                    // Bool
-        core::Bytes{1},                                    // Char
-        core::Bytes{1},                                    // Byte
-        core::Bytes{4},                                    // F32
-        core::Bytes{8},                                    // F64
-        core::Bytes{8},                                    // Type
-        core::Bytes{std::numeric_limits<int64_t>::max()},  // Integer
-        core::Bytes{8},                                    // Module
+        core::TypeContour(core::Bytes{1}, core::Alignment{1}),  // Bool
+        core::TypeContour(core::Bytes{1}, core::Alignment{1}),  // Char
+        core::TypeContour(core::Bytes{1}, core::Alignment{1}),  // Byte
+        core::TypeContour(core::Bytes{4}, core::Alignment{4}),  // F32
+        core::TypeContour(core::Bytes{8}, core::Alignment{8}),  // F64
+        core::TypeContour(core::Bytes{8}, core::Alignment{8}),  // Type
+        core::TypeContour(
+            core::Bytes{std::numeric_limits<int64_t>::max()},
+            core::Alignment{std::numeric_limits<int64_t>::max()}),  // Integer
+        core::TypeContour(core::Bytes{8}, core::Alignment{8})       // Module
     };
     size_t value =
         static_cast<std::underlying_type_t<decltype(p->value())>>(p->value());
     ASSERT(value < kPrimitiveTypes.size());
     return kPrimitiveTypes[value];
   } else if (t.is<core::PointerType>(ts) or t.is<BufferPointerType>(ts)) {
-    return core::Bytes::Get<void*>();
+    return core::TypeContour::Get<void*>();
   } else if (auto i = t.get_if<core::SizedIntegerType>(ts)) {
-    // TODO: For nonstandard sizes (i.e, not 8, 16, 32, 64, we need to cast up
-    // to the nearest such size).
-    return core::Bytes{static_cast<int64_t>(i->bits() / CHAR_BIT)};
+    if (i->bits() <= 64) {
+      size_t result = 2 * std::bit_floor((i->bits() - 1) / CHAR_BIT);
+      if (result == 0) { result = 1; }
+      return core::TypeContour(core::Bytes{static_cast<int64_t>(result)},
+                               core::Alignment{result});
+    } else {
+      NOT_YET(DebugType(t, ts));
+    }
   } else if (auto s = t.get_if<SliceType>(ts)) {
-    NOT_YET();
+    // TODO: Take architecture into account.
+    return core::TypeContour(core::Bytes{16}, core::Alignment{8});
   } else if (auto a = t.get_if<ArrayType>(ts)) {
-    NOT_YET();
+    // TODO: Take alignment into account.
+    auto contour       = ContourOf(a->data_type(), ts);
+    return core::TypeContour(
+        core::FwdAlign(contour.bytes(), contour.alignment()) * a->length(),
+        contour.alignment());
   } else if (auto f = t.get_if<core::FunctionType>(ts)) {
-    return core::Bytes::Get<void (*)()>();
+    return core::TypeContour::Get<void (*)()>();
   } else {
-    NOT_YET();
+    NOT_YET(DebugType(t, ts));
   }
 }
 

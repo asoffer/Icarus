@@ -47,6 +47,10 @@ cc_library(
     deps = [
         "//base:extend",
         "//base/extend:absl_hash",
+        "//core:alignment",
+        "//core:arch",
+        "//core:bytes",
+        "//core:type_contour",
         "//core/type_system",
         "//core/type_system:finite_set",
         "//core/type_system:function",
