@@ -1,9 +1,9 @@
-#ifndef ICARUS_IR_VALUE_ADDR_H
-#define ICARUS_IR_VALUE_ADDR_H
+#ifndef ICARUS_DATA_TYPES_ADDR_H
+#define ICARUS_DATA_TYPES_ADDR_H
 
 #include <cstddef>
 
-namespace ir {
+namespace data_types {
 
 using memory_t       = std::byte;
 using addr_t         = memory_t *;
@@ -17,6 +17,6 @@ inline addr_t Addr(void const *ptr) {
   return reinterpret_cast<addr_t>(const_cast<void *>(ptr));
 }
 
-}  // namespace ir
+}  // namespace data_types
 
-#endif  // ICARUS_IR_VALUE_ADDR_H
+#endif  // ICARUS_DATA_TYPES_ADDR_H

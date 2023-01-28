@@ -1,5 +1,5 @@
-#ifndef ICARUS_IR_VALUE_FN_H
-#define ICARUS_IR_VALUE_FN_H
+#ifndef ICARUS_DATA_TYPES_FN_H
+#define ICARUS_DATA_TYPES_FN_H
 
 #include <cstring>
 #include <ostream>
@@ -7,9 +7,9 @@
 #include "base/extend.h"
 #include "base/extend/absl_format.h"
 #include "base/extend/absl_hash.h"
-#include "ir/value/module_id.h"
+#include "data_types/module_id.h"
 
-namespace ir {
+namespace data_types {
 
 // An identifier usable to find the byte code for a function within a given
 // (implicit module).
@@ -59,6 +59,6 @@ struct Fn : base::Extend<Fn, 2>::With<base::AbslHashExtension> {
   LocalFnId function_id_;
 };
 
-}  // namespace ir
+}  // namespace data_types
 
-#endif  // ICARUS_IR_VALUE_FN_H
+#endif  // ICARUS_DATA_TYPES_FN_H

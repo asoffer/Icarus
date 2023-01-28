@@ -1,12 +1,12 @@
-#ifndef ICARUS_IR_VALUE_LABEL_H
-#define ICARUS_IR_VALUE_LABEL_H
+#ifndef ICARUS_DATA_TYPES_LABEL_H
+#define ICARUS_DATA_TYPES_LABEL_H
 
 #include <string>
 
 #include "base/extend.h"
 #include "base/extend/absl_hash.h"
 
-namespace ir {
+namespace data_types {
 
 struct Label : base::Extend<Label, 1>::With<base::AbslHashExtension> {
   explicit constexpr Label() : label_(nullptr) {}
@@ -26,6 +26,6 @@ struct Label : base::Extend<Label, 1>::With<base::AbslHashExtension> {
   std::string const *label_;
 };
 
-}  // namespace ir
+}  // namespace data_types
 
-#endif  // ICARUS_IR_VALUE_LABEL_H
+#endif  // ICARUS_DATA_TYPES_LABEL_H

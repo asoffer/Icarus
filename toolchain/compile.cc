@@ -90,7 +90,7 @@ bool Compile(std::string const &source_file, std::ofstream &output) {
   }
 
   std::string_view file_content =
-      source_indexer.insert(ir::ModuleId(0), *std::move(content));
+      source_indexer.insert(data_types::ModuleId(0), *std::move(content));
 
   auto parsed_nodes = frontend::Parse(file_content, **diagnostic_consumer);
   if ((*diagnostic_consumer)->num_consumed() != 0) { return false; }

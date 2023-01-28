@@ -36,10 +36,10 @@ struct Module {
   data_types::IntegerTable &integer_table() { return integer_table_; }
   data_types::IntegerTable const &integer_table() const { return integer_table_; }
 
-  semantic_analysis::IrFunction const *function(ir::Fn fn_id) const {
-    if (fn_id.module() == ir::ModuleId::Foreign()) {
+  semantic_analysis::IrFunction const *function(data_types::Fn fn_id) const {
+    if (fn_id.module() == data_types::ModuleId::Foreign()) {
       return foreign_function_map_.ForeignFunction(fn_id.local());
-    } else if (fn_id.module() == ir::ModuleId(0)) {
+    } else if (fn_id.module() == data_types::ModuleId(0)) {
       size_t index = fn_id.local().value();
       ASSERT(index < functions_.size());
       return &functions_[index];
@@ -48,9 +48,9 @@ struct Module {
     }
   }
 
-  std::pair<ir::Fn, semantic_analysis::IrFunction *> create_function(
+  std::pair<data_types::Fn, semantic_analysis::IrFunction *> create_function(
       size_t parameters, size_t returns) {
-    ir::Fn fn(ir::ModuleId(0), ir::LocalFnId(functions_.size()));
+    data_types::Fn fn(data_types::ModuleId(0), data_types::LocalFnId(functions_.size()));
     return std::pair(fn, &functions_.emplace_back(parameters, returns));
   }
 

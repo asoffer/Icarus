@@ -51,7 +51,7 @@ cc_library(
     srcs = ["source_indexer.cc"],
     deps = [
         "//base:debug",
-        "//ir/value:module_id",
+        "//data_types:module_id",
         "@com_google_absl//absl/container:flat_hash_map",
     ],
 )

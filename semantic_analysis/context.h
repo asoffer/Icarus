@@ -4,7 +4,7 @@
 #include "absl/container/flat_hash_map.h"
 #include "absl/container/node_hash_map.h"
 #include "ast/ast.h"
-#include "ir/value/fn.h"
+#include "data_types/fn.h"
 #include "semantic_analysis/instruction_set.h"
 #include "semantic_analysis/type_system.h"
 

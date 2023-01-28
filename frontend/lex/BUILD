@@ -9,8 +9,8 @@ cc_library(
         ":numbers",
         "//ast:ast",
         "//base:global",
+        "//data_types:hashtag",
         "//diagnostic/consumer",
-        "//ir/value:hashtag",
         "@asoffer_nth//nth/numeric:integer",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/container:node_hash_set",
@@ -39,6 +39,7 @@ cc_library(
         ":syntax",
         ":tag",
         "//ast:node",
+        "//data_types:hashtag",
         "@asoffer_nth//nth/meta:type",
     ],
 )

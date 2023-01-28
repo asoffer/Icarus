@@ -1,5 +1,5 @@
 #include "gtest/gtest.h"
-#include "ir/value/module_id.h"
+#include "data_types/module_id.h"
 #include "semantic_analysis/type_system.h"
 #include "test/repl.h"
 

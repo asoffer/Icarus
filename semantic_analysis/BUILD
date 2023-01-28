@@ -26,7 +26,7 @@ cc_library(
         ":type_system",
         "//core/type_system",
         "//data_types:integer",
-        "//ir/value:fn",
+        "//data_types:fn",
         "@asoffer_nth//nth/numeric:integer",
         "@asoffer_jasmin//jasmin:function",
         "@asoffer_jasmin//jasmin/instructions:arithmetic",
@@ -58,7 +58,8 @@ cc_library(
         "//core/type_system:pointer",
         "//core/type_system:sized_integer",
         "//data_types:integer",
-        "//ir/value:char",
+        "//data_types:addr",
+        "//data_types:char",
     ]
 )
 

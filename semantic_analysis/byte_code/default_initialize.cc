@@ -18,7 +18,7 @@ void EmitterBase::EmitDefaultInitialize(core::Type t, FunctionData data) {
   } else if (t == Bool) {
     data.function().append<Construct<bool>>(false);
   } else if (t == Char) {
-    data.function().append<Construct<ir::Char>>(ir::Char('0'));
+    data.function().append<Construct<data_types::Char>>(data_types::Char('0'));
   } else {
     NOT_YET();
   }

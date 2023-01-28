@@ -3,7 +3,7 @@
 #include <ffi.h>
 
 #include "absl/container/inlined_vector.h"
-#include "ir/value/fn.h"
+#include "data_types/fn.h"
 #include "jasmin/value.h"
 #include "semantic_analysis/foreign_function_map.h"
 
@@ -110,7 +110,7 @@ std::type_identity_t<void (*)()>
 InvokeForeignFunction::serialization_state::FunctionPointer(
     size_t index) const {
   return ASSERT_NOT_NULL(foreign_function_map_)
-      ->ForeignFunctionPointer(ir::LocalFnId(index));
+      ->ForeignFunctionPointer(data_types::LocalFnId(index));
 }
 
 TypeSystem& InvokeForeignFunction::serialization_state::type_system() const {

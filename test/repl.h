@@ -157,7 +157,7 @@ struct Repl {
     return stmts.back()->as<ast::Expression>();
   }
 
-  semantic_analysis::IrFunction const* function(ir::Fn f) {
+  semantic_analysis::IrFunction const* function(data_types::Fn f) {
     return module_.function(f);
   }
 

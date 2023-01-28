@@ -1,5 +1,5 @@
-#ifndef ICARUS_IR_VALUE_MODULE_ID_H
-#define ICARUS_IR_VALUE_MODULE_ID_H
+#ifndef ICARUS_DATA_TYPES_MODULE_ID_H
+#define ICARUS_DATA_TYPES_MODULE_ID_H
 
 #include <string_view>
 
@@ -7,7 +7,7 @@
 #include "base/extend/absl_format.h"
 #include "base/extend/absl_hash.h"
 
-namespace ir {
+namespace data_types {
 
 // A value-type representing a module (unit of compilation).
 struct ModuleId : base::Extend<ModuleId, 1>::With<base::AbslHashExtension,
@@ -39,6 +39,6 @@ struct ModuleId : base::Extend<ModuleId, 1>::With<base::AbslHashExtension,
   underlying_type id_;
 };
 
-}  // namespace ir
+}  // namespace data_types
 
-#endif  // ICARUS_IR_VALUE_MODULE_ID_H
+#endif  // ICARUS_DATA_TYPES_MODULE_ID_H

@@ -22,7 +22,7 @@ IrFunction ConstructIrFunction(TypeSystem& type_system, core::Type t,
 
 }  // namespace
 
-std::pair<ir::Fn, IrFunction const*> ForeignFunctionMap::ForeignFunction(
+std::pair<data_types::Fn, IrFunction const*> ForeignFunctionMap::ForeignFunction(
     std::string name, core::Type t) {
   auto [iter, inserted] = foreign_functions_.try_emplace(
       std::pair<std::string, core::Type>(std::move(name), t), IrFunction(0, 0),
@@ -48,17 +48,17 @@ std::pair<ir::Fn, IrFunction const*> ForeignFunctionMap::ForeignFunction(
 
   ASSERT(foreign_functions_.from_index(foreign_functions_.index(iter))
              .second.second != nullptr);
-  return std::pair(ir::Fn(ir::ModuleId::Builtin(),
-                          ir::LocalFnId(foreign_functions_.index(iter))),
+  return std::pair(data_types::Fn(data_types::ModuleId::Builtin(),
+                          data_types::LocalFnId(foreign_functions_.index(iter))),
                    &iter->second.first);
 }
 
-IrFunction const* ForeignFunctionMap::ForeignFunction(ir::LocalFnId id) const {
+IrFunction const* ForeignFunctionMap::ForeignFunction(data_types::LocalFnId id) const {
   return &foreign_functions_.from_index(id.value()).second.first;
 }
 
 std::type_identity_t<void (*)()> ForeignFunctionMap::ForeignFunctionPointer(
-    ir::LocalFnId id) const {
+    data_types::LocalFnId id) const {
   return foreign_functions_.from_index(id.value()).second.second;
 }
 

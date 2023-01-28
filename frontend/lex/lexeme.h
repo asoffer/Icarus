@@ -6,10 +6,10 @@
 
 #include "ast/ast.h"
 #include "ast/node.h"
+#include "data_types/hashtag.h"
 #include "frontend/lex/operators.h"
 #include "frontend/lex/syntax.h"
 #include "frontend/lex/tag.h"
-#include "ir/value/hashtag.h"
 #include "nth/meta/sequence.h"
 #include "nth/meta/type.h"
 

@@ -4,7 +4,7 @@
 #include "base/global.h"
 #include "diagnostic/consumer/consumer.h"
 #include "frontend/lex/lexeme.h"
-#include "ir/value/hashtag.h"
+#include "data_types/hashtag.h"
 
 namespace frontend {
 

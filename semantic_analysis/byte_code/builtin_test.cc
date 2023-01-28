@@ -1,5 +1,5 @@
 #include "gtest/gtest.h"
-#include "ir/value/module_id.h"
+#include "data_types/module_id.h"
 #include "semantic_analysis/type_system.h"
 #include "test/repl.h"
 
@@ -9,7 +9,7 @@ namespace {
 TEST(Builtin, Evaluation) {
   test::Repl repl;
 
-  EXPECT_EQ(repl.execute<ir::ModuleId>("builtin"), ir::ModuleId::Builtin());
+  EXPECT_EQ(repl.execute<data_types::ModuleId>("builtin"), data_types::ModuleId::Builtin());
 }
 
 }  // namespace

@@ -3,7 +3,7 @@
 #include "absl/strings/str_join.h"
 #include "ast/ast.h"
 #include "core/type_system/type.h"
-#include "ir/value/char.h"
+#include "data_types/char.h"
 
 namespace ast {
 namespace {

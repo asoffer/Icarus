@@ -6,7 +6,7 @@
 #include <utility>
 
 #include "core/type_system/type_system.h"
-#include "ir/value/fn.h"
+#include "data_types/fn.h"
 #include "nth/container/flyweight_map.h"
 #include "semantic_analysis/instruction_set.h"
 
@@ -23,11 +23,11 @@ struct ForeignFunctionMap {
   auto cbegin() const { return foreign_functions_.begin(); }
   auto cend() const { return foreign_functions_.end(); }
 
-  std::pair<ir::Fn, IrFunction const *> ForeignFunction(std::string name,
+  std::pair<data_types::Fn, IrFunction const *> ForeignFunction(std::string name,
                                                         core::Type t);
-  IrFunction const *ForeignFunction(ir::LocalFnId id) const;
+  IrFunction const *ForeignFunction(data_types::LocalFnId id) const;
   std::type_identity_t<void (*)()> ForeignFunctionPointer(
-      ir::LocalFnId id) const;
+      data_types::LocalFnId id) const;
 
   TypeSystem &type_system() const { return type_system_; }
 

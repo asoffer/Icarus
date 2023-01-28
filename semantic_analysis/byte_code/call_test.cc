@@ -20,11 +20,11 @@ TEST(Call, BuiltinForeign) {
   // map, since it is populated during execution.
   EXPECT_EQ(
       reinterpret_cast<decltype(&MyFunction)>(
-          repl.foreign_function_map().ForeignFunctionPointer(ir::LocalFnId(0))),
+          repl.foreign_function_map().ForeignFunctionPointer(data_types::LocalFnId(0))),
       &MyFunction);
 
   auto const *fn =
-      repl.foreign_function_map().ForeignFunction(ir::LocalFnId(0));
+      repl.foreign_function_map().ForeignFunction(data_types::LocalFnId(0));
   EXPECT_EQ(result, fn);
 
   data_types::IntegerTable table;

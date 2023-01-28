@@ -1,5 +1,18 @@
 package(default_visibility = ["//visibility:private"])
 
+cc_library(
+    name = "addr",
+    visibility = ["//visibility:public"],
+    hdrs = ["addr.h"],
+)
+
+cc_library(
+    name = "char",
+    visibility = ["//visibility:public"],
+    hdrs = ["char.h"],
+    deps = [],
+)
+
 proto_library(
     name = "data_proto",
     visibility = ["//module:__subpackages__"],
@@ -10,6 +23,23 @@ proto_library(
 cc_proto_library(
     name = "data_cc_proto",
     deps = [":data_proto"],
+)
+
+cc_library(
+    name = "fn",
+    visibility = ["//visibility:public"],
+    hdrs = ["fn.h"],
+    deps = [
+        ":module_id",
+        "//base:extend",
+        "//base/extend:absl_hash",
+    ],
+)
+
+cc_library(
+    name = "hashtag",
+    visibility = ["//visibility:public"],
+    hdrs = ["hashtag.h"],
 )
 
 cc_library(
@@ -32,5 +62,26 @@ cc_test(
     deps = [
         ":integer",
         "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_library(
+    name = "label",
+    visibility = ["//visibility:public"],
+    hdrs = ["label.h"],
+    deps = [
+        "//base:extend",
+        "//base/extend:absl_hash",
+    ],
+)
+
+cc_library(
+    name = "module_id",
+    visibility = ["//visibility:public"],
+    hdrs = ["module_id.h"],
+    deps = [
+        "//base:extend",
+        "//base/extend:absl_format",
+        "//base/extend:absl_hash",
     ],
 )

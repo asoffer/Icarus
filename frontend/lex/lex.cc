@@ -217,7 +217,7 @@ Lexeme ConsumeCharLiteral(char const *&cursor) {
   ASSERT(*cursor == '\'');
   cursor += 1;
   return Lexeme(std::make_unique<ast::Terminal>(
-      std::string_view(start_loc, cursor), ir::Char(c)));
+      std::string_view(start_loc, cursor), data_types::Char(c)));
 }
 
 // Note: The order here is somewhat important. Because we choose the first
@@ -318,7 +318,7 @@ Lexeme ConsumeWord(std::string_view &cursor) {
     return Lexeme(
         std::make_unique<ast::Terminal>(word, semantic_analysis::Byte));
   } else if (word == "null") {
-    return Lexeme(std::make_unique<ast::Terminal>(word, ir::Null()));
+    return Lexeme(std::make_unique<ast::Terminal>(word, data_types::Null()));
   } else if (word == "arguments") {
     return Lexeme(std::make_unique<ast::ProgramArguments>(word));
   } else if (word == "builtin") {

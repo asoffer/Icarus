@@ -17,9 +17,11 @@
 #include "core/arguments.h"
 #include "core/parameters.h"
 #include "core/type_system/type.h"
+#include "data_types/addr.h"
+#include "data_types/label.h"
 #include "frontend/lex/operators.h"
-#include "ir/value/addr.h"
-#include "ir/value/label.h"
+#include "nth/meta/sequence.h"
+#include "nth/meta/type.h"
 #include "nth/numeric/integer.h"
 #include "semantic_analysis/type_system.h"
 
@@ -934,7 +936,7 @@ struct Label : Expression {
   explicit Label(std::string_view range, std::string label)
       : Expression(IndexOf<Label>(), range), label_(std::move(label)) {}
 
-  ir::Label value() const { return ir::Label(&label_); }
+  data_types::Label value() const { return data_types::Label(&label_); }
 
   void DebugStrAppend(std::string *out, size_t indent) const override;
   void Initialize(Node::Initializer &initializer) override;
@@ -1033,8 +1035,12 @@ struct ReturnStmt : Node {
 // `true`, `false`, or `null`.
 struct Terminal : Expression {
  private:
-  using variant_type = std::variant<bool, ir::Char, nth::Integer, double,
-                                    ir::addr_t, core::Type, std::string>;
+  static constexpr auto types =
+      nth::type_sequence<bool, data_types::Char, nth::Integer, double,
+                         data_types::addr_t, core::Type, std::string>;
+
+  using variant_type = nth::type_t<types.reduce(
+      [](auto... ts) { return nth::type<std::variant<nth::type_t<ts>...>>; })>;
 
  public:
   explicit Terminal(std::string_view range, variant_type value)
@@ -1046,11 +1052,9 @@ struct Terminal : Expression {
   }
 
   nth::TypeId type() const {
-    static std::array<nth::TypeId, 7> Types{
-        nth::type<bool>,       nth::type<ir::Char>,   nth::type<nth::Integer>,
-        nth::type<double>,     nth::type<ir::addr_t>, nth::type<core::Type>,
-        nth::type<std::string>};
-
+    static auto Types = types.reduce([](auto... ts) {
+      return std::array<nth::TypeId, sizeof...(ts)>{ts...};
+    });
     return Types[value_.index()];
   };
 

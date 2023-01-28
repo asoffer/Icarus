@@ -31,7 +31,7 @@ This section describes the design of the Icarus codebase, both in its current st
 * `//base` -- Common utilities that might be useful in any project, whether or not that project is related to programming language infrastructure. `//base` depends on nothing outside of its package.
 * `//core` -- Common utilities that are specific to programming language infrastructure. This includes things like strong-types for type sizes and alignment, function parameters and arguments, etc. `//core` may only depend on itself and `//base`.
 * `//ast` -- Holds the entirety of the abstract syntaxt tree.
-* `//ir/value` -- Holds everything needed for values used in the intermediate representation.
+* `//data_types` -- Holds everything needed for values used in the serializable intermediate representation.
 * `//frontend` -- All lexing and parsing.
 * `//semantic_analysis` -- All type-checking and bytecode generation is done in this package. There are two subpackage, `//semantic_analysis/type_verification` and `//semantic_analysis/byte_code` which handle type-checking and bytecode generation respectively. Each package has roughly one target for each AST node type.
 * `//bazel` -- Specification of the C++ Toolchain used to compile this project.

@@ -14,7 +14,7 @@
 #include "core/type_system/pointer.h"
 #include "core/type_system/sized_integer.h"
 #include "core/type_system/type_system.h"
-#include "ir/value/char.h"
+#include "data_types/char.h"
 
 namespace semantic_analysis {
 
@@ -245,9 +245,11 @@ bool WithPrimitiveType(core::Type t, F&& f) {
       return true;
     }
   }
-  if constexpr (requires { (void)&fn_type::template operator()<ir::Char>; }) {
+  if constexpr (requires {
+                  (void)&fn_type::template operator()<data_types::Char>;
+                }) {
     if (t == Char) {
-      std::forward<F>(f).template operator()<ir::Char>();
+      std::forward<F>(f).template operator()<data_types::Char>();
       return true;
     }
   }

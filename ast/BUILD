@@ -42,9 +42,9 @@ cc_library(
         "//core:parameters",
         "//core/type_system:type",
         "//frontend/lex:operators",
-        "//ir/value:addr",
-        "//ir/value:char",
-        "//ir/value:label",
+        "//data_types:addr",
+        "//data_types:char",
+        "//data_types:label",
         "//semantic_analysis:type_system",
         "@asoffer_nth//nth/numeric:integer",
         "@com_google_absl//absl/cleanup",
@@ -58,7 +58,7 @@ cc_library(
     hdrs = ["expression.h"],
     deps = [
         ":node",
-        "//ir/value:hashtag",
+        "//data_types:hashtag",
     ],
 )
 

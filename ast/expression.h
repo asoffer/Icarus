@@ -5,7 +5,7 @@
 
 #include "absl/container/flat_hash_set.h"
 #include "ast/node.h"
-#include "ir/value/hashtag.h"
+#include "data_types/hashtag.h"
 
 namespace ast {
 

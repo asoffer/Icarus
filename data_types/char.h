@@ -1,11 +1,11 @@
-#ifndef ICARUS_IR_VALUE_CHAR_H
-#define ICARUS_IR_VALUE_CHAR_H
+#ifndef ICARUS_DATA_TYPES_CHAR_H
+#define ICARUS_DATA_TYPES_CHAR_H
 
 #include <concepts>
-#include <iostream>
-#include <type_traits>
+#include <ostream>
+#include <utility>
 
-namespace ir {
+namespace data_types {
 
 // We use `int8_t` and `uint8_t` to represent signed and unsigned integers
 // respectively. Conformant C++ implementations may have either of these (but
@@ -14,8 +14,8 @@ namespace ir {
 struct Char {
   Char() : data_(0) {}
 
-  template <std::integral T, std::enable_if_t<sizeof(T) == 1, int> = 0>
-  /* implicit */ Char(T c) : data_(c) {}
+  template <std::integral T>
+  requires(sizeof(T) == 1) Char(T c) : data_(c) {}
 
   template <std::integral T>
   operator T() const {
@@ -42,6 +42,6 @@ struct Char {
   char data_;
 };
 
-}  // namespace ir
+}  // namespace data_types
 
-#endif  //  ICARUS_IR_VALUE_CHAR_H
+#endif  //  ICARUS_DATA_TYPES_CHAR_H
