@@ -46,6 +46,7 @@ cc_library(
         "//data_types:char",
         "//data_types:label",
         "//semantic_analysis:type_system",
+        "@asoffer_nth//nth/meta:type",
         "@asoffer_nth//nth/numeric:integer",
         "@com_google_absl//absl/cleanup",
         "@com_google_absl//absl/container:node_hash_map",

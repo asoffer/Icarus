@@ -140,8 +140,8 @@ struct Arguments {
       std::visit(
           [this](auto &iter) {
             ++iter;
-            if constexpr (std::is_same_v<std::decay_t<decltype(iter)>,
-                                         pos_iter_type>) {
+            if constexpr (nth::type<decltype(iter)>.decayed() ==
+                          nth::type<pos_iter_type>) {
               if (iter == data_->pos_.end()) { iter_ = data_->named_.begin(); }
             }
           },
@@ -158,8 +158,8 @@ struct Arguments {
     T const &operator*() const {
       return std::visit(
           [](auto iter) -> T const & {
-            if constexpr (std::is_same_v<std::decay_t<decltype(iter)>,
-                                         pos_iter_type>) {
+            if constexpr (nth::type<decltype(iter)>.decayed() ==
+                          nth::type<pos_iter_type>) {
               return *iter;
             } else {
               return iter->second;

@@ -70,7 +70,8 @@ TEST(ArgumentsTest, ApplyWithIndex) {
   size_t total = 0;
   Arguments<size_t>({6, 12, 18}, {{"hello", 10}, {"world", 20}})
       .ApplyWithIndex([&total](auto &&index, size_t n) {
-        if constexpr (std::is_same_v<size_t, std::decay_t<decltype(index)>>) {
+        if constexpr (nth::type<size_t> ==
+                      nth::type<decltype(index)>.decayed()) {
           total += index;
         } else {
           total += n;

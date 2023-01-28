@@ -7,6 +7,7 @@
 #include "absl/strings/str_format.h"
 #include "base/log.h"
 #include "base/universal_print.h"
+#include "nth/meta/type.h"
 
 #if defined(ICARUS_DEBUG)
 
@@ -95,14 +96,14 @@ AssertionResult<L, R> operator<=(Stolen<L> l, Stolen<R> r) {
 }
 
 auto wrap(auto const & arg) -> decltype(auto) {
-  using type = std::decay_t<decltype(arg)>;
-  if constexpr (std::is_same_v<type, char const*>) {
+  static constexpr auto type = nth::type<decltype(arg)>.decayed();
+  if constexpr (type == nth::type<char const*>) {
     return std::string_view(arg);
-  } else if constexpr (std::is_same_v<type, std::nullptr_t>) {
+  } else if constexpr (type == nth::type<std::nullptr_t>) {
     return std::string_view("null");
-  } else if constexpr (std::is_pointer_v<type>) {
+  } else if constexpr (std::is_pointer_v<nth::type_t<type>>) {
     return absl::StrFormat("%p", arg);
-  } else if constexpr (std::is_enum_v<type>) {
+  } else if constexpr (std::is_enum_v<nth::type_t<type>>) {
     return absl::StrFormat("(%s)%d", typeid(type).name(),
                            static_cast<int>(arg));
   } else if constexpr (requires { absl::StrCat(arg); }) {

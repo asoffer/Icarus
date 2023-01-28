@@ -59,8 +59,6 @@ struct Task {
     promise_type(scheduler_type& s, key_type const&) : scheduler_(s) {}
 
     Task get_return_object() {
-      static_assert(
-          std::is_same_v<std::decay_t<decltype(*this)>, promise_type>);
       return Task(std::coroutine_handle<promise_type>::from_promise(*this));
     }
     std::suspend_never initial_suspend() { return {}; }

@@ -21,14 +21,14 @@ struct FailingConsumer : diagnostic::DiagnosticConsumer {
     // TODO move this out to an ostream renderer.
     std::stringstream ss;
     d.for_each_component([&](auto const& component) {
-      using T = std::decay_t<decltype(component)>;
-      if constexpr (std::is_same_v<T, diagnostic::Text>) {
+      static constexpr auto type = nth::type<decltype(component)>.decayed();
+      if constexpr (type == nth::type<diagnostic::Text>) {
         ss << component.c_str();
-      } else if constexpr (std::is_same_v<T, diagnostic::List>) {
+      } else if constexpr (type == nth::type<diagnostic::List>) {
         for (std::string const& item : component.items()) {
           ss << "  * " << item.c_str() << "\n";
         }
-      } else if constexpr (std::is_same_v<T, diagnostic::SourceQuote>) {
+      } else if constexpr (type == nth::type<diagnostic::SourceQuote>) {
         // TODO
       } else {
         static_assert(nth::type<T>.dependent(false));

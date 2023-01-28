@@ -9,7 +9,7 @@ namespace test {
 
 template <typename T>
 T Fuzzy(uint8_t const *data, size_t length) {
-  if constexpr (std::is_same_v<T, std::string>) {
+  if constexpr (nth::type < T >= = nth::type<std::string>) {
     return std::string(reinterpret_cast<char const *>(data), length);
 
   } else {

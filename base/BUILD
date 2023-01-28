@@ -12,6 +12,7 @@ cc_library(
     deps = [
         ":log",
         ":universal_print",
+        "@asoffer_nth//nth/meta:type",
         "@com_google_absl//absl/strings",
     ],
 )

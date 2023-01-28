@@ -4,6 +4,7 @@
 #include "ast/ast.h"
 #include "core/type_system/type.h"
 #include "data_types/char.h"
+#include "nth/meta/type.h"
 
 namespace ast {
 namespace {
@@ -77,7 +78,7 @@ void DumpArguments(std::string *out, size_t indent,
   char const *sep = "";
   fnargs.ApplyWithIndex([&](auto &&index, EPtr const &expr) {
     absl::StrAppend(out, sep);
-    if constexpr (not std::is_same_v<std::decay_t<decltype(index)>, size_t>) {
+    if constexpr (nth::type<decltype(index)>.decayed() != nth::type<size_t>) {
       absl::StrAppend(out, index, " = ");
     }
     expr->DebugStrAppend(out, indent);

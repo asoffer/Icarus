@@ -164,7 +164,7 @@ struct Repl {
  private:
   template <typename T>
   static constexpr bool FitsInRegister() {
-    return not std::is_same_v<T, nth::Integer>;
+    return true;  // TODO
   }
   void PrintQualifiedType(std::ostream& os,
                           semantic_analysis::QualifiedType qt);

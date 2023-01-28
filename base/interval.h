@@ -5,12 +5,13 @@
 #include <vector>
 
 #include "base/debug.h"
+#include "nth/meta/type.h"
 
 namespace base {
 template <typename T>
 struct Interval {
-  static_assert(
-      std::is_same_v<bool, decltype(std::declval<T>() <= std::declval<T>())>);
+  static_assert(nth::type<bool> ==
+                nth::type<decltype(std::declval<T>() <= std::declval<T>())>);
 
   constexpr Interval(T b, T e) : begin_(std::move(b)), end_(std::move(e)) {
     ASSERT(b <= e);
