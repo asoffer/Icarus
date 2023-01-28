@@ -11,9 +11,9 @@ cc_library(
     name = "failing_diagnostic_consumer",
     hdrs = ["failing_diagnostic_consumer.h"],
     deps = [
-        "//base:meta",
         "//diagnostic/consumer",
         "//diagnostic:message",
+        "@asoffer_nth//nth/meta:type",
         "@com_google_googletest//:gtest",
     ],
 )

@@ -14,7 +14,6 @@
 #include "base/debug.h"
 #include "base/extend.h"
 #include "base/extend/absl_hash.h"
-#include "base/meta.h"
 #include "nth/meta/concepts.h"
 
 namespace semantic_analysis {

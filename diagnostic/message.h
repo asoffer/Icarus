@@ -7,7 +7,8 @@
 #include <variant>
 
 #include "absl/strings/str_format.h"
-#include "base/meta.h"
+#include "nth/meta/sequence.h"
+#include "nth/meta/type.h"
 
 namespace diagnostic {
 // TODO Do you need `Fatal`?

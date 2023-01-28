@@ -1,8 +1,9 @@
 #include "module/module.h"
 
-#include "base/meta.h"
 #include "jasmin/serialization.h"
 #include "module/module.pb.h"
+#include "nth/meta/sequence.h"
+#include "nth/meta/type.h"
 
 namespace module {
 namespace {
@@ -65,7 +66,7 @@ void SerializeTypeSystem(semantic_analysis::TypeSystem& type_system,
                       type_system.has_inline_storage(return_type.category()));
       }
     } else {
-      static_assert(base::always_false(type_category));
+      static_assert(type_category.dependent(false));
     }
   });
 }

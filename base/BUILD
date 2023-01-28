@@ -114,27 +114,11 @@ cc_library(
 )
 
 cc_library(
-    name = "meta",
-    hdrs = ["meta.h"],
-    deps = [
-        "@asoffer_nth//nth/meta:type",
-        "@asoffer_nth//nth/meta:sequence",
-    ],
-)
-
-cc_test(
-    name = "meta_test",
-    srcs = ["meta_test.cc"],
-    deps = [
-        ":meta",
-        "@com_google_googletest//:gtest_main",
-    ],
-)
-
-cc_library(
     name = "ptr_span",
     hdrs = ["ptr_span.h"],
-    deps = [":meta"],
+    deps = [
+        "@asoffer_nth//nth/meta:type",
+    ],
 )
 
 cc_library(
@@ -142,7 +126,7 @@ cc_library(
     hdrs = ["ptr_union.h"],
     deps = [
         ":debug",
-        ":meta",
+        "@asoffer_nth//nth/meta:concepts",
     ],
 )
 
@@ -177,5 +161,8 @@ cc_test(
 cc_library(
     name = "visitable",
     hdrs = ["visitable.h"],
-    deps = [":meta"],
+    deps = [
+        "@asoffer_nth//nth/meta:sequence",
+        "@asoffer_nth//nth/meta:type",
+    ],
 )

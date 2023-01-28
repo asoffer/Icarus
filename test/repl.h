@@ -131,7 +131,7 @@ struct Repl {
           return *result;
         }
       } else {
-        static_assert(base::always_false<T>());
+        static_assert(t.dependent(false));
       }
     } else {
       for (auto const& [category, name] : consumer_.diagnostics()) {

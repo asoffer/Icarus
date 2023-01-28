@@ -6,11 +6,12 @@
 
 #include "ast/ast.h"
 #include "ast/node.h"
-#include "base/meta.h"
 #include "frontend/lex/operators.h"
 #include "frontend/lex/syntax.h"
 #include "frontend/lex/tag.h"
 #include "ir/value/hashtag.h"
+#include "nth/meta/sequence.h"
+#include "nth/meta/type.h"
 
 namespace frontend {
 
@@ -57,7 +58,7 @@ struct Lexeme {
           } else if constexpr (type == nth::type<ir::Hashtag>) {
             return hashtag;
           } else {
-            static_assert(base::always_false<T>());
+            static_assert(type.dependent(false));
           }
         },
         value_);

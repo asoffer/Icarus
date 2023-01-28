@@ -4,10 +4,10 @@
 #include <iostream>
 #include <string>
 
-#include "base/meta.h"
 #include "diagnostic/consumer/consumer.h"
 #include "diagnostic/message.h"
 #include "gtest/gtest.h"
+#include "nth/meta/type.h"
 
 namespace test {
 
@@ -31,7 +31,7 @@ struct FailingConsumer : diagnostic::DiagnosticConsumer {
       } else if constexpr (std::is_same_v<T, diagnostic::SourceQuote>) {
         // TODO
       } else {
-        static_assert(base::always_false<T>());
+        static_assert(nth::type<T>.dependent(false));
       }
       ss << "\n\n";
     });

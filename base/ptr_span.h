@@ -5,7 +5,8 @@
 #include <memory>
 #include <type_traits>
 
-#include "base/meta.h"
+#include "nth/meta/sequence.h"
+#include "nth/meta/type.h"
 
 namespace base {
 

@@ -4,10 +4,11 @@
 #include <memory>
 #include <utility>
 
-#include "base/meta.h"
 #include "frontend/lex/lexeme.h"
 #include "frontend/lex/tag.h"
 #include "frontend/lex/token.h"
+#include "nth/meta/sequence.h"
+#include "nth/meta/type.h"
 
 namespace frontend {
 

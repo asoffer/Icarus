@@ -10,8 +10,9 @@
 
 #include "absl/container/flat_hash_map.h"
 #include "base/debug.h"
-#include "base/meta.h"
 #include "base/universal_print.h"
+#include "nth/meta/sequence.h"
+#include "nth/meta/type.h"
 
 namespace core {
 template <typename T>

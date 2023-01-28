@@ -4,8 +4,8 @@ cc_library(
     name = "message",
     hdrs = ["message.h"],
     deps = [
-        "//base:meta",
         "@com_google_absl//absl/strings:str_format",
+        "@asoffer_nth//nth/meta:type",
     ],
 )
 
@@ -15,9 +15,9 @@ cc_library(
     srcs = ["console_renderer.cc"],
     deps = [
         ":message",
-        "//base:meta",
         "//base:interval",
         "//frontend:source_indexer",
+        "@asoffer_nth//nth/meta:type",
         "@com_google_absl//absl/strings:str_format",
     ],
 )

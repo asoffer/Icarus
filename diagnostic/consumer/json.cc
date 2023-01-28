@@ -37,7 +37,7 @@ void JsonConsumer::ConsumeImpl(std::string_view category, std::string_view name,
         }
       }
     } else {
-      static_assert(base::always_false(type));
+      static_assert(type.dependent(false));
     }
   });
   json_.push_back(std::move(error));

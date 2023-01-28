@@ -39,7 +39,7 @@ cc_library(
         ":syntax",
         ":tag",
         "//ast:node",
-        "//base:meta",
+        "@asoffer_nth//nth/meta:type",
     ],
 )
 
@@ -87,7 +87,7 @@ cc_library(
     deps = [
         ":tag",
         ":lexeme",
-        "//base:meta",
+        "@asoffer_nth//nth/meta:type",
     ],
 )
 

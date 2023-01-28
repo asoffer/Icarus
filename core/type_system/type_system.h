@@ -4,11 +4,12 @@
 #include <array>
 
 #include "absl/base/casts.h"
-#include "base/meta.h"
 #include "core/type_system/type.h"
 #include "jasmin/instruction.h"
 #include "nth/container/flyweight_set.h"
 #include "nth/meta/concepts.h"
+#include "nth/meta/sequence.h"
+#include "nth/meta/type.h"
 
 namespace core {
 namespace internal_type_system {
@@ -28,6 +29,10 @@ template <typename T, size_t TotalSize>
 struct Padded<T, TotalSize, 0> {
   T value;
 };
+
+template <typename Cat>
+using StateTypesAsFunction = nth::type_t<Cat::state_types.reduce(
+    [](auto... ts) { return nth::type<void (*)(nth::type_t<ts>...)>; })>;
 
 }  // namespace internal_type_system
 
@@ -195,11 +200,11 @@ struct TypeSystem : TypeCategories::manager_type... {
   }
 
   template <nth::any_of<TypeCategories...> Cat,
-            typename = base::FromSeq<Cat::state_types>>
+            typename = internal_type_system::StateTypesAsFunction<Cat>>
   struct Make;
 
   template <nth::any_of<TypeCategories...> Cat, typename... States>
-  struct Make<Cat, base::type_list<States...>>
+  struct Make<Cat, void (*)(States...)>
       : jasmin::StackMachineInstruction<Make<Cat>> {
     static constexpr Type execute(States... states, TypeSystem* system) {
       if constexpr (std::is_empty_v<typename Cat::manager_type>) {

@@ -4,7 +4,6 @@
 #include <string>
 
 #include "base/cast.h"
-#include "base/meta.h"
 #include "base/visitable.h"
 
 namespace ast {
@@ -22,11 +21,9 @@ constexpr ssize_t IndexOf() {
   return AllNodeTypes.find_if<[](auto t) { return t == nth::type<T>; }>();
 }
 
-struct Node : base::Visitable<Node, base::FromSeq<AllNodeTypes>>,
-              base::Cast<Node> {
+struct Node : base::Visitable<Node, AllNodeTypes>, base::Cast<Node> {
   explicit constexpr Node(int8_t which, std::string_view range = "")
-      : base::Visitable<Node, base::FromSeq<AllNodeTypes>>(which),
-        range_(range) {}
+      : base::Visitable<Node, AllNodeTypes>(which), range_(range) {}
 
   virtual ~Node() {}
 

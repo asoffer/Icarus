@@ -80,8 +80,9 @@ cc_library(
     deps = [
         ":node_xmacro",
         "//base:cast",
-        "//base:meta",
         "//base:visitable",
+        "@asoffer_nth//nth/meta:sequence",
+        "@asoffer_nth//nth/meta:type",
     ],
 )
 

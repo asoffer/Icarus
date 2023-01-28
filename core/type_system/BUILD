@@ -113,10 +113,11 @@ cc_library(
     hdrs = ["type_system.h"],
     deps = [
         ":type",
-        "//base:meta",
         "@asoffer_jasmin//jasmin:instruction",
         "@asoffer_nth//nth/container:flyweight_set",
         "@asoffer_nth//nth/meta:concepts",
+        "@asoffer_nth//nth/meta:sequence",
+        "@asoffer_nth//nth/meta:type",
     ]
 )
 

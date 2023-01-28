@@ -3,11 +3,12 @@
 #include <cctype>
 #include <cmath>
 
+#include "nth/meta/sequence.h"
+#include "nth/meta/type.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/container/node_hash_set.h"
 #include "absl/status/statusor.h"
 #include "ast/ast.h"
-#include "base/meta.h"
 #include "core/type_system/type.h"
 #include "frontend/lex/numbers.h"
 #include "frontend/lex/operators.h"
@@ -460,7 +461,7 @@ Lexeme ConsumeNumber(std::string_view &cursor,
           return Lexeme(
               std::make_unique<ast::Terminal>(number_str, nth::Integer(0)));
         } else {
-          static_assert(base::always_false(type));
+          static_assert(type.dependent(false));
         }
       },
       ParseNumber(number_str));

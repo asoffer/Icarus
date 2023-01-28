@@ -71,7 +71,6 @@ cc_library(
         ":casting",
         ":diagnostics",
         "//ast",
-        "//base:meta",
         "//compiler:common_diagnostics",
         "//core:call",
         "//diagnostic/consumer",
@@ -81,6 +80,8 @@ cc_library(
         "//semantic_analysis:type_system",
         "//semantic_analysis:task",
         "@asoffer_jasmin//jasmin:execute",
+        "@asoffer_nth//nth/meta:sequence",
+        "@asoffer_nth//nth/meta:type",
         "@com_google_absl//absl/cleanup",
     ],
 )

@@ -94,8 +94,9 @@ cc_library(
     hdrs = ["arguments.h"],
     deps = [
         "//base:debug",
-        "//base:meta",
         "//base:universal_print",
+        "@asoffer_nth//nth/meta:sequence",
+        "@asoffer_nth//nth/meta:type",
         "@com_google_absl//absl/container:flat_hash_map",
     ],
 )

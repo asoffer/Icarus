@@ -74,7 +74,7 @@ cc_library(
         "//base:extend",
         "//base/extend:absl_hash",
         "//base:debug",
-        "//base:meta",
+        "@asoffer_nth//nth/meta:type",
         "@com_google_absl//absl/functional:any_invocable",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/container:flat_hash_set",

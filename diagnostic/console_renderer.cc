@@ -6,7 +6,8 @@
 
 #include "absl/strings/str_format.h"
 #include "base/interval.h"
-#include "base/meta.h"
+#include "nth/meta/sequence.h"
+#include "nth/meta/type.h"
 
 namespace diagnostic {
 
@@ -168,7 +169,7 @@ void ConsoleRenderer::Add(Category cat, DiagnosticMessage const &diag) {
     } else if constexpr (type == nth::type<SourceQuote>) {
       WriteSourceQuote(component);
     } else {
-      static_assert(base::always_false(type));
+      static_assert(type.dependent(false));
     }
   });
   std::fputs("\n", out_);
