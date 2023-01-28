@@ -234,8 +234,9 @@ std::span<std::byte const> Emitter<E>::EvaluateConstant(
   auto [result_ptr, inserted] = context().insert_constant(expr);
   if (inserted) {
     // TODO: Integers are an annoying special case at the moment.
-    if (PassInRegister(qt, type_system())) {
-      IrFunction f(0, 1);
+    core::TypeContour contour = ContourOf(qt.type(), type_system());
+    if (PassInRegister(contour)) {
+      IrFunction f(0, contour.bytes().value() / jasmin::ValueSize);
 
       // This `variable_offsets` map is intentionally empty. There will never
       // be declarations from which data needs to be loaded. Because
@@ -252,11 +253,12 @@ std::span<std::byte const> Emitter<E>::EvaluateConstant(
       jasmin::ValueStack value_stack;
       jasmin::Execute(f, jasmin::ExecutionState<InstructionSet>{table},
                       value_stack);
-      size_t size = qt.type() == Integer
-                        ? sizeof(void *)
-                        : SizeOf(qt.type(), type_system()).value();
-      result_ptr->resize(size);
-      jasmin::Value::Store(value_stack.pop_value(), result_ptr->data(), size);
+      result_ptr->resize(contour.bytes().value());
+      std::byte *data = result_ptr->data();
+      for (std::byte *ptr = data + result_ptr->size() - jasmin::ValueSize;
+           ptr != data; ptr -= jasmin::ValueSize) {
+        jasmin::Value::Store(value_stack.pop_value(), ptr, jasmin::ValueSize);
+      }
       return *result_ptr;
     } else {
       NOT_YET(DebugQualifiedType(qt, type_system()));

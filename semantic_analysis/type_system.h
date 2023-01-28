@@ -329,6 +329,7 @@ bool WithPrimitiveType(core::Type t, F&& f) {
 }
 
 bool PassInRegister(QualifiedType type, TypeSystem& type_system);
+bool PassInRegister(core::TypeContour contour);
 core::Bytes SizeOf(core::Type type, TypeSystem& type_system);
 core::Alignment AlignmentOf(core::Type type, TypeSystem& type_system);
 core::TypeContour ContourOf(core::Type type, TypeSystem& type_system);

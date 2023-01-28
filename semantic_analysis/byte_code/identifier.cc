@@ -13,7 +13,17 @@ void ByteCodeValueEmitter::operator()(ast::Identifier const* node,
         data.function().append<jasmin::Push>(
             jasmin::Value::Load(evaluation.data(), evaluation.size()));
       } else {
-        NOT_YET();
+        if (auto st = qt.type().get_if<SliceType>(type_system())) {
+          if (st->pointee() == Char) {
+            std::string_view view =
+                *reinterpret_cast<std::string_view const*>(evaluation.data());
+            data.function().append<PushStringLiteral>(view.data(), view.size());
+          } else {
+            NOT_YET(node->DebugString());
+          }
+        } else {
+          NOT_YET(node->DebugString());
+        }
       }
     } else {
       data.function().append<jasmin::StackOffset>(data.OffsetFor(id));

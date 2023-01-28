@@ -171,8 +171,12 @@ core::TypeContour ContourOf(core::Type t, TypeSystem& ts) {
 }
 
 bool PassInRegister(QualifiedType qt, TypeSystem& type_system) {
-  // TODO: Avoid hard-coding Jasmin-specific constants here.
-  return SizeOf(qt.type(), type_system) <= core::Bytes{8};
+  return PassInRegister(ContourOf(qt.type(), type_system));
+}
+
+bool PassInRegister(core::TypeContour contour) {
+  return contour.bytes() <= 2 * core::Bytes{jasmin::ValueSize} and
+         contour.alignment() <= core::Alignment{jasmin::ValueAlignment};
 }
 
 }  // namespace semantic_analysis
