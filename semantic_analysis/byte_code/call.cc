@@ -20,11 +20,21 @@ void ByteCodeValueEmitter::operator()(ast::Call const* node,
 
   if (not node->named_arguments().empty()) { NOT_YET(); }
 
+  auto const& callable_identifier = context().callee(node);
+
+  auto const& parameters =
+      context()
+          .qualified_types(&callable_identifier.expression())[0]
+          .type()
+          .get<core::FunctionType>(type_system())
+          .parameters();
+
+  auto iter = parameters.begin();
   for (auto const& argument : node->positional_arguments()) {
-    Emit(&argument.expr(), data);
+    CastTo(&argument.expr(), QualifiedType(iter->value), data);
+    ++iter;
   }
 
-  auto const& callable_identifier = context().callee(node);
   Emit(&callable_identifier.expression(), data);
 
   auto* f = data.function().raw_instructions().back().as<IrFunction const*>();

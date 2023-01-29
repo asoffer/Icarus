@@ -50,6 +50,7 @@ T EvaluateAs(Context& context, module::Module& module,
     wrapper.append<jasmin::Return>();
     jasmin::Execute(f, state, {});
   }
+
   return result;
 }
 

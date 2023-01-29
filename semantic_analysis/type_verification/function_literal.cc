@@ -62,8 +62,9 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier& tv,
                         tv.type_system())) {
           case CastKind::None:
           case CastKind::Explicit:
-            NOT_YET(DebugType(specified_return_types[i], tv.type_system()),
-                    DebugQualifiedType(returned_types[i], tv.type_system()));
+            NOT_YET(DebugType(specified_return_types[i], tv.type_system()), " ",
+                    DebugQualifiedType(returned_types[i], tv.type_system()),
+                    " ", node->DebugString());
 
           case CastKind::Implicit:
           case CastKind::InPlace: continue;

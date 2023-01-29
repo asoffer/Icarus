@@ -119,8 +119,7 @@ struct Repl {
     using type = nth::type_t<t>;
 
     if (std::optional f = ExecutionFunction(std::move(source))) {
-      data_types::IntegerTable table;
-      jasmin::ExecutionState<semantic_analysis::InstructionSet> state{table};
+      jasmin::ExecutionState<semantic_analysis::InstructionSet> state{table_};
 
       if constexpr (FitsInRegister<type>()) {
         type result;
@@ -174,6 +173,7 @@ struct Repl {
       std::string&& source);
 
   std::deque<std::string> source_content_;
+  data_types::IntegerTable table_;
   module::Module module_;
   ast::Module ast_module_;
   semantic_analysis::Context context_;

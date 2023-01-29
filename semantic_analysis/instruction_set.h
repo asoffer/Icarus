@@ -93,10 +93,10 @@ struct ZeroExtend
     if (options.to_bits <= 8) {
       using to_type = std::conditional_t<ToSigned, int8_t, uint8_t>;
       value_stack.push(static_cast<to_type>(scratch));
-    } else if (options.from_bits <= 16) {
+    } else if (options.to_bits <= 16) {
       using to_type = std::conditional_t<ToSigned, int16_t, uint16_t>;
       value_stack.push(static_cast<to_type>(scratch));
-    } else if (options.from_bits <= 32) {
+    } else if (options.to_bits <= 32) {
       using to_type = std::conditional_t<ToSigned, int32_t, uint32_t>;
       value_stack.push(static_cast<to_type>(scratch));
     } else {

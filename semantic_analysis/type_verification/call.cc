@@ -86,12 +86,6 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
       std::pair<core::ParameterType const, Context::CallableIdentifier> const *>
       parameter_types;
 
-  // We will set `valid_index` to the index of any callee that matches the
-  // provided arguments. We emit an error if there is not exactly one so in the
-  // case that there is one, this index tells us which `CallableIdentifier` is
-  // being called in this `ast::Call` node.
-  size_t valid_index = -1;
-
   size_t index = 0;
   for (auto const &callee_parameter_type : callee_parameter_types[0]) {
     absl::Cleanup c = [&] { ++index; };
@@ -107,7 +101,6 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
           }
         });
     if (not callability_result.ok()) { continue; }
-    valid_index = index;
     parameter_types.push_back(&callee_parameter_type);
   }
 
@@ -127,7 +120,7 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
               .returns();
       std::vector<QualifiedType> qts;
       qts.reserve(return_types.size());
-      tv.context().set_callee(node, &parameter_types[valid_index]->second);
+      tv.context().set_callee(node, &parameter_types.back()->second);
       for (core::Type t : return_types) { qts.emplace_back(t); }
       co_return tv.TypeOf(node, std::move(qts));
     }

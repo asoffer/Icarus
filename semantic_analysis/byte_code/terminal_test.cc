@@ -22,7 +22,8 @@ TEST(Terminal, Evaluation) {
   EXPECT_EQ(repl.execute<core::Type>("u32"), U(32));
   EXPECT_EQ(repl.execute<core::Type>("u64"), U(64));
   EXPECT_EQ(repl.execute<double>("1.25"), 1.25);
-  EXPECT_THAT(repl.execute<nth::Integer>("1234"), nth::Integer(1234));
+  EXPECT_THAT(repl.execute<data_types::IntegerHandle>("1234").value(),
+              nth::Integer(1234));
 }
 
 }  // namespace

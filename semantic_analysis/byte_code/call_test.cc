@@ -102,7 +102,7 @@ TEST(Call, EvaluationWithImplicitCast) {
   {
     test::Repl repl;
     EXPECT_TRUE(repl.execute<bool>(R"(
-      f ::= (n: i64) -> bool { return n < 10 }
+      f ::= (n: i64) -> bool { return n < 10 as i64 }
       f(3)
     )"));
   }
@@ -111,7 +111,7 @@ TEST(Call, EvaluationWithImplicitCast) {
   // {
   //   test::Repl repl;
   //   EXPECT_TRUE(repl.execute<bool>(R"(
-  //     f ::= (n: i64) -> bool { return n < 10 }
+  //     f ::= (n: i64) -> bool { return n < 10 as i64 }
   //     f(n = 3)
   //   )"));
   // }
@@ -119,7 +119,7 @@ TEST(Call, EvaluationWithImplicitCast) {
   {
     test::Repl repl;
     EXPECT_FALSE(repl.execute<bool>(R"(
-      f ::= (n: i64) -> bool { return n < 10 }
+      f ::= (n: i64) -> bool { return n < 10 as i64 }
       10'f
     )"));
   }
@@ -128,7 +128,7 @@ TEST(Call, EvaluationWithImplicitCast) {
   // {
   //   test::Repl repl;
   //   EXPECT_TRUE(repl.execute<bool>(R"(
-  //     f ::= (n: i64) -> bool { return n < 10 }
+  //     f ::= (n: i64) -> bool { return n < 10 as i64 }
   //     (n = 10)'f
   //   )"));
   // }

@@ -50,7 +50,7 @@ TEST(Cast, SizedIntegerTypes) {
   EXPECT_EQ(repl.execute<uint32_t>(R"((17 as u32) as u32)"), 17);
   EXPECT_EQ(repl.execute<uint64_t>(R"((17 as u32) as u64)"), 17);
 
-  EXPECT_EQ(repl.execute<int32_t>(R"((17 as i64) as i64)"), 17);
+  EXPECT_EQ(repl.execute<int64_t>(R"((17 as i64) as i64)"), 17);
 
   EXPECT_EQ(repl.execute<uint64_t>(R"((17 as u64) as u64)"), 17);
 }

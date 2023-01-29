@@ -6,6 +6,13 @@ namespace semantic_analysis {
 void ByteCodeValueEmitter::CastTo(ast::Expression const* node,
                                   QualifiedType to_qt, FunctionData data) {
   QualifiedType from_qt = context().qualified_type(node);
+  // TODO: Checking the types isn't exactly what you want because this cast
+  // could include value -> reference casting.
+  if (from_qt.type() == to_qt.type()) {
+    Emit(node, data);
+    return;
+  }
+
   if (from_qt.type() == Integer) {
     std::span<std::byte const> evaluation = EvaluateConstant(node, from_qt);
     ASSERT(sizeof(nth::Integer const*) == evaluation.size());
@@ -69,7 +76,8 @@ void ByteCodeValueEmitter::CastTo(ast::Expression const* node,
       NOT_YET();
     }
   } else {
-    NOT_YET();
+    NOT_YET(DebugQualifiedType(from_qt, type_system()), " -> ",
+            DebugQualifiedType(to_qt, type_system()));
   }
 }
 

@@ -248,10 +248,7 @@ struct Scheduler {
   template <typename K>
   void schedule(K&& key) {
     auto [iter, inserted] = keys_.try_emplace(std::forward<K>(key));
-    if (inserted) {
-      auto handle = task_creator_(*this, iter->first).handle();
-      ready_.push(handle);
-    }
+    if (inserted) { ready_.push(task_creator_(*this, iter->first).handle()); }
   }
 
   // Schedules `awaiting_handle` after `prerequisite`. Returns whether
@@ -293,7 +290,13 @@ struct Scheduler {
     while (not ready_.empty()) {
       auto task = ready_.front();
       ready_.pop();
-      if (task and not task.done()) { task.resume(); }
+      if (task) {
+        if (task.done()) {
+          std::exchange(task, nullptr).destroy();
+        } else {
+          task.resume();
+        }
+      }
     }
   }
 

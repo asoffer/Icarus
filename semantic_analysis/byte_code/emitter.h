@@ -256,7 +256,7 @@ std::span<std::byte const> Emitter<E>::EvaluateConstant(
       result_ptr->resize(contour.bytes().value());
       std::byte *data = result_ptr->data();
       for (std::byte *ptr = data + result_ptr->size() - jasmin::ValueSize;
-           ptr != data; ptr -= jasmin::ValueSize) {
+           ptr >= data; ptr -= jasmin::ValueSize) {
         jasmin::Value::Store(value_stack.pop_value(), ptr, jasmin::ValueSize);
       }
       return *result_ptr;
