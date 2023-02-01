@@ -13,7 +13,7 @@
 #include "base/debug.h"
 #include "base/iterator.h"
 #include "base/log.h"
-#include "base/ptr_union.h"
+#include "nth/utility/ptr_union.h"
 
 namespace module {
 struct Module;
@@ -22,7 +22,7 @@ struct Module;
 namespace ast {
 
 struct Scope : base::Cast<Scope> {
-  using code_location_t = base::PtrUnion<Declaration const, Scope const>;
+  using code_location_t = nth::PtrUnion<Declaration const, Scope const>;
 
   enum class Kind {
     Declarative,

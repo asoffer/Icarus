@@ -98,7 +98,7 @@ cc_library(
         "//base:debug",
         "//base:log",
         "//base:iterator",
-        "//base:ptr_union",
+        "@asoffer_nth//nth/utility:ptr_union",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/container:flat_hash_set",
     ],

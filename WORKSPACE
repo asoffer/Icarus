@@ -80,9 +80,9 @@ http_archive(
 
 http_archive(
   name = "asoffer_nth",
-  urls = ["https://github.com/asoffer/nth/archive/b7be1e439f972d8fde8700e3841356008682226a.zip"],
-  strip_prefix = "nth-b7be1e439f972d8fde8700e3841356008682226a",
-  sha256 = "dfac807d64a4c8019b5dc2bae69d6a447889b14e844a101ace5c0967f9c81118",
+  urls = ["https://github.com/asoffer/nth/archive/0eceb3e689cb2e224ee630adaaea6bd5c689830f.zip"],
+  strip_prefix = "nth-0eceb3e689cb2e224ee630adaaea6bd5c689830f",
+  sha256 = "00e24be13e6f5b152e9f48df486227e801f18af46e1afc39f48521991dd79510",
 )
 
 http_archive(

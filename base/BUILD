@@ -123,24 +123,6 @@ cc_library(
 )
 
 cc_library(
-    name = "ptr_union",
-    hdrs = ["ptr_union.h"],
-    deps = [
-        ":debug",
-        "@asoffer_nth//nth/meta:concepts",
-    ],
-)
-
-cc_test(
-    name = "ptr_union_test",
-    srcs = ["ptr_union_test.cc"],
-    deps = [
-        ":ptr_union",
-        "@com_google_googletest//:gtest_main",
-    ],
-)
-
-cc_library(
     name = "universal_print",
     hdrs = ["universal_print.h"],
     deps = [
