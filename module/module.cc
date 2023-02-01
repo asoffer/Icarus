@@ -223,13 +223,13 @@ std::optional<Module> Module::Deserialize(std::istream& input) {
   std::optional<Module> m;
   internal_proto::Module proto;
   if (not proto.ParseFromIstream(&input)) { return m; }
-  m.emplace();
+  m.emplace(std::move(*proto.mutable_read_only()));
 
   SerializationState state;
 
   data_types::Deserialize(proto.integers(), m->integer_table_);
   DeserializeReadOnlyData(
-      proto.read_only(),
+      m->read_only_data(),
       state.get<semantic_analysis::PushStringLiteral::serialization_state>());
 
   DeserializeTypeSystem(proto.type_system(), m->type_system_);

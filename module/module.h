@@ -7,6 +7,7 @@
 #include <ostream>
 
 #include "data_types/integer.h"
+#include "module/module.pb.h"
 #include "semantic_analysis/foreign_function_map.h"
 #include "semantic_analysis/instruction_set.h"
 #include "semantic_analysis/type_system.h"
@@ -14,6 +15,9 @@
 namespace module {
 
 struct Module {
+  explicit Module(internal_proto::ReadOnlyData read_only_data = {})
+      : read_only_data_(std::move(read_only_data)) {}
+
   bool Serialize(std::ostream &output) const;
   static std::optional<Module> Deserialize(std::istream &input);
 
@@ -35,6 +39,8 @@ struct Module {
 
   data_types::IntegerTable &integer_table() { return integer_table_; }
   data_types::IntegerTable const &integer_table() const { return integer_table_; }
+
+  auto const &read_only_data() const { return read_only_data_; }
 
   semantic_analysis::IrFunction const *function(data_types::Fn fn_id) const {
     if (fn_id.module() == data_types::ModuleId::Foreign()) {
@@ -65,6 +71,8 @@ struct Module {
 
   // All integer constants used in the module.
   data_types::IntegerTable integer_table_;
+
+  internal_proto::ReadOnlyData read_only_data_;
 };
 
 }  // namespace module
