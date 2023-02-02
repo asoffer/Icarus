@@ -60,6 +60,7 @@ cc_library(
         "function_type.cc",
         "identifier.cc",
         "if_stmt.cc",
+        "import.cc",
         "short_function_literal.cc",
         "module.cc",
         "program_arguments.cc",
@@ -209,6 +210,16 @@ cc_test(
 cc_test(
     name = "if_stmt_test",
     srcs = ["if_stmt_test.cc"],
+    deps = [
+        ":verify",
+        "//test:repl",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "import_test",
+    srcs = ["import_test.cc"],
     deps = [
         ":verify",
         "//test:repl",
