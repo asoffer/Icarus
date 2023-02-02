@@ -8,7 +8,6 @@ cc_library(
         ":lexeme",
         ":numbers",
         "//ast:ast",
-        "//base:global",
         "//data_types:hashtag",
         "//diagnostic/consumer",
         "@asoffer_nth//nth/numeric:integer",

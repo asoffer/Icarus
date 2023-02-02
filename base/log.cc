@@ -7,13 +7,14 @@ thread_local void const *const thread_id = &thread_id;
 
 template <bool B>
 void SetLogging(std::string_view key) {
-  auto handle = ::base::internal_logging::log_switches.lock();
+  absl::MutexLock lock(&::base::internal_logging::mutex);
   if constexpr (B) {
-    ::base::internal_logging::on_logs.lock()->insert(key);
+    ::base::internal_logging::on_logs.insert(key);
   } else {
-    ::base::internal_logging::on_logs.lock()->erase(key);
+    ::base::internal_logging::on_logs.erase(key);
   }
-  if (auto iter = handle->find(key); iter != handle->end()) {
+  if (auto iter = ::base::internal_logging::log_switches.find(key);
+      iter != ::base::internal_logging::log_switches.end()) {
     for (auto *ptr : iter->second) { ptr->store(B, std::memory_order_relaxed); }
   }
 }

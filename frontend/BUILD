@@ -19,7 +19,6 @@ cc_library(
         ":parse_rule",
         "//ast:ast",
         "//ast:ast_fwd",
-        "//base:global",
         "//diagnostic/consumer",
         "//frontend/lex:lex",
         "//frontend/lex:tagged_node",

@@ -9,7 +9,6 @@
 #include "absl/strings/str_join.h"
 #include "ast/ast.h"
 #include "base/debug.h"
-#include "base/global.h"
 #include "diagnostic/consumer/consumer.h"
 #include "diagnostic/message.h"
 #include "frontend/lex/lex.h"
@@ -728,7 +727,7 @@ std::unique_ptr<ast::Node> BuildLeftUnop(
     return std::make_unique<ast::ArgumentType>(range, nodes[1]->range().data());
   }
 
-  static base::Global kUnaryOperatorMap =
+  static auto UnaryOperatorMap =
       absl::flat_hash_map<std::string_view, ast::UnaryOperator::Kind>{
           {"copy", ast::UnaryOperator::Kind::Copy},
           {"init", ast::UnaryOperator::Kind::Init},
@@ -744,7 +743,7 @@ std::unique_ptr<ast::Node> BuildLeftUnop(
           {"not", ast::UnaryOperator::Kind::Not}};
 
   auto &operand = nodes[1];
-  auto op       = kUnaryOperatorMap->find(tk)->second;
+  auto op       = UnaryOperatorMap.find(tk)->second;
 
   if (operand->is<ast::Declaration>() and
       not operand->is<ast::BindingDeclaration>()) {
@@ -1296,14 +1295,13 @@ std::unique_ptr<ast::Node> BuildTickCall(
 std::unique_ptr<ast::Node> BuildBinaryOperator(
     std::span<std::unique_ptr<ast::Node>> nodes,
     diagnostic::DiagnosticConsumer &diag) {
-  static base::Global kChainOps =
-      absl::flat_hash_map<std::string_view, Operator>{
-          {",", Operator::Comma}, {"==", Operator::Eq}, {"!=", Operator::Ne},
-          {"<", Operator::Lt},    {">", Operator::Gt},  {"<=", Operator::Le},
-          {">=", Operator::Ge}};
+  static auto ChainOps = absl::flat_hash_map<std::string_view, Operator>{
+      {",", Operator::Comma}, {"==", Operator::Eq}, {"!=", Operator::Ne},
+      {"<", Operator::Lt},    {">", Operator::Gt},  {"<=", Operator::Le},
+      {">=", Operator::Ge}};
 
   std::string_view tk = nodes[1]->as<Token>().token;
-  if (auto iter = kChainOps->find(tk); iter != kChainOps->end()) {
+  if (auto iter = ChainOps.find(tk); iter != ChainOps.end()) {
     nodes[1]->as<Token>().op = iter->second;
     return (iter->second == Operator::Comma)
                ? BuildCommaList(std::move(nodes), diag)
@@ -1335,7 +1333,7 @@ std::unique_ptr<ast::Node> BuildBinaryOperator(
   }
 
   bool assignment = (tk.back() == '=');
-  static base::Global kSymbols =
+  static auto Symbols =
       absl::flat_hash_map<std::string_view, ast::BinaryOperator::Kind>{
           {"+", ast::BinaryOperator::Kind::Add},
           {"-", ast::BinaryOperator::Kind::Sub},
@@ -1352,11 +1350,11 @@ std::unique_ptr<ast::Node> BuildBinaryOperator(
   if (assignment) {
     tk.remove_suffix(1);
     return std::make_unique<ast::BinaryAssignmentOperator>(
-        move_as<ast::Expression>(nodes[0]), kSymbols->find(tk)->second,
+        move_as<ast::Expression>(nodes[0]), Symbols.find(tk)->second,
         move_as<ast::Expression>(nodes[2]));
   } else {
     return std::make_unique<ast::BinaryOperator>(
-        move_as<ast::Expression>(nodes[0]), kSymbols->find(tk)->second,
+        move_as<ast::Expression>(nodes[0]), Symbols.find(tk)->second,
         move_as<ast::Expression>(nodes[2]));
   }
 }
@@ -1626,7 +1624,7 @@ constexpr uint64_t KW_BLOCK = kw_struct | kw_block_head | kw_block;
 
 using rule_t = Rule<6>;
 
-static base::Global kRules = std::array{
+static constexpr std::array kRules{
     // Array types
     rule_t{.match   = {l_bracket, EXPR | expr_list, semicolon, EXPR, r_bracket},
            .output  = expr,
@@ -1896,7 +1894,7 @@ static base::Global kRules = std::array{
     rule_t{.match = {STMTS, eof}, .output = stmt_list, .execute = KeepOnly<0>},
 };
 
-static base::Global kMoreRules = std::array{
+static constexpr std::array kMoreRules{
     // Backups.
     //
     // Barring any other successful reductions, these rules should be applied.
@@ -2088,7 +2086,7 @@ template <auto &RuleSet>
 bool Reduce(ParseState *ps) {
   LOG("parse", "reducing");
   size_t i = 0;
-  for (auto const &rule : *RuleSet) {
+  for (auto const &rule : RuleSet) {
     ++i;
     if (rule.match(ps->tag_stack_)) {
       auto * p = std::addressof(*(ps->node_stack_.end() - rule.match.size()));

@@ -45,37 +45,11 @@ cc_test(
 )
 
 cc_library(
-    name = "global",
-    hdrs = ["global.h"],
-    deps = [
-        ":guarded",
-        "@asoffer_nth//nth/utility:no_destructor",
-    ],
-)
-
-cc_library(
     name = "graph",
     hdrs = ["graph.h"],
     deps = [
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/container:flat_hash_set",
-    ],
-)
-
-cc_library(
-    name = "guarded",
-    hdrs = ["guarded.h"],
-    deps = [
-        "@com_google_absl//absl/synchronization",
-    ],
-)
-
-cc_test(
-    name = "guarded_test",
-    srcs = ["guarded_test.cc"],
-    deps = [
-        ":guarded",
-        "@com_google_googletest//:gtest_main",
     ],
 )
 
@@ -104,7 +78,6 @@ cc_library(
     srcs = ["log.cc"],
     hdrs = ["log.h"],
     deps = [
-        ":global",
         ":universal_print",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/container:flat_hash_set",

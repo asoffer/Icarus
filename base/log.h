@@ -10,7 +10,6 @@
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_format.h"
 #include "absl/synchronization/mutex.h"
-#include "base/global.h"
 
 namespace base {
 
@@ -18,10 +17,10 @@ namespace internal_logging {
 
 uintptr_t CurrentThreadId();
 
-inline base::Global<
-    absl::flat_hash_map<std::string_view, std::vector<std::atomic<bool> *>>>
+inline absl::Mutex mutex;
+inline absl::flat_hash_map<std::string_view, std::vector<std::atomic<bool> *>>
     log_switches;
-inline base::Global<absl::flat_hash_set<std::string_view>> on_logs;
+inline absl::flat_hash_set<std::string_view> on_logs;
 
 ABSL_CONST_INIT inline absl::Mutex logger_mtx_(absl::kConstInit);
 
@@ -53,10 +52,9 @@ void DisableLogging(std::string_view key);
     if ([](std::string_view key) -> bool {                                     \
           static std::atomic<bool> is_on([key] {                               \
             if (std::string_view(key).empty()) { return true; }                \
-            auto handle = ::base::internal_logging::log_switches.lock();       \
-            bool log_on =                                                      \
-                ::base::internal_logging::on_logs.lock()->contains(key);       \
-            (*handle)[key].push_back(&is_on);                                  \
+            absl::MutexLock lock(&::base::internal_logging::mutex);            \
+            bool log_on = ::base::internal_logging::on_logs.contains(key);     \
+            ::base::internal_logging::log_switches[key].push_back(&is_on);     \
             return log_on;                                                     \
           }());                                                                \
           return is_on.load(std::memory_order_relaxed);                        \

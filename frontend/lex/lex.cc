@@ -169,16 +169,18 @@ std::string_view NextSimpleWord(std::string_view &cursor) {
   return std::string_view(start, length);
 }
 
-static base::Global kKeywords =
-    absl::flat_hash_map<std::string_view, std::variant<Operator, Syntax>>{
-        {"import", {Operator::Import}}, {"flags", {Syntax::Flags}},
-        {"enum", {Syntax::Enum}},       {"struct", {Syntax::Struct}},
-        {"return", {Operator::Return}}, {"as", {Operator::As}},
-        {"copy", {Operator::Copy}},     {"init", {Operator::Init}},
-        {"move", {Operator::Move}},     {"destroy", {Operator::Destroy}},
-        {"and", {Operator::And}},       {"if", {Syntax::If}},
-        {"while", {Syntax::While}},     {"or", {Operator::Or}},
-        {"xor", {Operator::Xor}},       {"not", {Operator::Not}}};
+auto const &Keywords() {
+  static absl::flat_hash_map<std::string_view, std::variant<Operator, Syntax>>
+      keywords{{"import", {Operator::Import}}, {"flags", {Syntax::Flags}},
+               {"enum", {Syntax::Enum}},       {"struct", {Syntax::Struct}},
+               {"return", {Operator::Return}}, {"as", {Operator::As}},
+               {"copy", {Operator::Copy}},     {"init", {Operator::Init}},
+               {"move", {Operator::Move}},     {"destroy", {Operator::Destroy}},
+               {"and", {Operator::And}},       {"if", {Syntax::If}},
+               {"while", {Syntax::While}},     {"or", {Operator::Or}},
+               {"xor", {Operator::Xor}},       {"not", {Operator::Not}}};
+  return keywords;
+}
 
 // Consumes a character literal represented by a bang (!) followed by one
 // of the following wrapped in single quotation marks:
@@ -222,33 +224,59 @@ Lexeme ConsumeCharLiteral(char const *&cursor) {
 
 // Note: The order here is somewhat important. Because we choose the first
 // match, we cannot, for example, put `:` before `::=`.
-using elem = std::pair<std::string_view, std::variant<Operator, Syntax>>;
-static base::Global kOps = std::array{
-    elem{"@", {Operator::At}},           elem{"[/]", {Operator::Slice}},
-    elem{"[*]", {Operator::BufPtr}},     elem{"$", {Operator::ArgType}},
-    elem{"+=", {Operator::AddEq}},       elem{"+", {Operator::Add}},
-    elem{"-=", {Operator::SubEq}},       elem{"..", {Operator::VariadicPack}},
-    elem{"->", {Operator::Arrow}},       elem{"-", {Operator::Sub}},
-    elem{"*=", {Operator::MulEq}},       elem{"*", {Operator::Mul}},
-    elem{"%=", {Operator::ModEq}},       elem{"%", {Operator::Mod}},
-    elem{"&=", {Operator::SymbolAndEq}}, elem{"&", {Operator::SymbolAnd}},
-    elem{"|=", {Operator::SymbolOrEq}},  elem{"|", {Operator::SymbolOr}},
-    elem{"^=", {Operator::SymbolXorEq}}, elem{"^", {Operator::SymbolXor}},
-    elem{">>", {Operator::BlockJump}},   elem{">=", {Operator::Ge}},
-    elem{">", {Operator::Gt}},           elem{"::=", {Operator::DoubleColonEq}},
-    elem{":?", {Operator::TypeOf}},      elem{"::", {Operator::DoubleColon}},
-    elem{":=", {Operator::ColonEq}},     elem{".", {Syntax::Dot}},
-    elem{"!=", {Operator::Ne}},          elem{":", {Operator::Colon}},
-    elem{"<<", {Operator::Yield}},       elem{"<=", {Operator::Le}},
-    elem{"<", {Operator::Lt}},           elem{"==", {Operator::Eq}},
-    elem{"=>", {Operator::Rocket}},      elem{"=", {Operator::Assign}},
-    elem{"'", {Operator::Call}},         elem{"(", {Syntax::LeftParen}},
-    elem{")", {Syntax::RightParen}},     elem{"[", {Syntax::LeftBracket}},
-    elem{"]", {Syntax::RightBracket}},   elem{"{", {Syntax::LeftBrace}},
-    elem{"}", {Syntax::RightBrace}},     elem{"~", {Operator::Tilde}},
-    elem{";", {Syntax::Semicolon}},      elem{"`", {Operator::Backtick}},
-    elem{",", {Operator::Comma}},
-};
+auto const &Operators() {
+  using elem = std::pair<std::string_view, std::variant<Operator, Syntax>>;
+  static std::array ops{
+      elem{"@", {Operator::At}},
+      elem{"[/]", {Operator::Slice}},
+      elem{"[*]", {Operator::BufPtr}},
+      elem{"$", {Operator::ArgType}},
+      elem{"+=", {Operator::AddEq}},
+      elem{"+", {Operator::Add}},
+      elem{"-=", {Operator::SubEq}},
+      elem{"..", {Operator::VariadicPack}},
+      elem{"->", {Operator::Arrow}},
+      elem{"-", {Operator::Sub}},
+      elem{"*=", {Operator::MulEq}},
+      elem{"*", {Operator::Mul}},
+      elem{"%=", {Operator::ModEq}},
+      elem{"%", {Operator::Mod}},
+      elem{"&=", {Operator::SymbolAndEq}},
+      elem{"&", {Operator::SymbolAnd}},
+      elem{"|=", {Operator::SymbolOrEq}},
+      elem{"|", {Operator::SymbolOr}},
+      elem{"^=", {Operator::SymbolXorEq}},
+      elem{"^", {Operator::SymbolXor}},
+      elem{">>", {Operator::BlockJump}},
+      elem{">=", {Operator::Ge}},
+      elem{">", {Operator::Gt}},
+      elem{"::=", {Operator::DoubleColonEq}},
+      elem{":?", {Operator::TypeOf}},
+      elem{"::", {Operator::DoubleColon}},
+      elem{":=", {Operator::ColonEq}},
+      elem{".", {Syntax::Dot}},
+      elem{"!=", {Operator::Ne}},
+      elem{":", {Operator::Colon}},
+      elem{"<<", {Operator::Yield}},
+      elem{"<=", {Operator::Le}},
+      elem{"<", {Operator::Lt}},
+      elem{"==", {Operator::Eq}},
+      elem{"=>", {Operator::Rocket}},
+      elem{"=", {Operator::Assign}},
+      elem{"'", {Operator::Call}},
+      elem{"(", {Syntax::LeftParen}},
+      elem{")", {Syntax::RightParen}},
+      elem{"[", {Syntax::LeftBracket}},
+      elem{"]", {Syntax::RightBracket}},
+      elem{"{", {Syntax::LeftBrace}},
+      elem{"}", {Syntax::RightBrace}},
+      elem{"~", {Operator::Tilde}},
+      elem{";", {Syntax::Semicolon}},
+      elem{"`", {Operator::Backtick}},
+      elem{",", {Operator::Comma}},
+  };
+  return ops;
+}
 
 Lexeme NextOperator(std::string_view &cursor) {
   if (cursor.starts_with("--")) {
@@ -257,7 +285,7 @@ Lexeme NextOperator(std::string_view &cursor) {
         std::string_view(cursor.data() - 2, 0)));
   }
 
-  for (auto [prefix, x] : *kOps) {
+  for (auto [prefix, x] : Operators()) {
     if (cursor.starts_with(prefix)) {
       std::string_view result(cursor.data(), prefix.size());
       cursor.remove_prefix(prefix.size());
@@ -287,16 +315,25 @@ std::optional<std::pair<std::string_view, Operator>> NextSlashInitiatedToken(
   }
 }
 
-static base::Global kReservedTypes = absl::flat_hash_map<std::string_view,
-                                                         core::Type>{
-    {"bool", semantic_analysis::Bool},       {"char", semantic_analysis::Char},
-    {"i8", semantic_analysis::I(8)},         {"i16", semantic_analysis::I(16)},
-    {"i32", semantic_analysis::I(32)},       {"i64", semantic_analysis::I(64)},
-    {"u8", semantic_analysis::U(8)},         {"u16", semantic_analysis::U(16)},
-    {"u32", semantic_analysis::U(32)},       {"u64", semantic_analysis::U(64)},
-    {"f32", semantic_analysis::F32},         {"f64", semantic_analysis::F64},
-    {"integer", semantic_analysis::Integer}, {"type", semantic_analysis::Type},
-    {"module", semantic_analysis::Module}};
+const auto &ReservedTypes() {
+  static absl::flat_hash_map<std::string_view, core::Type> reserved{
+      {"bool", semantic_analysis::Bool},
+      {"char", semantic_analysis::Char},
+      {"i8", semantic_analysis::I(8)},
+      {"i16", semantic_analysis::I(16)},
+      {"i32", semantic_analysis::I(32)},
+      {"i64", semantic_analysis::I(64)},
+      {"u8", semantic_analysis::U(8)},
+      {"u16", semantic_analysis::U(16)},
+      {"u32", semantic_analysis::U(32)},
+      {"u64", semantic_analysis::U(64)},
+      {"f32", semantic_analysis::F32},
+      {"f64", semantic_analysis::F64},
+      {"integer", semantic_analysis::Integer},
+      {"type", semantic_analysis::Type},
+      {"module", semantic_analysis::Module}};
+  return reserved;
+}
 
 // Consumes as many alpha-numeric or underscore characters as possible, assuming
 // the character under the cursor is an alpha or underscore character. Returns a
@@ -325,11 +362,11 @@ Lexeme ConsumeWord(std::string_view &cursor) {
     return Lexeme(std::make_unique<ast::Builtin>(word));
   }
 
-  if (auto iter = kReservedTypes->find(word); iter != kReservedTypes->end()) {
+  if (auto iter = ReservedTypes().find(word); iter != ReservedTypes().end()) {
     return Lexeme(std::make_unique<ast::Terminal>(word, iter->second));
   }
 
-  if (auto iter = kKeywords->find(word); iter != kKeywords->end()) {
+  if (auto iter = Keywords().find(word); iter != Keywords().end()) {
     return std::visit([r = word](auto x) { return Lexeme(x, r); },
                       iter->second);
   }
