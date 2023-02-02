@@ -16,7 +16,7 @@ We use C++20 and a style that is largely based on the [Google Style Guide](https
 
 ### Formatting
 
-All code formatting should be handled by clang-format using the checked in [.clang-format](https://github.com/asoffer/Icarus/blob/main/.clang-format) options file. There are very few instances where we turn off clang-formatting in the source. Use your judgment, but lean heavily towards preferring the automatically formatted code. The only notable exception where we expect to commonly turn off clang-format is with C++20 concepts (which are not yet supported by clang-format).
+All code formatting should be handled by clang-format using the checked in [.clang-format](https://github.com/asoffer/Icarus/blob/main/.clang-format) options file. There are very few instances where we turn off clang-formatting in the source. Use your judgment, but lean heavily towards preferring the automatically formatted code.
 
 ## High-level design philosophy
 
@@ -34,6 +34,7 @@ This section describes the design of the Icarus codebase, both in its current st
 * `//data_types` -- Holds everything needed for values used in the serializable intermediate representation.
 * `//frontend` -- All lexing and parsing.
 * `//semantic_analysis` -- All type-checking and bytecode generation is done in this package. There are two subpackage, `//semantic_analysis/type_verification` and `//semantic_analysis/byte_code` which handle type-checking and bytecode generation respectively. Each package has roughly one target for each AST node type.
+* `//toolchain` -- Contains the binaries used to compile and interpret Icarus source code, as well as the standard library.
 * `//bazel` -- Specification of the C++ Toolchain used to compile this project.
 
 ### Expected directory structure changes
