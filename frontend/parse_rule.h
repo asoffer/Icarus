@@ -17,7 +17,6 @@ template <size_t N>
 struct MatchSequence {
   constexpr MatchSequence(std::initializer_list<uint64_t> tags)
       : size_(tags.size()) {
-    ASSERT(tags.size() <= N);
     std::copy(tags.begin(), tags.end(), matches_.begin() + N - tags.size());
   }
 

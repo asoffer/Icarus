@@ -58,6 +58,40 @@ struct Context {
     return std::pair<std::vector<std::byte> *, bool>(&iter->second, inserted);
   }
 
+  // Inserts space in this `Context` and initializes it with the value `t` to
+  // represent the evaluation of `expr` if no such space exists. Returns a pair
+  // consisting of a pointer to the space associated with the value, and a bool
+  // indicating whether the space was inserted (true) or already existed
+  // (false).
+  template <typename T>
+  std::pair<T *, bool> insert_constant(
+      ast::Expression const *expr,
+      T const &t) requires(std::is_trivially_copyable_v<T>) {
+    auto [iter, inserted] = constants_.try_emplace(expr);
+    if (inserted) { std::memcpy(std::addressof(t), &iter->second, sizeof(T)); }
+    return std::pair<std::vector<std::byte> *, bool>(&iter->second, inserted);
+  }
+
+  // Returns a span over the bytes corresponding to the evaluation of the
+  // constant expression `expr` in the given context.
+  std::span<std::byte const> constant(ast::Expression const *expr) const {
+    auto iter = constants_.find(expr);
+    ASSERT(iter != constants_.end());
+    return iter->second;
+  }
+
+  // Returns the value `T` corresponding to the evaluation of the constant
+  // `expr` in the given context.
+  template <typename T>
+  T constant(ast::Expression const *expr) const
+      requires(std::is_trivially_copyable_v<T>) {
+    T result;
+    std::span span = constant(expr);
+    ASSERT(sizeof(result) == span.size());
+    std::memcpy(&result, span.data(), sizeof(result));
+    return result;
+  }
+
   // Represents a unique identifier for a symbol, potentially within a local
   // scope, or across modules boundaries.
   struct alignas(8) TODOStruct {};

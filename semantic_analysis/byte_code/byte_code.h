@@ -54,6 +54,10 @@ T EvaluateAs(Context& context, module::Module& module,
   return result;
 }
 
+std::span<std::byte const> EvaluateConstant(Context& context,
+                                            module::Module& module,
+                                            ast::Expression const* expr,
+                                            QualifiedType qt);
 }  // namespace semantic_analysis
 
 #endif  // ICARUS_SEMANTIC_ANALYSIS_BYTE_CODE_BYTE_CODE_H

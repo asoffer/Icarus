@@ -26,8 +26,17 @@ struct Module {
     return initializer_;
   }
 
-  semantic_analysis::TypeSystem &type_system() { return type_system_; }
   semantic_analysis::TypeSystem &type_system() const { return type_system_; }
+
+  data_types::ModuleId TryLoad(std::string_view name) const {
+    auto iter = ids_.find(name);
+    return (iter != ids_.end()) ? iter->second
+                                : data_types::ModuleId::Invalid();
+  }
+
+  void insert_module(std::string_view name, data_types::ModuleId id) {
+    ids_.emplace(name, id);
+  }
 
   semantic_analysis::ForeignFunctionMap const &foreign_function_map() const {
     return foreign_function_map_;
@@ -73,6 +82,7 @@ struct Module {
   data_types::IntegerTable integer_table_;
 
   internal_proto::ReadOnlyData read_only_data_;
+  absl::flat_hash_map<std::string, data_types::ModuleId> ids_;
 };
 
 }  // namespace module

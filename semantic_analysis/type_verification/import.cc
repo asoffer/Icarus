@@ -34,12 +34,26 @@ struct InvalidImport {
   std::string_view view;
 };
 
+struct NoSuchModule {
+  static constexpr std::string_view kCategory = "value-error";
+  static constexpr std::string_view kName     = "invalid-import";
+
+  diagnostic::DiagnosticMessage ToMessage() const {
+    return diagnostic::DiagnosticMessage(
+        diagnostic::Text("No such module named \"%s\".", type),
+        diagnostic::SourceQuote().Highlighted(view, diagnostic::Style{}));
+  }
+
+  std::string type;
+  std::string_view view;
+};
+
 }  // namespace
 
 VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
                                           ast::Import const *node) {
   std::span arguments = co_await VerifyTypeOf(node->operand());
-  ASSERT(argumetns.size() == 0);
+  ASSERT(arguments.size() == 1);
 
   auto qt = Constant(Module);
   if (arguments[0].type() != SliceType(tv.type_system(), Char)) {
@@ -52,6 +66,27 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
   if (not(arguments[0].qualifiers() >= Qualifiers::Constant())) {
     tv.ConsumeDiagnostic(NonConstantImport{.view = node->operand()->range()});
     qt = Error(qt);
+  }
+
+  if (not(qt.qualifiers() >= Qualifiers::Error())) {
+    std::span name_bytes = tv.EvaluateConstant(node->operand(), arguments[0]);
+    char const *ptr;
+    size_t length;
+    auto *p = name_bytes.data();
+    std::memcpy(&ptr, p, sizeof(ptr));
+    std::memcpy(&length, p + jasmin::ValueSize, sizeof(length));
+    std::string_view name(ptr, length);
+
+    auto id = tv.module().TryLoad(name);
+    if (id == data_types::ModuleId::Invalid()) {
+      tv.ConsumeDiagnostic(NoSuchModule{.view = node->operand()->range()});
+      qt = Error(qt);
+    } else {
+      auto [ptr, inserted] = tv.context().insert_constant(node);
+      ASSERT(inserted);
+      ptr->resize(sizeof(id));
+      std::memcpy(ptr->data(), &id, sizeof(id));
+    }
   }
 
   co_return tv.TypeOf(node, qt);

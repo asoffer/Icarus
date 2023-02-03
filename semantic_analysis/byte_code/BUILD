@@ -32,6 +32,7 @@ cc_library(
         "default_initialize.cc",
         "identifier.cc",
         "if_stmt.cc",
+        "import.cc",
         "function_type.cc",
         "function_literal.cc",
         "module.cc",
@@ -167,6 +168,17 @@ cc_test(
 cc_test(
       name = "if_stmt_test",
       srcs = ["if_stmt_test.cc"],
+      deps = [
+          ":byte_code",
+          "//semantic_analysis:type_system",
+          "//test:repl",
+          "@com_google_googletest//:gtest_main",
+      ],
+)
+
+cc_test(
+      name = "import_test",
+      srcs = ["import_test.cc"],
       deps = [
           ":byte_code",
           "//semantic_analysis:type_system",

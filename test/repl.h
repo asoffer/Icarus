@@ -148,10 +148,12 @@ struct Repl {
   }
   semantic_analysis::TypeSystem& type_system() { return module_.type_system(); }
   semantic_analysis::Context const& context() const { return context_; }
-  ast::Module const& module() const { return ast_module_; }
+  ast::Module const& ast_module() const { return ast_module_; }
+  module::Module& module() { return module_; }
+  module::Module const& module() const { return module_; }
 
   ast::Expression const& last_expression() const {
-    base::PtrSpan stmts = module().stmts();
+    base::PtrSpan stmts = ast_module().stmts();
     ASSERT(stmts.size() != 0);
     return stmts.back()->as<ast::Expression>();
   }

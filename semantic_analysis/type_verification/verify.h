@@ -65,10 +65,16 @@ struct TypeVerifier : VerificationScheduler {
   ForeignFunctionMap &foreign_function_map() const {
     return module_.foreign_function_map();
   }
+  auto const &module() const { return module_; }
 
   template <typename T>
   T EvaluateAs(ast::Expression const *expression) const {
     return ::semantic_analysis::EvaluateAs<T>(context(), module_, expression);
+  }
+
+  std::span<std::byte const> EvaluateConstant(ast::Expression const *expr,
+                                              QualifiedType qt) {
+    return ::semantic_analysis::EvaluateConstant(context(), module_, expr, qt);
   }
 
   template <typename D>

@@ -13,8 +13,16 @@ using ::testing::Pair;
 
 TEST(Import, Success) {
   test::Repl repl;
+  repl.module().insert_module("abc", data_types::ModuleId(7));
   EXPECT_THAT(repl.type_check(R"(import "abc")"),
               AllOf(HasQualTypes(Constant(Module)), HasDiagnostics()));
+}
+
+TEST(Import, NonExistantModule) {
+  test::Repl repl;
+  EXPECT_THAT(repl.type_check(R"(import "abc")"),
+              AllOf(HasQualTypes(Error(Constant(Module))),
+                    HasDiagnostics(Pair("value-error", "invalid-import"))));
 }
 
 TEST(Import, NonConstantSlice) {
