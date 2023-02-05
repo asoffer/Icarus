@@ -1,165 +1,27 @@
-PrintImpl ::= (n: i8) -> () { Print(n as i64) }
-PrintImpl ::= (n: i16) -> () { Print(n as i64) }
-PrintImpl ::= (n: i32) -> () { Print(n as i64) }
-PrintImpl ::= (n: i64) -> () {
+#{export} Print ::= (n: i8) -> () {
+  Print(n as i64)
+}
+#{export} Print ::= (n: i16) -> () {
+  Print(n as i64)
+}
+#{export} Print ::= (n: i32) -> () {
+  Print(n as i64)
+}
+#{export} Print ::= (n: i64) -> () {
   printf ::= builtin.foreign("printf", ([*]char, i64) -> i32)
   printf("%lld".data, n)
 }
 
-PrintImpl ::= (n: u8) -> () { Print(n as u64) }
-PrintImpl ::= (n: u16) -> () { Print(n as u64) }
-PrintImpl ::= (n: u32) -> () { Print(n as u64) }
-PrintImpl ::= (n: u64) -> () {
+#{export} Print ::= (n: u8) -> () {
+  Print(n as u64)
+}
+#{export} Print ::= (n: u16) -> () {
+  Print(n as u64)
+}
+#{export} Print ::= (n: u32) -> () {
+  Print(n as u64)
+}
+#{export} Print ::= (n: u64) -> () {
   printf ::= builtin.foreign("printf", ([*]char, u64) -> i32)
   printf("%llu".data, n)
-}
-
-PrintImpl ::= (b: bool) -> () {
-  if (b) { Print("true") } else { Print("false") }
-}
-
-PrintImpl ::= (c: char) -> () {
-  printf ::= builtin.foreign("printf", ([*]char, char) -> i32)
-  printf("%c".data, c)
-}
-
-PrintImpl ::= (s: [/]char) -> () {
-  printf ::= builtin.foreign("printf", ([*]char, u64, [*]char) -> i32)
-  printf("%.*s".data, s.length, &s[0])
-}
-
-PrintImpl ::= (f: f32) -> () { Print(f as f64) }
-
-PrintImpl ::= (f: f64) -> () {
-  printf ::= builtin.foreign("printf", ([*]char, f64) -> i32)
-  printf("%f".data, f)
-}
-
-#{export} Printable ::= interface [T] {
-  PrintImpl :: builtin.callable(T)
-}
-
-#{export}
-Print ::= (a0: Printable`A0) -> () {
-  PrintImpl(a0)
-}
-
-#{export}
-Print ::= (a0: Printable`A0, a1: Printable`A1) -> () {
-  PrintImpl(a0)
-  PrintImpl(a1)
-}
-
-#{export}
-Print ::= (a0: Printable`A0, a1: Printable`A1, a2: Printable`A2) -> () {
-  PrintImpl(a0)
-  PrintImpl(a1)
-  PrintImpl(a2)
-}
-
-#{export}
-Print ::= (a0: Printable`A0, a1: Printable`A1, a2: Printable`A2, 
-           a3: Printable`A3) -> () {
-  PrintImpl(a0)
-  PrintImpl(a1)
-  PrintImpl(a2)
-  PrintImpl(a3)
-}
-
-#{export}
-Print ::= (a0: Printable`A0, a1: Printable`A1, a2: Printable`A2, 
-           a3: Printable`A3, a4: Printable`A4) -> () {
-  PrintImpl(a0)
-  PrintImpl(a1)
-  PrintImpl(a2)
-  PrintImpl(a3)
-  PrintImpl(a4)
-}
-
-#{export}
-Print ::= (a0: Printable`A0, a1: Printable`A1, a2: Printable`A2,
-           a3: Printable`A3, a4: Printable`A4, a5: Printable`A5) -> () {
-  PrintImpl(a0)
-  PrintImpl(a1)
-  PrintImpl(a2)
-  PrintImpl(a3)
-  PrintImpl(a4)
-  PrintImpl(a5)
-}
-
-#{export}
-Print ::= (a0: Printable`A0, a1: Printable`A1, a2: Printable`A2, 
-           a3: Printable`A3, a4: Printable`A4, a5: Printable`A5,
-           a6: Printable`A6) -> () {
-  PrintImpl(a0)
-  PrintImpl(a1)
-  PrintImpl(a2)
-  PrintImpl(a3)
-  PrintImpl(a4)
-  PrintImpl(a5)
-  PrintImpl(a6)
-}
-
-#{export}
-Print ::= (a0: Printable`A0, a1: Printable`A1, a2: Printable`A2,
-           a3: Printable`A3, a4: Printable`A4, a5: Printable`A5,
-           a6: Printable`A6, a7: Printable`A7) -> () {
-  PrintImpl(a0)
-  PrintImpl(a1)
-  PrintImpl(a2)
-  PrintImpl(a3)
-  PrintImpl(a4)
-  PrintImpl(a5)
-  PrintImpl(a6)
-  PrintImpl(a7)
-}
-
-#{export}
-Print ::= (a0: Printable`A0, a1: Printable`A1, a2: Printable`A2,
-           a3: Printable`A3, a4: Printable`A4, a5: Printable`A5,
-           a6: Printable`A6, a7: Printable`A7, a8: Printable`A8) -> () {
-  PrintImpl(a0)
-  PrintImpl(a1)
-  PrintImpl(a2)
-  PrintImpl(a3)
-  PrintImpl(a4)
-  PrintImpl(a5)
-  PrintImpl(a6)
-  PrintImpl(a7)
-  PrintImpl(a8)
-}
-
-#{export}
-Print ::= (a0: Printable`A0, a1: Printable`A1, a2: Printable`A2,
-           a3: Printable`A3, a4: Printable`A4, a5: Printable`A5,
-           a6: Printable`A6, a7: Printable`A7, a8: Printable`A8,
-           a9: Printable`A9) -> () {
-  PrintImpl(a0)
-  PrintImpl(a1)
-  PrintImpl(a2)
-  PrintImpl(a3)
-  PrintImpl(a4)
-  PrintImpl(a5)
-  PrintImpl(a6)
-  PrintImpl(a7)
-  PrintImpl(a8)
-  PrintImpl(a9)
-}
-
-#{export}
-Print ::= (a0: Printable`A0, a1: Printable`A1, a2: Printable`A2, 
-           a3: Printable`A3, a4: Printable`A4, a5: Printable`A5,
-           a6: Printable`A6, a7: Printable`A7, a8: Printable`A8,
-           a9: Printable`A9, a10: Printable`A10) -> () {
-  PrintImpl(a0)
-  PrintImpl(a1)
-  PrintImpl(a2)
-  PrintImpl(a3)
-  PrintImpl(a4)
-  PrintImpl(a5)
-  PrintImpl(a6)
-  PrintImpl(a7)
-  PrintImpl(a8)
-  PrintImpl(a9)
-  PrintImpl(a10)
 }
