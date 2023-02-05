@@ -5,10 +5,10 @@ filegroup(
     srcs = ["example_file.txt"],
 )
 
-# ic_binary(
-#     name = "foreign_function",
-#     srcs = ["foreign_function.ic"],
-# )
+ic_binary(
+    name = "foreign_function",
+    srcs = ["foreign_function.ic"],
+)
 
 #ic_binary(
 #    name = "function_calls",

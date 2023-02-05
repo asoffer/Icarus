@@ -24,39 +24,16 @@ void EmitNonconstantDeclaration(ByteCodeStatementEmitter& emitter,
     default: NOT_YET(node->DebugString());
   }
 }
-void EmitConstantDeclaration(ByteCodeStatementEmitter& emitter,
-                             ast::Declaration const* node,
-                             ByteCodeStatementEmitter::FunctionData data) {
+std::span<std::byte const> EmitConstantDeclaration(
+    ByteCodeStatementEmitter& emitter, ast::Declaration const* node,
+    QualifiedType qt, ByteCodeStatementEmitter::FunctionData data) {
   switch (node->kind()) {
     case ast::Declaration::kDefaultInit: {
       NOT_YET();
     } break;
     case ast::Declaration::kInferred: {
       if (node->ids().size() != 1) { NOT_YET(); }
-      auto qt = emitter.context().qualified_type(node->init_val());
-      std::span<std::byte const> evaluation = emitter.EvaluateConstant(
-          node->init_val(), emitter.context().qualified_type(node->init_val()));
-      if (evaluation.size() <= jasmin::ValueSize) {
-        if (qt.type().is<core::FunctionType>(emitter.type_system())) {
-          data.function().append<PushFunction>(
-              jasmin::Value::Load(evaluation.data(), evaluation.size()));
-        } else {
-          data.function().append<jasmin::Push>(
-              jasmin::Value::Load(evaluation.data(), evaluation.size()));
-        }
-      } else {
-        if (auto st = qt.type().get_if<SliceType>(emitter.type_system())) {
-          if (st->pointee() == Char) {
-            std::string_view view =
-                *reinterpret_cast<std::string_view const*>(evaluation.data());
-            data.function().append<PushStringLiteral>(view.data(), view.size());
-          } else {
-            NOT_YET(node->DebugString());
-          }
-        } else {
-          NOT_YET(node->DebugString());
-        }
-      }
+      return emitter.EvaluateConstant(node->init_val(), qt);
     } break;
     default: NOT_YET(node->DebugString());
   }
@@ -67,7 +44,8 @@ void EmitConstantDeclaration(ByteCodeStatementEmitter& emitter,
 void ByteCodeStatementEmitter::operator()(ast::Declaration const* node,
                                           FunctionData data) {
   if (node->flags() & ast::Declaration::f_IsConst) {
-    EmitConstantDeclaration(*this, node, data);
+    auto qt = context().qualified_type(node);
+    EmitConstantDeclaration(*this, node, qt, data);
   } else {
     EmitNonconstantDeclaration(*this, node, data);
   }
@@ -76,12 +54,37 @@ void ByteCodeStatementEmitter::operator()(ast::Declaration const* node,
 void ByteCodeStatementEmitter::operator()(ast::Declaration::Id const* node,
                                           FunctionData data) {
   if (node->declaration().ids().size() != 1) { NOT_YET(); }
-  Emit(&node->declaration(), data);
+  if (node->declaration().flags() & ast::Declaration::f_IsConst) {
+    auto qt = context().qualified_type(node->declaration().init_val());
+    std::span<std::byte const> evaluation =
+        EmitConstantDeclaration(*this, &node->declaration(), qt, data);
+    if (evaluation.size() <= jasmin::ValueSize) {
+      if (qt.type().is<core::FunctionType>(type_system())) {
+        data.function().append<PushFunction>(
+            jasmin::Value::Load(evaluation.data(), evaluation.size()));
+      } else {
+        data.function().append<jasmin::Push>(
+            jasmin::Value::Load(evaluation.data(), evaluation.size()));
+      }
+    } else {
+      if (auto st = qt.type().get_if<SliceType>(type_system())) {
+        if (st->pointee() == Char) {
+          std::string_view view =
+              *reinterpret_cast<std::string_view const*>(evaluation.data());
+          data.function().append<PushStringLiteral>(view.data(), view.size());
+        } else {
+          NOT_YET(node->DebugString());
+        }
+      } else {
+        NOT_YET(node->DebugString());
+      }
+    }
+  }
 }
 
 void ByteCodeValueEmitter::operator()(ast::Declaration::Id const* node,
                                       FunctionData data) {
-  as<ByteCodeStatementEmitter>().Emit(&node->declaration(), data);
+  as<ByteCodeStatementEmitter>().Emit(node, data);
 }
 
 }  // namespace semantic_analysis
