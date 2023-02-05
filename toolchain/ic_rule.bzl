@@ -1,6 +1,6 @@
 IcarusInfo = provider(
     "Information needed to compile and link an Icarus binary",
-    fields = {},
+    fields = ["source"],
 )
 
 def _tooling_transition_impl(settings, attr):
@@ -30,7 +30,7 @@ def _module_mapping(deps):
       dependency.
     """
     return {
-        target[IcarusInfo].sources[0]: struct(
+        target[IcarusInfo].source: struct(
             label = target.label,
             pcms = target[DefaultInfo].files
         )
@@ -88,7 +88,6 @@ def _ic_binary_impl(ctx):
     icm_file = ctx.actions.declare_file("{label}.icm".format(
         label = ctx.label.name
     ))
-    module_map_file = _module_map_file(ctx, module_map)
 
     _compile(ctx, icm_file, module_map)
     runfiles = ctx.runfiles(files = [icm_file])
@@ -109,7 +108,7 @@ def _ic_binary_impl(ctx):
     )
 
     return [
-        IcarusInfo(),
+        IcarusInfo(source = ctx.attr.srcs[0].files.to_list()[0]),
         DefaultInfo(
             files = depset([icm_file]),
             executable = executable,
@@ -158,7 +157,7 @@ def _ic_library_impl(ctx):
     runfiles = ctx.runfiles(files = [icm_file])
 
     return [
-        IcarusInfo(),
+        IcarusInfo(source = ctx.attr.srcs[0].files.to_list()[0]),
         DefaultInfo(
             files = depset([icm_file]),
             runfiles = runfiles,

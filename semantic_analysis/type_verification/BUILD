@@ -65,6 +65,7 @@ cc_library(
         "module.cc",
         "program_arguments.cc",
         "return_stmt.cc",
+        "slice_type.cc",
         "unary_operator.cc",
         "terminal.cc",
     ],
@@ -240,6 +241,16 @@ cc_test(
 cc_test(
     name = "program_arguments_test",
     srcs = ["program_arguments_test.cc"],
+    deps = [
+        ":verify",
+        "//test:repl",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "slice_type_test",
+    srcs = ["slice_type_test.cc"],
     deps = [
         ":verify",
         "//test:repl",

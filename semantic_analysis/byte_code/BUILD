@@ -37,6 +37,7 @@ cc_library(
         "function_literal.cc",
         "module.cc",
         "return_stmt.cc",
+        "slice_type.cc",
         "terminal.cc",
         "unary_operator.cc",
     ],
@@ -179,6 +180,17 @@ cc_test(
 cc_test(
       name = "import_test",
       srcs = ["import_test.cc"],
+      deps = [
+          ":byte_code",
+          "//semantic_analysis:type_system",
+          "//test:repl",
+          "@com_google_googletest//:gtest_main",
+      ],
+)
+
+cc_test(
+      name = "slice_type_test",
+      srcs = ["slice_type_test.cc"],
       deps = [
           ":byte_code",
           "//semantic_analysis:type_system",
