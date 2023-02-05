@@ -10,15 +10,18 @@ namespace ast {
 struct Expression;
 struct Scope;
 
-inline constexpr auto AllNodeTypes = nth::type_sequence<int
+struct AllNodeTypes {
+  static constexpr auto value = nth::type_sequence<int
 #define ICARUS_AST_NODE_X(node) , struct node
 #include "ast/node.xmacro.h"
 #undef ICARUS_AST_NODE_X
                                                 >.tail();
+};
 
 template <typename T>
 constexpr ssize_t IndexOf() {
-  return AllNodeTypes.find_if<[](auto t) { return t == nth::type<T>; }>();
+  return AllNodeTypes::value
+      .find_if<[](auto t) { return t == nth::type<T>; }>();
 }
 
 struct Node : base::Visitable<Node, AllNodeTypes>, base::Cast<Node> {
