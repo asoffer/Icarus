@@ -59,7 +59,7 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
 
   std::span<absl::flat_hash_map<core::ParameterType,
                                 Context::CallableIdentifier> const>
-      callee_parameter_types = co_await VerifyParametersOf(node->callee());
+  callee_parameter_types = co_await VerifyParametersOf(node->callee());
   ASSERT(callee_parameter_types.size() == 1);
 
   core::Arguments<QualifiedType> arguments;

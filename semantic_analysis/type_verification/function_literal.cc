@@ -9,7 +9,8 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier& tv,
   core::Parameters<core::Type> parameters;
   bool has_error = false;
   for (auto const& parameter : node->parameters()) {
-    std::span parameter_qts = co_await VerifyTypeOf(&parameter.value);
+    ASSERT(parameter.value.ids().size() == 1);
+    std::span parameter_qts = co_await VerifyTypeOf(&parameter.value.ids()[0]);
     if (parameter_qts.size() != 1) {
       NOT_YET("Log an error.", parameter_qts.size());
       has_error = true;

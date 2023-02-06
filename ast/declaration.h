@@ -26,6 +26,9 @@ struct Declaration_Id : Expression {
     return *ASSERT_NOT_NULL(decl_);
   }
 
+  // The index of this `Id` amongst all identifiers in its declaration.
+  size_t index() const;
+
   void DebugStrAppend(std::string *out, size_t) const override {
     out->append(name());
   }
@@ -148,6 +151,10 @@ struct Declaration : Expression {
   std::unique_ptr<Expression> type_expr_, init_val_;
   Flags flags_;
 };
+
+inline size_t Declaration_Id::index() const {
+  return std::distance(declaration().ids().data(), this);
+}
 
 }  // namespace ast
 

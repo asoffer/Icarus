@@ -116,18 +116,14 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
 
       QualifiedType qt(tv.EvaluateAs<core::Type>(node->type_expr()));
       if (node->flags() & ast::Declaration::f_IsConst) { qt = Constant(qt); }
-      for (auto const &id : node->ids()) { co_yield tv.TypeOf(&id, qt); }
       co_return tv.TypeOf(node, qt);
     } break;
     case ast::Declaration::kInferred: {
       // Syntactically: `var := value`, or `var ::= value`
-      if (std::span parameters = co_await VerifyParametersOf(node->init_val());
-          parameters.data() != nullptr) {
-        ASSERT(parameters.size() == node->ids().size());
-        size_t i = 0;
-        for (auto const &id : node->ids()) {
-          co_yield tv.ParametersOf(&id, parameters[i++]);
-        }
+      std::span parameters = co_await VerifyParametersOf(node->init_val());
+      if (parameters.data() != nullptr) {
+        ASSERT(parameters.size() == 1);
+        co_yield tv.ParametersOf(node, parameters[0]);
       }
 
       initial_value_qts = co_await VerifyTypeOf(node->init_val());
@@ -142,7 +138,6 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
         }
         qt = Constant(qt);
       }
-      for (auto const &id : node->ids()) { co_yield tv.TypeOf(&id, qt); }
       co_return tv.TypeOf(node, qt);
     } break;
     case ast::Declaration::kCustomInit: {
@@ -164,7 +159,12 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
         co_yield tv.TypeOf(node, QualifiedType(t));
       }
 
-      co_await VerifyParametersOf(node->init_val());
+      std::span parameters = co_await VerifyParametersOf(node->init_val());
+      if (parameters.data() != nullptr) {
+        ASSERT(parameters.size() == 1);
+        co_yield tv.ParametersOf(node, parameters[0]);
+      }
+
       initial_value_qts = co_await VerifyTypeOf(node->init_val());
       if (initial_value_qts.size() != 1) { NOT_YET("Log an error"); }
       QualifiedType init_qt(initial_value_qts[0].type());
@@ -180,7 +180,6 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
 
       QualifiedType qt(t);
       if (node->flags() & ast::Declaration::f_IsConst) { qt = Constant(qt); }
-      for (auto const &id : node->ids()) { co_yield tv.TypeOf(&id, qt); }
 
       if (CanCast(init_qt, t, tv.type_system()) == CastKind::None) {
         co_return tv.TypeOf(node, Error(qt));
@@ -194,7 +193,13 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
 
 VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
                                           ast::Declaration::Id const *node) {
-  return VerifyType(tv, &node->declaration());
+  std::span parameters = co_await VerifyParametersOf(&node->declaration());
+  if (parameters.data() != nullptr) {
+    ASSERT(parameters.size() == node->declaration().ids().size());
+    co_yield tv.ParametersOf(node, parameters[node->index()]);
+  }
+  std::span qts = co_await VerifyTypeOf(&node->declaration());
+  co_return tv.TypeOf(node, qts[node->index()]);
 }
 
 VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,

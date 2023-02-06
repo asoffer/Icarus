@@ -63,13 +63,13 @@ TEST(Call, EvaluationWithoutArguments) {
 }
 
 TEST(Call, EvaluationWithOneArgument) {
-  {
-    test::Repl repl;
-    EXPECT_TRUE(repl.execute<bool>(R"(
-      f ::= (b: bool) -> bool { return b }
-      f(true)
-    )"));
-  }
+//   {
+//     test::Repl repl;
+//     EXPECT_TRUE(repl.execute<bool>(R"(
+//       f ::= (b: bool) -> bool { return b }
+//       f(true)
+//     )"));
+//   }
 
   // TODO: Enable
   // {

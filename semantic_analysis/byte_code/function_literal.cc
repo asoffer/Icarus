@@ -19,6 +19,7 @@ void ByteCodeValueEmitter::operator()(ast::FunctionLiteral const* node,
   node->body_scope().ForEachNonConstantDeclaration(
       [&](ast::Declaration const* decl) {
         for (auto& id : decl->ids()) {
+        LOG("", "%s %p", id.DebugString(), &id);
           variable_offsets.try_emplace(&id, offset.value());
           // TODO: Alignment.
           offset += SizeOf(context().qualified_type(&id).type(), type_system());
