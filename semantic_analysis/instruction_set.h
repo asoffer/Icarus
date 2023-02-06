@@ -2,6 +2,7 @@
 #define ICARUS_SEMANTIC_ANALYSIS_INSTRUCTION_SET_H
 
 #include "data_types/integer.h"
+#include "jasmin/debug.h"
 #include "jasmin/function.h"
 #include "jasmin/instructions/arithmetic.h"
 #include "jasmin/instructions/bool.h"
@@ -208,6 +209,12 @@ struct DeallocateAllTemporaries
   static void execute(JasminFunctionState& space) { space.free_all(); }
 };
 
+struct IncrementPointer : jasmin::StackMachineInstruction<IncrementPointer> {
+  static void execute(jasmin::ValueStack& value_stack, size_t amount) {
+    value_stack.push(value_stack.pop<char*>() + amount);
+  }
+};
+
 namespace internal_byte_code {
 
 template <template <typename> typename I, typename... Ts>
@@ -225,8 +232,9 @@ struct InstructionSet
           core::FunctionType::End<TypeSystem>, jasmin::StackAllocate,
           jasmin::StackOffset, jasmin::Load, AllocateTemporary,
           DeallocateAllTemporaries, BuiltinForeign, InvokeForeignFunction,
-          PushStringLiteral, PushFunction, ZeroExtend<true, true>,
-          ZeroExtend<false, true>, ZeroExtend<false, false>,
+          PushStringLiteral, PushFunction, IncrementPointer,
+          ZeroExtend<true, true>, ZeroExtend<false, true>,
+          ZeroExtend<false, false>,
           ApplyInstruction<jasmin::Equal, int8_t, int16_t, int32_t, int64_t,
                            uint8_t, uint16_t, uint32_t, uint64_t, float,
                            double>,
@@ -262,7 +270,8 @@ struct InstructionSet
                            uint8_t, uint16_t, uint32_t, uint64_t>,
           ApplyInstruction<jasmin::Negate, int8_t, int16_t, int32_t, int64_t,
                            uint8_t, uint16_t, uint32_t, uint64_t, float,
-                           double>> {};
+                           double>,
+          jasmin::DumpValueStack> {};
 
 }  // namespace internal_byte_code
 

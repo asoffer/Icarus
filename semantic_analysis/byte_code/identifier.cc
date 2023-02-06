@@ -28,7 +28,16 @@ void ByteCodeValueEmitter::operator()(ast::Identifier const* node,
     } else {
       data.function().append<jasmin::StackOffset>(data.OffsetFor(id));
       core::Bytes bytes_to_load = SizeOf(qt.type(), type_system());
-      data.function().append<jasmin::Load>(bytes_to_load.value());
+      if (bytes_to_load.value() <= jasmin::ValueSize) {
+        data.function().append<jasmin::Load>(bytes_to_load.value());
+      } else if (bytes_to_load.value() <= 2 * jasmin::ValueSize) {
+        data.function().append<jasmin::Duplicate>();
+        data.function().append<jasmin::Load>(jasmin::ValueSize);
+        data.function().append<jasmin::Swap>();
+        data.function().append<IncrementPointer>(jasmin::ValueSize);
+        data.function().append<jasmin::Load>(bytes_to_load.value() -
+                                             jasmin::ValueSize);
+      }
     }
   }
 }

@@ -1,27 +1,16 @@
-#{export} Print ::= (n: i8) -> () {
-  Print(n as i64)
-}
-#{export} Print ::= (n: i16) -> () {
-  Print(n as i64)
-}
-#{export} Print ::= (n: i32) -> () {
-  Print(n as i64)
-}
-#{export} Print ::= (n: i64) -> () {
-  printf ::= builtin.foreign("printf", ([*]char, i64) -> i32)
-  printf("%lld".data, n)
+// #{export} Print ::= (n: i64) -> () {
+//   printf ::= builtin.foreign("printf", ([*]char, i64) -> i32)
+//   printf("%lld".data, n)
+// }
+// 
+// #{export} Print ::= (n: u64) -> () {
+//   printf ::= builtin.foreign("printf", ([*]char, u64) -> i32)
+//   printf("%llu".data, n)
+// }
+// 
+#{export} Print ::= (s: [/]char) -> () {
+  printf ::= builtin.foreign("printf", ([*]char, u64, [*]char) -> i32)
+  printf("%*s\n".data, s.length, s.data)
 }
 
-#{export} Print ::= (n: u8) -> () {
-  Print(n as u64)
-}
-#{export} Print ::= (n: u16) -> () {
-  Print(n as u64)
-}
-#{export} Print ::= (n: u32) -> () {
-  Print(n as u64)
-}
-#{export} Print ::= (n: u64) -> () {
-  printf ::= builtin.foreign("printf", ([*]char, u64) -> i32)
-  printf("%llu".data, n)
-}
+Print("Hello, world!")

@@ -31,7 +31,9 @@ IrFunction EmitByteCode(QualifiedType qualified_type,
                         module::Module &module) {
   core::TypeContour contour =
       ContourOf(qualified_type.type(), module.type_system());
-  IrFunction f(0, contour.bytes().value() / jasmin::ValueSize);
+  size_t values_needed = contour.bytes().value() / jasmin::ValueSize +
+                         (((contour.bytes().value() % jasmin::ValueSize) != 0));
+  IrFunction f(0, values_needed);
   ByteCodeValueEmitter e(context, module);
 
   // This `variable_offsets` map is intentionally empty. There will never be

@@ -19,7 +19,6 @@ void ByteCodeValueEmitter::operator()(ast::FunctionLiteral const* node,
   node->body_scope().ForEachNonConstantDeclaration(
       [&](ast::Declaration const* decl) {
         for (auto& id : decl->ids()) {
-        LOG("", "%s %p", id.DebugString(), &id);
           variable_offsets.try_emplace(&id, offset.value());
           // TODO: Alignment.
           offset += SizeOf(context().qualified_type(&id).type(), type_system());
@@ -33,13 +32,27 @@ void ByteCodeValueEmitter::operator()(ast::FunctionLiteral const* node,
         if (decl->flags() & ast::Declaration::f_IsFnParam) {
           for (auto& id : decl->ids()) {
             auto iter = variable_offsets.find(&id);
-            fn_ptr->append<jasmin::StackOffset>(iter->second);
-            fn_ptr->append<jasmin::DuplicateAt>(num_parameters -
-                                                parameter_index);
             core::Bytes parameter_size =
                 SizeOf(function_type.parameters()[parameter_index].value,
                        type_system());
-            fn_ptr->append<jasmin::Store>(parameter_size.value());
+            if (parameter_size.value() <= jasmin::ValueSize) {
+              fn_ptr->append<jasmin::StackOffset>(iter->second);
+              fn_ptr->append<jasmin::DuplicateAt>(num_parameters -
+                                                  parameter_index);
+              fn_ptr->append<jasmin::Store>(parameter_size.value());
+            } else if (function_type.parameters()[parameter_index]
+                           .value.is<SliceType>(type_system())) {
+              fn_ptr->append<jasmin::StackOffset>(iter->second);
+              fn_ptr->append<IncrementPointer>(jasmin::ValueSize);
+              fn_ptr->append<jasmin::Swap>();
+              fn_ptr->append<jasmin::Store>(jasmin::ValueSize);
+
+              fn_ptr->append<jasmin::StackOffset>(iter->second);
+              fn_ptr->append<jasmin::Swap>();
+              fn_ptr->append<jasmin::Store>(jasmin::ValueSize);
+            } else {
+              NOT_YET();
+            }
             ++parameter_index;
           }
         }

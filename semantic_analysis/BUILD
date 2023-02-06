@@ -28,6 +28,7 @@ cc_library(
         "//data_types:integer",
         "//data_types:fn",
         "@asoffer_nth//nth/numeric:integer",
+        "@asoffer_jasmin//jasmin:debug",
         "@asoffer_jasmin//jasmin:function",
         "@asoffer_jasmin//jasmin/instructions:arithmetic",
         "@asoffer_jasmin//jasmin/instructions:bool",

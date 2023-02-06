@@ -223,6 +223,7 @@ std::optional<Module> Module::Deserialize(std::istream& input) {
   std::optional<Module> m;
   internal_proto::Module proto;
   if (not proto.ParseFromIstream(&input)) { return m; }
+  LOG("", "%s", proto.DebugString());
   m.emplace(std::move(*proto.mutable_read_only()));
 
   SerializationState state;
