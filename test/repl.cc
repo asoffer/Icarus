@@ -16,7 +16,8 @@ std::optional<semantic_analysis::IrFunction> Repl::ExecutionFunction(
   base::PtrSpan node_span = ast_module_.insert(nodes.begin(), nodes.end());
   if (consumer_.num_consumed() != 0) { return std::nullopt; }
 
-  semantic_analysis::TypeVerifier tv(module_, context_, consumer_);
+  semantic_analysis::TypeVerifier tv(&module_map(), module_, context_,
+                                     consumer_);
   for (auto const* node : node_span) { tv.schedule(node); }
   tv.complete();
 
@@ -41,7 +42,8 @@ Repl::TypeCheckResult Repl::type_check(std::string content) {
 
   consumer_.clear();
 
-  semantic_analysis::TypeVerifier tv(module_, context_, consumer_);
+  semantic_analysis::TypeVerifier tv(&module_map(), module_, context_,
+                                     consumer_);
   for (auto const* node : node_span) { tv.schedule(node); }
   tv.complete();
 

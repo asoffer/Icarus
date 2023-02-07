@@ -9,7 +9,6 @@
 #include "data_types/integer.h"
 #include "module/module_index.h"
 #include "module/module.pb.h"
-#include "module/module_map.h"
 #include "semantic_analysis/foreign_function_map.h"
 #include "semantic_analysis/instruction_set.h"
 #include "semantic_analysis/type_system.h"
@@ -17,14 +16,11 @@
 namespace module {
 
 struct Module {
-  explicit Module(std::unique_ptr<ModuleMap> module_map,
-                  internal_proto::ReadOnlyData read_only_data = {})
-      : module_map_(std::move(module_map)),
-        read_only_data_(std::move(read_only_data)) {}
+  explicit Module(internal_proto::ReadOnlyData read_only_data = {})
+      : read_only_data_(std::move(read_only_data)) {}
 
   bool Serialize(std::ostream &output) const;
-  static std::optional<Module> Deserialize(std::unique_ptr<ModuleMap> map,
-                                           std::istream &input);
+  static std::optional<Module> Deserialize(std::istream &input);
 
   semantic_analysis::IrFunction &initializer() { return initializer_; }
   semantic_analysis::IrFunction const &initializer() const {
@@ -32,17 +28,6 @@ struct Module {
   }
 
   semantic_analysis::TypeSystem &type_system() const { return type_system_; }
-
-  ModuleIndex TryLoad(ModuleName const &name) const {
-    if (auto result = module_map_->id(name)) {
-      ModuleIndex index = module_map_->index(result.id());
-      return index;
-    } else {
-      return ModuleIndex::Invalid();
-    }
-  }
-
-  ModuleMap const &module_map() const { return *module_map_; }
 
   semantic_analysis::ForeignFunctionMap const &foreign_function_map() const {
     return foreign_function_map_;
@@ -81,13 +66,11 @@ struct Module {
 
   // The type-system containing all types referenceable in this module.
   mutable semantic_analysis::TypeSystem type_system_;
-  semantic_analysis::ForeignFunctionMap foreign_function_map_{type_system_};
+  semantic_analysis::ForeignFunctionMap foreign_function_map_;
   std::deque<semantic_analysis::IrFunction> functions_;
 
   // All integer constants used in the module.
   data_types::IntegerTable integer_table_;
-
-  std::unique_ptr<ModuleMap> module_map_;
 
   internal_proto::ReadOnlyData read_only_data_;
 };

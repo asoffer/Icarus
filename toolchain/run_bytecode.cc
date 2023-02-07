@@ -32,19 +32,20 @@ bool Execute(std::string const &input_file, std::string const &module_map_file,
   std::unique_ptr<module::ModuleMap> module_map =
       module::BazelModuleMap(module_map_file);
   ASSERT(module_map != nullptr);
-  std::optional module =
-      module::Module::Deserialize(std::move(module_map), stream);
-  if (not module) {
+  std::optional m = module::Module::Deserialize(stream);
+  if (not m) {
     std::cerr << "Invalid module.\n";
     return false;
   }
+  auto &module = module_map->emplace(module::UniqueModuleId());
+  module       = *std::move(m);
 
   jasmin::ValueStack value_stack;
   value_stack.push(arguments.data());
   value_stack.push(arguments.size());
   data_types::IntegerTable table;
   jasmin::Execute(
-      module->initializer(),
+      module.initializer(),
       jasmin::ExecutionState<semantic_analysis::InstructionSet>{table},
       value_stack);
   return true;

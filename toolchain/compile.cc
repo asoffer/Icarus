@@ -102,10 +102,11 @@ bool Compile(std::string const &source_file, std::string const &module_map_file,
   std::unique_ptr<module::ModuleMap> module_map =
       module::BazelModuleMap(module_map_file);
   ASSERT(module_map != nullptr);
-  module::Module module(std::move(module_map));
+  module::Module module;
   semantic_analysis::Context context;
 
-  semantic_analysis::TypeVerifier tv(module, context, **diagnostic_consumer);
+  semantic_analysis::TypeVerifier tv(module_map.get(), module, context,
+                                     **diagnostic_consumer);
   tv.schedule(&ast_module);
   tv.complete();
 

@@ -17,8 +17,9 @@ struct SpecifiedModuleMap : ModuleMap {
     }
   }
 
-  void specify(ModuleName const& name, UniqueModuleId const& id) {
+  void identify(ModuleName const& name, UniqueModuleId const& id) {
     specification_.emplace(name, id);
+    emplace(id);
   }
 
  private:

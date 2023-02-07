@@ -8,6 +8,7 @@
 #include "diagnostic/consumer/consumer.h"
 #include "jasmin/execute.h"
 #include "module/module.h"
+#include "module/module_map.h"
 #include "semantic_analysis/byte_code/byte_code.h"
 #include "semantic_analysis/context.h"
 #include "semantic_analysis/instruction_set.h"
@@ -50,13 +51,15 @@ inline auto VerifyParametersOf(ast::Node const *node) {
 struct TypeVerifier : VerificationScheduler {
   using signature = VerificationTask();
 
-  explicit TypeVerifier(module::Module &module, Context &c,
+  explicit TypeVerifier(module::ModuleMap const *module_map,
+                        module::Module &module, Context &c,
                         diagnostic::DiagnosticConsumer &d)
       : VerificationScheduler([](VerificationScheduler &s,
                                  ast::Node const *node) -> VerificationTask {
           return node->visit(static_cast<TypeVerifier &>(s));
         }),
         module_(module),
+        module_map_(*ASSERT_NOT_NULL(module_map)),
         context_(c),
         diagnostic_consumer_(d) {}
 
@@ -66,6 +69,7 @@ struct TypeVerifier : VerificationScheduler {
     return module_.foreign_function_map();
   }
   auto const &module() const { return module_; }
+  auto const &module_map() const { return module_map_; }
 
   template <typename T>
   T EvaluateAs(ast::Expression const *expression) const {
@@ -177,6 +181,7 @@ struct TypeVerifier : VerificationScheduler {
 
  private:
   module::Module &module_;
+  module::ModuleMap const &module_map_;
   Context &context_;
   diagnostic::DiagnosticConsumer &diagnostic_consumer_;
 };

@@ -9,12 +9,10 @@ TEST(Import, Computation) {
   auto module_map = std::make_unique<module::SpecifiedModuleMap>();
   module::UniqueModuleId key("key");
   module::ModuleName name("abc");
-  module_map->specify(name, key);
-  module_map->emplace(key, static_cast<module::FilePath*>(nullptr),
-                      static_cast<module::FilePath*>(nullptr));
+  module_map->identify(name, key);
   test::Repl repl(std::move(module_map));
 
-  auto const& mm = repl.module().module_map();
+  auto const& mm = repl.module_map();
   auto id        = mm.id(name);
   ASSERT_TRUE(id);
   auto expected_id = module::ModuleIndex(mm.index(id.id()).value());

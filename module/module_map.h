@@ -6,7 +6,7 @@
 #include <utility>
 #include <vector>
 
-#include "base/debug.h"
+#include "module/module.h"
 #include "module/module_index.h"
 #include "nth/container/flyweight_map.h"
 
@@ -50,16 +50,6 @@ struct UniqueModuleId {
   std::string value_;
 };
 
-// Represents a path to a file on disk.
-struct FilePath {
-  explicit FilePath(std::string path = "") : path_(std::move(path)) {}
-
-  std::string_view path() const { return path_; }
-
- private:
-  std::string path_;
-};
-
 // Represents a mapping from the three forms of identification for modules (a
 // unique identifier for the module, the name specified in `import` expressions,
 // and the path to the file on disk."
@@ -76,39 +66,28 @@ struct ModuleMap {
     operator bool() const { return ptr_; }
 
     UniqueModuleId const &id() const { return ptr_->first; }
-    std::span<FilePath const> paths() const { return ptr_->second; }
 
    private:
     friend IdLookupResult ModuleMap::find(ModuleIndex) const;
 
-    explicit IdLookupResult(
-        std::pair<UniqueModuleId const, std::vector<FilePath>> const *ptr)
+    explicit IdLookupResult(std::pair<UniqueModuleId const, Module> const *ptr)
         : ptr_(ptr) {}
-    std::pair<UniqueModuleId const, std::vector<FilePath>> const *ptr_ =
-        nullptr;
+    std::pair<UniqueModuleId const, Module> const *ptr_ = nullptr;
   };
 
  public:
   virtual IdLookupResult id(ModuleName const &name) const = 0;
 
-  void emplace(UniqueModuleId const &id, auto paths_begin, auto paths_end) {
-    ids_.try_emplace(id, std::vector<FilePath>(paths_begin, paths_end));
-  }
+  ModuleIndex TryLoad(ModuleName const &name) const;
 
-  UniqueModuleId const &operator[](ModuleIndex index) const {
-    ASSERT(index.value() < ids_.size());
-    return ids_.from_index(index.value()).first;
-  }
+  Module &emplace(UniqueModuleId const &id);
 
-  ModuleIndex index(UniqueModuleId const &id) const {
-    return ModuleIndex(ids_.index(id));
-  }
+  UniqueModuleId const &operator[](ModuleIndex index) const;
 
-  std::span<FilePath const> paths(UniqueModuleId const &id);
-  std::span<FilePath const> paths(ModuleIndex index);
+  ModuleIndex index(UniqueModuleId const &id) const;
 
  private:
-  nth::flyweight_map<UniqueModuleId, std::vector<FilePath>> ids_;
+  nth::flyweight_map<UniqueModuleId, Module> ids_;
 };
 
 }  // namespace module

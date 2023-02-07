@@ -27,6 +27,8 @@ cc_library(
         "//ast:module",
         "//ast:expression",
         "//module",
+        "//module:module_map",
+        "//module:specified_module_map",
         "//semantic_analysis:context",
         "//semantic_analysis/byte_code",
         "//diagnostic/consumer:tracking",

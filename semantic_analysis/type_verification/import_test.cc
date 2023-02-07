@@ -16,9 +16,7 @@ test::Repl MakeRepl(std::optional<std::string_view> name = std::nullopt) {
   auto module_map = std::make_unique<module::SpecifiedModuleMap>();
   if (name) {
     module::UniqueModuleId key("key");
-    module_map->specify(module::ModuleName(*name), key);
-    module_map->emplace(key, static_cast<module::FilePath*>(nullptr),
-                        static_cast<module::FilePath*>(nullptr));
+    module_map->identify(module::ModuleName(*name), key);
   }
   return test::Repl(std::move(module_map));
 }

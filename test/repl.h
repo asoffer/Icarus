@@ -12,6 +12,7 @@
 #include "jasmin/execute.h"
 #include "module/module.h"
 #include "module/module_map.h"
+#include "module/specified_module_map.h"
 #include "semantic_analysis/context.h"
 #include "semantic_analysis/foreign_function_map.h"
 #include "semantic_analysis/instruction_set.h"
@@ -20,8 +21,9 @@
 namespace test {
 
 struct Repl {
-  explicit Repl(std::unique_ptr<module::ModuleMap> map = nullptr)
-      : module_(std::move(map)) {}
+  explicit Repl() : Repl(std::make_unique<module::SpecifiedModuleMap>()) {}
+  explicit Repl(std::unique_ptr<module::ModuleMap> map)
+      : module_map_(std::move(map)) {}
 
  private:
   struct ResultBase {
@@ -155,6 +157,7 @@ struct Repl {
   ast::Module const& ast_module() const { return ast_module_; }
   module::Module& module() { return module_; }
   module::Module const& module() const { return module_; }
+  module::ModuleMap const& module_map() const { return *module_map_; }
 
   ast::Expression const& last_expression() const {
     base::PtrSpan stmts = ast_module().stmts();
@@ -180,6 +183,7 @@ struct Repl {
 
   std::deque<std::string> source_content_;
   data_types::IntegerTable table_;
+  std::unique_ptr<module::ModuleMap> module_map_;
   module::Module module_;
   ast::Module ast_module_;
   semantic_analysis::Context context_;

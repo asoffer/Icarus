@@ -21,7 +21,7 @@ struct ForeignFunctionMap;
 
 struct BuiltinForeign : jasmin::StackMachineInstruction<BuiltinForeign> {
   static void execute(jasmin::ValueStack& value_stack, core::Type t,
-                      ForeignFunctionMap* module);
+                      ForeignFunctionMap* module, TypeSystem* ts);
 };
 
 struct InvokeForeignFunction
@@ -33,11 +33,13 @@ struct InvokeForeignFunction
     }
 
     void set_map(
-        absl::flat_hash_map<void (*)(), std::pair<size_t, core::Type>> map) {
+        absl::flat_hash_map<void (*)(), std::pair<size_t, core::FunctionType>>
+            map) {
       map_ = std::move(map);
     }
 
-    std::pair<size_t, core::Type> const& operator[](void (*fn_ptr)()) const {
+    std::pair<size_t, core::FunctionType> const& operator[](
+        void (*fn_ptr)()) const {
       auto iter = map_.find(fn_ptr);
       ASSERT(iter != map_.end());
       return iter->second;
@@ -45,11 +47,13 @@ struct InvokeForeignFunction
 
     std::type_identity_t<void (*)()> FunctionPointer(size_t index) const;
 
+    void set_type_system(TypeSystem& ts) { type_system_ = &ts; }
     TypeSystem& type_system() const;
 
    private:
-    ForeignFunctionMap const* foreign_function_map_;
-    absl::flat_hash_map<void (*)(), std::pair<size_t, core::Type>> map_;
+    ForeignFunctionMap const* foreign_function_map_ = nullptr;
+    TypeSystem* type_system_                        = nullptr;
+    absl::flat_hash_map<void (*)(), std::pair<size_t, core::FunctionType>> map_;
   };
 
   static void serialize(jasmin::Serializer& serializer,

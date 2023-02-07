@@ -20,7 +20,6 @@ cc_library(
     srcs = ["module.cc"],
     deps = [
         ":module_cc_proto",
-        ":module_map",
         "//data_types:integer",
         "//semantic_analysis:instruction_set",
         "//semantic_analysis:type_system",
@@ -45,6 +44,7 @@ cc_library(
     hdrs = ["module_map.h"],
     srcs = ["module_map.cc"],
     deps = [
+        ":module",
         ":module_index",
         "//base:debug",
         "@asoffer_nth//nth/container:flyweight_map",

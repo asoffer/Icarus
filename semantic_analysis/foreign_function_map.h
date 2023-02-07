@@ -13,9 +13,6 @@
 namespace semantic_analysis {
 
 struct ForeignFunctionMap {
-  explicit ForeignFunctionMap(TypeSystem &type_system)
-      : type_system_(type_system) {}
-
   auto begin() { return foreign_functions_.begin(); }
   auto end() { return foreign_functions_.end(); }
   auto begin() const { return foreign_functions_.begin(); }
@@ -23,19 +20,16 @@ struct ForeignFunctionMap {
   auto cbegin() const { return foreign_functions_.begin(); }
   auto cend() const { return foreign_functions_.end(); }
 
-  std::pair<data_types::Fn, IrFunction const *> ForeignFunction(std::string name,
-                                                        core::Type t);
+  std::pair<data_types::Fn, IrFunction const *> ForeignFunction(
+      std::string name, core::FunctionType t);
   IrFunction const *ForeignFunction(data_types::LocalFnId id) const;
   std::type_identity_t<void (*)()> ForeignFunctionPointer(
       data_types::LocalFnId id) const;
 
-  TypeSystem &type_system() const { return type_system_; }
-
  private:
-  nth::flyweight_map<std::pair<std::string, core::Type>,
-                      std::pair<IrFunction, void (*)()>>
+  nth::flyweight_map<std::pair<std::string, core::FunctionType>,
+                     std::pair<IrFunction, void (*)()>>
       foreign_functions_;
-  TypeSystem &type_system_;
 };
 
 }  // namespace semantic_analysis

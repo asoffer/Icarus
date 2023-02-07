@@ -7,9 +7,7 @@
 namespace semantic_analysis {
 namespace {
 
-IrFunction ConstructIrFunction(TypeSystem& type_system, core::Type t,
-                               void (*fn_ptr)()) {
-  auto fn_type           = t.get<core::FunctionType>(type_system);
+IrFunction ConstructIrFunction(core::FunctionType fn_type, void (*fn_ptr)()) {
   auto const& parameters = fn_type.parameters();
   std::span returns      = fn_type.returns();
   IrFunction f(parameters.size(), returns.size());
@@ -22,11 +20,11 @@ IrFunction ConstructIrFunction(TypeSystem& type_system, core::Type t,
 
 }  // namespace
 
-std::pair<data_types::Fn, IrFunction const*> ForeignFunctionMap::ForeignFunction(
-    std::string name, core::Type t) {
+std::pair<data_types::Fn, IrFunction const*>
+ForeignFunctionMap::ForeignFunction(std::string name, core::FunctionType t) {
   auto [iter, inserted] = foreign_functions_.try_emplace(
-      std::pair<std::string, core::Type>(std::move(name), t), IrFunction(0, 0),
-      nullptr);
+      std::pair<std::string, core::FunctionType>(std::move(name), t),
+      IrFunction(0, 0), nullptr);
   if (inserted) {
     auto& [ir_fn, fn_ptr] = iter->second;
     dlerror();  // Clear previous errors.
@@ -40,7 +38,7 @@ std::pair<data_types::Fn, IrFunction const*> ForeignFunctionMap::ForeignFunction
     if (error != nullptr) { NOT_YET(iter->first.first); }
 
     ASSERT(fn_ptr != nullptr);
-    ir_fn = ConstructIrFunction(type_system_, t, fn_ptr);
+    ir_fn = ConstructIrFunction(t, fn_ptr);
   }
 
   ASSERT(foreign_functions_.from_index(foreign_functions_.index(iter))

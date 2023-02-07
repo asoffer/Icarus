@@ -37,11 +37,12 @@ T Read(ffi_arg const& value) {
 }  // namespace
 
 void BuiltinForeign::execute(jasmin::ValueStack& value_stack, core::Type t,
-                             ForeignFunctionMap* foreign_function_map) {
-  size_t length    = value_stack.pop<size_t>();
-  char const* data = value_stack.pop<char const*>();
-  auto [fn_id, fn_ptr] =
-      foreign_function_map->ForeignFunction(std::string(data, length), t);
+                             ForeignFunctionMap* foreign_function_map,
+                             TypeSystem* ts) {
+  size_t length        = value_stack.pop<size_t>();
+  char const* data     = value_stack.pop<char const*>();
+  auto [fn_id, fn_ptr] = foreign_function_map->ForeignFunction(
+      std::string(data, length), t.get<core::FunctionType>(*ts));
 
   if (fn_ptr == nullptr) { NOT_YET(); }
   value_stack.push(fn_ptr);
@@ -115,7 +116,7 @@ InvokeForeignFunction::serialization_state::FunctionPointer(
 }
 
 TypeSystem& InvokeForeignFunction::serialization_state::type_system() const {
-  return ASSERT_NOT_NULL(foreign_function_map_)->type_system();
+  return *ASSERT_NOT_NULL(type_system_);
 }
 
 void InvokeForeignFunction::serialize(jasmin::Serializer& serializer,
@@ -126,7 +127,7 @@ void InvokeForeignFunction::serialize(jasmin::Serializer& serializer,
   // Foreign function (as index)
   serializer(index);
   // Index of function type in the type-system.
-  serializer(type.get<core::FunctionType>(state.type_system()).index());
+  serializer(type.index());
 }
 
 bool InvokeForeignFunction::deserialize(jasmin::Deserializer& deserializer,

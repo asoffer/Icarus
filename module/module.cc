@@ -116,12 +116,13 @@ void DeserializeTypeSystem(internal_proto::TypeSystem const& proto,
   }
 }
 
-absl::flat_hash_map<void (*)(), std::pair<size_t, core::Type>>
+absl::flat_hash_map<void (*)(), std::pair<size_t, core::FunctionType>>
 SerializeForeignSymbols(
     semantic_analysis::TypeSystem& type_system,
     semantic_analysis::ForeignFunctionMap const& map,
     google::protobuf::RepeatedPtrField<internal_proto::ForeignSymbol>& proto) {
-  absl::flat_hash_map<void (*)(), std::pair<size_t, core::Type>> index_map;
+  absl::flat_hash_map<void (*)(), std::pair<size_t, core::FunctionType>>
+      index_map;
   for (auto const& [key, value] : map) {
     auto const& [name, type]    = key;
     auto const& [ir_fn, fn_ptr] = value;
@@ -140,7 +141,9 @@ void DeserializeForeignSymbols(
         proto,
     semantic_analysis::ForeignFunctionMap& map) {
   for (auto const& symbol : proto) {
-    map.ForeignFunction(symbol.name(), DeserializeType(symbol.type()));
+    map.ForeignFunction(
+        symbol.name(),
+        DeserializeType(symbol.type()).get<core::FunctionType>(type_system));
   }
 }
 
@@ -192,6 +195,7 @@ bool Module::Serialize(std::ostream& output) const {
       state
           .get<semantic_analysis::InvokeForeignFunction::serialization_state>();
   foreign_state.set_foreign_function_map(&foreign_function_map());
+  foreign_state.set_type_system(type_system());
   foreign_state.set_map(SerializeForeignSymbols(
       type_system(), foreign_function_map(), *proto.mutable_foreign_symbols()));
 
@@ -219,12 +223,11 @@ bool Module::Serialize(std::ostream& output) const {
   return proto.SerializeToOstream(&output);
 }
 
-std::optional<Module> Module::Deserialize(std::unique_ptr<ModuleMap> map,
-                                          std::istream& input) {
+std::optional<Module> Module::Deserialize(std::istream& input) {
   std::optional<Module> m;
   internal_proto::Module proto;
   if (not proto.ParseFromIstream(&input)) { return m; }
-  m.emplace(std::move(map), std::move(*proto.mutable_read_only()));
+  m.emplace(std::move(*proto.mutable_read_only()));
 
   SerializationState state;
 
@@ -252,6 +255,7 @@ std::optional<Module> Module::Deserialize(std::unique_ptr<ModuleMap> map,
       state
           .get<semantic_analysis::InvokeForeignFunction::serialization_state>();
   foreign_state.set_foreign_function_map(&m->foreign_function_map());
+  foreign_state.set_type_system(m->type_system());
 
   jasmin::Deserialize(proto.initializer().content(), m->initializer_, state);
   size_t fn_index = 0;

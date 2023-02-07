@@ -76,6 +76,8 @@ cc_library(
         "//compiler:common_diagnostics",
         "//core:call",
         "//diagnostic/consumer",
+        "//module",
+        "//module:module_map",
         "//semantic_analysis/byte_code",
         "//semantic_analysis:context",
         "//semantic_analysis:instruction_set",

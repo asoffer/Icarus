@@ -56,10 +56,9 @@ def _module_map_file(ctx, mapping):
     ctx.actions.write(
         output = module_map,
         content = '\n'.join([
-            "{id}\n{name}\n{icm}".format(
+            "{id}\n{name}".format(
                 id = icm.label, 
-                name = _dotted_path(icm.label),
-                icm = icm.icms.to_list()[0].short_path)
+                name = _dotted_path(icm.label))
             for (src, icm) in mapping.items()
         ])
     )
@@ -96,6 +95,7 @@ def _compile(ctx, icm_file, module_map):
 def _ic_binary_impl(ctx):
     target_deps = ctx.attr.deps
     module_map = _module_mapping(target_deps)
+    module_map_file = _module_map_file(ctx, module_map)
 
     icm_file = ctx.actions.declare_file("{label}.icm".format(
         label = ctx.label.name
@@ -107,22 +107,23 @@ def _ic_binary_impl(ctx):
     executable_path = "{name}%/{name}".format(name = ctx.label.name)
     executable = ctx.actions.declare_file(executable_path)
 
-    runfiles = ctx.runfiles(files = [icm_file, ctx.executable._run_bytecode])
+    runfiles = ctx.runfiles(files = [icm_file, module_map_file, ctx.executable._run_bytecode])
     ctx.actions.write(
         output = executable,
         is_executable = True,
         content = """
-        {executable} --input={icm}
+        {executable} --input={icm} --module_map_file={mmf}
         """.format(
             executable = ctx.executable._run_bytecode.short_path,
-            icm = icm_file.short_path
+            icm = icm_file.short_path,
+            mmf = module_map_file.short_path
         )
     )
 
     return [
         IcarusInfo(source = ctx.attr.srcs[0].files.to_list()[0]),
         DefaultInfo(
-            files = depset([icm_file]),
+            files = depset([icm_file, module_map_file]),
             executable = executable,
             runfiles = runfiles,
         ),
