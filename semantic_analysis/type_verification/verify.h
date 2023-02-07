@@ -51,15 +51,14 @@ inline auto VerifyParametersOf(ast::Node const *node) {
 struct TypeVerifier : VerificationScheduler {
   using signature = VerificationTask();
 
-  explicit TypeVerifier(module::ModuleMap const *module_map,
-                        module::Module &module, Context &c,
+  explicit TypeVerifier(module::ModuleMap &module_map, Context &c,
                         diagnostic::DiagnosticConsumer &d)
       : VerificationScheduler([](VerificationScheduler &s,
                                  ast::Node const *node) -> VerificationTask {
           return node->visit(static_cast<TypeVerifier &>(s));
         }),
-        module_(module),
-        module_map_(*ASSERT_NOT_NULL(module_map)),
+        module_map_(module_map),
+        module_(module_map_.primary()),
         context_(c),
         diagnostic_consumer_(d) {}
 
@@ -68,7 +67,9 @@ struct TypeVerifier : VerificationScheduler {
   ForeignFunctionMap &foreign_function_map() const {
     return module_.foreign_function_map();
   }
+  auto &module() { return module_; }
   auto const &module() const { return module_; }
+  auto &module_map() { return module_map_; }
   auto const &module_map() const { return module_map_; }
 
   template <typename T>
@@ -180,8 +181,8 @@ struct TypeVerifier : VerificationScheduler {
   }
 
  private:
+  module::ModuleMap &module_map_;
   module::Module &module_;
-  module::ModuleMap const &module_map_;
   Context &context_;
   diagnostic::DiagnosticConsumer &diagnostic_consumer_;
 };

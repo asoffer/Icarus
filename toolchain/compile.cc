@@ -102,16 +102,16 @@ bool Compile(std::string const &source_file, std::string const &module_map_file,
   std::unique_ptr<module::ModuleMap> module_map =
       module::BazelModuleMap(module_map_file);
   ASSERT(module_map != nullptr);
-  module::Module module;
   semantic_analysis::Context context;
 
-  semantic_analysis::TypeVerifier tv(module_map.get(), module, context,
+  semantic_analysis::TypeVerifier tv(*module_map, context,
                                      **diagnostic_consumer);
   tv.schedule(&ast_module);
   tv.complete();
 
   if ((*diagnostic_consumer)->num_consumed() != 0) { return false; }
 
+  module::Module &module = module_map->primary();
   semantic_analysis::EmitByteCodeForModule(ast_module, context, module);
 
   return module.Serialize(output);

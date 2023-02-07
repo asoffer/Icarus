@@ -77,6 +77,7 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
     std::string_view name(ptr, length);
 
     auto index = tv.module_map().TryLoad(module::ModuleName(name));
+    LOG("", "%s", index);
     if (index == module::ModuleIndex::Invalid()) {
       tv.ConsumeDiagnostic(NoSuchModule{.view = node->operand()->range()});
       qt = Error(qt);

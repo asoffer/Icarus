@@ -10,6 +10,7 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
   if (operand_qts.size() != 1) { NOT_YET("log an error"); }
   QualifiedType qt = operand_qts[0];
   if (qt.type() == Module) {
+    LOG("", "%s", tv.EvaluateAs<module::ModuleIndex>(node->operand()));
     NOT_YET();
   } else if (qt.type().is<SliceType>(tv.type_system())) {
     if (node->member_name() == "data") {

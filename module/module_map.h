@@ -54,6 +54,7 @@ struct UniqueModuleId {
 // unique identifier for the module, the name specified in `import` expressions,
 // and the path to the file on disk."
 struct ModuleMap {
+  ModuleMap() { emplace(UniqueModuleId("")); }
   virtual ~ModuleMap() {}
 
  protected:
@@ -77,6 +78,9 @@ struct ModuleMap {
 
  public:
   virtual IdLookupResult id(ModuleName const &name) const = 0;
+
+  Module &primary() { return ids_.from_index(0).second; }
+  Module const &primary() const { return ids_.from_index(0).second; }
 
   ModuleIndex TryLoad(ModuleName const &name) const;
 

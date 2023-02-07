@@ -150,13 +150,14 @@ struct Repl {
   TypeCheckResult type_check(std::string source);
 
   semantic_analysis::ForeignFunctionMap& foreign_function_map() {
-    return module_.foreign_function_map();
+    return module().foreign_function_map();
   }
-  semantic_analysis::TypeSystem& type_system() { return module_.type_system(); }
+  semantic_analysis::TypeSystem& type_system() { return module().type_system(); }
   semantic_analysis::Context const& context() const { return context_; }
   ast::Module const& ast_module() const { return ast_module_; }
-  module::Module& module() { return module_; }
-  module::Module const& module() const { return module_; }
+  module::Module& module() { return module_map().primary(); }
+  module::Module const& module() const { return module_map().primary(); }
+  module::ModuleMap& module_map() { return *module_map_; }
   module::ModuleMap const& module_map() const { return *module_map_; }
 
   ast::Expression const& last_expression() const {
@@ -166,7 +167,7 @@ struct Repl {
   }
 
   semantic_analysis::IrFunction const* function(data_types::Fn f) {
-    return module_.function(f);
+    return module().function(f);
   }
 
  private:
@@ -184,7 +185,6 @@ struct Repl {
   std::deque<std::string> source_content_;
   data_types::IntegerTable table_;
   std::unique_ptr<module::ModuleMap> module_map_;
-  module::Module module_;
   ast::Module ast_module_;
   semantic_analysis::Context context_;
   diagnostic::TrackingConsumer consumer_;

@@ -16,6 +16,12 @@ ic_binary(
 )
 
 ic_binary(
+    name = "import",
+    srcs = ["import.ic"],
+    deps = ["//toolchain/stdlib:io"],
+)
+
+ic_binary(
     name = "minimal_program",
     srcs = ["minimal_program.ic"],
 )

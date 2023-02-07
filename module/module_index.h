@@ -14,7 +14,7 @@ struct ModuleIndex
                                          base::AbslFormatExtension> {
   using underlying_type = uint32_t;
 
-  static constexpr std::string_view kAbslFormatString = "ModuleId(%u)";
+  static constexpr std::string_view kAbslFormatString = "ModuleIndex(%u)";
 
   constexpr ModuleIndex()
       : value_(std::numeric_limits<underlying_type>::max()) {}
