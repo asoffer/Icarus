@@ -4,7 +4,7 @@
 
 namespace frontend {
 
-std::string_view SourceIndexer::insert(data_types::ModuleId module,
+std::string_view SourceIndexer::insert(module::ModuleIndex module,
                                        std::string &&content) {
   auto [iter, inserted] = source_.try_emplace(module);
   if (inserted) {
@@ -13,7 +13,7 @@ std::string_view SourceIndexer::insert(data_types::ModuleId module,
   return iter->second->content();
 }
 
-std::string_view SourceIndexer::insert(data_types::ModuleId module,
+std::string_view SourceIndexer::insert(module::ModuleIndex module,
                                        std::string_view content) {
   auto [iter, inserted] = source_.try_emplace(module);
   if (inserted) {

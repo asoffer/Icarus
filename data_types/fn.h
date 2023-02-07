@@ -7,7 +7,7 @@
 #include "base/extend.h"
 #include "base/extend/absl_format.h"
 #include "base/extend/absl_hash.h"
-#include "data_types/module_id.h"
+#include "module/module_index.h"
 
 namespace data_types {
 
@@ -36,26 +36,28 @@ struct LocalFnId : base::Extend<LocalFnId, 1>::With<base::AbslHashExtension,
 // An identifier usable to find the byte code for a function within an entire
 // program.
 struct Fn : base::Extend<Fn, 2>::With<base::AbslHashExtension> {
-  Fn() : Fn(ModuleId::Invalid(), LocalFnId::Invalid()) {}
-  explicit Fn(ModuleId mod, LocalFnId fn) : module_id_(mod), function_id_(fn) {}
+  Fn() : Fn(module::ModuleIndex::Invalid(), LocalFnId::Invalid()) {}
+  explicit Fn(module::ModuleIndex mod, LocalFnId fn)
+      : module_index_(mod), function_id_(fn) {}
 
   enum class Kind { Native, Foreign };
   constexpr Kind kind() const {
-    return module() == ModuleId::Foreign() ? Kind::Foreign : Kind::Native;
+    return module() == module::ModuleIndex::Foreign() ? Kind::Foreign
+                                                      : Kind::Native;
   }
 
-  constexpr ModuleId module() const { return module_id_; }
+  constexpr module::ModuleIndex module() const { return module_index_; }
   constexpr LocalFnId local() const { return function_id_; }
 
   friend std::ostream &operator<<(std::ostream &os, Fn f) {
-    return os << "Fn(" << f.module_id_.value() << "." << f.function_id_.value()
-              << ")";
+    return os << "Fn(" << f.module_index_.value() << "."
+              << f.function_id_.value() << ")";
   }
 
  private:
   friend base::EnableExtensions;
 
-  ModuleId module_id_;
+  module::ModuleIndex module_index_;
   LocalFnId function_id_;
 };
 

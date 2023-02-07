@@ -76,15 +76,15 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
     std::memcpy(&length, p + jasmin::ValueSize, sizeof(length));
     std::string_view name(ptr, length);
 
-    auto id = tv.module().TryLoad(module::ModuleName(name));
-    if (id == data_types::ModuleId::Invalid()) {
+    auto index = tv.module().TryLoad(module::ModuleName(name));
+    if (index == module::ModuleIndex::Invalid()) {
       tv.ConsumeDiagnostic(NoSuchModule{.view = node->operand()->range()});
       qt = Error(qt);
     } else {
       auto [ptr, inserted] = tv.context().insert_constant(node);
       ASSERT(inserted);
-      ptr->resize(sizeof(id));
-      std::memcpy(ptr->data(), &id, sizeof(id));
+      ptr->resize(sizeof(index));
+      std::memcpy(ptr->data(), &index, sizeof(index));
     }
   }
 

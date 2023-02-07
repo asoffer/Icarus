@@ -10,7 +10,7 @@ using ::testing::Pair;
 
 TEST(SourceIndexer, Insert) {
   SourceIndexer indexer;
-  std::string_view content1 = indexer.insert(data_types::ModuleId(0), R"(abc
+  std::string_view content1 = indexer.insert(module::ModuleIndex(0), R"(abc
   def
   ghi)");
 
@@ -18,16 +18,16 @@ TEST(SourceIndexer, Insert) {
   def
   ghi)");
 
-  std::string_view content2 = indexer.insert(data_types::ModuleId(0), "");
+  std::string_view content2 = indexer.insert(module::ModuleIndex(0), "");
   EXPECT_EQ(content2, content1);
 
-  std::string_view content3 = indexer.insert(data_types::ModuleId(1), "abc");
+  std::string_view content3 = indexer.insert(module::ModuleIndex(1), "abc");
   EXPECT_EQ(content3, "abc");
 }
 
 TEST(SourceIndexer, EntryFor) {
   SourceIndexer indexer;
-  std::string_view content = indexer.insert(data_types::ModuleId(0), R"(abc
+  std::string_view content = indexer.insert(module::ModuleIndex(0), R"(abc
   def
   ghi)");
 
@@ -45,7 +45,7 @@ TEST(SourceIndexer, EntryFor) {
 
 TEST(SourceIndexer, Lines) {
   SourceIndexer indexer;
-  std::string_view content = indexer.insert(data_types::ModuleId(0), R"(abc
+  std::string_view content = indexer.insert(module::ModuleIndex(0), R"(abc
   def
   ghi)");
 
@@ -57,7 +57,7 @@ TEST(SourceIndexer, Lines) {
 
 TEST(SourceIndexer, LineContaining) {
   SourceIndexer indexer;
-  std::string_view content = indexer.insert(data_types::ModuleId(0), R"(abc
+  std::string_view content = indexer.insert(module::ModuleIndex(0), R"(abc
   def
   ghi)");
 
@@ -69,7 +69,7 @@ TEST(SourceIndexer, LineContaining) {
 
 TEST(SourceIndexer, LinesContaining) {
   SourceIndexer indexer;
-  std::string_view content = indexer.insert(data_types::ModuleId(0), R"(abc
+  std::string_view content = indexer.insert(module::ModuleIndex(0), R"(abc
   def
   ghi)");
 

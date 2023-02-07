@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "base/debug.h"
+#include "module/module_index.h"
 #include "nth/container/flyweight_map.h"
 
 namespace module {
@@ -57,16 +58,6 @@ struct FilePath {
 
  private:
   std::string path_;
-};
-
-// An integer index into the module map
-struct ModuleIndex {
-  explicit ModuleIndex(uint64_t index) : index_(index) {}
-
-  uint64_t value() const { return index_; }
-
- private:
-  uint64_t index_;
 };
 
 // Represents a mapping from the three forms of identification for modules (a

@@ -7,7 +7,7 @@
 #include <string_view>
 
 #include "absl/container/flat_hash_map.h"
-#include "data_types/module_id.h"
+#include "module/module_index.h"
 
 namespace frontend {
 
@@ -20,9 +20,9 @@ struct SourceIndexer {
   // associates `content` with it. Regardless, the returned `std::string_view`
   // is a view of the content associated with `module`. The returned
   // `std::string_view` is valid for the lifetime of `*this`.
-  std::string_view insert(data_types::ModuleId module, std::string &&content);
-  std::string_view insert(data_types::ModuleId module, std::string_view content);
-  std::string_view insert(data_types::ModuleId module, char const *content) {
+  std::string_view insert(module::ModuleIndex module, std::string &&content);
+  std::string_view insert(module::ModuleIndex module, std::string_view content);
+  std::string_view insert(module::ModuleIndex module, char const *content) {
     return insert(module, std::string_view(content));
   }
 
@@ -32,10 +32,10 @@ struct SourceIndexer {
     Entry &operator=(Entry const &) = delete;
     Entry &operator=(Entry &&)      = delete;
 
-    explicit Entry(data_types::ModuleId module, std::string content)
+    explicit Entry(module::ModuleIndex module, std::string content)
         : module_(module), content_(std::move(content)) {}
 
-    data_types::ModuleId module_id() const { return module_; }
+    module::ModuleIndex module_index() const { return module_; }
 
     // Returns a stable view of the file contents.
     std::string_view content() const { return content_; }
@@ -58,7 +58,7 @@ struct SourceIndexer {
     std::span<size_t const> line_starts();
 
     std::optional<std::vector<size_t>> line_terminators_;
-    const data_types::ModuleId module_;
+    const module::ModuleIndex module_;
     const std::string content_;
   };
   // Given a `std::string_view` referring to content in one of the source texts
@@ -74,7 +74,7 @@ struct SourceIndexer {
   // safe to reference even as `source_` is added to. The structure we really
   // want here is std::unique_ptr<char[]>, but that puts unfortunate burden on
   // the API itself.
-  absl::flat_hash_map<data_types::ModuleId, std::unique_ptr<Entry>> source_;
+  absl::flat_hash_map<module::ModuleIndex, std::unique_ptr<Entry>> source_;
 };
 
 }  // namespace frontend

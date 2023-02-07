@@ -46,7 +46,7 @@ void ConsoleRenderer::WriteSourceQuote(SourceQuote const &quote) {
     auto &entry       = source_indexer_.EntryFor(highlight.range);
     auto [start, end] = entry.lines_containing(highlight.range);
     // TODO: get the filename for this module id from the ModuleMap.
-    auto mid = entry.module_id();
+    auto mid = entry.module_index();
     for (size_t line_number = start; line_number < end; ++line_number) {
       absl::FPrintF(out_, "\033[97;1m%s:%d | \033[0m%s\n", mid, line_number,
                     entry.line(line_number));

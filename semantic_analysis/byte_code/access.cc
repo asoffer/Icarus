@@ -1,4 +1,4 @@
-#include "data_types/module_id.h"
+#include "module/module_index.h"
 #include "semantic_analysis/byte_code/emitter.h"
 
 namespace semantic_analysis {

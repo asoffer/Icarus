@@ -30,7 +30,7 @@ cc_library(
     visibility = ["//visibility:public"],
     hdrs = ["fn.h"],
     deps = [
-        ":module_id",
+        "//module:module_index",
         "//base:extend",
         "//base/extend:absl_hash",
     ],
@@ -71,17 +71,6 @@ cc_library(
     hdrs = ["label.h"],
     deps = [
         "//base:extend",
-        "//base/extend:absl_hash",
-    ],
-)
-
-cc_library(
-    name = "module_id",
-    visibility = ["//visibility:public"],
-    hdrs = ["module_id.h"],
-    deps = [
-        "//base:extend",
-        "//base/extend:absl_format",
         "//base/extend:absl_hash",
     ],
 )

@@ -48,9 +48,10 @@ std::pair<data_types::Fn, IrFunction const*> ForeignFunctionMap::ForeignFunction
 
   ASSERT(foreign_functions_.from_index(foreign_functions_.index(iter))
              .second.second != nullptr);
-  return std::pair(data_types::Fn(data_types::ModuleId::Builtin(),
-                          data_types::LocalFnId(foreign_functions_.index(iter))),
-                   &iter->second.first);
+  return std::pair(
+      data_types::Fn(module::ModuleIndex::Builtin(),
+                     data_types::LocalFnId(foreign_functions_.index(iter))),
+      &iter->second.first);
 }
 
 IrFunction const* ForeignFunctionMap::ForeignFunction(data_types::LocalFnId id) const {

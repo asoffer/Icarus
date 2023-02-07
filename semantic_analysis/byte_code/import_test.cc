@@ -17,9 +17,9 @@ TEST(Import, Computation) {
   auto const& mm = repl.module().module_map();
   auto id        = mm.id(name);
   ASSERT_TRUE(id);
-  auto expected_id = data_types::ModuleId(mm.index(id.id()).value());
+  auto expected_id = module::ModuleIndex(mm.index(id.id()).value());
 
-  EXPECT_EQ(repl.execute<data_types::ModuleId>(R"(import "abc")"), expected_id);
+  EXPECT_EQ(repl.execute<module::ModuleIndex>(R"(import "abc")"), expected_id);
 }
 
 }  // namespace
