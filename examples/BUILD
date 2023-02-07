@@ -10,10 +10,10 @@ ic_binary(
     srcs = ["foreign_function.ic"],
 )
 
-#ic_binary(
-#    name = "function_calls",
-#    srcs = ["function_calls.ic"],
-#)
+ic_binary(
+    name = "function_calls",
+    srcs = ["function_calls.ic"],
+)
 
 ic_binary(
     name = "minimal_program",

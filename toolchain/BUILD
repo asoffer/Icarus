@@ -6,6 +6,7 @@ cc_binary(
     deps = [
         ":flags",
         "//module",
+        "//module:bazel_module_map",
         "@asoffer_jasmin//jasmin:execute",
         "@com_google_absl//absl/debugging:failure_signal_handler",
         "@com_google_absl//absl/debugging:symbolize",
@@ -23,6 +24,7 @@ cc_binary(
         "//base:log",
         "//frontend:parse",
         "//module",
+        "//module:bazel_module_map",
         "//semantic_analysis:context",
         "//semantic_analysis/type_verification:verify",
         "@com_google_absl//absl/debugging:failure_signal_handler",

@@ -11,6 +11,7 @@
 #include "gtest/gtest.h"
 #include "jasmin/execute.h"
 #include "module/module.h"
+#include "module/module_map.h"
 #include "semantic_analysis/context.h"
 #include "semantic_analysis/foreign_function_map.h"
 #include "semantic_analysis/instruction_set.h"
@@ -19,6 +20,9 @@
 namespace test {
 
 struct Repl {
+  explicit Repl(std::unique_ptr<module::ModuleMap> map = nullptr)
+      : module_(std::move(map)) {}
+
  private:
   struct ResultBase {
     ResultBase(std::string_view content) : content_(content) {}

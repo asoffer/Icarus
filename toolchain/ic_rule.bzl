@@ -32,23 +32,34 @@ def _module_mapping(deps):
     return {
         target[IcarusInfo].source: struct(
             label = target.label,
-            pcms = target[DefaultInfo].files
+            icms = target[DefaultInfo].files
         )
         for target in deps
     }
 
 
+def _dotted_path(label):
+    package = label.package
+    if package.startswith("@"):
+        package = package[1:]
+    if package.startswith("//"):
+        package = package[2:]
+    if package.startswith("toolchain/stdlib"):
+        package = "std" + package[len("toolchain/stdlib"):]
+    return "{}.{}".format(package, label.name)
+
+
 def _module_map_file(ctx, mapping):
 # TODO: Change the formatting so that we do not restrict substrings in file
 #names or labels.
-    module_map = ctx.actions.declare_file(ctx.label.name + ".module_map")
+    module_map = ctx.actions.declare_file(ctx.label.name + ".icmod")
     ctx.actions.write(
         output = module_map,
         content = '\n'.join([
-            "{file}::{label}::{icm}".format(
-                file = src.files.to_list()[0].path, 
-                label = icm[0],
-                icm = icm[1].short_path)
+            "{id}\n{name}\n{icm}".format(
+                id = icm.label, 
+                name = _dotted_path(icm.label),
+                icm = icm.icms.to_list()[0].short_path)
             for (src, icm) in mapping.items()
         ])
     )
@@ -66,15 +77,16 @@ def _compile(ctx, icm_file, module_map):
 
     ctx.actions.run(
         inputs = depset(
-                     [module_map_file] + 
-                     [icm[1] for (src, icm) in module_map.items()],
-                     transitive = [src.files for src in ctx.attr.srcs],
+                     [module_map_file],
+                     transitive = [src.files for src in ctx.attr.srcs] +
+                                  [icm.icms for (src, icm) in module_map.items()]
                  ),
         outputs = [icm_file],
         arguments = [
             "--source={}".format(src_file.path),
             "--module_identifier={}".format(str(ctx.label)),
             "--output={}".format(icm_file.path),
+            "--module_map_file={}".format(module_map_file.path),
         ],
         progress_message = "Compiling {}".format(ctx.label.name),
         executable = ctx.attr._compile[0][DefaultInfo].files_to_run.executable,

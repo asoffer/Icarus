@@ -13,6 +13,7 @@
 #include "base/file.h"
 #include "base/log.h"
 #include "frontend/parse.h"
+#include "module/bazel_module_map.h"
 #include "module/module.h"
 #include "semantic_analysis/context.h"
 #include "semantic_analysis/type_verification/verify.h"
@@ -20,9 +21,6 @@
 
 ABSL_FLAG(std::vector<std::string>, log, {},
           "Comma-separated list of log keys");
-ABSL_FLAG(std::string, module_map, "",
-          "Filename holding information about the module-map describing the "
-          "location precompiled modules");
 ABSL_FLAG(std::string, diagnostics, "console",
           "Indicates how diagnostics should be emitted. Options: console "
           "(default), or json.");
@@ -34,6 +32,8 @@ ABSL_FLAG(std::string, source, "",
           "The path to the source file to be compiled.");
 ABSL_FLAG(std::string, output, "",
           "The location at which to write the output .icm file.");
+ABSL_FLAG(std::string, module_map_file, "",
+          "The path to the .icmodmap file describing the module map.");
 
 namespace toolchain {
 
@@ -74,7 +74,8 @@ absl::StatusOr<std::string> LoadFileContent(
       absl::StrFormat(R"(Failed to open file "%s")", file_name));
 }
 
-bool Compile(std::string const &source_file, std::ofstream &output) {
+bool Compile(std::string const &source_file, std::string const &module_map_file,
+             std::ofstream &output) {
   frontend::SourceIndexer source_indexer;
   auto diagnostic_consumer =
       toolchain::DiagnosticConsumerFromFlag(FLAGS_diagnostics, source_indexer);
@@ -98,7 +99,10 @@ bool Compile(std::string const &source_file, std::ofstream &output) {
   ast::Module ast_module;
   ast_module.insert(parsed_nodes.begin(), parsed_nodes.end());
 
-  module::Module module;
+  std::unique_ptr<module::ModuleMap> module_map =
+      module::BazelModuleMap(module_map_file);
+  ASSERT(module_map != nullptr);
+  module::Module module(std::move(module_map));
   semantic_analysis::Context context;
 
   semantic_analysis::TypeVerifier tv(module, context, **diagnostic_consumer);
@@ -132,6 +136,8 @@ int main(int argc, char *argv[]) {
   toolchain::ValidateOutputPath(output);
 
   std::ofstream output_stream(output.c_str(), std::ofstream::out);
-  bool success = toolchain::Compile(absl::GetFlag(FLAGS_source), output_stream);
+  bool success =
+      toolchain::Compile(absl::GetFlag(FLAGS_source),
+                         absl::GetFlag(FLAGS_module_map_file), output_stream);
   return success ? 0 : 1;
 }

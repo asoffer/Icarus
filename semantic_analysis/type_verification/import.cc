@@ -40,11 +40,10 @@ struct NoSuchModule {
 
   diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(
-        diagnostic::Text("No such module named \"%s\".", type),
+        diagnostic::Text("No such module named \"%s\".", view),
         diagnostic::SourceQuote().Highlighted(view, diagnostic::Style{}));
   }
 
-  std::string type;
   std::string_view view;
 };
 
@@ -77,7 +76,7 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
     std::memcpy(&length, p + jasmin::ValueSize, sizeof(length));
     std::string_view name(ptr, length);
 
-    auto id = tv.module().TryLoad(name);
+    auto id = tv.module().TryLoad(module::ModuleName(name));
     if (id == data_types::ModuleId::Invalid()) {
       tv.ConsumeDiagnostic(NoSuchModule{.view = node->operand()->range()});
       qt = Error(qt);

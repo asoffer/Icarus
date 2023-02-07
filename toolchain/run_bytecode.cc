@@ -9,24 +9,31 @@
 #include "absl/flags/flag.h"
 #include "absl/flags/parse.h"
 #include "jasmin/execute.h"
+#include "module/bazel_module_map.h"
 #include "module/module.h"
 #include "semantic_analysis/instruction_set.h"
 #include "toolchain/flags.h"
 
 ABSL_FLAG(std::string, input, "", "The path to the .icm file to be executed.");
+ABSL_FLAG(std::string, module_map_file, "",
+          "The path to the .icmodmap file describing the module map.");
 
 namespace toolchain {
 
 bool HelpFilter(std::string_view module) { return true; }
 
-bool Execute(std::string const &input_file,
+bool Execute(std::string const &input_file, std::string const &module_map_file,
              std::span<std::string_view const> arguments) {
   std::ifstream stream(input_file);
   if (not stream.is_open()) {
     std::cerr << "Failed to open '" << input_file << "'.\n";
     return false;
   }
-  std::optional module = module::Module::Deserialize(stream);
+  std::unique_ptr<module::ModuleMap> module_map =
+      module::BazelModuleMap(module_map_file);
+  ASSERT(module_map != nullptr);
+  std::optional module =
+      module::Module::Deserialize(std::move(module_map), stream);
   if (not module) {
     std::cerr << "Invalid module.\n";
     return false;
@@ -59,6 +66,8 @@ int main(int argc, char *argv[]) {
   absl::FailureSignalHandlerOptions opts;
   absl::InstallFailureSignalHandler(opts);
 
-  bool success = toolchain::Execute(absl::GetFlag(FLAGS_input), arguments);
+  bool success =
+      toolchain::Execute(absl::GetFlag(FLAGS_input),
+                         absl::GetFlag(FLAGS_module_map_file), arguments);
   return success ? 0 : 1;
 }

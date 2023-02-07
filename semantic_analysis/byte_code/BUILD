@@ -182,6 +182,7 @@ cc_test(
       srcs = ["import_test.cc"],
       deps = [
           ":byte_code",
+          "//module:specified_module_map",
           "//semantic_analysis:type_system",
           "//test:repl",
           "@com_google_googletest//:gtest_main",

@@ -223,6 +223,7 @@ cc_test(
     srcs = ["import_test.cc"],
     deps = [
         ":verify",
+        "//module:specified_module_map",
         "//test:repl",
         "@com_google_googletest//:gtest_main",
     ],

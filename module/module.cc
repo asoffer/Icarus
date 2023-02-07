@@ -219,12 +219,12 @@ bool Module::Serialize(std::ostream& output) const {
   return proto.SerializeToOstream(&output);
 }
 
-std::optional<Module> Module::Deserialize(std::istream& input) {
+std::optional<Module> Module::Deserialize(std::unique_ptr<ModuleMap> map,
+                                          std::istream& input) {
   std::optional<Module> m;
   internal_proto::Module proto;
   if (not proto.ParseFromIstream(&input)) { return m; }
-  LOG("", "%s", proto.DebugString());
-  m.emplace(std::move(*proto.mutable_read_only()));
+  m.emplace(std::move(map), std::move(*proto.mutable_read_only()));
 
   SerializationState state;
 

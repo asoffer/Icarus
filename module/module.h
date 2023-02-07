@@ -8,6 +8,7 @@
 
 #include "data_types/integer.h"
 #include "module/module.pb.h"
+#include "module/module_map.h"
 #include "semantic_analysis/foreign_function_map.h"
 #include "semantic_analysis/instruction_set.h"
 #include "semantic_analysis/type_system.h"
@@ -15,11 +16,14 @@
 namespace module {
 
 struct Module {
-  explicit Module(internal_proto::ReadOnlyData read_only_data = {})
-      : read_only_data_(std::move(read_only_data)) {}
+  explicit Module(std::unique_ptr<ModuleMap> module_map,
+                  internal_proto::ReadOnlyData read_only_data = {})
+      : module_map_(std::move(module_map)),
+        read_only_data_(std::move(read_only_data)) {}
 
   bool Serialize(std::ostream &output) const;
-  static std::optional<Module> Deserialize(std::istream &input);
+  static std::optional<Module> Deserialize(std::unique_ptr<ModuleMap> map,
+                                           std::istream &input);
 
   semantic_analysis::IrFunction &initializer() { return initializer_; }
   semantic_analysis::IrFunction const &initializer() const {
@@ -28,15 +32,16 @@ struct Module {
 
   semantic_analysis::TypeSystem &type_system() const { return type_system_; }
 
-  data_types::ModuleId TryLoad(std::string_view name) const {
-    auto iter = ids_.find(name);
-    return (iter != ids_.end()) ? iter->second
-                                : data_types::ModuleId::Invalid();
+  data_types::ModuleId TryLoad(ModuleName const &name) const {
+    if (auto result = module_map_->id(name)) {
+      ModuleIndex index = module_map_->index(result.id());
+      return data_types::ModuleId(index.value());
+    } else {
+      return data_types::ModuleId::Invalid();
+    }
   }
 
-  void insert_module(std::string_view name, data_types::ModuleId id) {
-    ids_.emplace(name, id);
-  }
+  ModuleMap const &module_map() const { return *module_map_; }
 
   semantic_analysis::ForeignFunctionMap const &foreign_function_map() const {
     return foreign_function_map_;
@@ -81,8 +86,9 @@ struct Module {
   // All integer constants used in the module.
   data_types::IntegerTable integer_table_;
 
+  std::unique_ptr<ModuleMap> module_map_;
+
   internal_proto::ReadOnlyData read_only_data_;
-  absl::flat_hash_map<std::string, data_types::ModuleId> ids_;
 };
 
 }  // namespace module
