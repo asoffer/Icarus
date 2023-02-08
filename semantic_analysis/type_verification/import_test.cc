@@ -2,6 +2,7 @@
 #include "gtest/gtest.h"
 #include "module/specified_module_map.h"
 #include "semantic_analysis/type_verification/verify.h"
+#include "serialization/module_map.h"
 #include "test/repl.h"
 
 namespace semantic_analysis {
@@ -15,7 +16,7 @@ using ::testing::Pair;
 test::Repl MakeRepl(std::optional<std::string_view> name = std::nullopt) {
   auto module_map = std::make_unique<module::SpecifiedModuleMap>();
   if (name) {
-    module::UniqueModuleId key("key");
+    serialization::UniqueModuleId key("key");
     module_map->identify(module::ModuleName(*name), key);
   }
   return test::Repl(std::move(module_map));

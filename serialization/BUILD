@@ -39,6 +39,29 @@ cc_library(
     ],
 )
 
+
+cc_library(
+    name = "module_map",
+    visibility = ["//visibility:public"],
+    hdrs = ["module_map.h"],
+    srcs = ["module_map.cc"],
+    deps = [
+        ":module_index",
+        "//base:debug",
+        "@asoffer_nth//nth/container:flyweight_set",
+        "@com_google_absl//absl/container:flat_hash_map",
+    ],
+)
+
+cc_test(
+    name = "module_map_test",
+    srcs = ["module_map_test.cc"],
+    deps = [
+        ":module_map",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
 cc_proto_library(
     name = "read_only_data_proto",
     deps = ["//serialization/proto:read_only_data"],

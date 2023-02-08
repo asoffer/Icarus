@@ -37,7 +37,7 @@ bool Execute(std::string const &input_file, std::string const &module_map_file,
     std::cerr << "Invalid module.\n";
     return false;
   }
-  auto &module = module_map->emplace(module::UniqueModuleId());
+  auto &module = module_map->emplace(serialization::UniqueModuleId());
   module       = *std::move(m);
 
   jasmin::ValueStack value_stack;

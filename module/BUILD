@@ -36,6 +36,7 @@ cc_library(
         ":module",
         "//base:debug",
         "//serialization:module_index",
+        "//serialization:module_map",
         "@asoffer_nth//nth/container:flyweight_map",
     ],
 )

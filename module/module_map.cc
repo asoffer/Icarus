@@ -13,11 +13,11 @@ ModuleMap::IdLookupResult ModuleMap::find(
   }
 }
 
-Module &ModuleMap::emplace(UniqueModuleId const &id) {
+Module &ModuleMap::emplace(serialization::UniqueModuleId const &id) {
   return ids_.try_emplace(id).first->second;
 }
 
-UniqueModuleId const &ModuleMap::operator[](
+serialization::UniqueModuleId const &ModuleMap::operator[](
     serialization::ModuleIndex index) const {
   ASSERT(index.value() < ids_.size());
   return ids_.from_index(index.value()).first;
@@ -31,7 +31,8 @@ serialization::ModuleIndex ModuleMap::TryLoad(ModuleName const &name) const {
   }
 }
 
-serialization::ModuleIndex ModuleMap::index(UniqueModuleId const &id) const {
+serialization::ModuleIndex ModuleMap::index(
+    serialization::UniqueModuleId const &id) const {
   return serialization::ModuleIndex(ids_.index(id));
 }
 

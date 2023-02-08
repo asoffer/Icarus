@@ -17,13 +17,14 @@ struct SpecifiedModuleMap : ModuleMap {
     }
   }
 
-  void identify(ModuleName const& name, UniqueModuleId const& id) {
+  void identify(ModuleName const& name,
+                serialization::UniqueModuleId const& id) {
     specification_.emplace(name, id);
     emplace(id);
   }
 
  private:
-  absl::flat_hash_map<ModuleName, UniqueModuleId> specification_;
+  absl::flat_hash_map<ModuleName, serialization::UniqueModuleId> specification_;
 };
 
 }  // namespace module

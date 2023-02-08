@@ -226,6 +226,7 @@ cc_test(
     deps = [
         ":verify",
         "//module:specified_module_map",
+        "//serialization:module_map",
         "//test:repl",
         "@com_google_googletest//:gtest_main",
     ],

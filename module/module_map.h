@@ -9,6 +9,7 @@
 #include "module/module.h"
 #include "nth/container/flyweight_map.h"
 #include "serialization/module_index.h"
+#include "serialization/module_map.h"
 
 namespace module {
 
@@ -30,31 +31,11 @@ struct ModuleName {
   std::string name_;
 };
 
-// Represents an identifier for the module which is unique amongst all modules
-// linked into the same binary.
-struct UniqueModuleId {
-  explicit UniqueModuleId(std::string value) : value_(std::move(value)) {}
-  explicit UniqueModuleId(std::string_view value = "") : value_(value) {}
-  explicit UniqueModuleId(char const *value) : value_(value) {}
-
-  std::string_view value() const { return value_; }
-
-  friend bool operator==(UniqueModuleId const &,
-                         UniqueModuleId const &) = default;
-  template <typename H>
-  friend H AbslHashValue(H h, UniqueModuleId const &id) {
-    return H::combine(std::move(h), id.value_);
-  }
-
- private:
-  std::string value_;
-};
-
 // Represents a mapping from the three forms of identification for modules (a
 // unique identifier for the module, the name specified in `import` expressions,
 // and the path to the file on disk."
 struct ModuleMap {
-  ModuleMap() { emplace(UniqueModuleId("")); }
+  ModuleMap() { emplace(serialization::UniqueModuleId("")); }
   virtual ~ModuleMap() {}
 
  protected:
@@ -66,14 +47,16 @@ struct ModuleMap {
 
     operator bool() const { return ptr_; }
 
-    UniqueModuleId const &id() const { return ptr_->first; }
+    serialization::UniqueModuleId const &id() const { return ptr_->first; }
 
    private:
     friend IdLookupResult ModuleMap::find(serialization::ModuleIndex) const;
 
-    explicit IdLookupResult(std::pair<UniqueModuleId const, Module> const *ptr)
+    explicit IdLookupResult(
+        std::pair<serialization::UniqueModuleId const, Module> const *ptr)
         : ptr_(ptr) {}
-    std::pair<UniqueModuleId const, Module> const *ptr_ = nullptr;
+    std::pair<serialization::UniqueModuleId const, Module> const *ptr_ =
+        nullptr;
   };
 
  public:
@@ -84,14 +67,16 @@ struct ModuleMap {
 
   serialization::ModuleIndex TryLoad(ModuleName const &name) const;
 
-  Module &emplace(UniqueModuleId const &id);
+  Module &emplace(serialization::UniqueModuleId const &id);
 
-  UniqueModuleId const &operator[](serialization::ModuleIndex index) const;
+  serialization::UniqueModuleId const &operator[](
+      serialization::ModuleIndex index) const;
 
-  serialization::ModuleIndex index(UniqueModuleId const &id) const;
+  serialization::ModuleIndex index(
+      serialization::UniqueModuleId const &id) const;
 
  private:
-  nth::flyweight_map<UniqueModuleId, Module> ids_;
+  nth::flyweight_map<serialization::UniqueModuleId, Module> ids_;
 };
 
 }  // namespace module
