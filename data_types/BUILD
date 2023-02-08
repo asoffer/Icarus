@@ -18,7 +18,7 @@ cc_library(
     visibility = ["//visibility:public"],
     hdrs = ["fn.h"],
     deps = [
-        "//module:module_index",
+        "//serialization:module_index",
         "//base:extend",
         "//base/extend:absl_hash",
     ],

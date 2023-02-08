@@ -1,5 +1,5 @@
 #include "gtest/gtest.h"
-#include "module/module_index.h"
+#include "serialization/module_index.h"
 #include "semantic_analysis/type_system.h"
 #include "test/repl.h"
 

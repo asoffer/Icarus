@@ -28,25 +28,14 @@ cc_library(
 )
 
 cc_library(
-    name = "module_index",
-    visibility = ["//visibility:public"],
-    hdrs = ["module_index.h"],
-    deps = [
-        "//base:extend",
-        "//base/extend:absl_format",
-        "//base/extend:absl_hash",
-    ],
-)
-
-cc_library(
     name = "module_map",
     visibility = ["//visibility:public"],
     hdrs = ["module_map.h"],
     srcs = ["module_map.cc"],
     deps = [
         ":module",
-        ":module_index",
         "//base:debug",
+        "//serialization:module_index",
         "@asoffer_nth//nth/container:flyweight_map",
     ],
 )

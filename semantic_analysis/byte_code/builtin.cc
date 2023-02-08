@@ -1,11 +1,11 @@
-#include "module/module_index.h"
+#include "serialization/module_index.h"
 #include "semantic_analysis/byte_code/emitter.h"
 
 namespace semantic_analysis {
 
 void ByteCodeValueEmitter::operator()(ast::Builtin const* node,
                                       FunctionData data) {
-  data.function().append<jasmin::Push>(module::ModuleIndex::Builtin());
+  data.function().append<jasmin::Push>(serialization::ModuleIndex::Builtin());
 }
 
 void ByteCodeStatementEmitter::operator()(ast::Builtin const*, FunctionData) {}

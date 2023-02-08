@@ -47,7 +47,7 @@ ForeignFunctionMap::ForeignFunction(std::string name, core::FunctionType t) {
   ASSERT(foreign_functions_.from_index(foreign_functions_.index(iter))
              .second.second != nullptr);
   return std::pair(
-      data_types::Fn(module::ModuleIndex::Builtin(),
+      data_types::Fn(serialization::ModuleIndex::Builtin(),
                      data_types::LocalFnId(foreign_functions_.index(iter))),
       &iter->second.first);
 }

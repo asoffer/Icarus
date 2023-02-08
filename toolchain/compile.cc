@@ -91,7 +91,7 @@ bool Compile(std::string const &source_file, std::string const &module_map_file,
   }
 
   std::string_view file_content =
-      source_indexer.insert(module::ModuleIndex(0), *std::move(content));
+      source_indexer.insert(serialization::ModuleIndex(0), *std::move(content));
 
   auto parsed_nodes = frontend::Parse(file_content, **diagnostic_consumer);
   if ((*diagnostic_consumer)->num_consumed() != 0) { return false; }

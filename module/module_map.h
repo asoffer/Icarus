@@ -7,8 +7,8 @@
 #include <vector>
 
 #include "module/module.h"
-#include "module/module_index.h"
 #include "nth/container/flyweight_map.h"
+#include "serialization/module_index.h"
 
 namespace module {
 
@@ -59,7 +59,7 @@ struct ModuleMap {
 
  protected:
   struct IdLookupResult;
-  IdLookupResult find(ModuleIndex index) const;
+  IdLookupResult find(serialization::ModuleIndex index) const;
 
   struct IdLookupResult {
     IdLookupResult() = default;
@@ -69,7 +69,7 @@ struct ModuleMap {
     UniqueModuleId const &id() const { return ptr_->first; }
 
    private:
-    friend IdLookupResult ModuleMap::find(ModuleIndex) const;
+    friend IdLookupResult ModuleMap::find(serialization::ModuleIndex) const;
 
     explicit IdLookupResult(std::pair<UniqueModuleId const, Module> const *ptr)
         : ptr_(ptr) {}
@@ -82,13 +82,13 @@ struct ModuleMap {
   Module &primary() { return ids_.from_index(0).second; }
   Module const &primary() const { return ids_.from_index(0).second; }
 
-  ModuleIndex TryLoad(ModuleName const &name) const;
+  serialization::ModuleIndex TryLoad(ModuleName const &name) const;
 
   Module &emplace(UniqueModuleId const &id);
 
-  UniqueModuleId const &operator[](ModuleIndex index) const;
+  UniqueModuleId const &operator[](serialization::ModuleIndex index) const;
 
-  ModuleIndex index(UniqueModuleId const &id) const;
+  serialization::ModuleIndex index(UniqueModuleId const &id) const;
 
  private:
   nth::flyweight_map<UniqueModuleId, Module> ids_;

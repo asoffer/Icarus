@@ -15,9 +15,9 @@ TEST(Import, Computation) {
   auto const& mm = repl.module_map();
   auto id        = mm.id(name);
   ASSERT_TRUE(id);
-  auto expected_id = module::ModuleIndex(mm.index(id.id()).value());
+  auto expected_id = serialization::ModuleIndex(mm.index(id.id()).value());
 
-  EXPECT_EQ(repl.execute<module::ModuleIndex>(R"(import "abc")"), expected_id);
+  EXPECT_EQ(repl.execute<serialization::ModuleIndex>(R"(import "abc")"), expected_id);
 }
 
 }  // namespace

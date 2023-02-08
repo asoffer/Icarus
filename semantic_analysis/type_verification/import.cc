@@ -78,7 +78,7 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
 
     auto index = tv.module_map().TryLoad(module::ModuleName(name));
     LOG("", "%s", index);
-    if (index == module::ModuleIndex::Invalid()) {
+    if (index == serialization::ModuleIndex::Invalid()) {
       tv.ConsumeDiagnostic(NoSuchModule{.view = node->operand()->range()});
       qt = Error(qt);
     } else {

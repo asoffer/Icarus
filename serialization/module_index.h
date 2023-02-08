@@ -1,5 +1,5 @@
-#ifndef ICARUS_MODULE_MODULE_INDEX_H
-#define ICARUS_MODULE_MODULE_INDEX_H
+#ifndef ICARUS_SERIALIZATION_MODULE_INDEX_H
+#define ICARUS_SERIALIZATION_MODULE_INDEX_H
 
 #include <cstdint>
 
@@ -7,7 +7,7 @@
 #include "base/extend/absl_format.h"
 #include "base/extend/absl_hash.h"
 
-namespace module {
+namespace serialization {
 
 struct ModuleIndex
     : base::Extend<ModuleIndex, 1>::With<base::AbslHashExtension,
@@ -40,6 +40,6 @@ struct ModuleIndex
   underlying_type value_;
 };
 
-}  // namespace module
+}  // namespace serialization
 
-#endif  // ICARUS_MODULE_MODULE_INDEX_H
+#endif  // ICARUS_SERIALIZATION_MODULE_INDEX_H

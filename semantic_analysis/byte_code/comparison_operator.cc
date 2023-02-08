@@ -1,4 +1,4 @@
-#include "module/module_index.h"
+#include "serialization/module_index.h"
 #include "semantic_analysis/byte_code/emitter.h"
 #include "semantic_analysis/type_verification/casting.h"
 

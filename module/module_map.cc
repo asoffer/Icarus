@@ -4,7 +4,8 @@
 
 namespace module {
 
-ModuleMap::IdLookupResult ModuleMap::find(ModuleIndex index) const {
+ModuleMap::IdLookupResult ModuleMap::find(
+    serialization::ModuleIndex index) const {
   if (index.value() < ids_.size()) {
     return IdLookupResult(&ids_.from_index(index.value()));
   } else {
@@ -16,21 +17,22 @@ Module &ModuleMap::emplace(UniqueModuleId const &id) {
   return ids_.try_emplace(id).first->second;
 }
 
-UniqueModuleId const &ModuleMap::operator[](ModuleIndex index) const {
+UniqueModuleId const &ModuleMap::operator[](
+    serialization::ModuleIndex index) const {
   ASSERT(index.value() < ids_.size());
   return ids_.from_index(index.value()).first;
 }
 
-ModuleIndex ModuleMap::TryLoad(ModuleName const &name) const {
+serialization::ModuleIndex ModuleMap::TryLoad(ModuleName const &name) const {
   if (auto result = id(name)) {
     return index(result.id());
   } else {
-    return ModuleIndex::Invalid();
+    return serialization::ModuleIndex::Invalid();
   }
 }
 
-ModuleIndex ModuleMap::index(UniqueModuleId const &id) const {
-  return ModuleIndex(ids_.index(id));
+serialization::ModuleIndex ModuleMap::index(UniqueModuleId const &id) const {
+  return serialization::ModuleIndex(ids_.index(id));
 }
 
 }  // namespace module

@@ -28,6 +28,17 @@ cc_proto_library(
     deps = [":module_proto"],
 )
 
+cc_library(
+    name = "module_index",
+    visibility = ["//visibility:public"],
+    hdrs = ["module_index.h"],
+    deps = [
+        "//base:extend",
+        "//base/extend:absl_format",
+        "//base/extend:absl_hash",
+    ],
+)
+
 proto_library(
     name = "read_only_data_proto",
     srcs = ["read_only_data.proto"],
