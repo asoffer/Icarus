@@ -1,24 +1,35 @@
 #include "gtest/gtest.h"
-#include "module/specified_module_map.h"
 #include "serialization/module_map.h"
 #include "test/repl.h"
 
 namespace semantic_analysis {
 namespace {
 
+test::Repl MakeRepl(module::ModuleName name) {
+  module::Resources resources(
+      [name = std::move(name)](module::ModuleName const &module_name) {
+        if (module_name == name) {
+          return serialization::UniqueModuleId("module");
+        } else {
+          return serialization::UniqueModuleId();
+        }
+      });
+  serialization::Module m;
+  m.set_identifier("module");
+  resources.LoadFrom(std::move(m));
+  return test::Repl(std::move(resources));
+}
+
 TEST(Import, Computation) {
-  auto module_map = std::make_unique<module::SpecifiedModuleMap>();
-  serialization::UniqueModuleId key("key");
   module::ModuleName name("abc");
-  module_map->identify(name, key);
-  test::Repl repl(std::move(module_map));
+  test::Repl repl = MakeRepl(name);
 
-  auto const& mm = repl.module_map();
-  auto id        = mm.id(name);
-  ASSERT_TRUE(id);
-  auto expected_id = serialization::ModuleIndex(mm.index(id.id()).value());
+  serialization::ModuleIndex expected_index =
+      repl.resources().TryLoadModuleByName(name);
+  ASSERT_NE(expected_index, serialization::ModuleIndex::Invalid());
 
-  EXPECT_EQ(repl.execute<serialization::ModuleIndex>(R"(import "abc")"), expected_id);
+  EXPECT_EQ(repl.execute<serialization::ModuleIndex>(R"(import "abc")"),
+            expected_index);
 }
 
 }  // namespace

@@ -11,8 +11,7 @@
 #include "gtest/gtest.h"
 #include "jasmin/execute.h"
 #include "module/module.h"
-#include "module/module_map.h"
-#include "module/specified_module_map.h"
+#include "module/resources.h"
 #include "semantic_analysis/context.h"
 #include "semantic_analysis/foreign_function_map.h"
 #include "semantic_analysis/instruction_set.h"
@@ -21,9 +20,13 @@
 namespace test {
 
 struct Repl {
-  explicit Repl() : Repl(std::make_unique<module::SpecifiedModuleMap>()) {}
-  explicit Repl(std::unique_ptr<module::ModuleMap> map)
-      : module_map_(std::move(map)) {}
+  explicit Repl()
+      : Repl(module::Resources([](module::ModuleName const& name)
+                                   -> serialization::UniqueModuleId {
+          UNREACHABLE(name.name());
+        })) {}
+  explicit Repl(module::Resources resources)
+      : resources_(std::move(resources)) {}
 
  private:
   struct ResultBase {
@@ -155,10 +158,8 @@ struct Repl {
   semantic_analysis::TypeSystem& type_system() { return module().type_system(); }
   semantic_analysis::Context const& context() const { return context_; }
   ast::Module const& ast_module() const { return ast_module_; }
-  module::Module& module() { return module_map().primary(); }
-  module::Module const& module() const { return module_map().primary(); }
-  module::ModuleMap& module_map() { return *module_map_; }
-  module::ModuleMap const& module_map() const { return *module_map_; }
+  module::Module& module() { return resources().primary_module(); }
+  module::Resources& resources() { return resources_; }
 
   ast::Expression const& last_expression() const {
     base::PtrSpan stmts = ast_module().stmts();
@@ -182,9 +183,9 @@ struct Repl {
   std::optional<semantic_analysis::IrFunction> ExecutionFunction(
       std::string&& source);
 
+  module::Resources resources_;
   std::deque<std::string> source_content_;
   data_types::IntegerTable table_;
-  std::unique_ptr<module::ModuleMap> module_map_;
   ast::Module ast_module_;
   semantic_analysis::Context context_;
   diagnostic::TrackingConsumer consumer_;

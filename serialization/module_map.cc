@@ -19,4 +19,10 @@ std::pair<ModuleIndex, UniqueModuleId const&> ModuleMap::read(
       iter->second, data_.from_index(iter->second.value()));
 }
 
+ModuleIndex ModuleMap::get(UniqueModuleId const& id) const {
+  auto iter = data_.find(id);
+  if (iter == data_.end()) { return ModuleIndex::Invalid(); }
+  return ModuleIndex(data_.index(iter));
+}
+
 }  // namespace serialization

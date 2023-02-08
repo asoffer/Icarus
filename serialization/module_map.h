@@ -14,7 +14,7 @@ namespace serialization {
 // Represents an identifier for the module which is unique amongst all modules
 // linked into the same binary.
 struct UniqueModuleId {
-  explicit UniqueModuleId(std::string value) : value_(std::move(value)) {}
+  explicit UniqueModuleId(std::string &&value) : value_(std::move(value)) {}
   explicit UniqueModuleId(std::string_view value = "") : value_(value) {}
   explicit UniqueModuleId(char const *value) : value_(value) {}
 
@@ -59,6 +59,10 @@ struct ModuleMap {
   // associated value.
   std::pair<ModuleIndex, UniqueModuleId const &> read(
       ModuleIndex module_index, ModuleIndex dep_index) const;
+
+  // Returns the `ModuleIndex` associated with `id` if one exists and
+  // `ModuleIndex::Invalid()` otherwise.
+  ModuleIndex get(UniqueModuleId const & id) const;
 
  private:
   nth::flyweight_set<UniqueModuleId> data_;

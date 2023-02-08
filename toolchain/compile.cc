@@ -13,8 +13,9 @@
 #include "base/file.h"
 #include "base/log.h"
 #include "frontend/parse.h"
-#include "module/bazel_module_map.h"
+#include "module/bazel_name_resolver.h"
 #include "module/module.h"
+#include "module/resources.h"
 #include "semantic_analysis/context.h"
 #include "semantic_analysis/type_verification/verify.h"
 #include "toolchain/flags.h"
@@ -99,22 +100,22 @@ bool Compile(std::string const &source_file, std::string const &module_map_file,
   ast::Module ast_module;
   ast_module.insert(parsed_nodes.begin(), parsed_nodes.end());
 
-  std::unique_ptr<module::ModuleMap> module_map =
-      module::BazelModuleMap(module_map_file);
-  ASSERT(module_map != nullptr);
+  auto name_resolver = module::BazelNameResolver(module_map_file);
+  ASSERT(name_resolver != nullptr);
+  module::Resources resources(std::move(name_resolver));
+
   semantic_analysis::Context context;
 
-  semantic_analysis::TypeVerifier tv(*module_map, context,
-                                     **diagnostic_consumer);
+  semantic_analysis::TypeVerifier tv(resources, context, **diagnostic_consumer);
   tv.schedule(&ast_module);
   tv.complete();
 
   if ((*diagnostic_consumer)->num_consumed() != 0) { return false; }
 
-  module::Module &module = module_map->primary();
-  semantic_analysis::EmitByteCodeForModule(ast_module, context, module);
+  semantic_analysis::EmitByteCodeForModule(ast_module, context,
+                                           resources.primary_module());
 
-  return module.Serialize(output);
+  return resources.primary_module().Serialize(output);
 }
 
 }  // namespace toolchain

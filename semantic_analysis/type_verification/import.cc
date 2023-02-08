@@ -76,8 +76,7 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
     std::memcpy(&length, p + jasmin::ValueSize, sizeof(length));
     std::string_view name(ptr, length);
 
-    auto index = tv.module_map().TryLoad(module::ModuleName(name));
-    LOG("", "%s", index);
+    auto index = tv.resources().TryLoadModuleByName(module::ModuleName(name));
     if (index == serialization::ModuleIndex::Invalid()) {
       tv.ConsumeDiagnostic(NoSuchModule{.view = node->operand()->range()});
       qt = Error(qt);

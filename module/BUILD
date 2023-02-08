@@ -1,15 +1,17 @@
 package(default_visibility = ["//visibility:private"])
 
 cc_library(
-    name = "bazel_module_map",
+    name = "bazel_name_resolver",
     visibility = ["//visibility:public"],
-    hdrs = ["bazel_module_map.h"],
-    srcs = ["bazel_module_map.cc"],
+    hdrs = ["bazel_name_resolver.h"],
+    srcs = ["bazel_name_resolver.cc"],
     deps = [
-        ":module_map",
-        ":specified_module_map",
+        ":module_name",
+        "//base:debug",
         "//base:file",
+        "//serialization:module_map",
         "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/functional:any_invocable",
     ]
 )
 
@@ -28,25 +30,22 @@ cc_library(
 )
 
 cc_library(
-    name = "module_map",
+    name = "module_name",
     visibility = ["//visibility:public"],
-    hdrs = ["module_map.h"],
-    srcs = ["module_map.cc"],
-    deps = [
-        ":module",
-        "//base:debug",
-        "//serialization:module_index",
-        "//serialization:module_map",
-        "@asoffer_nth//nth/container:flyweight_map",
-    ],
+    hdrs = ["module_name.h"],
+    deps = [],
 )
 
 cc_library(
-    name = "specified_module_map",
+    name = "resources",
     visibility = ["//visibility:public"],
-    hdrs = ["specified_module_map.h"],
+    hdrs = ["resources.h"],
+    srcs = ["resources.cc"],
     deps = [
-        ":module_map",
-        "@com_google_absl//absl/container:flat_hash_map",
+        ":module",
+        ":module_name",
+        "//serialization:module_map",
+        "//serialization:read_only_data",
+        "@com_google_absl//absl/functional:any_invocable",
     ]
 )

@@ -12,6 +12,8 @@ TEST(ModuleMap, OneEntry) {
   m.insert(ModuleIndex(7), ModuleIndex(5), UniqueModuleId("abc"));
   EXPECT_THAT(m.read(ModuleIndex(7), ModuleIndex(5)),
               Pair(ModuleIndex(0), UniqueModuleId("abc")));
+  EXPECT_EQ(m.get(UniqueModuleId("abc")), ModuleIndex(0));
+  EXPECT_EQ(m.get(UniqueModuleId("ghi")), ModuleIndex::Invalid());
 }
 
 TEST(ModuleMap, MultipleEntries) {
@@ -26,6 +28,9 @@ TEST(ModuleMap, MultipleEntries) {
               Pair(ModuleIndex(1), UniqueModuleId("def")));
   EXPECT_THAT(m.read(ModuleIndex(2), ModuleIndex(4)),
               Pair(ModuleIndex(0), UniqueModuleId("abc")));
+  EXPECT_EQ(m.get(UniqueModuleId("abc")), ModuleIndex(0));
+  EXPECT_EQ(m.get(UniqueModuleId("def")), ModuleIndex(1));
+  EXPECT_EQ(m.get(UniqueModuleId("ghi")), ModuleIndex::Invalid());
 }
 
 }  // namespace serialization

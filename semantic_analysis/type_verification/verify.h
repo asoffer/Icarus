@@ -8,7 +8,7 @@
 #include "diagnostic/consumer/consumer.h"
 #include "jasmin/execute.h"
 #include "module/module.h"
-#include "module/module_map.h"
+#include "module/resources.h"
 #include "semantic_analysis/byte_code/byte_code.h"
 #include "semantic_analysis/context.h"
 #include "semantic_analysis/instruction_set.h"
@@ -51,14 +51,14 @@ inline auto VerifyParametersOf(ast::Node const *node) {
 struct TypeVerifier : VerificationScheduler {
   using signature = VerificationTask();
 
-  explicit TypeVerifier(module::ModuleMap &module_map, Context &c,
+  explicit TypeVerifier(module::Resources &resources, Context &c,
                         diagnostic::DiagnosticConsumer &d)
       : VerificationScheduler([](VerificationScheduler &s,
                                  ast::Node const *node) -> VerificationTask {
           return node->visit(static_cast<TypeVerifier &>(s));
         }),
-        module_map_(module_map),
-        module_(module_map_.primary()),
+        resources_(resources),
+        module_(resources.primary_module()),
         context_(c),
         diagnostic_consumer_(d) {}
 
@@ -69,8 +69,7 @@ struct TypeVerifier : VerificationScheduler {
   }
   auto &module() { return module_; }
   auto const &module() const { return module_; }
-  auto &module_map() { return module_map_; }
-  auto const &module_map() const { return module_map_; }
+  auto &resources() { return resources_; }
 
   template <typename T>
   T EvaluateAs(ast::Expression const *expression) const {
@@ -181,7 +180,7 @@ struct TypeVerifier : VerificationScheduler {
   }
 
  private:
-  module::ModuleMap &module_map_;
+  module::Resources& resources_;
   module::Module &module_;
   Context &context_;
   diagnostic::DiagnosticConsumer &diagnostic_consumer_;

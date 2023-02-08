@@ -77,7 +77,7 @@ cc_library(
         "//core:call",
         "//diagnostic/consumer",
         "//module",
-        "//module:module_map",
+        "//module:resources",
         "//semantic_analysis/byte_code",
         "//semantic_analysis:context",
         "//semantic_analysis:instruction_set",
@@ -225,8 +225,6 @@ cc_test(
     srcs = ["import_test.cc"],
     deps = [
         ":verify",
-        "//module:specified_module_map",
-        "//serialization:module_map",
         "//test:repl",
         "@com_google_googletest//:gtest_main",
     ],

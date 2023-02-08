@@ -1,6 +1,5 @@
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
-#include "module/specified_module_map.h"
 #include "semantic_analysis/type_verification/verify.h"
 #include "serialization/module_map.h"
 #include "test/repl.h"
@@ -13,13 +12,20 @@ using ::test::HasQualTypes;
 using ::testing::AllOf;
 using ::testing::Pair;
 
-test::Repl MakeRepl(std::optional<std::string_view> name = std::nullopt) {
-  auto module_map = std::make_unique<module::SpecifiedModuleMap>();
-  if (name) {
-    serialization::UniqueModuleId key("key");
-    module_map->identify(module::ModuleName(*name), key);
-  }
-  return test::Repl(std::move(module_map));
+test::Repl MakeRepl(std::optional<std::string> name = std::nullopt) {
+  module::Resources resources(
+      [name = std::move(name)](module::ModuleName const &module_name) {
+        if (name and module_name.name() == *name) {
+          return serialization::UniqueModuleId("module");
+        } else {
+          return serialization::UniqueModuleId();
+        }
+      });
+
+  serialization::Module m;
+  m.set_identifier("module");
+  resources.LoadFrom(std::move(m));
+  return test::Repl(std::move(resources));
 }
 
 TEST(Import, Success) {

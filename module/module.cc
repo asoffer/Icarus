@@ -223,30 +223,25 @@ bool Module::Serialize(std::ostream& output) const {
   return proto.SerializeToOstream(&output);
 }
 
-std::optional<Module> Module::Deserialize(std::istream& input) {
-  std::optional<Module> m;
-  serialization::Module proto;
-  if (not proto.ParseFromIstream(&input)) { return m; }
-  m.emplace(std::move(*proto.mutable_read_only()));
-
+bool Module::DeserializeInto(serialization::Module proto, Module& module) {
   SerializationState state;
 
-  data_types::Deserialize(proto.integers(), m->integer_table_);
+  data_types::Deserialize(proto.integers(), module.integer_table_);
   DeserializeReadOnlyData(
-      m->read_only_data(),
+      module.read_only_data(),
       state.get<semantic_analysis::PushStringLiteral::serialization_state>());
 
-  DeserializeTypeSystem(proto.type_system(), m->type_system_);
+  DeserializeTypeSystem(proto.type_system(), module.type_system_);
 
-  DeserializeForeignSymbols(m->type_system(), *proto.mutable_foreign_symbols(),
-                            m->foreign_function_map_);
+  DeserializeForeignSymbols(module.type_system(), *proto.mutable_foreign_symbols(),
+                            module.foreign_function_map_);
 
   // Populate the PushFunction state map.
   auto& f_state =
       state.get<semantic_analysis::PushFunction::serialization_state>();
   for (auto const& function : proto.functions()) {
     auto [id, f_ptr] =
-        m->create_function(function.parameters(), function.returns());
+        module.create_function(function.parameters(), function.returns());
     size_t index = f_state.index(f_ptr);
     ASSERT(id.local().value() == index);
   }
@@ -254,17 +249,17 @@ std::optional<Module> Module::Deserialize(std::istream& input) {
   auto& foreign_state =
       state
           .get<semantic_analysis::InvokeForeignFunction::serialization_state>();
-  foreign_state.set_foreign_function_map(&m->foreign_function_map());
-  foreign_state.set_type_system(m->type_system());
+  foreign_state.set_foreign_function_map(&module.foreign_function_map());
+  foreign_state.set_type_system(module.type_system());
 
-  jasmin::Deserialize(proto.initializer().content(), m->initializer_, state);
+  jasmin::Deserialize(proto.initializer().content(), module.initializer_, state);
   size_t fn_index = 0;
   for (auto const& function : proto.functions()) {
-    jasmin::Deserialize(function.content(), m->functions_[fn_index], state);
+    jasmin::Deserialize(function.content(), module.functions_[fn_index], state);
     ++fn_index;
   }
 
-  return m;
+  return true;
 }
 
 }  // namespace module

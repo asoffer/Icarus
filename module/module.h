@@ -20,7 +20,7 @@ struct Module {
       : read_only_data_(std::move(read_only_data)) {}
 
   bool Serialize(std::ostream &output) const;
-  static std::optional<Module> Deserialize(std::istream &input);
+  static bool DeserializeInto(serialization::Module proto, Module &module);
 
   semantic_analysis::IrFunction &initializer() { return initializer_; }
   semantic_analysis::IrFunction const &initializer() const {

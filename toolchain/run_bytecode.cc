@@ -9,8 +9,9 @@
 #include "absl/flags/flag.h"
 #include "absl/flags/parse.h"
 #include "jasmin/execute.h"
-#include "module/bazel_module_map.h"
+#include "module/bazel_name_resolver.h"
 #include "module/module.h"
+#include "module/resources.h"
 #include "semantic_analysis/instruction_set.h"
 #include "toolchain/flags.h"
 
@@ -29,23 +30,24 @@ bool Execute(std::string const &input_file, std::string const &module_map_file,
     std::cerr << "Failed to open '" << input_file << "'.\n";
     return false;
   }
-  std::unique_ptr<module::ModuleMap> module_map =
-      module::BazelModuleMap(module_map_file);
-  ASSERT(module_map != nullptr);
-  std::optional m = module::Module::Deserialize(stream);
-  if (not m) {
+
+  auto name_resolver = module::BazelNameResolver(module_map_file);
+  ASSERT(name_resolver != nullptr);
+  module::Resources resources(std::move(name_resolver));
+
+  serialization::Module proto;
+  if (not proto.ParseFromIstream(&stream) or
+      not module::Module::DeserializeInto(proto, resources.primary_module())) {
     std::cerr << "Invalid module.\n";
     return false;
   }
-  auto &module = module_map->emplace(serialization::UniqueModuleId());
-  module       = *std::move(m);
 
   jasmin::ValueStack value_stack;
   value_stack.push(arguments.data());
   value_stack.push(arguments.size());
   data_types::IntegerTable table;
   jasmin::Execute(
-      module.initializer(),
+      resources.primary_module().initializer(),
       jasmin::ExecutionState<semantic_analysis::InstructionSet>{table},
       value_stack);
   return true;

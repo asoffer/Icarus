@@ -182,7 +182,7 @@ cc_test(
       srcs = ["import_test.cc"],
       deps = [
           ":byte_code",
-          "//module:specified_module_map",
+          "//module:resources",
           "//semantic_analysis:type_system",
           "//serialization:module_map",
           "//test:repl",
