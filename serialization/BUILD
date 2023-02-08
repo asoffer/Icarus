@@ -17,8 +17,8 @@ proto_library(
     srcs = ["module.proto"],
     deps = [
         ":constants_proto",
-        ":read_only_data_proto",
         ":type_system_proto",
+        "//serialization/proto:read_only_data",
     ],
 )
 
@@ -39,16 +39,32 @@ cc_library(
     ],
 )
 
-proto_library(
+cc_proto_library(
     name = "read_only_data_proto",
-    srcs = ["read_only_data.proto"],
-    deps = [],
+    deps = ["//serialization/proto:read_only_data"],
 )
 
-cc_proto_library(
+cc_library(
     name = "read_only_data",
+    hdrs = ["read_only_data.h"],
+    srcs = ["read_only_data.cc"],
     visibility = ["//visibility:public"],
-    deps = [":read_only_data_proto"],
+    deps = [
+        ":module_index",
+        "//base:debug",
+        "//serialization:read_only_data_proto",
+        "@asoffer_nth//nth/container:flyweight_set",
+        "@com_google_absl//absl/container:flat_hash_map",
+    ],
+)
+
+cc_test(
+    name = "read_only_data_test",
+    srcs = ["read_only_data_test.cc"],
+    deps = [
+        ":read_only_data",
+        "@com_google_googletest//:gtest_main",
+    ],
 )
 
 proto_library(

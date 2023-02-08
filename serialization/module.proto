@@ -1,7 +1,7 @@
 syntax = "proto3";
 
 import "serialization/constants.proto";
-import "serialization/read_only_data.proto";
+import "serialization/proto/read_only_data.proto";
 import "serialization/type_system.proto";
 
 package serialization;
