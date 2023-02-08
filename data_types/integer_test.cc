@@ -9,7 +9,7 @@ using ::testing::UnorderedElementsAre;
 
 IntegerTable RoundTrip(IntegerTable const& table) {
   IntegerTable result;
-  data_types::proto::IntegerTable proto;
+  serialization::IntegerTable proto;
   Serialize(table, proto);
   Deserialize(proto, result);
   return result;

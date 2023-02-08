@@ -1,0 +1,7 @@
+syntax = "proto3";
+
+package serialization;
+
+message ReadOnlyData {
+  repeated string strings = 1;
+}

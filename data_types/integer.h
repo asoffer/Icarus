@@ -3,7 +3,7 @@
 
 #include <iosfwd>
 
-#include "data_types/data.pb.h"
+#include "serialization/constants.pb.h"
 #include "jasmin/instruction.h"
 #include "nth/container/flyweight_set.h"
 #include "nth/numeric/integer.h"
@@ -45,10 +45,8 @@ struct IntegerHandle {
   nth::Integer const* ptr_;
 };
 
-void Serialize(IntegerTable const& table,
-               data_types::proto::IntegerTable& proto);
-void Deserialize(data_types::proto::IntegerTable const& proto,
-                 IntegerTable& table);
+void Serialize(IntegerTable const& table, serialization::IntegerTable& proto);
+void Deserialize(serialization::IntegerTable const& proto, IntegerTable& table);
 
 }  // namespace data_types
 

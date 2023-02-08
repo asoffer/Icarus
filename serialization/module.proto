@@ -1,0 +1,41 @@
+syntax = "proto3";
+
+import "serialization/constants.proto";
+import "serialization/read_only_data.proto";
+import "serialization/type_system.proto";
+
+package serialization;
+
+message Function {
+  uint32 parameters = 1;
+  uint32 returns = 2;
+  bytes content = 3;
+}
+
+message ForeignSymbol {
+  string name = 1;
+  Type type = 2;
+}
+
+message Module {
+  // An identifier for this module unique amongst all modules being linked
+  // together.
+  string identifier = 1;
+
+  // Subroutine at which to begin execution.
+  Function initializer = 2;
+
+  // Defining information for all types referenced by this module.
+  TypeSystem type_system = 3;
+
+  // All symbols declared via `builtin.foreign`.
+  repeated ForeignSymbol foreign_symbols = 4;
+
+  // All functions, excluding the main entry point.
+  repeated Function functions = 5;
+
+  // All read-only data required in the module.
+  ReadOnlyData read_only = 6;
+
+  IntegerTable integers = 7;
+}

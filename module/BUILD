@@ -19,10 +19,10 @@ cc_library(
     hdrs = ["module.h"],
     srcs = ["module.cc"],
     deps = [
-        ":module_cc_proto",
         "//data_types:integer",
         "//semantic_analysis:instruction_set",
         "//semantic_analysis:type_system",
+        "//serialization:module",
         "@asoffer_jasmin//jasmin:serialization",
     ],
 )
@@ -49,19 +49,6 @@ cc_library(
         "//base:debug",
         "@asoffer_nth//nth/container:flyweight_map",
     ],
-)
-
-proto_library(
-    name = "module_proto",
-    srcs = ["module.proto"],
-    deps = [
-        "//data_types:data_proto",
-    ],
-)
-
-cc_proto_library(
-    name = "module_cc_proto",
-    deps = [":module_proto"],
 )
 
 cc_library(

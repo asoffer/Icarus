@@ -1,19 +1,19 @@
 #include "module/module.h"
 
 #include "jasmin/serialization.h"
-#include "module/module.pb.h"
 #include "nth/meta/sequence.h"
 #include "nth/meta/type.h"
+#include "serialization/module.pb.h"
 
 namespace module {
 namespace {
 
-core::Type DeserializeType(internal_proto::Type const& proto) {
+core::Type DeserializeType(serialization::Type const& proto) {
   return core::Type(proto.category(),
                     proto.has_value() ? proto.value() : proto.index());
 }
 
-void SerializeType(core::Type t, internal_proto::Type& proto,
+void SerializeType(core::Type t, serialization::Type& proto,
                    bool inline_storage) {
   proto.set_category(t.category());
   if (inline_storage) {
@@ -24,7 +24,7 @@ void SerializeType(core::Type t, internal_proto::Type& proto,
 }
 
 void SerializeTypeSystem(semantic_analysis::TypeSystem& type_system,
-                         internal_proto::TypeSystem& proto) {
+                         serialization::TypeSystem& proto) {
   type_system.visit_all_stored([&](auto t) {
     using type_category_type     = std::decay_t<decltype(t)>;
     constexpr auto type_category = nth::type<type_category_type>;
@@ -71,7 +71,7 @@ void SerializeTypeSystem(semantic_analysis::TypeSystem& type_system,
   });
 }
 
-void DeserializeTypeSystem(internal_proto::TypeSystem const& proto,
+void DeserializeTypeSystem(serialization::TypeSystem const& proto,
                            semantic_analysis::TypeSystem& type_system) {
   for (auto const& parameter_type : proto.parameters()) {
     core::Parameters<core::Type> parameters;
@@ -120,7 +120,7 @@ absl::flat_hash_map<void (*)(), std::pair<size_t, core::FunctionType>>
 SerializeForeignSymbols(
     semantic_analysis::TypeSystem& type_system,
     semantic_analysis::ForeignFunctionMap const& map,
-    google::protobuf::RepeatedPtrField<internal_proto::ForeignSymbol>& proto) {
+    google::protobuf::RepeatedPtrField<serialization::ForeignSymbol>& proto) {
   absl::flat_hash_map<void (*)(), std::pair<size_t, core::FunctionType>>
       index_map;
   for (auto const& [key, value] : map) {
@@ -137,7 +137,7 @@ SerializeForeignSymbols(
 
 void DeserializeForeignSymbols(
     semantic_analysis::TypeSystem& type_system,
-    google::protobuf::RepeatedPtrField<internal_proto::ForeignSymbol> const&
+    google::protobuf::RepeatedPtrField<serialization::ForeignSymbol> const&
         proto,
     semantic_analysis::ForeignFunctionMap& map) {
   for (auto const& symbol : proto) {
@@ -161,7 +161,7 @@ struct SerializationState {
 };
 
 void SerializeFunction(semantic_analysis::IrFunction const& f,
-                       internal_proto::Function& proto,
+                       serialization::Function& proto,
                        SerializationState& state) {
   proto.set_parameters(f.parameter_count());
   proto.set_returns(f.return_count());
@@ -169,7 +169,7 @@ void SerializeFunction(semantic_analysis::IrFunction const& f,
 }
 
 void SerializeReadOnlyData(
-    internal_proto::ReadOnlyData& data,
+    serialization::ReadOnlyData& data,
     semantic_analysis::PushStringLiteral::serialization_state const& state) {
   for (std::string_view content : state) {
     *data.add_strings() = std::string(content);
@@ -177,7 +177,7 @@ void SerializeReadOnlyData(
 }
 
 void DeserializeReadOnlyData(
-    internal_proto::ReadOnlyData const& data,
+    serialization::ReadOnlyData const& data,
     semantic_analysis::PushStringLiteral::serialization_state& state) {
   for (std::string_view content : data.strings()) { state.index(content); }
 }
@@ -185,7 +185,7 @@ void DeserializeReadOnlyData(
 }  // namespace
 
 bool Module::Serialize(std::ostream& output) const {
-  internal_proto::Module proto;
+  serialization::Module proto;
 
   SerializeTypeSystem(type_system(), *proto.mutable_type_system());
 
@@ -225,7 +225,7 @@ bool Module::Serialize(std::ostream& output) const {
 
 std::optional<Module> Module::Deserialize(std::istream& input) {
   std::optional<Module> m;
-  internal_proto::Module proto;
+  serialization::Module proto;
   if (not proto.ParseFromIstream(&input)) { return m; }
   m.emplace(std::move(*proto.mutable_read_only()));
 

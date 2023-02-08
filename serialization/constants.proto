@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package data_types.proto;
+package serialization;
 
 message IntegerTable {
   message Integer {

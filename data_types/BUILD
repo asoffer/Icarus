@@ -13,18 +13,6 @@ cc_library(
     deps = [],
 )
 
-proto_library(
-    name = "data_proto",
-    visibility = ["//module:__subpackages__"],
-    srcs = ["data.proto"],
-    deps = [],
-)
-
-cc_proto_library(
-    name = "data_cc_proto",
-    deps = [":data_proto"],
-)
-
 cc_library(
     name = "fn",
     visibility = ["//visibility:public"],
@@ -48,7 +36,7 @@ cc_library(
     hdrs = ["integer.h"],
     srcs = ["integer.cc"],
     deps = [
-        ":data_cc_proto",
+        "//serialization:constants",
         "//base:debug",
         "@asoffer_nth//nth/numeric:integer",
         "@asoffer_nth//nth/container:flyweight_set",

@@ -11,8 +11,7 @@ IntegerHandle IntegerTable::insert(nth::Integer const& n) {
   return IntegerHandle(&*iter);
 }
 
-void Serialize(IntegerTable const& table,
-               data_types::proto::IntegerTable& proto) {
+void Serialize(IntegerTable const& table, serialization::IntegerTable& proto) {
   for (auto const& n : table) {
     auto& proto_integer = *proto.add_integers();
     if (n < 0) { proto_integer.set_negative(true); }
@@ -25,7 +24,7 @@ void Serialize(IntegerTable const& table,
   }
 }
 
-void Deserialize(data_types::proto::IntegerTable const& proto,
+void Deserialize(serialization::IntegerTable const& proto,
                  IntegerTable& table) {
   for (auto const& proto_integer : proto.integers()) {
     nth::Integer n;
