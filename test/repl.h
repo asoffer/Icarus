@@ -24,7 +24,8 @@ inline module::Resources TestResources(
                            const>
         name_resolver = [](module::ModuleName const& name)
         -> serialization::UniqueModuleId { UNREACHABLE(name.name()); }) {
-  return module::Resources(std::move(name_resolver),
+  return module::Resources(serialization::UniqueModuleId("~test-module~"),
+                           std::move(name_resolver),
                            std::make_unique<diagnostic::TrackingConsumer>());
 }
 

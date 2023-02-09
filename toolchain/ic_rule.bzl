@@ -5,8 +5,8 @@ IcarusInfo = provider(
 
 def _tooling_transition_impl(settings, attr):
     return {
-# 1        "//command_line_option:compilation_mode": "opt",
-# 1        "//command_line_option:cpu": "clang",
+#         "//command_line_option:compilation_mode": "opt",
+#         "//command_line_option:cpu": "clang",
     }
 
 _tooling_transition = transition(
@@ -38,7 +38,7 @@ def _module_mapping(deps):
     }
 
 
-def _dotted_path(label):
+def _dotted_path(label, icm):
     package = label.package
     if package.startswith("@"):
         package = package[1:]
@@ -46,6 +46,7 @@ def _dotted_path(label):
         package = package[2:]
     if package.startswith("toolchain/stdlib"):
         package = "std" + package[len("toolchain/stdlib"):]
+        package.replace("/", ".")
     return "{}.{}".format(package, label.name)
 
 
@@ -56,9 +57,10 @@ def _module_map_file(ctx, mapping):
     ctx.actions.write(
         output = module_map,
         content = '\n'.join([
-            "{id}\n{name}".format(
+            "{id}\n{name}\n{icm}".format(
                 id = icm.label, 
-                name = _dotted_path(icm.label))
+                name = _dotted_path(icm.label, icm),
+                icm = icm.icms.to_list()[0].path)
             for (src, icm) in mapping.items()
         ])
     )
@@ -107,21 +109,21 @@ def _ic_binary_impl(ctx):
     executable_path = "{name}%/{name}".format(name = ctx.label.name)
     executable = ctx.actions.declare_file(executable_path)
 
-    runfiles = ctx.runfiles(files = [icm_file, module_map_file, ctx.executable._run_bytecode])
+    runfiles = ctx.runfiles(files = [icm_file, ctx.executable._run_bytecode])
     ctx.actions.write(
         output = executable,
         is_executable = True,
         content = """
-        {executable} --input={icm} --module_map_file={mmf}
+        {executable} --input={icm}
         """.format(
             executable = ctx.executable._run_bytecode.short_path,
             icm = icm_file.short_path,
-            mmf = module_map_file.short_path
         )
     )
 
     return [
-        IcarusInfo(source = ctx.attr.srcs[0].files.to_list()[0]),
+        IcarusInfo(
+            source = ctx.attr.srcs[0].files.to_list()[0]),
         DefaultInfo(
             files = depset([icm_file, module_map_file]),
             executable = executable,

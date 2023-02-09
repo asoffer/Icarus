@@ -187,6 +187,7 @@ void DeserializeReadOnlyData(
 bool Module::Serialize(std::ostream& output) const {
   serialization::Module proto;
 
+  *proto.mutable_identifier() = id_.value();
   SerializeTypeSystem(type_system(), *proto.mutable_type_system());
 
   SerializationState state;

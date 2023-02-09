@@ -18,7 +18,7 @@ test::Repl MakeRepl(std::optional<std::string> name = std::nullopt) {
         if (name and module_name.name() == *name) {
           return serialization::UniqueModuleId("module");
         } else {
-          return serialization::UniqueModuleId();
+          return serialization::UniqueModuleId::Invalid();
         }
       });
 

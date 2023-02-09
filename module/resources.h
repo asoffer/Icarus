@@ -12,13 +12,15 @@ namespace module {
 
 struct Resources {
   explicit Resources(
+      serialization::UniqueModuleId const& id,
       absl::AnyInvocable<serialization::UniqueModuleId(ModuleName const&) const>
           name_resolver,
-      std::unique_ptr<diagnostic::DiagnosticConsumer> diagnostic_consumer)
-      : name_resolver_(std::move(name_resolver)),
-        diagnostic_consumer_(std::move(diagnostic_consumer)) {
-    modules_.push_back(std::make_unique<Module>());
-  }
+      std::unique_ptr<diagnostic::DiagnosticConsumer> diagnostic_consumer);
+
+  // Attempts to deserialize `module` and populate the primary module in a
+  // `Resources` object. Returns the object if successful. Returns
+  // `std::nullopt` otherwise.
+  static std::optional<Resources> LoadPrimary(serialization::Module module);
 
   // Loads the contents of `module` into a new module and returns a pointer to
   // that module if loading was successful. If unsuccessful, a null pointer is
@@ -38,6 +40,11 @@ struct Resources {
   diagnostic::DiagnosticConsumer& diagnostic_consumer();
 
  private:
+  explicit Resources() = default;
+
+  void Populate(serialization::UniqueModuleId const& id,
+                std::unique_ptr<Module> m);
+
   std::vector<std::unique_ptr<Module>> modules_;
   serialization::ModuleMap module_map_;
   serialization::ReadOnlyData read_only_data_;

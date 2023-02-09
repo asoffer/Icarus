@@ -1,31 +1,31 @@
 package(default_visibility = ["//visibility:public"])
 
-cc_binary(
-    name = "run_bytecode",
-    srcs = ["run_bytecode.cc"],
+cc_library(
+    name = "bazel",
+    visibility = ["//visibility:public"],
+    hdrs = ["bazel.h"],
+    srcs = ["bazel.cc"],
     deps = [
-        ":flags",
-        "//module",
-        "//module:bazel_name_resolver",
-        "//module:resources",
-        "@asoffer_jasmin//jasmin:execute",
-        "@com_google_absl//absl/debugging:failure_signal_handler",
-        "@com_google_absl//absl/debugging:symbolize",
-        "@com_google_absl//absl/flags:flag",
-        "@com_google_absl//absl/flags:parse",
-    ],
+        "//module:module_name",
+        "//base:debug",
+        "//base:file",
+        "//serialization:module_map",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/functional:any_invocable",
+        "@com_google_absl//absl/container:flat_hash_map",
+    ]
 )
 
 cc_binary(
     name = "compile",
     srcs = ["compile.cc"],
     deps = [
+        ":bazel",
         ":flags",
         "//base:file",
         "//base:log",
         "//frontend:parse",
         "//module",
-        "//module:bazel_name_resolver",
         "//module:resources",
         "//semantic_analysis:context",
         "//semantic_analysis/type_verification:verify",
@@ -49,5 +49,20 @@ cc_library(
         "@com_google_absl//absl/flags:flag",
         "@com_google_absl//absl/flags:usage",
         "@com_google_absl//absl/status:statusor",
+    ],
+)
+
+cc_binary(
+    name = "run_bytecode",
+    srcs = ["run_bytecode.cc"],
+    deps = [
+        ":flags",
+        "//module",
+        "//module:resources",
+        "@asoffer_jasmin//jasmin:execute",
+        "@com_google_absl//absl/debugging:failure_signal_handler",
+        "@com_google_absl//absl/debugging:symbolize",
+        "@com_google_absl//absl/flags:flag",
+        "@com_google_absl//absl/flags:parse",
     ],
 )

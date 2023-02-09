@@ -10,7 +10,5 @@ io ::= import "std.io"
 // is no requirement to have the identifier to be named like the module itself.
 // However, doing so is generally considered best-practice, as it reduces the
 // frequency with which readers will have to consult the `import` expression.
-number: i64 = 1234
-io.Print("Hello, the number is: ")
-io.Print(number)
-io.Print("\n")
+
+// TODO: Showcase accessing symbols in `io`.

@@ -13,11 +13,11 @@
 #include "base/file.h"
 #include "base/log.h"
 #include "frontend/parse.h"
-#include "module/bazel_name_resolver.h"
 #include "module/module.h"
 #include "module/resources.h"
 #include "semantic_analysis/context.h"
 #include "semantic_analysis/type_verification/verify.h"
+#include "toolchain/bazel.h"
 #include "toolchain/flags.h"
 
 ABSL_FLAG(std::vector<std::string>, log, {},
@@ -58,24 +58,8 @@ void ValidateOutputPath(std::string_view output) {
   }
 }
 
-absl::StatusOr<std::string> LoadFileContent(
-    std::string const &file_name, std::span<std::string const> lookup_paths) {
-  if (!file_name.starts_with("/")) {
-    for (std::string_view base_path : lookup_paths) {
-      if (auto maybe_content =
-              base::ReadFileToString(absl::StrCat(base_path, "/", file_name))) {
-        return *std::move(maybe_content);
-      }
-    }
-  }
-  if (auto maybe_content = base::ReadFileToString(file_name)) {
-    return *std::move(maybe_content);
-  }
-  return absl::NotFoundError(
-      absl::StrFormat(R"(Failed to open file "%s")", file_name));
-}
-
-bool Compile(std::string const &source_file, std::string const &module_map_file,
+bool Compile(serialization::UniqueModuleId module_id,
+             std::string const &source_file, std::string const &module_map_file,
              std::ofstream &output) {
   frontend::SourceIndexer source_indexer;
   auto diagnostic_consumer =
@@ -85,9 +69,10 @@ bool Compile(std::string const &source_file, std::string const &module_map_file,
     return false;
   }
 
-  absl::StatusOr<std::string> content = LoadFileContent(source_file, {});
-  if (not content.ok()) {
+  std::optional content = base::ReadFileToString(source_file);
+  if (not content) {
     // TODO Log an error.
+    std::cerr << "no content.\n";
     return false;
   }
 
@@ -100,11 +85,37 @@ bool Compile(std::string const &source_file, std::string const &module_map_file,
   ast::Module ast_module;
   ast_module.insert(parsed_nodes.begin(), parsed_nodes.end());
 
-  auto name_resolver = module::BazelNameResolver(module_map_file);
+  auto specification = BazelModuleMap(module_map_file);
+  if (not specification) {
+    // TODO log an error
+    std::cerr << "invalid spec.\n";
+    return false;
+  }
+  auto name_resolver = BazelNameResolver(std::move(specification->names));
   ASSERT(name_resolver != nullptr);
   auto &diagnostic_consumer_ref = **diagnostic_consumer;
-  module::Resources resources(std::move(name_resolver),
+  module::Resources resources(std::move(module_id), std::move(name_resolver),
                               std::move(*diagnostic_consumer));
+  for (auto const &[id, path] : specification->paths) {
+    std::ifstream stream(path);
+    if (not stream.is_open()) {
+      std::cerr << "failed to open " << id.value() << " (" << path << ").\n";
+      return false;
+    }
+
+    serialization::Module proto;
+    if (not proto.ParseFromIstream(&stream)) {
+      std::cerr << "failed to parse " << id.value() << " (" << path << ").\n";
+      return false;
+    }
+
+    if (not resources.LoadFrom(std::move(proto))) {
+      // TODO Log an error.
+      std::cerr << "failed to load module " << id.value() << " (" << path
+                << ").\n";
+      return false;
+    }
+  }
 
   semantic_analysis::Context context;
 
@@ -140,8 +151,8 @@ int main(int argc, char *argv[]) {
   toolchain::ValidateOutputPath(output);
 
   std::ofstream output_stream(output.c_str(), std::ofstream::out);
-  bool success =
-      toolchain::Compile(absl::GetFlag(FLAGS_source),
-                         absl::GetFlag(FLAGS_module_map_file), output_stream);
+  bool success = toolchain::Compile(
+      serialization::UniqueModuleId(module_id), absl::GetFlag(FLAGS_source),
+      absl::GetFlag(FLAGS_module_map_file), output_stream);
   return success ? 0 : 1;
 }

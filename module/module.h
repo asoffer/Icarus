@@ -7,17 +7,19 @@
 #include <ostream>
 
 #include "data_types/integer.h"
-#include "serialization/module_index.h"
 #include "semantic_analysis/foreign_function_map.h"
 #include "semantic_analysis/instruction_set.h"
 #include "semantic_analysis/type_system.h"
 #include "serialization/module.pb.h"
+#include "serialization/module_index.h"
+#include "serialization/module_map.h"
 
 namespace module {
 
 struct Module {
-  explicit Module(serialization::ReadOnlyData read_only_data = {})
-      : read_only_data_(std::move(read_only_data)) {}
+  explicit Module(serialization::UniqueModuleId id,
+                  serialization::ReadOnlyData read_only_data = {})
+      : id_(std::move(id)), read_only_data_(std::move(read_only_data)) {}
 
   bool Serialize(std::ostream &output) const;
   static bool DeserializeInto(serialization::Module proto, Module &module);
@@ -64,6 +66,8 @@ struct Module {
   }
 
  private:
+  serialization::UniqueModuleId id_;
+
   // Accepts two arguments (a slice represented as data followed by length).
   semantic_analysis::IrFunction initializer_{2, 0};
 

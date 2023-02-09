@@ -18,6 +18,11 @@ struct UniqueModuleId {
   explicit UniqueModuleId(std::string_view value = "") : value_(value) {}
   explicit UniqueModuleId(char const *value) : value_(value) {}
 
+  // Valid modules must only use printable characters.
+  static UniqueModuleId Invalid() {
+    return UniqueModuleId(std::string("\0", 1));
+  }
+
   std::string_view value() const { return value_; }
 
   friend bool operator==(UniqueModuleId const &,
