@@ -10,8 +10,20 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
   if (operand_qts.size() != 1) { NOT_YET("log an error"); }
   QualifiedType qt = operand_qts[0];
   if (qt.type() == Module) {
-    LOG("", "%s", tv.EvaluateAs<serialization::ModuleIndex>(node->operand()));
-    NOT_YET();
+    auto &m = tv.resources().module(
+        tv.EvaluateAs<serialization::ModuleIndex>(node->operand()));
+    std::span symbols = m.LoadSymbols(node->member_name());
+    switch (symbols.size()) {
+      case 0: {
+        NOT_YET();
+      } break;
+      case 1: {
+        co_return tv.TypeOf(node, Constant(symbols[0].type()));
+      } break;
+      default: {
+        NOT_YET();
+      } break;
+    }
   } else if (qt.type().is<SliceType>(tv.type_system())) {
     if (node->member_name() == "data") {
       co_return tv.TypeOf(

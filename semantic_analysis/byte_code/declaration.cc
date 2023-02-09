@@ -33,7 +33,8 @@ std::span<std::byte const> EmitConstantDeclaration(
     } break;
     case ast::Declaration::kInferred: {
       if (node->ids().size() != 1) { NOT_YET(); }
-      return emitter.EvaluateConstant(node->init_val(), qt);
+      std::span x =  emitter.EvaluateConstant(node->init_val(), qt);
+      return x;
     } break;
     default: NOT_YET(node->DebugString());
   }
@@ -45,7 +46,18 @@ void ByteCodeStatementEmitter::operator()(ast::Declaration const* node,
                                           FunctionData data) {
   if (node->flags() & ast::Declaration::f_IsConst) {
     auto qt = context().qualified_type(node);
-    EmitConstantDeclaration(*this, node, qt, data);
+    std::span<std::byte const> evaluation =
+        EmitConstantDeclaration(*this, node, qt, data);
+
+    // Exporting
+    if (node->hashtags.contains(data_types::Hashtag::Export)) {
+      if (qt.type() == Type) {
+        core::Type t;
+        std::memcpy(&t, evaluation.data(), sizeof(t));
+        module().Export(node->ids()[0].name(), t);
+      }
+    }
+
   } else {
     EmitNonconstantDeclaration(*this, node, data);
   }
@@ -53,11 +65,13 @@ void ByteCodeStatementEmitter::operator()(ast::Declaration const* node,
 
 void ByteCodeStatementEmitter::operator()(ast::Declaration::Id const* node,
                                           FunctionData data) {
-  if (node->declaration().ids().size() != 1) { NOT_YET(); }
-  if (node->declaration().flags() & ast::Declaration::f_IsConst) {
-    auto qt = context().qualified_type(node->declaration().init_val());
+  auto const& declaration = node->declaration();
+  if (declaration.ids().size() != 1) { NOT_YET(); }
+  if (declaration.flags() & ast::Declaration::f_IsConst) {
+    // TODO do we want to be checking the initial value?
+    auto qt = context().qualified_type(declaration.init_val());
     std::span<std::byte const> evaluation =
-        EmitConstantDeclaration(*this, &node->declaration(), qt, data);
+        EmitConstantDeclaration(*this, &declaration, qt, data);
     if (evaluation.size() <= jasmin::ValueSize) {
       if (qt.type().is<core::FunctionType>(type_system())) {
         data.function().append<PushFunction>(

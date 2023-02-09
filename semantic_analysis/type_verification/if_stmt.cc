@@ -57,7 +57,7 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
 
       std::vector<QualifiedType> yielded_qts;
 
-      bool marked_const = node->hashtags.contains(ir::Hashtag::Const);
+      bool marked_const = node->hashtags.contains(data_types::Hashtag::Const);
 
       if (marked_const) {
         // If the condition has an error, and it is a `#{const}` if-statement,

@@ -125,8 +125,7 @@ bool Compile(serialization::UniqueModuleId module_id,
 
   if (diagnostic_consumer_ref.num_consumed() != 0) { return false; }
 
-  semantic_analysis::EmitByteCodeForModule(ast_module, context,
-                                           resources.primary_module());
+  semantic_analysis::EmitByteCodeForModule(ast_module, context, resources);
 
   return resources.primary_module().Serialize(output);
 }

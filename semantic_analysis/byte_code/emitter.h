@@ -7,6 +7,7 @@
 #include "jasmin/function.h"
 #include "jasmin/instructions/core.h"
 #include "module/module.h"
+#include "module/resources.h"
 #include "nth/container/flyweight_map.h"
 #include "semantic_analysis/context.h"
 #include "semantic_analysis/instruction_set.h"
@@ -40,34 +41,35 @@ struct FunctionData {
 struct EmitterBase {
   using FunctionData = FunctionData;
 
-  explicit constexpr EmitterBase(Context &c, module::Module &module)
-      : context_(c), module_(module) {}
+  explicit constexpr EmitterBase(Context &c, module::Resources &resources)
+      : context_(c), resources_(resources) {}
 
   Context const &context() const { return context_; }
   Context &context() { return context_; }
+  module::Resources &resources() { return resources_; }
 
-  TypeSystem &type_system() const { return module_.type_system(); }
-  auto &foreign_function_map() const { return module_.foreign_function_map(); }
-  auto &module() const { return module_; }
+  auto &module() const { return resources_.primary_module(); }
+  TypeSystem &type_system() const { return module().type_system(); }
+  auto &foreign_function_map() const { return module().foreign_function_map(); }
 
   template <std::derived_from<EmitterBase> E>
   E as() const {
-    return E(context_, module_);
+    return E(context_, resources_);
   }
 
   void EmitDefaultInitialize(core::Type type, FunctionData data);
 
  private:
   Context &context_;
-  module::Module &module_;
+  module::Resources &resources_;
 };
 
 template <typename E>
 struct Emitter : EmitterBase {
   using signature = void(FunctionData);
 
-  explicit constexpr Emitter(Context &c, module::Module &module)
-      : EmitterBase(c, module) {}
+  explicit constexpr Emitter(Context &c, module::Resources &resources)
+      : EmitterBase(c, resources) {}
 
   void Emit(ast::Node const *node, FunctionData data) {
     node->visit<E>(static_cast<E &>(*this), data);
@@ -86,8 +88,8 @@ struct Emitter : EmitterBase {
 };
 
 struct ByteCodeValueEmitter : Emitter<ByteCodeValueEmitter> {
-  explicit ByteCodeValueEmitter(Context &c, module::Module &module)
-      : Emitter<ByteCodeValueEmitter>(c, module) {}
+  explicit ByteCodeValueEmitter(Context &c, module::Resources &resources)
+      : Emitter<ByteCodeValueEmitter>(c, resources) {}
 
   void CastTo(ast::Expression const *node, QualifiedType to_qt,
               FunctionData data);
@@ -125,8 +127,8 @@ struct ByteCodeValueEmitter : Emitter<ByteCodeValueEmitter> {
 };
 
 struct ByteCodeStatementEmitter : Emitter<ByteCodeStatementEmitter> {
-  explicit ByteCodeStatementEmitter(Context &c, module::Module &module)
-      : Emitter<ByteCodeStatementEmitter>(c, module) {}
+  explicit ByteCodeStatementEmitter(Context &c, module::Resources &resources)
+      : Emitter<ByteCodeStatementEmitter>(c, resources) {}
 
   template <typename NodeType>
   void operator()(NodeType const *node, FunctionData) {
@@ -160,8 +162,8 @@ struct ByteCodeStatementEmitter : Emitter<ByteCodeStatementEmitter> {
 };
 
 struct ByteCodeReferenceEmitter : Emitter<ByteCodeReferenceEmitter> {
-  explicit ByteCodeReferenceEmitter(Context &c, module::Module &module)
-      : Emitter<ByteCodeReferenceEmitter>(c, module) {}
+  explicit ByteCodeReferenceEmitter(Context &c, module::Resources &resources)
+      : Emitter<ByteCodeReferenceEmitter>(c, resources) {}
 
   template <typename NodeType>
   void operator()(NodeType const *node, FunctionData) {

@@ -8,6 +8,7 @@
 #include "base/debug.h"
 #include "jasmin/execute.h"
 #include "module/module.h"
+#include "module/resources.h"
 #include "semantic_analysis/context.h"
 #include "semantic_analysis/instruction_set.h"
 #include "semantic_analysis/type_system.h"
@@ -15,13 +16,13 @@
 namespace semantic_analysis {
 
 void EmitByteCodeForModule(ast::Module const& ast_module, Context& context,
-                           module::Module& module);
+                           module::Resources& resources);
 
 // Returns an `IrFunction` accepting no parameters and whose execution computes
 // the value associated with `expression`.
 IrFunction EmitByteCode(QualifiedType qualified_type,
                         ast::Expression const& expression, Context& context,
-                        module::Module& module);
+                        module::Resources& module);
 
 // Evaluates `expr` in the given `context` if possible, returning `std::nullopt`
 // in the event of execution failure. Note that behavior is undefined if `expr`
@@ -29,18 +30,18 @@ IrFunction EmitByteCode(QualifiedType qualified_type,
 // parameter `T` is undefined behavior and not guaranteed to result in a
 // returned value of `std::nullopt`.
 template <typename T>
-T EvaluateAs(Context& context, module::Module& module,
+T EvaluateAs(Context& context, module::Resources& resources,
              ast::Expression const* expr) {
   auto qt        = context.qualified_type(expr);
   bool has_error = (qt.qualifiers() >= Qualifiers::Error());
   ASSERT(not has_error);
 
-  IrFunction f = EmitByteCode(qt, *expr, context, module);
+  IrFunction f = EmitByteCode(qt, *expr, context, resources);
 
   data_types::IntegerTable table;
   jasmin::ExecutionState<InstructionSet> state{table};
   T result;
-  if (PassInRegister(qt, module.type_system())) {
+  if (PassInRegister(qt, resources.primary_module().type_system())) {
     jasmin::Execute(f, state, {}, result);
   } else {
     IrFunction wrapper(0, 0);
@@ -55,7 +56,7 @@ T EvaluateAs(Context& context, module::Module& module,
 }
 
 std::span<std::byte const> EvaluateConstant(Context& context,
-                                            module::Module& module,
+                                            module::Resources& resources,
                                             ast::Expression const* expr,
                                             QualifiedType qt);
 }  // namespace semantic_analysis

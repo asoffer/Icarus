@@ -8,6 +8,7 @@ cc_library(
         ":emitter",
         "//ast:expression",
         "//module",
+        "//module:resources",
         "//semantic_analysis:context",
         "//semantic_analysis:instruction_set",
         "//semantic_analysis:type_system",
@@ -44,6 +45,7 @@ cc_library(
     deps = [
         "//ast",
         "//module",
+        "//module:resources",
         "//semantic_analysis:context",
         "//semantic_analysis:instruction_set",
         "//semantic_analysis:type_system",

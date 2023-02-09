@@ -1,3 +1,5 @@
+c ::= import "std.c.types"
+
 // #{export} Print ::= (n: i64) -> () {
 //   printf ::= builtin.foreign("printf", ([*]char, i64) -> i32)
 //   printf("%lld".data, n)
@@ -8,8 +10,10 @@
 //   printf("%llu".data, n)
 // }
 // 
+
 #{export} Print ::= (s: [/]char) -> () {
-  printf ::= builtin.foreign("printf", ([*]char, u64, [*]char) -> i32)
+  printf ::= builtin.foreign("printf",
+                             ([*]char, c.unsigned_long_long, [*]char) -> c.int)
   printf("%*s\n".data, s.length, s.data)
 }
 

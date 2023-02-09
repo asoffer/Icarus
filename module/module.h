@@ -7,6 +7,7 @@
 #include <ostream>
 
 #include "data_types/integer.h"
+#include "module/symbol.h"
 #include "semantic_analysis/foreign_function_map.h"
 #include "semantic_analysis/instruction_set.h"
 #include "semantic_analysis/type_system.h"
@@ -44,6 +45,16 @@ struct Module {
     return integer_table_;
   }
 
+  std::span<Symbol const> LoadSymbols(std::string_view name) const {
+    auto iter = exported_symbols_.find(name);
+    if (iter == exported_symbols_.end()) { return {}; }
+    return iter->second;
+  }
+
+  void Export(std::string_view name, core::Type type) {
+    exported_symbols_[name].push_back(type);
+  }
+
   auto const &read_only_data() const { return read_only_data_; }
 
   semantic_analysis::IrFunction const *function(data_types::Fn fn_id) const {
@@ -70,6 +81,8 @@ struct Module {
 
   // Accepts two arguments (a slice represented as data followed by length).
   semantic_analysis::IrFunction initializer_{2, 0};
+
+  absl::flat_hash_map<std::string, std::vector<Symbol>> exported_symbols_;
 
   // The type-system containing all types referenceable in this module.
   mutable semantic_analysis::TypeSystem type_system_;

@@ -77,8 +77,8 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier& tv,
   switch (CanCast(qt, t, tv.type_system())) {
     case CastKind::None:
       tv.ConsumeDiagnostic(NoViableCast{
-          .from_type = "TODO",
-          .to_type   = "TODO",
+          .from_type = tv.TypeForDiagnostic(*node->expr()),
+          .to_type   = tv.ExpressionForDiagnostic(*node->type()),
           .view      = node->type()->range(),
       });
 

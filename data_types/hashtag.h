@@ -5,7 +5,7 @@
 #include <iostream>
 #include <string_view>
 
-namespace ir {
+namespace data_types {
 
 enum class Hashtag : uint8_t {
   // Denotes that a scope is to be evaluated and blocks instantiated.
@@ -27,6 +27,6 @@ inline std::ostream& operator<<(std::ostream& os, Hashtag h) {
   return os << BuiltinHashtagsByName[static_cast<uint8_t>(h)].first;
 }
 
-}  // namespace ir
+}  // namespace data_types
 
 #endif  // ICARUS_IR_VALUE_HASHTAG_H

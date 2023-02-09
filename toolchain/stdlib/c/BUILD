@@ -3,8 +3,7 @@ package(default_visibility = ["//visibility:private"])
 load("//toolchain:ic_rule.bzl", "ic_library")
 
 ic_library(
-    name = "io",
-    srcs = ["io.ic"],
+    name = "types",
+    srcs = ["types.ic"],
     visibility = ["//visibility:public"],
-    deps = ["//toolchain/stdlib/c:types"],
 )

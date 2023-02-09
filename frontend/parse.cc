@@ -472,7 +472,7 @@ std::unique_ptr<ast::Node> AddHashtag(
   auto expr              = move_as<ast::Expression>(nodes.back());
   std::string_view token = nodes.front()->as<Token>().token;
 
-  for (auto [name, tag] : ir::BuiltinHashtagsByName) {
+  for (auto [name, tag] : data_types::BuiltinHashtagsByName) {
     if (token == name) {
       expr->hashtags.insert(tag);
       return expr;

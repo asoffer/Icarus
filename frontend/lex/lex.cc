@@ -453,7 +453,7 @@ absl::StatusOr<Lexeme> NextHashtag(std::string_view &cursor) {
     }
     cursor.remove_prefix(1);
 
-    for (auto [name, tag] : ir::BuiltinHashtagsByName) {
+    for (auto [name, tag] : data_types::BuiltinHashtagsByName) {
       if (token == name) { return Lexeme(tag, token); }
     }
 

@@ -6,6 +6,7 @@ cc_library(
     hdrs = ["module.h"],
     srcs = ["module.cc"],
     deps = [
+        ":symbol",
         "//data_types:integer",
         "//semantic_analysis:instruction_set",
         "//semantic_analysis:type_system",
@@ -35,4 +36,15 @@ cc_library(
         "//serialization:read_only_data",
         "@com_google_absl//absl/functional:any_invocable",
     ]
+)
+
+cc_library(
+    name = "symbol",
+    visibility = ["//visibility:public"],
+    hdrs = ["symbol.h"],
+    srcs = ["symbol.cc"],
+    deps = [
+        "//core/type_system:type",
+        "//semantic_analysis:type_system",
+    ],
 )

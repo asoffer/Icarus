@@ -19,7 +19,9 @@ struct StringifyExpression {
     return ASSERT_NOT_NULL(node)->visit<StringifyExpression>(*this);
   }
 
-  std::string operator()(ast::Access const *node) { NOT_YET(); }
+  std::string operator()(ast::Access const *node) {
+    return absl::StrCat(operator()(node->operand()), ".", node->member_name());
+  }
 
   std::string operator()(ast::ArrayLiteral const *node) { NOT_YET(); }
 

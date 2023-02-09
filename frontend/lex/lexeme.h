@@ -25,12 +25,13 @@ struct Lexeme {
       : value_(op), range_(range) {}
   explicit Lexeme(Syntax s, std::string_view range)
       : value_(s), range_(range) {}
-  explicit Lexeme(ir::Hashtag h, std::string_view range)
+  explicit Lexeme(data_types::Hashtag h, std::string_view range)
       : value_(h), range_(range) {}
 
   constexpr Operator op() const { return std::get<Operator>(value_); }
 
-  std::variant<std::unique_ptr<ast::Node>, Operator, Syntax, ir::Hashtag>
+  std::variant<std::unique_ptr<ast::Node>, Operator, Syntax,
+               data_types::Hashtag>
   get() && {
     return std::move(value_);
   }
@@ -55,7 +56,7 @@ struct Lexeme {
             } else {
               return expr;
             }
-          } else if constexpr (type == nth::type<ir::Hashtag>) {
+          } else if constexpr (type == nth::type<data_types::Hashtag>) {
             return hashtag;
           } else {
             static_assert(type.dependent(false));
@@ -67,7 +68,8 @@ struct Lexeme {
   std::string_view range() const { return range_; }
 
  private:
-  std::variant<std::unique_ptr<ast::Node>, Operator, Syntax, ir::Hashtag>
+  std::variant<std::unique_ptr<ast::Node>, Operator, Syntax,
+               data_types::Hashtag>
       value_;
   std::string_view range_;
 };

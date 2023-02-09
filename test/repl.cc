@@ -24,7 +24,7 @@ std::optional<semantic_analysis::IrFunction> Repl::ExecutionFunction(
 
   auto const& expr = node_span.back()->as<ast::Expression>();
   return semantic_analysis::EmitByteCode(context_.qualified_type(&expr), expr,
-                                         context_, module());
+                                         context_, resources());
 }
 
 Repl::TypeCheckResult Repl::type_check(std::string content) {

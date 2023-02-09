@@ -6,8 +6,8 @@
 namespace semantic_analysis {
 
 void EmitByteCodeForModule(ast::Module const &ast_module, Context &context,
-                           module::Module &module) {
-  ByteCodeStatementEmitter e(context, module);
+                           module::Resources &resources) {
+  ByteCodeStatementEmitter e(context, resources);
   nth::flyweight_map<ast::Declaration::Id const *, size_t> variable_offsets;
   // Populate `variable_offsets`
   core::Bytes offset{};
@@ -16,11 +16,11 @@ void EmitByteCodeForModule(ast::Module const &ast_module, Context &context,
         for (auto &id : decl->ids()) {
           variable_offsets.try_emplace(&id, offset.value());
           // TODO: Alignment.
-          offset +=
-              SizeOf(context.qualified_type(&id).type(), module.type_system());
+          offset += SizeOf(context.qualified_type(&id).type(),
+                           resources.primary_module().type_system());
         }
       });
-  auto &f = module.initializer();
+  auto &f = resources.primary_module().initializer();
   f.append<jasmin::StackAllocate>(offset.value());
   e.Emit(&ast_module, FunctionData(f, variable_offsets));
   f.append<jasmin::Return>();
@@ -28,13 +28,13 @@ void EmitByteCodeForModule(ast::Module const &ast_module, Context &context,
 
 IrFunction EmitByteCode(QualifiedType qualified_type,
                         ast::Expression const &expression, Context &context,
-                        module::Module &module) {
-  core::TypeContour contour =
-      ContourOf(qualified_type.type(), module.type_system());
+                        module::Resources &resources) {
+  core::TypeContour contour = ContourOf(
+      qualified_type.type(), resources.primary_module().type_system());
   size_t values_needed = contour.bytes().value() / jasmin::ValueSize +
                          (((contour.bytes().value() % jasmin::ValueSize) != 0));
   IrFunction f(0, values_needed);
-  ByteCodeValueEmitter e(context, module);
+  ByteCodeValueEmitter e(context, resources);
 
   // This `variable_offsets` map is intentionally empty. There will never be
   // declarations from which data needs to be loaded. Because `EvaluateConstant`
@@ -48,16 +48,16 @@ IrFunction EmitByteCode(QualifiedType qualified_type,
 }
 
 std::span<std::byte const> EvaluateConstant(Context &context,
-                                            module::Module &module,
+                                            module::Resources &resources,
                                             ast::Expression const *expr,
                                             QualifiedType qt) {
   ASSERT(qt == context.qualified_type(expr));
   auto [result_ptr, inserted] = context.insert_constant(expr);
   if (inserted) {
     // TODO: Integers are an annoying special case at the moment.
-    core::TypeContour contour = ContourOf(qt.type(), module.type_system());
+    core::TypeContour contour = ContourOf(qt.type(), resources.primary_module().type_system());
     if (PassInRegister(contour)) {
-      IrFunction f = EmitByteCode(qt, *expr, context, module);
+      IrFunction f = EmitByteCode(qt, *expr, context, resources);
 
       data_types::IntegerTable table;
       jasmin::ValueStack value_stack;
@@ -71,7 +71,7 @@ std::span<std::byte const> EvaluateConstant(Context &context,
       }
       return *result_ptr;
     } else {
-      NOT_YET(DebugQualifiedType(qt, module.type_system()));
+      NOT_YET(DebugQualifiedType(qt, resources.primary_module().type_system()));
     }
   } else {
     return *result_ptr;

@@ -17,6 +17,17 @@ message ForeignSymbol {
   Type type = 2;
 }
 
+message Symbol {
+  Type symbol_type = 1;
+  oneof o {
+    Type type = 2;
+  }
+}
+
+message Symbols {
+  repeated Symbol symbols = 1;
+}
+
 message Module {
   // An identifier for this module unique amongst all modules being linked
   // together.
@@ -38,4 +49,6 @@ message Module {
   ReadOnlyData read_only = 6;
 
   IntegerTable integers = 7;
+
+  map<string, Symbols> exported = 8;
 }

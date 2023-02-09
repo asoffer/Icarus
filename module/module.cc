@@ -221,6 +221,19 @@ bool Module::Serialize(std::ostream& output) const {
       state.get<semantic_analysis::PushStringLiteral::serialization_state>());
   data_types::Serialize(integer_table_, *proto.mutable_integers());
 
+  auto& exported = *proto.mutable_exported();
+  for (auto const & [name, symbols] : exported_symbols_) {
+    auto& exported_symbols = exported[name];
+    for (auto const& symbol : symbols) {
+      auto& exported_symbol = *exported_symbols.add_symbols();
+      SerializeType(
+          semantic_analysis::Type, *exported_symbol.mutable_symbol_type(),
+          type_system().has_inline_storage(semantic_analysis::Type.category()));
+      SerializeType(
+          symbol.as<core::Type>(), *exported_symbol.mutable_type(),
+          type_system().has_inline_storage(symbol.as<core::Type>().category()));
+    }
+  }
   return proto.SerializeToOstream(&output);
 }
 
@@ -233,6 +246,19 @@ bool Module::DeserializeInto(serialization::Module proto, Module& module) {
       state.get<semantic_analysis::PushStringLiteral::serialization_state>());
 
   DeserializeTypeSystem(proto.type_system(), module.type_system_);
+
+  auto& exported = *proto.mutable_exported();
+  for (auto const& [name, symbols] : proto.exported()) {
+    for (auto const& symbol : symbols.symbols()) {
+      core::Type symbol_type = DeserializeType(symbol.symbol_type());
+      if (symbol_type == semantic_analysis::Type) {
+        module.exported_symbols_[name].push_back(
+            DeserializeType(symbol.type()));
+      } else {
+        NOT_YET();
+      }
+    }
+  }
 
   DeserializeForeignSymbols(module.type_system(), *proto.mutable_foreign_symbols(),
                             module.foreign_function_map_);

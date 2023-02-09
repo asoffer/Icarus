@@ -71,12 +71,14 @@ struct TypeVerifier : VerificationScheduler {
 
   template <typename T>
   T EvaluateAs(ast::Expression const *expression) const {
-    return ::semantic_analysis::EvaluateAs<T>(context(), module_, expression);
+    return ::semantic_analysis::EvaluateAs<T>(context(), resources_,
+                                              expression);
   }
 
   std::span<std::byte const> EvaluateConstant(ast::Expression const *expr,
                                               QualifiedType qt) {
-    return ::semantic_analysis::EvaluateConstant(context(), module_, expr, qt);
+    return ::semantic_analysis::EvaluateConstant(context(), resources_, expr,
+                                                 qt);
   }
 
   template <typename D>
@@ -175,6 +177,11 @@ struct TypeVerifier : VerificationScheduler {
   std::string TypeForDiagnostic(ast::Expression const &expression) const {
     return ::semantic_analysis::TypeForDiagnostic(expression, context(),
                                                   type_system());
+  }
+
+  std::string ExpressionForDiagnostic(ast::Expression const &expression) const {
+    return ::semantic_analysis::ExpressionForDiagnostic(expression, context(),
+                                                        type_system());
   }
 
  private:

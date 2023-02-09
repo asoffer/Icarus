@@ -23,7 +23,7 @@ struct Expression : Node {
 
   virtual ~Expression() {}
 
-  absl::flat_hash_set<ir::Hashtag> hashtags;
+  absl::flat_hash_set<data_types::Hashtag> hashtags;
 
   // Add an extra layer of parentheses around this one.
   void wrap_parentheses(std::string_view range) {
