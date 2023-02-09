@@ -6,7 +6,7 @@ namespace semantic_analysis {
 namespace {
 
 test::Repl MakeRepl(module::ModuleName name) {
-  module::Resources resources(
+  auto resources = test::TestResources(
       [name = std::move(name)](module::ModuleName const &module_name) {
         if (module_name == name) {
           return serialization::UniqueModuleId("module");

@@ -44,6 +44,7 @@ cc_library(
     deps = [
         ":module",
         ":module_name",
+        "//diagnostic/consumer",
         "//serialization:module_map",
         "//serialization:read_only_data",
         "@com_google_absl//absl/functional:any_invocable",

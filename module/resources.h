@@ -2,6 +2,7 @@
 #define ICARUS_MODULE_RESOURCES_H
 
 #include "absl/functional/any_invocable.h"
+#include "diagnostic/consumer/consumer.h"
 #include "module/module.h"
 #include "module/module_name.h"
 #include "serialization/module_map.h"
@@ -12,8 +13,10 @@ namespace module {
 struct Resources {
   explicit Resources(
       absl::AnyInvocable<serialization::UniqueModuleId(ModuleName const&) const>
-          name_resolver)
-      : name_resolver_(std::move(name_resolver)) {
+          name_resolver,
+      std::unique_ptr<diagnostic::DiagnosticConsumer> diagnostic_consumer)
+      : name_resolver_(std::move(name_resolver)),
+        diagnostic_consumer_(std::move(diagnostic_consumer)) {
     modules_.push_back(std::make_unique<Module>());
   }
 
@@ -32,6 +35,8 @@ struct Resources {
   // otherwise.
   serialization::ModuleIndex TryLoadModuleByName(ModuleName const& name) const;
 
+  diagnostic::DiagnosticConsumer& diagnostic_consumer();
+
  private:
   std::vector<std::unique_ptr<Module>> modules_;
   serialization::ModuleMap module_map_;
@@ -39,6 +44,7 @@ struct Resources {
 
   absl::AnyInvocable<serialization::UniqueModuleId(ModuleName const&) const>
       name_resolver_;
+  std::unique_ptr<diagnostic::DiagnosticConsumer> diagnostic_consumer_;
 };
 
 }  // namespace module

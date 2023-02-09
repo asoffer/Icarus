@@ -13,7 +13,7 @@ using ::testing::AllOf;
 using ::testing::Pair;
 
 test::Repl MakeRepl(std::optional<std::string> name = std::nullopt) {
-  module::Resources resources(
+  auto resources = test::TestResources(
       [name = std::move(name)](module::ModuleName const &module_name) {
         if (name and module_name.name() == *name) {
           return serialization::UniqueModuleId("module");

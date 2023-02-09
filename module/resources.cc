@@ -21,4 +21,8 @@ serialization::ModuleIndex Resources::TryLoadModuleByName(
   return module_map_.get(name_resolver_(name));
 }
 
+diagnostic::DiagnosticConsumer &Resources::diagnostic_consumer() {
+  return *ASSERT_NOT_NULL(diagnostic_consumer_);
+}
+
 }  // namespace module

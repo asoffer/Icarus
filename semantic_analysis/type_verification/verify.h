@@ -51,16 +51,14 @@ inline auto VerifyParametersOf(ast::Node const *node) {
 struct TypeVerifier : VerificationScheduler {
   using signature = VerificationTask();
 
-  explicit TypeVerifier(module::Resources &resources, Context &c,
-                        diagnostic::DiagnosticConsumer &d)
+  explicit TypeVerifier(module::Resources &resources, Context &c)
       : VerificationScheduler([](VerificationScheduler &s,
                                  ast::Node const *node) -> VerificationTask {
           return node->visit(static_cast<TypeVerifier &>(s));
         }),
         resources_(resources),
         module_(resources.primary_module()),
-        context_(c),
-        diagnostic_consumer_(d) {}
+        context_(c) {}
 
   Context &context() const { return context_; }
   TypeSystem &type_system() const { return module_.type_system(); }
@@ -83,7 +81,7 @@ struct TypeVerifier : VerificationScheduler {
 
   template <typename D>
   void ConsumeDiagnostic(D &&d) {
-    diagnostic_consumer_.Consume(std::forward<D>(d));
+    resources().diagnostic_consumer().Consume(std::forward<D>(d));
   }
 
   VerificationTask operator()(auto const *node) {
@@ -183,7 +181,6 @@ struct TypeVerifier : VerificationScheduler {
   module::Resources& resources_;
   module::Module &module_;
   Context &context_;
-  diagnostic::DiagnosticConsumer &diagnostic_consumer_;
 };
 
 }  // namespace semantic_analysis

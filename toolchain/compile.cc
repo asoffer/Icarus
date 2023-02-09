@@ -102,15 +102,17 @@ bool Compile(std::string const &source_file, std::string const &module_map_file,
 
   auto name_resolver = module::BazelNameResolver(module_map_file);
   ASSERT(name_resolver != nullptr);
-  module::Resources resources(std::move(name_resolver));
+  auto &diagnostic_consumer_ref = **diagnostic_consumer;
+  module::Resources resources(std::move(name_resolver),
+                              std::move(*diagnostic_consumer));
 
   semantic_analysis::Context context;
 
-  semantic_analysis::TypeVerifier tv(resources, context, **diagnostic_consumer);
+  semantic_analysis::TypeVerifier tv(resources, context);
   tv.schedule(&ast_module);
   tv.complete();
 
-  if ((*diagnostic_consumer)->num_consumed() != 0) { return false; }
+  if (diagnostic_consumer_ref.num_consumed() != 0) { return false; }
 
   semantic_analysis::EmitByteCodeForModule(ast_module, context,
                                            resources.primary_module());

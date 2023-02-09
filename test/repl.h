@@ -19,14 +19,21 @@
 
 namespace test {
 
+inline module::Resources TestResources(
+    absl::AnyInvocable<serialization::UniqueModuleId(module::ModuleName const&)
+                           const>
+        name_resolver = [](module::ModuleName const& name)
+        -> serialization::UniqueModuleId { UNREACHABLE(name.name()); }) {
+  return module::Resources(std::move(name_resolver),
+                           std::make_unique<diagnostic::TrackingConsumer>());
+}
+
 struct Repl {
-  explicit Repl()
-      : Repl(module::Resources([](module::ModuleName const& name)
-                                   -> serialization::UniqueModuleId {
-          UNREACHABLE(name.name());
-        })) {}
-  explicit Repl(module::Resources resources)
-      : resources_(std::move(resources)) {}
+  explicit Repl(module::Resources resources = TestResources())
+      : resources_(std::move(resources)) {
+    consumer_ = &static_cast<diagnostic::TrackingConsumer&>(
+        resources_.diagnostic_consumer());
+  }
 
  private:
   struct ResultBase {
@@ -142,7 +149,7 @@ struct Repl {
         static_assert(t.dependent(false));
       }
     } else {
-      for (auto const& [category, name] : consumer_.diagnostics()) {
+      for (auto const& [category, name] : consumer_->diagnostics()) {
         std::cerr << "* [" << category << ": " << name << "]\n";
       }
       std::cerr << "Failed to find an implementation function.\n";
@@ -188,7 +195,7 @@ struct Repl {
   data_types::IntegerTable table_;
   ast::Module ast_module_;
   semantic_analysis::Context context_;
-  diagnostic::TrackingConsumer consumer_;
+  diagnostic::TrackingConsumer* consumer_;
 };
 
 struct HasDiagnostics {

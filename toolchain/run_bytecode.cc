@@ -33,7 +33,7 @@ bool Execute(std::string const &input_file, std::string const &module_map_file,
 
   auto name_resolver = module::BazelNameResolver(module_map_file);
   ASSERT(name_resolver != nullptr);
-  module::Resources resources(std::move(name_resolver));
+  module::Resources resources(std::move(name_resolver), nullptr);
 
   serialization::Module proto;
   if (not proto.ParseFromIstream(&stream) or

@@ -10,17 +10,17 @@ namespace test {
 
 std::optional<semantic_analysis::IrFunction> Repl::ExecutionFunction(
     std::string&& content) {
-  consumer_.clear();
+  consumer_->clear();
   source_content_.push_back(std::move(content));
-  auto nodes              = frontend::Parse(source_content_.back(), consumer_);
+  auto nodes              = frontend::Parse(source_content_.back(), *consumer_);
   base::PtrSpan node_span = ast_module_.insert(nodes.begin(), nodes.end());
-  if (consumer_.num_consumed() != 0) { return std::nullopt; }
+  if (consumer_->num_consumed() != 0) { return std::nullopt; }
 
-  semantic_analysis::TypeVerifier tv(resources(), context_, consumer_);
+  semantic_analysis::TypeVerifier tv(resources(), context_);
   for (auto const* node : node_span) { tv.schedule(node); }
   tv.complete();
 
-  if (consumer_.num_consumed() != 0) { return std::nullopt; }
+  if (consumer_->num_consumed() != 0) { return std::nullopt; }
 
   auto const& expr = node_span.back()->as<ast::Expression>();
   return semantic_analysis::EmitByteCode(context_.qualified_type(&expr), expr,
@@ -28,20 +28,20 @@ std::optional<semantic_analysis::IrFunction> Repl::ExecutionFunction(
 }
 
 Repl::TypeCheckResult Repl::type_check(std::string content) {
-  size_t previously_consumed = consumer_.num_consumed();
+  size_t previously_consumed = consumer_->num_consumed();
   source_content_.push_back(std::move(content));
-  auto nodes              = frontend::Parse(source_content_.back(), consumer_);
+  auto nodes              = frontend::Parse(source_content_.back(), *consumer_);
   base::PtrSpan node_span = ast_module_.insert(nodes.begin(), nodes.end());
 
   semantic_analysis::QualifiedType error = semantic_analysis::Error();
-  if (consumer_.num_consumed() != previously_consumed) {
+  if (consumer_->num_consumed() != previously_consumed) {
     return TypeCheckResult(source_content_.back(), std::span(&error, 1),
-                           consumer_.diagnostics(), *this);
+                           consumer_->diagnostics(), *this);
   }
 
-  consumer_.clear();
+  consumer_->clear();
 
-  semantic_analysis::TypeVerifier tv(resources(), context_, consumer_);
+  semantic_analysis::TypeVerifier tv(resources(), context_);
   for (auto const* node : node_span) { tv.schedule(node); }
   tv.complete();
 
@@ -49,7 +49,7 @@ Repl::TypeCheckResult Repl::type_check(std::string content) {
   return TypeCheckResult(source_content_.back(),
                          e ? context_.qualified_types(e)
                            : std::vector<semantic_analysis::QualifiedType>{},
-                         consumer_.diagnostics(), *this);
+                         consumer_->diagnostics(), *this);
 }
 
 }  // namespace test
