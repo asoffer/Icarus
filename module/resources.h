@@ -39,6 +39,11 @@ struct Resources {
 
   diagnostic::DiagnosticConsumer& diagnostic_consumer();
 
+  // Assuming `type` is a type with respect to the type system `from`, returns
+  // the corresponding type with respect to the type system `to`.
+  core::Type Translate(core::Type type, semantic_analysis::TypeSystem& from,
+                       semantic_analysis::TypeSystem& to) const;
+
  private:
   explicit Resources() = default;
 

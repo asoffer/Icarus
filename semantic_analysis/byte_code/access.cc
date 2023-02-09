@@ -24,7 +24,9 @@ void ByteCodeValueEmitter::operator()(ast::Access const* node,
       } break;
       case 1: {
         // TODO: What if it's a different kind of symbol?
-        data.function().append<jasmin::Push>(symbols[0].as<core::Type>());
+        core::Type t = resources().Translate(symbols[0].as<core::Type>(),
+                                             m.type_system(), type_system());
+        data.function().append<jasmin::Push>(t);
       } break;
       default: {
         NOT_YET();

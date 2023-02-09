@@ -53,4 +53,26 @@ void Resources::Populate(serialization::UniqueModuleId const &id,
                      serialization::ModuleIndex(modules_.size()), id);
 }
 
+core::Type Resources::Translate(core::Type type,
+                                semantic_analysis::TypeSystem &from,
+                                semantic_analysis::TypeSystem &to) const {
+  namespace sa = semantic_analysis;
+  switch (type.category()) {
+    case sa::TypeSystem::index<sa::PrimitiveType>():
+    case sa::TypeSystem::index<core::SizedIntegerType>(): return type;
+    case sa::TypeSystem::index<core::ParameterType>(): NOT_YET(); break;
+    case sa::TypeSystem::index<core::PointerType>():
+      return core::PointerType(
+          to, Translate(type.get<core::PointerType>(from).pointee(), from, to));
+    case sa::TypeSystem::index<sa::BufferPointerType>():
+      return sa::BufferPointerType(
+          to,
+          Translate(type.get<sa::BufferPointerType>(from).pointee(), from, to));
+    case sa::TypeSystem::index<sa::ArrayType>(): NOT_YET(); break;
+    case sa::TypeSystem::index<sa::SliceType>(): NOT_YET(); break;
+    case sa::TypeSystem::index<core::FunctionType>(): NOT_YET(); break;
+  }
+  UNREACHABLE();
+}
+
 }  // namespace module
