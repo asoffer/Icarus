@@ -17,10 +17,16 @@ message ForeignSymbol {
   Type type = 2;
 }
 
+message FunctionSymbol {
+  uint32 module_index = 1;
+  uint32 function = 2;
+}
+
 message Symbol {
   Type symbol_type = 1;
   oneof o {
     Type type = 2;
+    FunctionSymbol function = 3;
   }
 }
 

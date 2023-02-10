@@ -2,13 +2,21 @@
 #define ICARUS_MODULE_SYMBOL_H
 
 #include "core/type_system/type.h"
+#include "data_types/fn.h"
 
 namespace module {
 
-struct Symbol {
-  Symbol(core::Type t) : symbol_(t) {}
+struct TypedFunction {
+  core::Type type;
+  data_types::Fn function;
+};
 
-  core::Type type() const { return SymbolTypes[symbol_.index()]; }
+struct Symbol {
+  enum class Kind { Type, Function };
+  Symbol(core::Type t) : symbol_(t) {}
+  Symbol(TypedFunction f) : symbol_(f) {}
+
+  core::Type type() const;
 
   template <typename T>
   T const &as() const {
@@ -16,8 +24,7 @@ struct Symbol {
   }
 
  private:
-  static std::array<core::Type, 1> SymbolTypes;
-  std::variant<core::Type> symbol_;
+  std::variant<core::Type, TypedFunction> symbol_;
 };
 
 }  // namespace module

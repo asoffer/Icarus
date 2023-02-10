@@ -4,7 +4,7 @@
 #include "absl/container/flat_hash_map.h"
 #include "absl/container/node_hash_map.h"
 #include "ast/ast.h"
-#include "data_types/fn.h"
+#include "module/symbol.h"
 #include "semantic_analysis/instruction_set.h"
 #include "semantic_analysis/type_system.h"
 
@@ -131,12 +131,21 @@ struct Context {
   // to continue the process of computing the type of the chosen overload.
   struct CallableIdentifier {
     explicit CallableIdentifier(ast::Expression const *expression)
-        : expression_(expression) {}
+        : entry_(expression) {}
 
-    ast::Expression const &expression() const { return *expression_; }
+    explicit CallableIdentifier(module::TypedFunction const &fn) : entry_(fn) {}
+
+    ast::Expression const *expression() const {
+      auto const *const *ptr = std::get_if<ast::Expression const *>(&entry_);
+      return ptr ? *ptr : nullptr;
+    }
+
+    module::TypedFunction function() const {
+      return std::get<module::TypedFunction>(entry_);
+    }
 
    private:
-    ast::Expression const *expression_;
+    std::variant<ast::Expression const *, module::TypedFunction> entry_;
   };
 
   // Sets the parameter types associated with a `ast::ParameterizedExpression`

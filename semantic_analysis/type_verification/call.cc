@@ -110,14 +110,20 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
       co_return tv.TypeOf(node, Error());
     case 1: {
       auto const &[parameter_type, callable_identifier] = *parameter_types[0];
-      std::span callee_qts =
-          co_await VerifyTypeOf(&callable_identifier.expression());
-      if (callee_qts.size() != 1) { NOT_YET(); }
-      std::span<core::Type const> return_types =
-          callee_qts[0]
-              .type()
-              .get<core::FunctionType>(tv.type_system())
-              .returns();
+
+        std::span<core::Type const> return_types ;
+      if (auto const *expr = callable_identifier.expression()) {
+        std::span callee_qts = co_await VerifyTypeOf(expr);
+        if (callee_qts.size() != 1) { NOT_YET(); }
+        return_types = callee_qts[0]
+                           .type()
+                           .get<core::FunctionType>(tv.type_system())
+                           .returns();
+
+      } else {
+        auto [type, fn] = callable_identifier.function();
+        return_types = type.get<core::FunctionType>(tv.type_system()).returns();
+      }
       std::vector<QualifiedType> qts;
       qts.reserve(return_types.size());
       tv.context().set_callee(node, &parameter_types.back()->second);

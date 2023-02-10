@@ -23,20 +23,24 @@ void ByteCodeValueEmitter::operator()(ast::Call const* node,
 
   auto const& callable_identifier = context().callee(node);
 
-  auto const& parameters =
-      context()
-          .qualified_types(&callable_identifier.expression())[0]
-          .type()
-          .get<core::FunctionType>(type_system())
-          .parameters();
+  if (auto const* expr = callable_identifier.expression()) {
+    auto const& parameters = context()
+                                 .qualified_types(expr)[0]
+                                 .type()
+                                 .get<core::FunctionType>(type_system())
+                                 .parameters();
 
-  auto iter = parameters.begin();
-  for (auto const& argument : node->positional_arguments()) {
-    CastTo(&argument.expr(), QualifiedType(iter->value), data);
-    ++iter;
+    auto iter = parameters.begin();
+    for (auto const& argument : node->positional_arguments()) {
+      CastTo(&argument.expr(), QualifiedType(iter->value), data);
+      ++iter;
+    }
+
+    Emit(expr, data);
+  } else {
+    data.function().append<PushFunction>(resources().TranslateToPrimary(
+        callable_identifier.function().function));
   }
-
-  Emit(&callable_identifier.expression(), data);
 
   auto* f = data.function().raw_instructions().back().as<IrFunction const*>();
   data.function().append<jasmin::Call>();

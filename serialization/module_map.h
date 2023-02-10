@@ -59,9 +59,9 @@ struct ModuleMap {
   void insert(ModuleIndex module_index, ModuleIndex dep_index,
               UniqueModuleId const &id);
 
-  // Given the module-specific index represented by `module_index` and `index`,
-  // returns a pair consisting of the globally unique index and a view of the
-  // associated value.
+  // Given the module-specific index represented by `module_index` and
+  // `dep_index`, returns a pair consisting of the globally unique index and a
+  // view of the associated value.
   std::pair<ModuleIndex, UniqueModuleId const &> read(
       ModuleIndex module_index, ModuleIndex dep_index) const;
 

@@ -16,5 +16,3 @@ c ::= import "std.c.types"
                              ([*]char, c.unsigned_long_long, [*]char) -> c.int)
   printf("%*s\n".data, s.length, s.data)
 }
-
-Print("Hello, world!")

@@ -60,7 +60,14 @@ core::Type Resources::Translate(core::Type type,
   switch (type.category()) {
     case sa::TypeSystem::index<sa::PrimitiveType>():
     case sa::TypeSystem::index<core::SizedIntegerType>(): return type;
-    case sa::TypeSystem::index<core::ParameterType>(): NOT_YET(); break;
+    case sa::TypeSystem::index<core::ParameterType>(): {
+      core::Parameters<core::Type> parameters =
+          type.get<core::ParameterType>(from).value();
+      for (auto &param : parameters) {
+        param.value = Translate(param.value, from, to);
+      }
+      return core::ParameterType(to, std::move(parameters));
+    }
     case sa::TypeSystem::index<core::PointerType>():
       return core::PointerType(
           to, Translate(type.get<core::PointerType>(from).pointee(), from, to));
@@ -69,10 +76,29 @@ core::Type Resources::Translate(core::Type type,
           to,
           Translate(type.get<sa::BufferPointerType>(from).pointee(), from, to));
     case sa::TypeSystem::index<sa::ArrayType>(): NOT_YET(); break;
-    case sa::TypeSystem::index<sa::SliceType>(): NOT_YET(); break;
-    case sa::TypeSystem::index<core::FunctionType>(): NOT_YET(); break;
+    case sa::TypeSystem::index<sa::SliceType>():
+      return sa::SliceType(
+          to, Translate(type.get<sa::SliceType>(from).pointee(), from, to));
+    case sa::TypeSystem::index<core::FunctionType>(): {
+      auto f = type.get<core::FunctionType>(from);
+      std::vector<core::Type> return_types;
+      return_types.reserve(f.returns().size());
+      for (core::Type t : f.returns()) {
+        return_types.push_back(Translate(t, from, to));
+      }
+      return core::FunctionType(
+          to,
+          Translate(f.parameter_type(), from, to).get<core::ParameterType>(to),
+          std::move(return_types));
+    }
   }
   UNREACHABLE();
+}
+
+data_types::Fn Resources::TranslateToPrimary(data_types::Fn f) {
+  auto& m = module(f.module());
+  auto const *fn =  m.function(f);
+  NOT_YET(); // Expose wrapped function.
 }
 
 }  // namespace module

@@ -44,6 +44,8 @@ cc_library(
     hdrs = ["symbol.h"],
     srcs = ["symbol.cc"],
     deps = [
+        "//base:debug",
+        "//data_types:fn",
         "//core/type_system:type",
         "//semantic_analysis:type_system",
     ],

@@ -226,12 +226,22 @@ bool Module::Serialize(std::ostream& output) const {
     auto& exported_symbols = exported[name];
     for (auto const& symbol : symbols) {
       auto& exported_symbol = *exported_symbols.add_symbols();
-      SerializeType(
-          semantic_analysis::Type, *exported_symbol.mutable_symbol_type(),
-          type_system().has_inline_storage(semantic_analysis::Type.category()));
-      SerializeType(
-          symbol.as<core::Type>(), *exported_symbol.mutable_type(),
-          type_system().has_inline_storage(symbol.as<core::Type>().category()));
+      core::Type symbol_type = symbol.type();
+      SerializeType(symbol_type, *exported_symbol.mutable_symbol_type(),
+                    type_system().has_inline_storage(symbol_type.category()));
+      if (symbol_type == semantic_analysis::Type) {
+        SerializeType(symbol.as<core::Type>(), *exported_symbol.mutable_type(),
+                      type_system().has_inline_storage(
+                          symbol.as<core::Type>().category()));
+      } else if (symbol_type.category() ==
+                 type_system().index<core::FunctionType>()) {
+        auto& proto_f    = *exported_symbol.mutable_function();
+        data_types::Fn f = symbol.as<TypedFunction>().function;
+        proto_f.set_module_index(f.module().value());
+        proto_f.set_function(f.local().value());
+      } else {
+        NOT_YET();
+      }
     }
   }
   return proto.SerializeToOstream(&output);
@@ -254,8 +264,15 @@ bool Module::DeserializeInto(serialization::Module proto, Module& module) {
       if (symbol_type == semantic_analysis::Type) {
         module.exported_symbols_[name].push_back(
             DeserializeType(symbol.type()));
+      } else if (symbol_type.category() ==
+                 module.type_system_.index<core::FunctionType>()) {
+        auto const & proto_f = symbol.function();
+        data_types::Fn f(serialization::ModuleIndex(proto_f.module_index()),
+                         data_types::LocalFnId(proto_f.function()));
+        module.exported_symbols_[name].push_back(
+            TypedFunction{.type = symbol_type, .function = f});
       } else {
-        NOT_YET();
+        NOT_YET(semantic_analysis::DebugType(symbol_type, module.type_system_));
       }
     }
   }

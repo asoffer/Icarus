@@ -49,12 +49,20 @@ void ByteCodeStatementEmitter::operator()(ast::Declaration const* node,
     std::span<std::byte const> evaluation =
         EmitConstantDeclaration(*this, node, qt, data);
 
-    // Exporting
     if (node->hashtags.contains(data_types::Hashtag::Export)) {
       if (qt.type() == Type) {
         core::Type t;
         std::memcpy(&t, evaluation.data(), sizeof(t));
         module().Export(node->ids()[0].name(), t);
+      } else if (qt.type().category() ==
+                 type_system().index<core::FunctionType>()) {
+        data_types::Fn fn;
+        std::memcpy(&fn, evaluation.data(), sizeof(fn));
+        module().Export(
+            node->ids()[0].name(),
+            module::TypedFunction{.type = qt.type(), .function = fn});
+      } else {
+        NOT_YET();
       }
     }
 

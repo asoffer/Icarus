@@ -23,10 +23,18 @@ void ByteCodeValueEmitter::operator()(ast::Access const* node,
         NOT_YET();
       } break;
       case 1: {
-        // TODO: What if it's a different kind of symbol?
-        core::Type t = resources().Translate(symbols[0].as<core::Type>(),
-                                             m.type_system(), type_system());
-        data.function().append<jasmin::Push>(t);
+        core::Type symbol_type = resources().Translate(
+            symbols[0].type(), m.type_system(), type_system());
+        if (auto fn_type =
+                symbol_type.get_if<core::FunctionType>(type_system())) {
+          NOT_YET();
+        } else if (symbol_type == Type) {
+          core::Type t = resources().Translate(symbols[0].as<core::Type>(),
+                                               m.type_system(), type_system());
+          data.function().append<jasmin::Push>(t);
+        } else {
+          NOT_YET();
+        }
       } break;
       default: {
         NOT_YET();

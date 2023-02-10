@@ -46,8 +46,15 @@ void DebugType(std::ostream& os, core::Type t, TypeSystem& ts) {
     os << ") -> (";
     for (core::Type t : f->returns()) { DebugType(os, t, ts); }
     os << "))";
+  } else if (auto p = t.get_if<core::ParameterType>(ts)) {
+    std::string_view separator = "";
+    for (auto const& param : p->value()) {
+      os << std::exchange(separator, ", ");
+      if (not param.name.empty()) { os << param.name << ": "; }
+      DebugType(os, param.value, ts);
+    }
   } else {
-    os << "???";
+    os << "Unknown(" << t.index() << ", " << t.category() << ")";
   }
 }
 

@@ -18,7 +18,17 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
         NOT_YET();
       } break;
       case 1: {
-        co_return tv.TypeOf(node, Constant(symbols[0].type()));
+        core::Type t = tv.resources().Translate(
+            symbols[0].type(), m.type_system(), tv.type_system());
+        if (auto fn_type = t.get_if<core::FunctionType>(tv.type_system())) {
+          co_yield tv.ParametersOf(
+              node, absl::flat_hash_map<core::ParameterType,
+                                        Context::CallableIdentifier>{
+                        {fn_type->parameter_type(),
+                         Context::CallableIdentifier(
+                             symbols[0].as<module::TypedFunction>())}});
+        }
+        co_return tv.TypeOf(node, Constant(t));
       } break;
       default: {
         NOT_YET();

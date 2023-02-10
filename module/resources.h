@@ -44,6 +44,8 @@ struct Resources {
   core::Type Translate(core::Type type, semantic_analysis::TypeSystem& from,
                        semantic_analysis::TypeSystem& to) const;
 
+  data_types::Fn TranslateToPrimary(data_types::Fn f);
+
  private:
   explicit Resources() = default;
 

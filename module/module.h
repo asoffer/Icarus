@@ -51,12 +51,18 @@ struct Module {
     return iter->second;
   }
 
-  void Export(std::string_view name, core::Type type) {
-    exported_symbols_[name].push_back(type);
+  void Export(std::string_view name, Symbol s) {
+    exported_symbols_[name].push_back(std::move(s));
   }
 
   auto const &read_only_data() const { return read_only_data_; }
 
+  // TODO: Figure out a better way to do foreign functions. The're shared but
+  // maybe you don't want them to have their own module index since the value is
+  // actually dependent on the module you're loading them from. Once you do that
+  // this function can be modified to only accept a `LocalFnId`. Maybe foreign
+  // functions are just intermixed with normal functions? do they need special
+  // treatment?
   semantic_analysis::IrFunction const *function(data_types::Fn fn_id) const {
     if (fn_id.module() == serialization::ModuleIndex::Foreign()) {
       return foreign_function_map_.ForeignFunction(fn_id.local());

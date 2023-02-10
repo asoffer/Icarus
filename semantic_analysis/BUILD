@@ -9,6 +9,7 @@ cc_library(
         ":type_system",
         "//ast",
         "//base:debug",
+        "//module:symbol",
     ]
 )
 
