@@ -18,13 +18,13 @@ TEST(Call, BuiltinForeign) {
 
   // Result needs to be computed before we look up `fn` in the foreign function
   // map, since it is populated during execution.
-  EXPECT_EQ(
-      reinterpret_cast<decltype(&MyFunction)>(
-          repl.foreign_function_map().ForeignFunctionPointer(data_types::LocalFnId(0))),
-      &MyFunction);
+  EXPECT_EQ(reinterpret_cast<decltype(&MyFunction)>(
+                repl.foreign_function_map().ForeignFunctionPointer(
+                    data_types::LocalFnId::Foreign(0))),
+            &MyFunction);
 
-  auto const *fn =
-      repl.foreign_function_map().ForeignFunction(data_types::LocalFnId(0));
+  auto const *fn = repl.foreign_function_map().ForeignFunction(
+      data_types::LocalFnId::Foreign(0));
   EXPECT_EQ(result, fn);
 
   data_types::IntegerTable table;

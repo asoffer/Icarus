@@ -46,18 +46,20 @@ ForeignFunctionMap::ForeignFunction(std::string name, core::FunctionType t) {
 
   ASSERT(foreign_functions_.from_index(foreign_functions_.index(iter))
              .second.second != nullptr);
-  return std::pair(
-      data_types::Fn(serialization::ModuleIndex::Builtin(),
-                     data_types::LocalFnId(foreign_functions_.index(iter))),
-      &iter->second.first);
+  return std::pair(data_types::Fn(serialization::ModuleIndex::Builtin(),
+                                  data_types::LocalFnId::Foreign(
+                                      foreign_functions_.index(iter))),
+                   &iter->second.first);
 }
 
 IrFunction const* ForeignFunctionMap::ForeignFunction(data_types::LocalFnId id) const {
+  ASSERT(id.foreign());
   return &foreign_functions_.from_index(id.value()).second.first;
 }
 
 std::type_identity_t<void (*)()> ForeignFunctionMap::ForeignFunctionPointer(
     data_types::LocalFnId id) const {
+  ASSERT(id.foreign());
   return foreign_functions_.from_index(id.value()).second.second;
 }
 

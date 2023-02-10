@@ -175,7 +175,7 @@ struct Repl {
     return stmts.back()->as<ast::Expression>();
   }
 
-  semantic_analysis::IrFunction const* function(data_types::Fn f) {
+  semantic_analysis::IrFunction const* function(data_types::LocalFnId f) {
     return module().function(f);
   }
 

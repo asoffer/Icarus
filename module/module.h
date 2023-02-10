@@ -63,15 +63,14 @@ struct Module {
   // this function can be modified to only accept a `LocalFnId`. Maybe foreign
   // functions are just intermixed with normal functions? do they need special
   // treatment?
-  semantic_analysis::IrFunction const *function(data_types::Fn fn_id) const {
-    if (fn_id.module() == serialization::ModuleIndex::Foreign()) {
-      return foreign_function_map_.ForeignFunction(fn_id.local());
-    } else if (fn_id.module() == serialization::ModuleIndex(0)) {
-      size_t index = fn_id.local().value();
+  semantic_analysis::IrFunction const *function(
+      data_types::LocalFnId fn_id) const {
+    if (fn_id.foreign()) {
+      return foreign_function_map_.ForeignFunction(fn_id);
+    } else {
+      size_t index = fn_id.value();
       ASSERT(index < functions_.size());
       return &functions_[index];
-    } else {
-      NOT_YET();
     }
   }
 

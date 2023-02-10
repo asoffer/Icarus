@@ -22,10 +22,7 @@ struct ModuleIndex
 
   // An identifier for the module which holds all builtin data accessible
   // through the `builtin` keyword.
-  static constexpr ModuleIndex Builtin() { return ModuleIndex(0); }
-
-  // An identifier for a synthetic module where all foreign symbols live.
-  static constexpr ModuleIndex Foreign() {
+  static constexpr ModuleIndex Builtin() {
     return ModuleIndex(std::numeric_limits<underlying_type>::max() - 1);
   }
 

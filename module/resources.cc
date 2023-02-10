@@ -97,7 +97,7 @@ core::Type Resources::Translate(core::Type type,
 
 data_types::Fn Resources::TranslateToPrimary(data_types::Fn f) {
   auto& m = module(f.module());
-  auto const *fn =  m.function(f);
+  auto const *fn =  m.function(f.local());
   NOT_YET(); // Expose wrapped function.
 }
 
