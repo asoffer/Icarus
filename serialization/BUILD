@@ -12,12 +12,30 @@ cc_proto_library(
     deps = [":constants_proto"],
 )
 
+cc_proto_library(
+    name = "function_index_proto",
+    deps = ["//serialization/proto:function_index"],
+)
+
+cc_library(
+    name = "function_index",
+    hdrs = ["function_index.h"],
+    srcs = ["function_index.cc"],
+    visibility = ["//visibility:public"],
+    deps = [
+        "//base:debug",
+        ":function_index_proto",
+    ],
+)
+
 proto_library(
     name = "module_proto",
     srcs = ["module.proto"],
     deps = [
         ":constants_proto",
         ":type_system_proto",
+        "//serialization/proto:function_index",
+        "//serialization/proto:module_map",
         "//serialization/proto:read_only_data",
     ],
 )
@@ -39,6 +57,11 @@ cc_library(
     ],
 )
 
+cc_proto_library(
+    name = "module_map_proto",
+    visibility = ["//visibility:public"],
+    deps = ["//serialization/proto:module_map"],
+)
 
 cc_library(
     name = "module_map",
@@ -47,18 +70,9 @@ cc_library(
     srcs = ["module_map.cc"],
     deps = [
         ":module_index",
-        "//base:debug",
+        ":module_map_proto",
+        ":unique_module_id",
         "@asoffer_nth//nth/container:flyweight_set",
-        "@com_google_absl//absl/container:flat_hash_map",
-    ],
-)
-
-cc_test(
-    name = "module_map_test",
-    srcs = ["module_map_test.cc"],
-    deps = [
-        ":module_map",
-        "@com_google_googletest//:gtest_main",
     ],
 )
 
@@ -100,4 +114,13 @@ cc_proto_library(
     name = "type_system",
     visibility = ["//visibility:public"],
     deps = [":type_system_proto"],
+)
+
+cc_library(
+    name = "unique_module_id",
+    hdrs = ["unique_module_id.h"],
+    visibility = ["//visibility:public"],
+    deps = [
+        "//base:debug",
+    ],
 )

@@ -5,7 +5,6 @@
 #include "diagnostic/consumer/consumer.h"
 #include "module/module.h"
 #include "module/module_name.h"
-#include "serialization/module_map.h"
 #include "serialization/read_only_data.h"
 
 namespace module {
@@ -27,7 +26,8 @@ struct Resources {
   // returned.
   Module* LoadFrom(serialization::Module module);
 
-  Module& primary_module() { return *modules_[0]; }
+  Module& primary_module() { return primary_module_; }
+  Module const& primary_module() const { return primary_module_; }
   Module& module(serialization::ModuleIndex index) {
     return *modules_[index.value()];
   }
@@ -52,8 +52,8 @@ struct Resources {
   void Populate(serialization::UniqueModuleId const& id,
                 std::unique_ptr<Module> m);
 
+  Module primary_module_{serialization::UniqueModuleId("")};
   std::vector<std::unique_ptr<Module>> modules_;
-  serialization::ModuleMap module_map_;
   serialization::ReadOnlyData read_only_data_;
 
   absl::AnyInvocable<serialization::UniqueModuleId(ModuleName const&) const>

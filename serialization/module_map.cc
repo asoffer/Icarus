@@ -4,25 +4,31 @@
 
 namespace serialization {
 
-void ModuleMap::insert(ModuleIndex module_index, ModuleIndex dep_index,
-                       UniqueModuleId const& value) {
-  auto [iter, inserted] = data_.insert(value);
-  mapping_.emplace(std::pair(module_index, dep_index),
-                   ModuleIndex(data_.index(iter)));
-}
-
-std::pair<ModuleIndex, UniqueModuleId const&> ModuleMap::read(
-    ModuleIndex module_index, ModuleIndex dep_index) const {
-  auto iter = mapping_.find(std::pair(module_index, dep_index));
-  ASSERT(iter != mapping_.end());
-  return std::pair<ModuleIndex, UniqueModuleId const&>(
-      iter->second, data_.from_index(iter->second.value()));
-}
-
-ModuleIndex ModuleMap::get(UniqueModuleId const& id) const {
+ModuleIndex ModuleMap::index(UniqueModuleId const& id) const {
   auto iter = data_.find(id);
   if (iter == data_.end()) { return ModuleIndex::Invalid(); }
   return ModuleIndex(data_.index(iter));
+}
+
+UniqueModuleId const& ModuleMap::id(ModuleIndex index) const {
+  return data_.from_index(index.value());
+}
+
+void ModuleMap::Serialize(ModuleMap const & from, proto::ModuleMap& to) {
+  for (auto const& id : from.data_) { *to.add_ids() = id.value(); }
+}
+
+bool ModuleMap::Deserialize(proto::ModuleMap const& from, ModuleMap& to) {
+  for (auto const& id : from.ids()) {
+    auto [iter, inserted] = to.data_.insert(UniqueModuleId(id));
+    if (not inserted) { return false; }
+  }
+  return true;
+}
+
+std::pair<ModuleIndex, bool> ModuleMap::insert(UniqueModuleId const& id) {
+  auto [iter, inserted] = data_.insert(id);
+  return std::pair(ModuleIndex(data_.index(iter)), inserted);
 }
 
 }  // namespace serialization

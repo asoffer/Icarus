@@ -190,6 +190,8 @@ bool Module::Serialize(std::ostream& output) const {
   *proto.mutable_identifier() = id_.value();
   SerializeTypeSystem(type_system(), *proto.mutable_type_system());
 
+  serialization::ModuleMap::Serialize(module_map_, *proto.mutable_module_map());
+
   SerializationState state;
 
   auto& foreign_state =
@@ -235,10 +237,9 @@ bool Module::Serialize(std::ostream& output) const {
                           symbol.as<core::Type>().category()));
       } else if (symbol_type.category() ==
                  type_system().index<core::FunctionType>()) {
-        auto& proto_f    = *exported_symbol.mutable_function();
-        data_types::Fn f = symbol.as<TypedFunction>().function;
-        proto_f.set_module_index(f.module().value());
-        proto_f.set_function(f.local().value());
+        serialization::FunctionIndex::Serialize(
+            symbol.as<TypedFunction>().function,
+            *exported_symbol.mutable_function());
       } else {
         NOT_YET();
       }
@@ -257,6 +258,11 @@ bool Module::DeserializeInto(serialization::Module proto, Module& module) {
 
   DeserializeTypeSystem(proto.type_system(), module.type_system_);
 
+  if (not serialization::ModuleMap::Deserialize(proto.module_map(),
+                                                module.module_map_)) {
+    return false;
+  }
+
   auto& exported = *proto.mutable_exported();
   for (auto const& [name, symbols] : proto.exported()) {
     for (auto const& symbol : symbols.symbols()) {
@@ -266,11 +272,15 @@ bool Module::DeserializeInto(serialization::Module proto, Module& module) {
             DeserializeType(symbol.type()));
       } else if (symbol_type.category() ==
                  module.type_system_.index<core::FunctionType>()) {
-        auto const & proto_f = symbol.function();
-        data_types::Fn f(serialization::ModuleIndex(proto_f.module_index()),
-                         data_types::LocalFnId(proto_f.function()));
-        module.exported_symbols_[name].push_back(
-            TypedFunction{.type = symbol_type, .function = f});
+        serialization::FunctionIndex f;
+        if (not serialization::FunctionIndex::Deserialize(symbol.function(),
+                                                          f)) {
+          return false;
+        }
+        module.exported_symbols_[name].push_back(TypedFunction{
+            .type     = symbol_type,
+            .function = f,
+        });
       } else {
         NOT_YET(semantic_analysis::DebugType(symbol_type, module.type_system_));
       }

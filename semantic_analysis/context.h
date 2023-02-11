@@ -141,6 +141,7 @@ struct Context {
     }
 
     module::TypedFunction function() const {
+      ASSERT(std::holds_alternative<module::TypedFunction>(entry_));
       return std::get<module::TypedFunction>(entry_);
     }
 

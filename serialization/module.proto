@@ -2,6 +2,8 @@ syntax = "proto3";
 
 import "serialization/constants.proto";
 import "serialization/proto/read_only_data.proto";
+import "serialization/proto/module_map.proto";
+import "serialization/proto/function_index.proto";
 import "serialization/type_system.proto";
 
 package serialization;
@@ -17,16 +19,11 @@ message ForeignSymbol {
   Type type = 2;
 }
 
-message FunctionSymbol {
-  uint32 module_index = 1;
-  uint32 function = 2;
-}
-
 message Symbol {
   Type symbol_type = 1;
   oneof o {
     Type type = 2;
-    FunctionSymbol function = 3;
+    proto.FunctionIndex function = 3;
   }
 }
 
@@ -57,4 +54,6 @@ message Module {
   IntegerTable integers = 7;
 
   map<string, Symbols> exported = 8;
+
+  proto.ModuleMap module_map = 9;
 }

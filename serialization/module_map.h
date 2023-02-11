@@ -1,40 +1,12 @@
 #ifndef ICARUS_SERIALIZATION_MODULE_MAP_H
 #define ICARUS_SERIALIZATION_MODULE_MAP_H
 
-#include <string>
-#include <string_view>
-#include <utility>
-
-#include "absl/container/flat_hash_map.h"
 #include "nth/container/flyweight_set.h"
 #include "serialization/module_index.h"
+#include "serialization/proto/module_map.pb.h"
+#include "serialization/unique_module_id.h"
 
 namespace serialization {
-
-// Represents an identifier for the module which is unique amongst all modules
-// linked into the same binary.
-struct UniqueModuleId {
-  explicit UniqueModuleId(std::string &&value) : value_(std::move(value)) {}
-  explicit UniqueModuleId(std::string_view value = "") : value_(value) {}
-  explicit UniqueModuleId(char const *value) : value_(value) {}
-
-  // Valid modules must only use printable characters.
-  static UniqueModuleId Invalid() {
-    return UniqueModuleId(std::string("\0", 1));
-  }
-
-  std::string_view value() const { return value_; }
-
-  friend bool operator==(UniqueModuleId const &,
-                         UniqueModuleId const &) = default;
-  template <typename H>
-  friend H AbslHashValue(H h, UniqueModuleId const &id) {
-    return H::combine(std::move(h), id.value_);
-  }
-
- private:
-  std::string value_;
-};
 
 // Represents a mapping of module indices as specified in one module to another.
 // Each module labels its dependencies with an index type (namely,
@@ -54,25 +26,20 @@ struct UniqueModuleId {
 // `ModuleIndex` to each value globally unique label. This index is only
 // meaningful within the context of the module currently being compiled.
 struct ModuleMap {
-  // Inserts `id` into the module map and associates it with `dep_index` when
-  // read from `module_index`.
-  void insert(ModuleIndex module_index, ModuleIndex dep_index,
-              UniqueModuleId const &id);
-
-  // Given the module-specific index represented by `module_index` and
-  // `dep_index`, returns a pair consisting of the globally unique index and a
-  // view of the associated value.
-  std::pair<ModuleIndex, UniqueModuleId const &> read(
-      ModuleIndex module_index, ModuleIndex dep_index) const;
-
   // Returns the `ModuleIndex` associated with `id` if one exists and
   // `ModuleIndex::Invalid()` otherwise.
-  ModuleIndex get(UniqueModuleId const & id) const;
+  ModuleIndex index(UniqueModuleId const& id) const;
+
+  // Returns the `UniqueModuleId` associated with `index`.
+  UniqueModuleId const& id(ModuleIndex index) const;
+
+  std::pair<ModuleIndex, bool> insert(UniqueModuleId const& id);
+
+  static void Serialize(ModuleMap const& from, proto::ModuleMap& to);
+  static bool Deserialize(proto::ModuleMap const& from, ModuleMap& to);
 
  private:
   nth::flyweight_set<UniqueModuleId> data_;
-  absl::flat_hash_map<std::pair<ModuleIndex, ModuleIndex>, ModuleIndex>
-      mapping_;
 };
 
 }  // namespace serialization

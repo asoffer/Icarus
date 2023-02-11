@@ -7,10 +7,9 @@ Resources::Resources(
     absl::AnyInvocable<serialization::UniqueModuleId(ModuleName const &) const>
         name_resolver,
     std::unique_ptr<diagnostic::DiagnosticConsumer> diagnostic_consumer)
-    : name_resolver_(std::move(name_resolver)),
-      diagnostic_consumer_(std::move(diagnostic_consumer)) {
-  Populate(id, std::make_unique<Module>(id));
-}
+    : primary_module_(id),
+      name_resolver_(std::move(name_resolver)),
+      diagnostic_consumer_(std::move(diagnostic_consumer)) {}
 
 Module *Resources::LoadFrom(serialization::Module module) {
   serialization::UniqueModuleId id(std::move(*module.mutable_identifier()));
@@ -26,7 +25,7 @@ Module *Resources::LoadFrom(serialization::Module module) {
 
 serialization::ModuleIndex Resources::TryLoadModuleByName(
     ModuleName const &name) const {
-    return module_map_.get(name_resolver_(name));
+  return primary_module().map().index(name_resolver_(name));
 }
 
 diagnostic::DiagnosticConsumer &Resources::diagnostic_consumer() {
@@ -48,9 +47,12 @@ std::optional<Resources> Resources::LoadPrimary(serialization::Module module) {
 
 void Resources::Populate(serialization::UniqueModuleId const &id,
                          std::unique_ptr<Module> m) {
+  Module &module                = primary_module();
+  serialization::ModuleMap &map = module.map();
+  auto [index, inserted]        = map.insert(id);
+  ASSERT(inserted);
+  ASSERT(index.value() == modules_.size());
   modules_.push_back(std::move(m));
-  module_map_.insert(serialization::ModuleIndex(0),
-                     serialization::ModuleIndex(modules_.size()), id);
 }
 
 core::Type Resources::Translate(core::Type type,

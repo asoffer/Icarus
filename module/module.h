@@ -55,6 +55,14 @@ struct Module {
     exported_symbols_[name].push_back(std::move(s));
   }
 
+  void Export(std::string_view name, core::Type t,
+              semantic_analysis::IrFunction const *f) {
+    Export(name, Symbol(TypedFunction{
+                     .type     = t,
+                     .function = find(f),
+                 }));
+  }
+
   auto const &read_only_data() const { return read_only_data_; }
 
   // TODO: Figure out a better way to do foreign functions. The're shared but
@@ -78,11 +86,24 @@ struct Module {
       size_t parameters, size_t returns) {
     data_types::Fn fn(serialization::ModuleIndex(0),
                       data_types::LocalFnId(functions_.size()));
-    return std::pair(fn, &functions_.emplace_back(parameters, returns));
+    auto &f = functions_.emplace_back(parameters, returns);
+    function_indices_.emplace(&f, functions_.size() - 1);
+    return std::pair(fn, &f);
   }
+
+  serialization::ModuleMap const &map() const { return module_map_; }
+  serialization::ModuleMap &map() { return module_map_; }
 
  private:
   serialization::UniqueModuleId id_;
+
+  data_types::LocalFnId find(semantic_analysis::IrFunction const *f) {
+    auto iter = function_indices_.find(f);
+    if (iter != function_indices_.end()) {
+      return data_types::LocalFnId(iter->second);
+    }
+    NOT_YET("Return a foreign function");
+  }
 
   // Accepts two arguments (a slice represented as data followed by length).
   semantic_analysis::IrFunction initializer_{2, 0};
@@ -92,12 +113,17 @@ struct Module {
   // The type-system containing all types referenceable in this module.
   mutable semantic_analysis::TypeSystem type_system_;
   semantic_analysis::ForeignFunctionMap foreign_function_map_;
+
+  // TODO: Can we turn this into an nth::flyweight_set?
   std::deque<semantic_analysis::IrFunction> functions_;
+  absl::flat_hash_map<semantic_analysis::IrFunction const *, size_t>
+      function_indices_;
 
   // All integer constants used in the module.
   data_types::IntegerTable integer_table_;
 
   serialization::ReadOnlyData read_only_data_;
+  serialization::ModuleMap module_map_;
 };
 
 }  // namespace module

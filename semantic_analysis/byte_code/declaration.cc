@@ -49,6 +49,7 @@ void ByteCodeStatementEmitter::operator()(ast::Declaration const* node,
     std::span<std::byte const> evaluation =
         EmitConstantDeclaration(*this, node, qt, data);
 
+    // TODO: memcpy here is error-prone. Design a better API.
     if (node->hashtags.contains(data_types::Hashtag::Export)) {
       if (qt.type() == Type) {
         core::Type t;
@@ -56,11 +57,10 @@ void ByteCodeStatementEmitter::operator()(ast::Declaration const* node,
         module().Export(node->ids()[0].name(), t);
       } else if (qt.type().category() ==
                  type_system().index<core::FunctionType>()) {
-        data_types::Fn fn;
-        std::memcpy(&fn, evaluation.data(), sizeof(fn));
-        module().Export(
-            node->ids()[0].name(),
-            module::TypedFunction{.type = qt.type(), .function = fn});
+        auto const* f =
+            jasmin::Value::Load(evaluation.data(), evaluation.size())
+                .as<semantic_analysis::IrFunction const*>();
+        module().Export(node->ids()[0].name(), qt.type(), f);
       } else {
         NOT_YET();
       }
