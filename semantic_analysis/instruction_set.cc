@@ -183,4 +183,20 @@ bool PushFunction::deserialize(jasmin::Deserializer& deserializer,
   return true;
 }
 
+void TranslateFunctionArguments::execute(
+    jasmin::ValueStack& value_stack,
+    core::Parameters<core::Type> const* parameters,
+    serialization::ModuleIndex index) {
+  std::vector<jasmin::Value> values;
+  values.reserve(parameters->size());
+  for (auto iter = parameters->rbegin(); iter != parameters->rend(); ++iter) {
+    values.push_back(value_stack.pop_value());
+    if (iter->value == Type) { NOT_YET(); }
+  }
+
+  for (auto iter = values.rbegin(); iter != values.rend(); ++iter) {
+    value_stack.push(*iter);
+  }
+}
+
 }  // namespace semantic_analysis

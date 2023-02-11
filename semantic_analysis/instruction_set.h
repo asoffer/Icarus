@@ -13,6 +13,7 @@
 #include "nth/container/flyweight_set.h"
 #include "nth/numeric/integer.h"
 #include "semantic_analysis/type_system.h"
+#include "serialization/module_index.h"
 
 namespace semantic_analysis {
 // Defined in "semantic_analysis/foreign_function_map.h", in the same build
@@ -22,6 +23,13 @@ struct ForeignFunctionMap;
 struct BuiltinForeign : jasmin::StackMachineInstruction<BuiltinForeign> {
   static void execute(jasmin::ValueStack& value_stack, core::Type t,
                       ForeignFunctionMap* module, TypeSystem* ts);
+};
+
+struct TranslateFunctionArguments
+    : jasmin::StackMachineInstruction<TranslateFunctionArguments> {
+  static void execute(jasmin::ValueStack& value_stack,
+                      core::Parameters<core::Type> const* parameters,
+                      serialization::ModuleIndex index);
 };
 
 struct InvokeForeignFunction
@@ -237,8 +245,8 @@ struct InstructionSet
           jasmin::StackOffset, jasmin::Load, AllocateTemporary,
           DeallocateAllTemporaries, BuiltinForeign, InvokeForeignFunction,
           PushStringLiteral, PushFunction, IncrementPointer,
-          ZeroExtend<true, true>, ZeroExtend<false, true>,
-          ZeroExtend<false, false>,
+          TranslateFunctionArguments, ZeroExtend<true, true>,
+          ZeroExtend<false, true>, ZeroExtend<false, false>,
           ApplyInstruction<jasmin::Equal, int8_t, int16_t, int32_t, int64_t,
                            uint8_t, uint16_t, uint32_t, uint64_t, float,
                            double>,

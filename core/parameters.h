@@ -177,6 +177,14 @@ struct Parameters
   constexpr auto begin() { return params_.begin(); }
   constexpr auto end() { return params_.end(); }
 
+  constexpr auto rbegin() const { return params_.rbegin(); }
+  constexpr auto rend() const { return params_.rend(); }
+  constexpr auto crbegin() const { return params_.rbegin(); }
+  constexpr auto crend() const { return params_.end(); }
+
+  constexpr auto rbegin() { return params_.rbegin(); }
+  constexpr auto rend() { return params_.rend(); }
+
   parameter_type const* data() const { return params_.data(); }
 
   // Returns a pair consisting of a pointer to the parameter names `s` and the
