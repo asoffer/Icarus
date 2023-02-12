@@ -10,23 +10,23 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
   if (operand_qts.size() != 1) { NOT_YET("log an error"); }
   QualifiedType qt = operand_qts[0];
   if (qt.type() == Module) {
-    auto &m = tv.resources().module(
-        tv.EvaluateAs<serialization::ModuleIndex>(node->operand()));
+    auto index = tv.EvaluateAs<serialization::ModuleIndex>(node->operand());
+    auto &m    = tv.resources().module(index);
     std::span symbols = m.LoadSymbols(node->member_name());
     switch (symbols.size()) {
       case 0: {
         NOT_YET();
       } break;
       case 1: {
-        core::Type t = tv.resources().Translate(
-            symbols[0].type(), m.type_system(), tv.type_system());
+        module::Symbol s = tv.resources().TranslateToPrimary(index, symbols[0]);
+        core::Type t = s.type();
         if (auto fn_type = t.get_if<core::FunctionType>(tv.type_system())) {
           co_yield tv.ParametersOf(
               node, absl::flat_hash_map<core::ParameterType,
                                         Context::CallableIdentifier>{
                         {fn_type->parameter_type(),
                          Context::CallableIdentifier(
-                             symbols[0].as<module::TypedFunction>())}});
+                             s.as<module::TypedFunction>())}});
         }
         co_return tv.TypeOf(node, Constant(t));
       } break;

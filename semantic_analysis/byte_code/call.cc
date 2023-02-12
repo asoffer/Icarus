@@ -38,9 +38,8 @@ void ByteCodeValueEmitter::operator()(ast::Call const* node,
 
     Emit(expr, data);
   } else {
-    NOT_YET();
-    // data.function().append<PushFunction>(resources().TranslateToPrimary(
-    //     callable_identifier.function().function));
+    data.function().append<PushFunction>(
+        module().function(callable_identifier.function().function));
   }
 
   auto* f = data.function().raw_instructions().back().as<IrFunction const*>();

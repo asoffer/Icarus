@@ -94,6 +94,10 @@ struct Module {
   serialization::ModuleMap const &map() const { return module_map_; }
   serialization::ModuleMap &map() { return module_map_; }
 
+  std::pair<serialization::FunctionIndex, semantic_analysis::IrFunction const *>
+  Wrap(serialization::ModuleIndex index,
+       semantic_analysis::IrFunction const *f);
+
  private:
   serialization::UniqueModuleId id_;
 
@@ -118,6 +122,11 @@ struct Module {
   std::deque<semantic_analysis::IrFunction> functions_;
   absl::flat_hash_map<semantic_analysis::IrFunction const *, size_t>
       function_indices_;
+
+  // Keyed on functions in other modules. The mapped value is the index in
+  // functions_ of the wrapper.
+  absl::flat_hash_map<semantic_analysis::IrFunction const *, size_t>
+      wrapped_;
 
   // All integer constants used in the module.
   data_types::IntegerTable integer_table_;

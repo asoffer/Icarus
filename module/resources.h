@@ -44,7 +44,11 @@ struct Resources {
   core::Type Translate(core::Type type, semantic_analysis::TypeSystem& from,
                        semantic_analysis::TypeSystem& to) const;
 
-  data_types::Fn TranslateToPrimary(data_types::Fn f);
+  // Assuming `symbol` is defined relative to the module indexed by `from`,
+  // returns a `Symbol` equivalent to `symbol` but relative to the primary
+  // module.
+  Symbol TranslateToPrimary(serialization::ModuleIndex from,
+                            Symbol const& symbol);
 
  private:
   explicit Resources() = default;

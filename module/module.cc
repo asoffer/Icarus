@@ -316,4 +316,23 @@ bool Module::DeserializeInto(serialization::Module proto, Module& module) {
   return true;
 }
 
+std::pair<serialization::FunctionIndex, semantic_analysis::IrFunction const*>
+Module::Wrap(serialization::ModuleIndex index,
+             semantic_analysis::IrFunction const* f) {
+  auto iter = wrapped_.find(f);
+  if (iter != wrapped_.end()) {
+    return std::pair(serialization::FunctionIndex(iter->second),
+                     &functions_[iter->second]);
+  }
+
+  size_t fn_index = functions_.size();
+  auto& fn = functions_.emplace_back(f->parameter_count(), f->return_count());
+  fn.append<semantic_analysis::PushFunction>(f);
+  fn.append<jasmin::Call>();
+  fn.append<jasmin::Return>();
+  wrapped_.emplace(f, fn_index);
+  function_indices_.emplace(&fn, fn_index);
+  return std::pair(serialization::FunctionIndex(fn_index), &fn);
+}
+
 }  // namespace module
