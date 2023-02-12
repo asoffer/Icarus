@@ -29,6 +29,7 @@ cc_library(
         "//data_types:integer",
         "//data_types:fn",
         "//serialization:module_index",
+        "//serialization:read_only_data",
         "@asoffer_nth//nth/numeric:integer",
         "@asoffer_jasmin//jasmin:debug",
         "@asoffer_jasmin//jasmin:function",

@@ -150,8 +150,11 @@ void PushStringLiteral::serialize(jasmin::Serializer& serializer,
                                   std::span<jasmin::Value const> values,
                                   serialization_state& state) {
   ASSERT(values.size() == 2);
-  serializer(state.index(
-      std::string_view(values[0].as<char const*>(), values[1].as<size_t>())));
+  // TODO: Change this to string_view once nth::flyweight_set supports
+  // heterogeneous lookup.
+  auto [index, inserted] = state.insert(
+      std::string(values[0].as<char const*>(), values[1].as<size_t>()));
+  serializer(index);
 }
 
 bool PushStringLiteral::deserialize(jasmin::Deserializer& deserializer,

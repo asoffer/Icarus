@@ -14,6 +14,7 @@
 #include "nth/numeric/integer.h"
 #include "semantic_analysis/type_system.h"
 #include "serialization/module_index.h"
+#include "serialization/read_only_data.h"
 
 namespace semantic_analysis {
 // Defined in "semantic_analysis/foreign_function_map.h", in the same build
@@ -141,19 +142,7 @@ struct AllocateTemporary : jasmin::StackMachineInstruction<AllocateTemporary> {
 };
 
 struct PushStringLiteral : jasmin::StackMachineInstruction<PushStringLiteral> {
-  struct serialization_state {
-    size_t index(std::string_view s) {
-      return strings_.index(strings_.insert(s).first);
-    }
-
-    std::string_view string(size_t n) { return strings_.from_index(n); }
-    size_t size() const { return strings_.size(); }
-    auto begin() const { return strings_.begin(); }
-    auto end() const { return strings_.end(); }
-
-   private:
-    nth::flyweight_set<std::string_view> strings_;
-  };
+  using serialization_state = serialization::ReadOnlyData;
   static constexpr void execute(jasmin::ValueStack& value_stack,
                                 char const* ptr, size_t length) {
     value_stack.push(ptr);

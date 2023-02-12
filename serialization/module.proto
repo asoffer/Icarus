@@ -49,7 +49,7 @@ message Module {
   repeated Function functions = 5;
 
   // All read-only data required in the module.
-  ReadOnlyData read_only = 6;
+  proto.ReadOnlyData read_only = 6;
 
   IntegerTable integers = 7;
 

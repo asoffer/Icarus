@@ -12,6 +12,7 @@ cc_library(
         "//semantic_analysis:type_system",
         "//serialization:module",
         "//serialization:module_map",
+        "//serialization:read_only_data",
         "@asoffer_jasmin//jasmin:serialization",
     ],
 )

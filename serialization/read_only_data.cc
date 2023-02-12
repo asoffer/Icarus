@@ -1,31 +1,44 @@
 #include "serialization/read_only_data.h"
 
+#include <utility>
+
 #include "base/debug.h"
 
 namespace serialization {
 
-void ReadOnlyDataAggregator::merge(ModuleIndex module_index,
-                                   ReadOnlyData const& data) {
-  size_t i = 0;
-  for (std::string const& s : data.strings()) { insert(module_index, i++, s); }
+std::pair<size_t, bool> ReadOnlyData::insert(std::string const& content) {
+  auto [iter, inserted] = data_.insert(content);
+  return std::pair(data_.index(iter), inserted);
 }
 
-void ReadOnlyDataAggregator::insert(ModuleIndex module_index, size_t index,
-                                    std::string const& value) {
-  auto [iter, inserted] = data_.insert(value);
-  mapping_.emplace(std::pair(module_index, index), data_.index(iter));
+std::pair<size_t, bool> ReadOnlyData::insert(std::string&& content) {
+  auto [iter, inserted] = data_.insert(std::move(content));
+  return std::pair(data_.index(iter), inserted);
 }
 
-void ReadOnlyDataAggregator::write_to(ReadOnlyData& output) {
-  for (auto const& s : data_) { *output.add_strings() = s; }
+void ReadOnlyData::Serialize(ReadOnlyData const& from,
+                             proto::ReadOnlyData& to) {
+  for (auto const& s : from.data_) { *to.add_strings() = s; }
 }
 
-std::pair<size_t, std::string_view> ReadOnlyDataAggregator::read(
-    ModuleIndex module_index, size_t index) const {
-  auto iter = mapping_.find(std::pair(module_index, index));
-  ASSERT(iter != mapping_.end());
-  return std::pair<size_t, std::string_view>(iter->second,
-                                             data_.from_index(iter->second));
+bool ReadOnlyData::Deserialize(proto::ReadOnlyData const& from,
+                               ReadOnlyData& to) {
+  for (auto const& s : from.strings()) {
+    auto [iter, inserted] = to.data_.insert(s);
+    if (not inserted) { return false; }
+  }
+  return true;
+}
+
+size_t ReadOnlyData::index(std::string const& s) const {
+  auto iter = data_.find(s);
+  ASSERT(iter != data_.end());
+  return data_.index(data_.find(s));
+}
+
+std::string const& ReadOnlyData::string(size_t n) const {
+  ASSERT(n < data_.size());
+  return data_.from_index(n);
 }
 
 }  // namespace serialization

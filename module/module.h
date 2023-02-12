@@ -14,13 +14,12 @@
 #include "serialization/module.pb.h"
 #include "serialization/module_index.h"
 #include "serialization/module_map.h"
+#include "serialization/read_only_data.h"
 
 namespace module {
 
 struct Module {
-  explicit Module(serialization::UniqueModuleId id,
-                  serialization::ReadOnlyData read_only_data = {})
-      : id_(std::move(id)), read_only_data_(std::move(read_only_data)) {}
+  explicit Module(serialization::UniqueModuleId id) : id_(std::move(id)) {}
 
   bool Serialize(std::ostream &output) const;
   static bool DeserializeInto(serialization::Module proto, Module &module);
@@ -131,7 +130,7 @@ struct Module {
   // All integer constants used in the module.
   data_types::IntegerTable integer_table_;
 
-  serialization::ReadOnlyData read_only_data_;
+  mutable serialization::ReadOnlyData read_only_data_;
   serialization::ModuleMap module_map_;
 };
 

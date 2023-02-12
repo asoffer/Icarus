@@ -148,15 +148,20 @@ void DeserializeForeignSymbols(
 }
 
 struct SerializationState {
+  SerializationState(serialization::ReadOnlyData& rodata) : rodata_(rodata) {}
   template <typename T>
   T& get() {
-    return std::get<T>(state_);
+    if constexpr (nth::type<T> == nth::type<serialization::ReadOnlyData>) {
+      return rodata_;
+    } else {
+      return std::get<T>(state_);
+    }
   }
 
  private:
-  std::tuple<semantic_analysis::PushFunction::serialization_state,
-             semantic_analysis::InvokeForeignFunction::serialization_state,
-             semantic_analysis::PushStringLiteral::serialization_state>
+  serialization::ReadOnlyData& rodata_;
+  std::tuple<semantic_analysis::InvokeForeignFunction::serialization_state,
+             semantic_analysis::PushFunction::serialization_state>
       state_;
 };
 
@@ -166,20 +171,6 @@ void SerializeFunction(semantic_analysis::IrFunction const& f,
   proto.set_parameters(f.parameter_count());
   proto.set_returns(f.return_count());
   jasmin::Serialize(f, *proto.mutable_content(), state);
-}
-
-void SerializeReadOnlyData(
-    serialization::ReadOnlyData& data,
-    semantic_analysis::PushStringLiteral::serialization_state const& state) {
-  for (std::string_view content : state) {
-    *data.add_strings() = std::string(content);
-  }
-}
-
-void DeserializeReadOnlyData(
-    serialization::ReadOnlyData const& data,
-    semantic_analysis::PushStringLiteral::serialization_state& state) {
-  for (std::string_view content : data.strings()) { state.index(content); }
 }
 
 }  // namespace
@@ -192,7 +183,7 @@ bool Module::Serialize(std::ostream& output) const {
 
   serialization::ModuleMap::Serialize(module_map_, *proto.mutable_module_map());
 
-  SerializationState state;
+  SerializationState state(read_only_data_);
 
   auto& foreign_state =
       state
@@ -218,16 +209,15 @@ bool Module::Serialize(std::ostream& output) const {
     ++serialized_up_to;
   }
 
-  SerializeReadOnlyData(
-      *proto.mutable_read_only(),
-      state.get<semantic_analysis::PushStringLiteral::serialization_state>());
+  serialization::ReadOnlyData::Serialize(read_only_data_,
+                                         *proto.mutable_read_only());
   data_types::Serialize(integer_table_, *proto.mutable_integers());
 
   auto& exported = *proto.mutable_exported();
-  for (auto const & [name, symbols] : exported_symbols_) {
+  for (auto const& [name, symbols] : exported_symbols_) {
     auto& exported_symbols = exported[name];
     for (auto const& symbol : symbols) {
-      auto& exported_symbol = *exported_symbols.add_symbols();
+      auto& exported_symbol  = *exported_symbols.add_symbols();
       core::Type symbol_type = symbol.type();
       SerializeType(symbol_type, *exported_symbol.mutable_symbol_type(),
                     type_system().has_inline_storage(symbol_type.category()));
@@ -249,19 +239,18 @@ bool Module::Serialize(std::ostream& output) const {
 }
 
 bool Module::DeserializeInto(serialization::Module proto, Module& module) {
-  SerializationState state;
+  SerializationState state(module.read_only_data_);
 
   data_types::Deserialize(proto.integers(), module.integer_table_);
-  DeserializeReadOnlyData(
-      module.read_only_data(),
-      state.get<semantic_analysis::PushStringLiteral::serialization_state>());
 
-  DeserializeTypeSystem(proto.type_system(), module.type_system_);
-
-  if (not serialization::ModuleMap::Deserialize(proto.module_map(),
+  if (not serialization::ReadOnlyData::Deserialize(proto.read_only(),
+                                                   module.read_only_data_) or
+      not serialization::ModuleMap::Deserialize(proto.module_map(),
                                                 module.module_map_)) {
     return false;
   }
+
+  DeserializeTypeSystem(proto.type_system(), module.type_system_);
 
   auto& exported = *proto.mutable_exported();
   for (auto const& [name, symbols] : proto.exported()) {
