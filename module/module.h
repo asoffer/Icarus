@@ -8,9 +8,9 @@
 
 #include "data_types/integer.h"
 #include "module/symbol.h"
-#include "semantic_analysis/foreign_function_map.h"
 #include "semantic_analysis/instruction_set.h"
 #include "semantic_analysis/type_system.h"
+#include "serialization/foreign_symbol_map.h"
 #include "serialization/module.pb.h"
 #include "serialization/module_index.h"
 #include "serialization/module_map.h"
@@ -31,12 +31,11 @@ struct Module {
 
   semantic_analysis::TypeSystem &type_system() const { return type_system_; }
 
-  semantic_analysis::ForeignFunctionMap const &foreign_function_map() const {
-    return foreign_function_map_;
+  serialization::ForeignSymbolMap const &foreign_symbol_map() const {
+    return foreign_symbol_map_;
   }
-
-  semantic_analysis::ForeignFunctionMap &foreign_function_map() {
-    return foreign_function_map_;
+  serialization::ForeignSymbolMap &foreign_symbol_map() {
+    return foreign_symbol_map_;
   }
 
   data_types::IntegerTable &integer_table() { return integer_table_; }
@@ -71,14 +70,9 @@ struct Module {
   // functions are just intermixed with normal functions? do they need special
   // treatment?
   semantic_analysis::IrFunction const *function(
-      data_types::LocalFnId fn_id) const {
-    if (fn_id.foreign()) {
-      return foreign_function_map_.ForeignFunction(fn_id);
-    } else {
-      size_t index = fn_id.value();
-      ASSERT(index < functions_.size());
-      return &functions_[index];
-    }
+      serialization::FunctionIndex index) const {
+    ASSERT(index.value() < functions_.size());
+    return &functions_[index.value()];
   }
 
   std::pair<data_types::Fn, semantic_analysis::IrFunction *> create_function(
@@ -115,7 +109,9 @@ struct Module {
 
   // The type-system containing all types referenceable in this module.
   mutable semantic_analysis::TypeSystem type_system_;
-  semantic_analysis::ForeignFunctionMap foreign_function_map_;
+  // TODO: Mutable because jasmin doesn't correctly pass const qualifiers
+  // through `get`. Remove when that's fixed.
+  mutable serialization::ForeignSymbolMap foreign_symbol_map_{&type_system_};
 
   // TODO: Can we turn this into an nth::flyweight_set?
   std::deque<semantic_analysis::IrFunction> functions_;

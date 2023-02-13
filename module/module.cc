@@ -116,53 +116,26 @@ void DeserializeTypeSystem(serialization::TypeSystem const& proto,
   }
 }
 
-absl::flat_hash_map<void (*)(), std::pair<size_t, core::FunctionType>>
-SerializeForeignSymbols(
-    semantic_analysis::TypeSystem& type_system,
-    semantic_analysis::ForeignFunctionMap const& map,
-    google::protobuf::RepeatedPtrField<serialization::ForeignSymbol>& proto) {
-  absl::flat_hash_map<void (*)(), std::pair<size_t, core::FunctionType>>
-      index_map;
-  for (auto const& [key, value] : map) {
-    auto const& [name, type]    = key;
-    auto const& [ir_fn, fn_ptr] = value;
-    auto& symbol                = *proto.Add();
-    index_map.try_emplace(fn_ptr, index_map.size(), type);
-    symbol.set_name(name);
-    SerializeType(type, *symbol.mutable_type(),
-                  type_system.has_inline_storage(type.category()));
-  }
-  return index_map;
-}
-
-void DeserializeForeignSymbols(
-    semantic_analysis::TypeSystem& type_system,
-    google::protobuf::RepeatedPtrField<serialization::ForeignSymbol> const&
-        proto,
-    semantic_analysis::ForeignFunctionMap& map) {
-  for (auto const& symbol : proto) {
-    map.ForeignFunction(
-        symbol.name(),
-        DeserializeType(symbol.type()).get<core::FunctionType>(type_system));
-  }
-}
-
 struct SerializationState {
-  SerializationState(serialization::ReadOnlyData& rodata) : rodata_(rodata) {}
+  SerializationState(serialization::ReadOnlyData& rodata,
+                     serialization::ForeignSymbolMap& foreign)
+      : rodata_(rodata), foreign_(foreign) {}
   template <typename T>
   T& get() {
-    if constexpr (nth::type<T> == nth::type<serialization::ReadOnlyData>) {
+    constexpr auto t = nth::type<T>;
+    if constexpr (t == nth::type<serialization::ReadOnlyData>) {
       return rodata_;
+    } else if constexpr (t == nth::type<serialization::ForeignSymbolMap>) {
+      return foreign_;
     } else {
-      return std::get<T>(state_);
+      return state_;
     }
   }
 
  private:
   serialization::ReadOnlyData& rodata_;
-  std::tuple<semantic_analysis::InvokeForeignFunction::serialization_state,
-             semantic_analysis::PushFunction::serialization_state>
-      state_;
+  serialization::ForeignSymbolMap& foreign_;
+  semantic_analysis::PushFunction::serialization_state state_;
 };
 
 void SerializeFunction(semantic_analysis::IrFunction const& f,
@@ -183,30 +156,31 @@ bool Module::Serialize(std::ostream& output) const {
 
   serialization::ModuleMap::Serialize(module_map_, *proto.mutable_module_map());
 
-  SerializationState state(read_only_data_);
+  SerializationState state(read_only_data_, foreign_symbol_map_);
 
-  auto& foreign_state =
-      state
-          .get<semantic_analysis::InvokeForeignFunction::serialization_state>();
-  foreign_state.set_foreign_function_map(&foreign_function_map());
-  foreign_state.set_type_system(type_system());
-  foreign_state.set_map(SerializeForeignSymbols(
-      type_system(), foreign_function_map(), *proto.mutable_foreign_symbols()));
+  serialization::ForeignSymbolMap::Serialize(
+      foreign_symbol_map_, *proto.mutable_foreign_symbols());
 
+  LOG("", "Here");
   SerializeFunction(initializer_, *proto.mutable_initializer(), state);
   proto.mutable_functions()->Reserve(functions_.size());
 
   auto& f_state =
       state.get<semantic_analysis::PushFunction::serialization_state>();
 
-  for (auto& function : functions_) { f_state.index(&function); }
-  size_t serialized_up_to = 0;
+  for (auto& function : functions_) {
+    LOG("", "Here %s %u:%u", id_.value(), function.parameter_count(),
+        function.return_count());
+    f_state.index(&function); }
   // TODO look up iterator invalidation constraints to see if we can process
   // more than one at a time.
-  while (serialized_up_to != f_state.size()) {
+  for (size_t serialized_up_to = 0; serialized_up_to != f_state.size();
+       ++serialized_up_to) {
     auto const& f = **(f_state.begin() + serialized_up_to);
+    LOG("", "Here %s %u:%u", id_.value(), f.parameter_count(),
+        f.return_count());
     SerializeFunction(f, *proto.add_functions(), state);
-    ++serialized_up_to;
+    LOG("", "Here");
   }
 
   serialization::ReadOnlyData::Serialize(read_only_data_,
@@ -239,14 +213,17 @@ bool Module::Serialize(std::ostream& output) const {
 }
 
 bool Module::DeserializeInto(serialization::Module proto, Module& module) {
-  SerializationState state(module.read_only_data_);
+  LOG("", "%s %p", proto.DebugString(), &module.foreign_symbol_map_);
+  SerializationState state(module.read_only_data_, module.foreign_symbol_map_);
 
   data_types::Deserialize(proto.integers(), module.integer_table_);
 
   if (not serialization::ReadOnlyData::Deserialize(proto.read_only(),
                                                    module.read_only_data_) or
       not serialization::ModuleMap::Deserialize(proto.module_map(),
-                                                module.module_map_)) {
+                                                module.module_map_) or
+      not serialization::ForeignSymbolMap::Deserialize(
+          proto.foreign_symbols(), module.foreign_symbol_map_)) {
     return false;
   }
 
@@ -276,9 +253,6 @@ bool Module::DeserializeInto(serialization::Module proto, Module& module) {
     }
   }
 
-  DeserializeForeignSymbols(module.type_system(), *proto.mutable_foreign_symbols(),
-                            module.foreign_function_map_);
-
   // Populate the PushFunction state map.
   auto& f_state =
       state.get<semantic_analysis::PushFunction::serialization_state>();
@@ -288,12 +262,6 @@ bool Module::DeserializeInto(serialization::Module proto, Module& module) {
     size_t index = f_state.index(f_ptr);
     ASSERT(id.local().value() == index);
   }
-
-  auto& foreign_state =
-      state
-          .get<semantic_analysis::InvokeForeignFunction::serialization_state>();
-  foreign_state.set_foreign_function_map(&module.foreign_function_map());
-  foreign_state.set_type_system(module.type_system());
 
   jasmin::Deserialize(proto.initializer().content(), module.initializer_, state);
   size_t fn_index = 0;

@@ -2,6 +2,7 @@ syntax = "proto3";
 
 import "serialization/constants.proto";
 import "serialization/proto/read_only_data.proto";
+import "serialization/proto/foreign_symbol_map.proto";
 import "serialization/proto/module_map.proto";
 import "serialization/proto/function_index.proto";
 import "serialization/type_system.proto";
@@ -12,11 +13,6 @@ message Function {
   uint32 parameters = 1;
   uint32 returns = 2;
   bytes content = 3;
-}
-
-message ForeignSymbol {
-  string name = 1;
-  Type type = 2;
 }
 
 message Symbol {
@@ -42,8 +38,8 @@ message Module {
   // Defining information for all types referenced by this module.
   TypeSystem type_system = 3;
 
-  // All symbols declared via `builtin.foreign`.
-  repeated ForeignSymbol foreign_symbols = 4;
+  // All function symbols declared via `builtin.foreign`.
+  proto.ForeignSymbolMap foreign_symbols = 4;
 
   // All functions, excluding the main entry point.
   repeated Function functions = 5;

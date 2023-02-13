@@ -50,7 +50,7 @@ struct EmitterBase {
 
   auto &module() const { return resources_.primary_module(); }
   TypeSystem &type_system() const { return module().type_system(); }
-  auto &foreign_function_map() const { return module().foreign_function_map(); }
+  auto &foreign_symbol_map() const { return module().foreign_symbol_map(); }
 
   template <std::derived_from<EmitterBase> E>
   E as() const {

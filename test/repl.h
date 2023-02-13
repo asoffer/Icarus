@@ -13,9 +13,9 @@
 #include "module/module.h"
 #include "module/resources.h"
 #include "semantic_analysis/context.h"
-#include "semantic_analysis/foreign_function_map.h"
 #include "semantic_analysis/instruction_set.h"
 #include "semantic_analysis/type_system.h"
+#include "serialization/foreign_symbol_map.h"
 
 namespace test {
 
@@ -160,8 +160,8 @@ struct Repl {
 
   TypeCheckResult type_check(std::string source);
 
-  semantic_analysis::ForeignFunctionMap& foreign_function_map() {
-    return module().foreign_function_map();
+  serialization::ForeignSymbolMap& foreign_symbol_map() {
+    return module().foreign_symbol_map();
   }
   semantic_analysis::TypeSystem& type_system() { return module().type_system(); }
   semantic_analysis::Context const& context() const { return context_; }

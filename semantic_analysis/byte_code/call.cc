@@ -14,8 +14,7 @@ void ByteCodeValueEmitter::operator()(ast::Call const* node,
     Emit(&node->arguments()[0].expr(), data);
     auto function_type    = fn_type.get<core::FunctionType>(type_system());
     size_t num_parameters = function_type.parameters().size();
-    data.function().append<BuiltinForeign>(fn_type, &foreign_function_map(),
-                                           &type_system());
+    data.function().append<BuiltinForeign>(fn_type, &module(), &type_system());
     return;
   }
 

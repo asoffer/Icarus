@@ -13,8 +13,13 @@
 #include "nth/container/flyweight_set.h"
 #include "nth/numeric/integer.h"
 #include "semantic_analysis/type_system.h"
+#include "serialization/foreign_symbol_map.h"
 #include "serialization/module_index.h"
 #include "serialization/read_only_data.h"
+
+namespace module {
+struct Module;
+}  // namespace module
 
 namespace semantic_analysis {
 // Defined in "semantic_analysis/foreign_function_map.h", in the same build
@@ -23,7 +28,7 @@ struct ForeignFunctionMap;
 
 struct BuiltinForeign : jasmin::StackMachineInstruction<BuiltinForeign> {
   static void execute(jasmin::ValueStack& value_stack, core::Type t,
-                      ForeignFunctionMap* module, TypeSystem* ts);
+                      module::Module* module, TypeSystem* ts);
 };
 
 struct TranslateFunctionArguments
@@ -35,35 +40,7 @@ struct TranslateFunctionArguments
 
 struct InvokeForeignFunction
     : jasmin::StackMachineInstruction<InvokeForeignFunction> {
-  struct serialization_state {
-    void set_foreign_function_map(
-        ForeignFunctionMap const* foreign_function_map) {
-      foreign_function_map_ = foreign_function_map;
-    }
-
-    void set_map(
-        absl::flat_hash_map<void (*)(), std::pair<size_t, core::FunctionType>>
-            map) {
-      map_ = std::move(map);
-    }
-
-    std::pair<size_t, core::FunctionType> const& operator[](
-        void (*fn_ptr)()) const {
-      auto iter = map_.find(fn_ptr);
-      ASSERT(iter != map_.end());
-      return iter->second;
-    }
-
-    std::type_identity_t<void (*)()> FunctionPointer(size_t index) const;
-
-    void set_type_system(TypeSystem& ts) { type_system_ = &ts; }
-    TypeSystem& type_system() const;
-
-   private:
-    ForeignFunctionMap const* foreign_function_map_ = nullptr;
-    TypeSystem* type_system_                        = nullptr;
-    absl::flat_hash_map<void (*)(), std::pair<size_t, core::FunctionType>> map_;
-  };
+  using serialization_state = serialization::ForeignSymbolMap;
 
   static void serialize(jasmin::Serializer& serializer,
                         std::span<jasmin::Value const> values,

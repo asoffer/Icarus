@@ -5,7 +5,7 @@
 #include "absl/container/inlined_vector.h"
 #include "data_types/fn.h"
 #include "jasmin/value.h"
-#include "semantic_analysis/foreign_function_map.h"
+#include "module/module.h"
 
 namespace semantic_analysis {
 namespace {
@@ -34,18 +34,30 @@ T Read(ffi_arg const& value) {
   return result;
 }
 
+IrFunction* ConstructIrFunction(module::Module& module,
+                                core::FunctionType fn_type, void (*fn_ptr)()) {
+  auto const& parameters = fn_type.parameters();
+  std::span returns      = fn_type.returns();
+  auto [fn_id, f] = module.create_function(parameters.size(), returns.size());
+  ASSERT(returns.size() <= 1);
+  f->append<InvokeForeignFunction>(fn_ptr, parameters.data(), parameters.size(),
+                                   returns.empty() ? nullptr : returns.data());
+  f->append<jasmin::Return>();
+  return f;
+}
+
 }  // namespace
 
 void BuiltinForeign::execute(jasmin::ValueStack& value_stack, core::Type t,
-                             ForeignFunctionMap* foreign_function_map,
-                             TypeSystem* ts) {
-  size_t length        = value_stack.pop<size_t>();
-  char const* data     = value_stack.pop<char const*>();
-  auto [fn_id, fn_ptr] = foreign_function_map->ForeignFunction(
-      std::string(data, length), t.get<core::FunctionType>(*ts));
-
-  if (fn_ptr == nullptr) { NOT_YET(); }
-  value_stack.push(fn_ptr);
+                             module::Module* module, TypeSystem* ts) {
+  size_t length             = value_stack.pop<size_t>();
+  char const* data          = value_stack.pop<char const*>();
+  auto [fn_index, inserted] = module->foreign_symbol_map().insert(
+      {.type = t, .name = std::string(data, length)});
+  auto* ir_fn = ConstructIrFunction(
+      *module, t.get<core::FunctionType>(*ts),
+      module->foreign_symbol_map().function_pointer(fn_index));
+  value_stack.push(ir_fn);
 }
 
 void InvokeForeignFunction::execute(
@@ -108,41 +120,41 @@ void InvokeForeignFunction::execute(
   }
 }
 
-std::type_identity_t<void (*)()>
-InvokeForeignFunction::serialization_state::FunctionPointer(
-    size_t index) const {
-  return ASSERT_NOT_NULL(foreign_function_map_)
-      ->ForeignFunctionPointer(data_types::LocalFnId::Foreign(index));
-}
-
-TypeSystem& InvokeForeignFunction::serialization_state::type_system() const {
-  return *ASSERT_NOT_NULL(type_system_);
-}
-
+// 0: void (*fn_ptr)()
+// 1: core::Parameter<core::Type> const* parameters
+// 2: size_t parameter_count
+// 3: core::Type const* maybe_return_type
+//
+//
+// ForeignSymbol{type, name}, index, void(*)()
+//
+// void(*)() -> index
+// type -> index
+//
 void InvokeForeignFunction::serialize(jasmin::Serializer& serializer,
                                       std::span<jasmin::Value const> values,
                                       serialization_state& state) {
   ASSERT(values.size() == 4);
-  auto const& [index, type] = state[values[0].as<void (*)()>()];
-  // Foreign function (as index)
-  serializer(index);
-  // Index of function type in the type-system.
-  serializer(type.index());
+  LOG("", "%p", values[0].as<void (*)()>());
+  serializer(jasmin::Value(state.index(values[0].as<void (*)()>())));
 }
 
 bool InvokeForeignFunction::deserialize(jasmin::Deserializer& deserializer,
                                         std::span<jasmin::Value> values,
                                         serialization_state& state) {
   ASSERT(values.size() == 4);
-  size_t index, function_index;
+  jasmin::Value index = jasmin::Value::Uninitialized();
   if (not deserializer(index)) { return false; }
-  if (not deserializer(function_index)) { return false; }
-  auto ft = core::FunctionType::FromIndex(function_index, state.type_system());
 
-  values[0] = state.FunctionPointer(index);
-  values[1] = ft.parameters().data();
-  values[2] = ft.parameters().size();
-  values[3] = ft.returns().empty() ? nullptr : &ft.returns()[0];
+  auto& type_system        = state.get<TypeSystem>();
+  auto const& [type, name] = state.symbol(index.as<uint32_t>());
+  auto function_type       = type.get<core::FunctionType>(type_system);
+
+  values[0] = state.function_pointer(index.as<uint32_t>());
+  values[1] = function_type.parameters().data();
+  values[2] = function_type.parameters().size();
+  values[3] =
+      function_type.returns().empty() ? nullptr : &function_type.returns()[0];
   return true;
 }
 
@@ -173,7 +185,7 @@ void PushFunction::serialize(jasmin::Serializer& serializer,
                              std::span<jasmin::Value const> values,
                              serialization_state& state) {
   ASSERT(values.size() == 1);
-  serializer(state.index(values[0].as<semantic_analysis::IrFunction*>()));
+  serializer(state.index(values[0].as<IrFunction*>()));
 }
 
 bool PushFunction::deserialize(jasmin::Deserializer& deserializer,

@@ -62,8 +62,8 @@ struct TypeVerifier : VerificationScheduler {
 
   Context &context() const { return context_; }
   TypeSystem &type_system() const { return module_.type_system(); }
-  ForeignFunctionMap &foreign_function_map() const {
-    return module_.foreign_function_map();
+  serialization::ForeignSymbolMap &foreign_symbol_map() const {
+    return module_.foreign_symbol_map();
   }
   auto &module() { return module_; }
   auto const &module() const { return module_; }

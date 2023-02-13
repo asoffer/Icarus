@@ -17,17 +17,16 @@ cc_library(
     name = "instruction_set",
     hdrs = [
         "instruction_set.h",
-        "foreign_function_map.h",
     ],
     srcs = [
         "instruction_set.cc",
-        "foreign_function_map.cc",
     ],
     deps = [
         ":type_system",
         "//core/type_system",
         "//data_types:integer",
         "//data_types:fn",
+        "//serialization:foreign_symbol_map",
         "//serialization:module_index",
         "//serialization:read_only_data",
         "@asoffer_nth//nth/numeric:integer",

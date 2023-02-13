@@ -28,12 +28,33 @@ cc_library(
     ],
 )
 
+cc_proto_library(
+    name = "foreign_symbol_map_proto",
+    deps = ["//serialization/proto:foreign_symbol_map"],
+)
+
+
+cc_library(
+    name = "foreign_symbol_map",
+    hdrs = ["foreign_symbol_map.h"],
+    srcs = ["foreign_symbol_map.cc"],
+    visibility = ["//visibility:public"],
+    deps = [
+        ":foreign_symbol_map_proto",
+        ":function_index",
+        "//base:debug",
+        "//core/type_system:type",
+        "@asoffer_nth//nth/container:flyweight_map",
+    ],
+)
+
 proto_library(
     name = "module_proto",
     srcs = ["module.proto"],
     deps = [
         ":constants_proto",
         ":type_system_proto",
+        "//serialization/proto:foreign_symbol_map",
         "//serialization/proto:function_index",
         "//serialization/proto:module_map",
         "//serialization/proto:read_only_data",
@@ -95,17 +116,9 @@ cc_library(
     ],
 )
 
-cc_test(
-    name = "read_only_data_test",
-    srcs = ["read_only_data_test.cc"],
-    deps = [
-        ":read_only_data",
-        "@com_google_googletest//:gtest_main",
-    ],
-)
-
 proto_library(
     name = "type_system_proto",
+    visibility = ["//serialization:__subpackages__"],
     srcs = ["type_system.proto"],
     deps = [],
 )

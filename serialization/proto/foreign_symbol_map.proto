@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+import "serialization/type_system.proto";
+
+package serialization.proto;
+
+message ForeignSymbol {
+  string name = 1;
+  Type type = 2;
+}
+
+message ForeignSymbolMap {
+  repeated ForeignSymbol symbols = 1;
+}

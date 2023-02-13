@@ -3,6 +3,5 @@ syntax = "proto3";
 package serialization.proto;
 
 message FunctionIndex {
-  bool foreign = 1;
-  uint32 index = 2;
+  uint32 index = 1;
 }
