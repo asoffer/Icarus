@@ -23,8 +23,26 @@ cc_library(
     srcs = ["function_index.cc"],
     visibility = ["//visibility:public"],
     deps = [
-        "//base:debug",
         ":function_index_proto",
+        "//base:debug",
+    ],
+)
+
+cc_proto_library(
+    name = "function_table_proto",
+    deps = ["//serialization/proto:function_table"],
+)
+
+cc_library(
+    name = "function_table",
+    hdrs = ["function_table.h"],
+    visibility = ["//visibility:public"],
+    deps = [
+        ":function_index",
+        ":function_table_proto",
+        "//base:debug",
+        "@asoffer_jasmin//jasmin:serialization",
+        "@com_google_absl//absl/container:flat_hash_map",
     ],
 )
 
@@ -56,6 +74,7 @@ proto_library(
         ":type_system_proto",
         "//serialization/proto:foreign_symbol_map",
         "//serialization/proto:function_index",
+        "//serialization/proto:function_table",
         "//serialization/proto:module_map",
         "//serialization/proto:read_only_data",
     ],

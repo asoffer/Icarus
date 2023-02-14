@@ -27,6 +27,7 @@ cc_library(
         "//data_types:integer",
         "//data_types:fn",
         "//serialization:foreign_symbol_map",
+        "//serialization:function_table",
         "//serialization:module_index",
         "//serialization:read_only_data",
         "@asoffer_nth//nth/numeric:integer",

@@ -106,13 +106,17 @@ Symbol Resources::TranslateToPrimary(serialization::ModuleIndex from,
     return Symbol(Translate(symbol.as<core::Type>(), module(from).type_system(),
                             primary_module().type_system()));
   } else {
-    auto fn_index = primary_module()
-                 .Wrap(from, m.function(symbol.as<TypedFunction>().function))
-                 .first;
-    return Symbol(TypedFunction{
-        .type     = type,
-        .function = fn_index,
-    });
+    // NOT_YET(semantic_analysis::DebugType(symbol.type(),
+    //                                      module(from).type_system()));
+    // auto fn_index = primary_module()
+    //              .Wrap(from, m.function(symbol.as<TypedFunction>().function))
+    //              .first;
+    // return Symbol(TypedFunction{
+    //     .type     = type,
+    //     .function = fn_index,
+    // });
+
+    return symbol;
   }
 }
 

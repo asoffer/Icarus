@@ -139,7 +139,7 @@ struct SerializationState {
 };
 
 void SerializeFunction(semantic_analysis::IrFunction const& f,
-                       serialization::Function& proto,
+                       serialization::proto::Function& proto,
                        SerializationState& state) {
   proto.set_parameters(f.parameter_count());
   proto.set_returns(f.return_count());
@@ -161,27 +161,10 @@ bool Module::Serialize(std::ostream& output) const {
   serialization::ForeignSymbolMap::Serialize(
       foreign_symbol_map_, *proto.mutable_foreign_symbols());
 
-  LOG("", "Here");
   SerializeFunction(initializer_, *proto.mutable_initializer(), state);
-  proto.mutable_functions()->Reserve(functions_.size());
 
-  auto& f_state =
-      state.get<semantic_analysis::PushFunction::serialization_state>();
-
-  for (auto& function : functions_) {
-    LOG("", "Here %s %u:%u", id_.value(), function.parameter_count(),
-        function.return_count());
-    f_state.index(&function); }
-  // TODO look up iterator invalidation constraints to see if we can process
-  // more than one at a time.
-  for (size_t serialized_up_to = 0; serialized_up_to != f_state.size();
-       ++serialized_up_to) {
-    auto const& f = **(f_state.begin() + serialized_up_to);
-    LOG("", "Here %s %u:%u", id_.value(), f.parameter_count(),
-        f.return_count());
-    SerializeFunction(f, *proto.add_functions(), state);
-    LOG("", "Here");
-  }
+  serialization::FunctionTable<semantic_analysis::IrFunction>::Serialize(
+      function_table_, *proto.mutable_function_table(), state);
 
   serialization::ReadOnlyData::Serialize(read_only_data_,
                                          *proto.mutable_read_only());
@@ -253,22 +236,13 @@ bool Module::DeserializeInto(serialization::Module proto, Module& module) {
     }
   }
 
-  // Populate the PushFunction state map.
-  auto& f_state =
-      state.get<semantic_analysis::PushFunction::serialization_state>();
-  for (auto const& function : proto.functions()) {
-    auto [id, f_ptr] =
-        module.create_function(function.parameters(), function.returns());
-    size_t index = f_state.index(f_ptr);
-    ASSERT(id.local().value() == index);
+  if (not serialization::FunctionTable<
+          semantic_analysis::IrFunction>::Deserialize(proto.function_table(),
+                                                      module.function_table_,
+                                                      state)) {
+    return false;
   }
-
   jasmin::Deserialize(proto.initializer().content(), module.initializer_, state);
-  size_t fn_index = 0;
-  for (auto const& function : proto.functions()) {
-    jasmin::Deserialize(function.content(), module.functions_[fn_index], state);
-    ++fn_index;
-  }
 
   return true;
 }
@@ -276,20 +250,21 @@ bool Module::DeserializeInto(serialization::Module proto, Module& module) {
 std::pair<serialization::FunctionIndex, semantic_analysis::IrFunction const*>
 Module::Wrap(serialization::ModuleIndex index,
              semantic_analysis::IrFunction const* f) {
-  auto iter = wrapped_.find(f);
-  if (iter != wrapped_.end()) {
-    return std::pair(serialization::FunctionIndex(iter->second),
-                     &functions_[iter->second]);
-  }
+  NOT_YET();
+  // auto iter = wrapped_.find(f);
+  // if (iter != wrapped_.end()) {
+  //   return std::pair(serialization::FunctionIndex(iter->second),
+  //                    &functions_[iter->second]);
+  // }
 
-  size_t fn_index = functions_.size();
-  auto& fn = functions_.emplace_back(f->parameter_count(), f->return_count());
-  fn.append<semantic_analysis::PushFunction>(f);
-  fn.append<jasmin::Call>();
-  fn.append<jasmin::Return>();
-  wrapped_.emplace(f, fn_index);
-  function_indices_.emplace(&fn, fn_index);
-  return std::pair(serialization::FunctionIndex(fn_index), &fn);
+  // size_t fn_index = functions_.size();
+  // auto& fn = functions_.emplace_back(f->parameter_count(), f->return_count());
+  // fn.append<semantic_analysis::PushFunction>(f);
+  // fn.append<jasmin::Call>();
+  // fn.append<jasmin::Return>();
+  // wrapped_.emplace(f, fn_index);
+  // function_indices_.emplace(&fn, fn_index);
+  // return std::pair(serialization::FunctionIndex(fn_index), &fn);
 }
 
 }  // namespace module

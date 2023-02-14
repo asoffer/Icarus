@@ -1,19 +1,14 @@
 syntax = "proto3";
 
 import "serialization/constants.proto";
-import "serialization/proto/read_only_data.proto";
 import "serialization/proto/foreign_symbol_map.proto";
-import "serialization/proto/module_map.proto";
 import "serialization/proto/function_index.proto";
+import "serialization/proto/function_table.proto";
+import "serialization/proto/module_map.proto";
+import "serialization/proto/read_only_data.proto";
 import "serialization/type_system.proto";
 
 package serialization;
-
-message Function {
-  uint32 parameters = 1;
-  uint32 returns = 2;
-  bytes content = 3;
-}
 
 message Symbol {
   Type symbol_type = 1;
@@ -33,7 +28,7 @@ message Module {
   string identifier = 1;
 
   // Subroutine at which to begin execution.
-  Function initializer = 2;
+  proto.Function initializer = 2;
 
   // Defining information for all types referenced by this module.
   TypeSystem type_system = 3;
@@ -42,7 +37,7 @@ message Module {
   proto.ForeignSymbolMap foreign_symbols = 4;
 
   // All functions, excluding the main entry point.
-  repeated Function functions = 5;
+  proto.FunctionTable function_table = 5;
 
   // All read-only data required in the module.
   proto.ReadOnlyData read_only = 6;

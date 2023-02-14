@@ -5,7 +5,7 @@
 #include "absl/container/inlined_vector.h"
 #include "data_types/fn.h"
 #include "jasmin/value.h"
-#include "module/module.h"
+#include "serialization/function_table.h"
 
 namespace semantic_analysis {
 namespace {
@@ -34,30 +34,33 @@ T Read(ffi_arg const& value) {
   return result;
 }
 
-IrFunction* ConstructIrFunction(module::Module& module,
-                                core::FunctionType fn_type, void (*fn_ptr)()) {
-  auto const& parameters = fn_type.parameters();
-  std::span returns      = fn_type.returns();
-  auto [fn_id, f] = module.create_function(parameters.size(), returns.size());
-  ASSERT(returns.size() <= 1);
-  f->append<InvokeForeignFunction>(fn_ptr, parameters.data(), parameters.size(),
-                                   returns.empty() ? nullptr : returns.data());
-  f->append<jasmin::Return>();
-  return f;
-}
-
 }  // namespace
 
-void BuiltinForeign::execute(jasmin::ValueStack& value_stack, core::Type t,
-                             module::Module* module, TypeSystem* ts) {
-  size_t length             = value_stack.pop<size_t>();
-  char const* data          = value_stack.pop<char const*>();
-  auto [fn_index, inserted] = module->foreign_symbol_map().insert(
-      {.type = t, .name = std::string(data, length)});
-  auto* ir_fn = ConstructIrFunction(
-      *module, t.get<core::FunctionType>(*ts),
-      module->foreign_symbol_map().function_pointer(fn_index));
-  value_stack.push(ir_fn);
+void BuiltinForeign::execute(
+    jasmin::ValueStack& value_stack, core::Type t, void* raw_table,
+    serialization::ForeignSymbolMap* foreign_symbol_map, TypeSystem* ts) {
+  auto fn_type     = t.get<core::FunctionType>(*ts);
+  size_t length    = value_stack.pop<size_t>();
+  char const* data = value_stack.pop<char const*>();
+  std::string name(data, length);
+
+  auto& table =
+      *static_cast<serialization::FunctionTable<IrFunction>*>(raw_table);
+
+  auto [index, inserted] = foreign_symbol_map->insert({
+      .type = fn_type,
+      .name = std::string(data, length),
+  });
+
+  auto const& parameters = fn_type.parameters();
+  std::span returns      = fn_type.returns();
+  auto [fn_index, f]     = table.emplace(parameters.size(), returns.size());
+  ASSERT(returns.size() <= 1);
+  f->append<InvokeForeignFunction>(foreign_symbol_map->function_pointer(index),
+                                   parameters.data(), parameters.size(),
+                                   returns.empty() ? nullptr : returns.data());
+  f->append<jasmin::Return>();
+  value_stack.push(f);
 }
 
 void InvokeForeignFunction::execute(

@@ -11,6 +11,7 @@ cc_library(
         "//semantic_analysis:instruction_set",
         "//semantic_analysis:type_system",
         "//serialization:foreign_symbol_map",
+        "//serialization:function_table",
         "//serialization:module",
         "//serialization:module_map",
         "//serialization:read_only_data",

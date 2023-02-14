@@ -12,6 +12,11 @@ proto_library(
 )
 
 proto_library(
+    name = "function_table",
+    srcs = ["function_table.proto"],
+)
+
+proto_library(
     name = "module_map",
     srcs = ["module_map.proto"],
 )

@@ -176,7 +176,7 @@ struct Repl {
   }
 
   semantic_analysis::IrFunction const* function(data_types::LocalFnId f) {
-    return module().function(f);
+    return &module().function_table().function(f);
   }
 
  private:

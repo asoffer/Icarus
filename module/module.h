@@ -11,6 +11,7 @@
 #include "semantic_analysis/instruction_set.h"
 #include "semantic_analysis/type_system.h"
 #include "serialization/foreign_symbol_map.h"
+#include "serialization/function_table.h"
 #include "serialization/module.pb.h"
 #include "serialization/module_index.h"
 #include "serialization/module_map.h"
@@ -57,31 +58,19 @@ struct Module {
               semantic_analysis::IrFunction const *f) {
     Export(name, Symbol(TypedFunction{
                      .type     = t,
-                     .function = find(f),
+                     .function = function_table().find(f),
                  }));
   }
 
   auto const &read_only_data() const { return read_only_data_; }
 
-  // TODO: Figure out a better way to do foreign functions. The're shared but
-  // maybe you don't want them to have their own module index since the value is
-  // actually dependent on the module you're loading them from. Once you do that
-  // this function can be modified to only accept a `LocalFnId`. Maybe foreign
-  // functions are just intermixed with normal functions? do they need special
-  // treatment?
-  semantic_analysis::IrFunction const *function(
-      serialization::FunctionIndex index) const {
-    ASSERT(index.value() < functions_.size());
-    return &functions_[index.value()];
+  serialization::FunctionTable<semantic_analysis::IrFunction> const &
+  function_table() const {
+    return function_table_;
   }
-
-  std::pair<data_types::Fn, semantic_analysis::IrFunction *> create_function(
-      size_t parameters, size_t returns) {
-    data_types::Fn fn(serialization::ModuleIndex(0),
-                      data_types::LocalFnId(functions_.size()));
-    auto &f = functions_.emplace_back(parameters, returns);
-    function_indices_.emplace(&f, functions_.size() - 1);
-    return std::pair(fn, &f);
+  serialization::FunctionTable<semantic_analysis::IrFunction>
+      &function_table() {
+    return function_table_;
   }
 
   serialization::ModuleMap const &map() const { return module_map_; }
@@ -94,14 +83,6 @@ struct Module {
  private:
   serialization::UniqueModuleId id_;
 
-  data_types::LocalFnId find(semantic_analysis::IrFunction const *f) {
-    auto iter = function_indices_.find(f);
-    if (iter != function_indices_.end()) {
-      return data_types::LocalFnId(iter->second);
-    }
-    NOT_YET("Return a foreign function");
-  }
-
   // Accepts two arguments (a slice represented as data followed by length).
   semantic_analysis::IrFunction initializer_{2, 0};
 
@@ -112,14 +93,11 @@ struct Module {
   // TODO: Mutable because jasmin doesn't correctly pass const qualifiers
   // through `get`. Remove when that's fixed.
   mutable serialization::ForeignSymbolMap foreign_symbol_map_{&type_system_};
-
-  // TODO: Can we turn this into an nth::flyweight_set?
-  std::deque<semantic_analysis::IrFunction> functions_;
-  absl::flat_hash_map<semantic_analysis::IrFunction const *, size_t>
-      function_indices_;
+  mutable serialization::FunctionTable<semantic_analysis::IrFunction>
+      function_table_;
 
   // Keyed on functions in other modules. The mapped value is the index in
-  // functions_ of the wrapper.
+  // `function_table()` of the wrapper.
   absl::flat_hash_map<semantic_analysis::IrFunction const *, size_t>
       wrapped_;
 

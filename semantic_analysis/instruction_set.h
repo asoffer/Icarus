@@ -17,18 +17,13 @@
 #include "serialization/module_index.h"
 #include "serialization/read_only_data.h"
 
-namespace module {
-struct Module;
-}  // namespace module
-
 namespace semantic_analysis {
-// Defined in "semantic_analysis/foreign_function_map.h", in the same build
-// target.
-struct ForeignFunctionMap;
 
 struct BuiltinForeign : jasmin::StackMachineInstruction<BuiltinForeign> {
   static void execute(jasmin::ValueStack& value_stack, core::Type t,
-                      module::Module* module, TypeSystem* ts);
+                      void* raw_table,
+                      serialization::ForeignSymbolMap* foreign_symbol_map,
+                      TypeSystem* ts);
 };
 
 struct TranslateFunctionArguments
