@@ -117,25 +117,23 @@ void DeserializeTypeSystem(serialization::TypeSystem const& proto,
 }
 
 struct SerializationState {
-  SerializationState(serialization::ReadOnlyData& rodata,
-                     serialization::ForeignSymbolMap& foreign)
-      : rodata_(rodata), foreign_(foreign) {}
+  SerializationState(Module& module) : module_(module) {}
   template <typename T>
   T& get() {
     constexpr auto t = nth::type<T>;
     if constexpr (t == nth::type<serialization::ReadOnlyData>) {
-      return rodata_;
+      return module_.read_only_data();
     } else if constexpr (t == nth::type<serialization::ForeignSymbolMap>) {
-      return foreign_;
+      return module_.foreign_symbol_map();
     } else {
-      return state_;
+      return module_.function_table();
     }
   }
 
+  Module& module() { return module_; }
+
  private:
-  serialization::ReadOnlyData& rodata_;
-  serialization::ForeignSymbolMap& foreign_;
-  semantic_analysis::PushFunction::serialization_state state_;
+  Module& module_;
 };
 
 void SerializeFunction(semantic_analysis::IrFunction const& f,
@@ -145,6 +143,33 @@ void SerializeFunction(semantic_analysis::IrFunction const& f,
   proto.set_returns(f.return_count());
   jasmin::Serialize(f, *proto.mutable_content(), state);
 }
+
+struct FunctionTableDeserializationState {
+  FunctionTableDeserializationState(Module& module,
+                                    base::PtrSpan<Module const> deps)
+      : state_(module), dependencies_(deps) {}
+  auto& function_state() { return state_; }
+
+  semantic_analysis::IrFunction const* lookup(
+      serialization::ModuleIndex module_index,
+      serialization::FunctionIndex function_index) {
+    ASSERT(module_index.value() < dependencies_.size());
+    auto& mod = *ASSERT_NOT_NULL(dependencies_[module_index.value()]);
+    return &mod.function_table().function(function_index);
+  }
+
+  auto make_wrapper(semantic_analysis::IrFunction const* f) {
+    return [=](semantic_analysis::IrFunction& fn) {
+      fn.append<semantic_analysis::PushFunction>(f);
+      fn.append<jasmin::Call>();
+      fn.append<jasmin::Return>();
+    };
+  }
+
+ private:
+  SerializationState state_;
+  base::PtrSpan<Module const> dependencies_;
+};
 
 }  // namespace
 
@@ -156,10 +181,11 @@ bool Module::Serialize(std::ostream& output) const {
 
   serialization::ModuleMap::Serialize(module_map_, *proto.mutable_module_map());
 
-  SerializationState state(read_only_data_, foreign_symbol_map_);
+  // TODO: Fix const-correctness in Jasmin.
+  SerializationState state(const_cast<Module&>(*this));
 
-  serialization::ForeignSymbolMap::Serialize(
-      foreign_symbol_map_, *proto.mutable_foreign_symbols());
+  serialization::ForeignSymbolMap::Serialize(foreign_symbol_map_,
+                                             *proto.mutable_foreign_symbols());
 
   SerializeFunction(initializer_, *proto.mutable_initializer(), state);
 
@@ -192,13 +218,13 @@ bool Module::Serialize(std::ostream& output) const {
       }
     }
   }
+
   return proto.SerializeToOstream(&output);
 }
 
-bool Module::DeserializeInto(serialization::Module proto, Module& module) {
-  LOG("", "%s %p", proto.DebugString(), &module.foreign_symbol_map_);
-  SerializationState state(module.read_only_data_, module.foreign_symbol_map_);
-
+bool Module::DeserializeInto(serialization::Module proto,
+                             base::PtrSpan<Module const> dependencies,
+                             Module& module) {
   data_types::Deserialize(proto.integers(), module.integer_table_);
 
   if (not serialization::ReadOnlyData::Deserialize(proto.read_only(),
@@ -236,35 +262,29 @@ bool Module::DeserializeInto(serialization::Module proto, Module& module) {
     }
   }
 
+  FunctionTableDeserializationState state(module, dependencies);
   if (not serialization::FunctionTable<
           semantic_analysis::IrFunction>::Deserialize(proto.function_table(),
                                                       module.function_table_,
                                                       state)) {
     return false;
   }
-  jasmin::Deserialize(proto.initializer().content(), module.initializer_, state);
+  jasmin::Deserialize(proto.initializer().content(), module.initializer_,
+                      state.function_state());
 
   return true;
 }
 
 std::pair<serialization::FunctionIndex, semantic_analysis::IrFunction const*>
 Module::Wrap(serialization::ModuleIndex index,
+             serialization::FunctionIndex import_index,
              semantic_analysis::IrFunction const* f) {
-  NOT_YET();
-  // auto iter = wrapped_.find(f);
-  // if (iter != wrapped_.end()) {
-  //   return std::pair(serialization::FunctionIndex(iter->second),
-  //                    &functions_[iter->second]);
-  // }
-
-  // size_t fn_index = functions_.size();
-  // auto& fn = functions_.emplace_back(f->parameter_count(), f->return_count());
-  // fn.append<semantic_analysis::PushFunction>(f);
-  // fn.append<jasmin::Call>();
-  // fn.append<jasmin::Return>();
-  // wrapped_.emplace(f, fn_index);
-  // function_indices_.emplace(&fn, fn_index);
-  // return std::pair(serialization::FunctionIndex(fn_index), &fn);
+  return function_table().emplace_wrapper(
+      index, import_index, f, [&](semantic_analysis::IrFunction& fn) {
+        fn.append<semantic_analysis::PushFunction>(f);
+        fn.append<jasmin::Call>();
+        fn.append<jasmin::Return>();
+      });
 }
 
 }  // namespace module

@@ -14,6 +14,7 @@
 #include "nth/numeric/integer.h"
 #include "semantic_analysis/type_system.h"
 #include "serialization/foreign_symbol_map.h"
+#include "serialization/function_table.h"
 #include "serialization/module_index.h"
 #include "serialization/read_only_data.h"
 
@@ -251,20 +252,8 @@ struct InstructionSet
 using internal_byte_code::InstructionSet;  // TODO: Make public.
 using IrFunction = jasmin::Function<internal_byte_code::InstructionSet>;
 
-struct PushFunction::serialization_state {
-  size_t index(IrFunction const* s) {
-    return functions_.index(functions_.insert(s).first);
-  }
-
-  IrFunction const* function(size_t n) { return functions_.from_index(n); }
-
-  size_t size() const { return functions_.size(); }
-  auto begin() const { return functions_.begin(); }
-  auto end() const { return functions_.end(); }
-
- private:
-  nth::flyweight_set<IrFunction const*> functions_;
-};
+struct PushFunction::serialization_state
+    : serialization::FunctionTable<IrFunction> {};
 
 }  // namespace semantic_analysis
 

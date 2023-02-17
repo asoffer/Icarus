@@ -56,6 +56,7 @@ cc_binary(
     name = "run_bytecode",
     srcs = ["run_bytecode.cc"],
     deps = [
+        ":bazel",
         ":flags",
         "//module",
         "//module:resources",

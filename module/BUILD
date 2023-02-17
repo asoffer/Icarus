@@ -7,6 +7,7 @@ cc_library(
     srcs = ["module.cc"],
     deps = [
         ":symbol",
+        "//base:ptr_span",
         "//data_types:integer",
         "//semantic_analysis:instruction_set",
         "//semantic_analysis:type_system",

@@ -40,8 +40,10 @@ cc_library(
     deps = [
         ":function_index",
         ":function_table_proto",
+        ":module_index",
         "//base:debug",
         "@asoffer_jasmin//jasmin:serialization",
+        "@com_google_absl//absl/container:btree",
         "@com_google_absl//absl/container:flat_hash_map",
     ],
 )
@@ -94,6 +96,7 @@ cc_library(
         "//base:extend",
         "//base/extend:absl_format",
         "//base/extend:absl_hash",
+        "//base/extend:compare",
     ],
 )
 

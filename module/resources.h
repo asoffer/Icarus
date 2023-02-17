@@ -16,10 +16,7 @@ struct Resources {
           name_resolver,
       std::unique_ptr<diagnostic::DiagnosticConsumer> diagnostic_consumer);
 
-  // Attempts to deserialize `module` and populate the primary module in a
-  // `Resources` object. Returns the object if successful. Returns
-  // `std::nullopt` otherwise.
-  static std::optional<Resources> LoadPrimary(serialization::Module module);
+  Module* LoadPrimary(serialization::Module module);
 
   // Loads the contents of `module` into a new module and returns a pointer to
   // that module if loading was successful. If unsuccessful, a null pointer is

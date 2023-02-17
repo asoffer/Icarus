@@ -1,5 +1,7 @@
 syntax = "proto3";
 
+import "serialization/proto/function_index.proto";
+
 package serialization.proto;
 
 message Function {
@@ -8,6 +10,12 @@ message Function {
   bytes content = 3;
 }
 
+message WrapperFunction {
+  uint32 wrapped_module = 1;
+  FunctionIndex wrapped_function = 2;
+}
+
 message FunctionTable {
   repeated Function functions = 1;
+  repeated WrapperFunction wrappers = 2;
 }

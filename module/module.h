@@ -6,6 +6,7 @@
 #include <optional>
 #include <ostream>
 
+#include "base/ptr_span.h"
 #include "data_types/integer.h"
 #include "module/symbol.h"
 #include "semantic_analysis/instruction_set.h"
@@ -23,7 +24,9 @@ struct Module {
   explicit Module(serialization::UniqueModuleId id) : id_(std::move(id)) {}
 
   bool Serialize(std::ostream &output) const;
-  static bool DeserializeInto(serialization::Module proto, Module &module);
+  static bool DeserializeInto(serialization::Module proto,
+                              base::PtrSpan<Module const> dependencies,
+                              Module &module);
 
   semantic_analysis::IrFunction &initializer() { return initializer_; }
   semantic_analysis::IrFunction const &initializer() const {
@@ -63,13 +66,12 @@ struct Module {
   }
 
   auto const &read_only_data() const { return read_only_data_; }
-
-  serialization::FunctionTable<semantic_analysis::IrFunction> const &
-  function_table() const {
+  auto &read_only_data() { return read_only_data_; }
+  semantic_analysis::PushFunction::serialization_state const &function_table()
+      const {
     return function_table_;
   }
-  serialization::FunctionTable<semantic_analysis::IrFunction>
-      &function_table() {
+  semantic_analysis::PushFunction::serialization_state &function_table() {
     return function_table_;
   }
 
@@ -78,6 +80,7 @@ struct Module {
 
   std::pair<serialization::FunctionIndex, semantic_analysis::IrFunction const *>
   Wrap(serialization::ModuleIndex index,
+       serialization::FunctionIndex import_index,
        semantic_analysis::IrFunction const *f);
 
  private:
@@ -93,13 +96,7 @@ struct Module {
   // TODO: Mutable because jasmin doesn't correctly pass const qualifiers
   // through `get`. Remove when that's fixed.
   mutable serialization::ForeignSymbolMap foreign_symbol_map_{&type_system_};
-  mutable serialization::FunctionTable<semantic_analysis::IrFunction>
-      function_table_;
-
-  // Keyed on functions in other modules. The mapped value is the index in
-  // `function_table()` of the wrapper.
-  absl::flat_hash_map<semantic_analysis::IrFunction const *, size_t>
-      wrapped_;
+  mutable semantic_analysis::PushFunction::serialization_state function_table_;
 
   // All integer constants used in the module.
   data_types::IntegerTable integer_table_;

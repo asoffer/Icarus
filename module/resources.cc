@@ -14,7 +14,7 @@ Resources::Resources(
 Module *Resources::LoadFrom(serialization::Module module) {
   serialization::UniqueModuleId id(std::move(*module.mutable_identifier()));
   auto m = std::make_unique<Module>(id);
-  if (not module::Module::DeserializeInto(std::move(module), *m)) {
+  if (not module::Module::DeserializeInto(std::move(module), modules_, *m)) {
     return nullptr;
   }
 
@@ -32,17 +32,13 @@ diagnostic::DiagnosticConsumer &Resources::diagnostic_consumer() {
   return *ASSERT_NOT_NULL(diagnostic_consumer_);
 }
 
-std::optional<Resources> Resources::LoadPrimary(serialization::Module module) {
-  std::optional<Resources> resources;
+Module *Resources::LoadPrimary(serialization::Module module) {
   serialization::UniqueModuleId id(std::move(*module.mutable_identifier()));
-  auto m = std::make_unique<Module>(id);
-  if (not module::Module::DeserializeInto(std::move(module), *m)) {
-    return resources;
+  if (not module::Module::DeserializeInto(std::move(module), modules_,
+                                          primary_module())) {
+    return nullptr;
   }
-  resources.emplace(Resources());
-
-  resources->Populate(id, std::move(m));
-  return resources;
+  return &primary_module();
 }
 
 void Resources::Populate(serialization::UniqueModuleId const &id,
@@ -105,18 +101,18 @@ Symbol Resources::TranslateToPrimary(serialization::ModuleIndex from,
   if (type == semantic_analysis::Type) {
     return Symbol(Translate(symbol.as<core::Type>(), module(from).type_system(),
                             primary_module().type_system()));
+  } else if (type.is<core::FunctionType>(primary_module().type_system())) {
+    auto fn_index = primary_module()
+                        .Wrap(from, symbol.as<TypedFunction>().function,
+                              &m.function_table().function(
+                                  symbol.as<TypedFunction>().function))
+                        .first;
+    return Symbol(TypedFunction{
+        .type     = type,
+        .function = fn_index,
+    });
   } else {
-    // NOT_YET(semantic_analysis::DebugType(symbol.type(),
-    //                                      module(from).type_system()));
-    // auto fn_index = primary_module()
-    //              .Wrap(from, m.function(symbol.as<TypedFunction>().function))
-    //              .first;
-    // return Symbol(TypedFunction{
-    //     .type     = type,
-    //     .function = fn_index,
-    // });
-
-    return symbol;
+    NOT_YET(semantic_analysis::DebugType(type, primary_module().type_system()));
   }
 }
 

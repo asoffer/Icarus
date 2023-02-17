@@ -138,7 +138,6 @@ void InvokeForeignFunction::serialize(jasmin::Serializer& serializer,
                                       std::span<jasmin::Value const> values,
                                       serialization_state& state) {
   ASSERT(values.size() == 4);
-  LOG("", "%p", values[0].as<void (*)()>());
   serializer(jasmin::Value(state.index(values[0].as<void (*)()>())));
 }
 
@@ -188,16 +187,25 @@ void PushFunction::serialize(jasmin::Serializer& serializer,
                              std::span<jasmin::Value const> values,
                              serialization_state& state) {
   ASSERT(values.size() == 1);
-  serializer(state.index(values[0].as<IrFunction*>()));
+  auto* ir_fn                   = values[0].as<IrFunction*>();
+  auto [module_index, fn_index] = state.find_wrapper(ir_fn);
+  ASSERT(module_index != serialization::ModuleIndex::Invalid());
+  ASSERT(fn_index != serialization::FunctionIndex::Invalid());
+  serializer(module_index.value());
+  serializer(fn_index.value());
 }
 
 bool PushFunction::deserialize(jasmin::Deserializer& deserializer,
                                std::span<jasmin::Value> values,
                                serialization_state& state) {
   ASSERT(values.size() == 1);
-  size_t index;
-  if (not deserializer(index)) { return false; }
-  values[0] = state.function(index);
+  serialization::ModuleIndex::underlying_type module_index;
+  serialization::FunctionIndex::underlying_type function_index;
+  if (not deserializer(module_index)) { return false; }
+  if (not deserializer(function_index)) { return false; }
+
+  values[0] = &state.function(serialization::ModuleIndex(module_index),
+                              serialization::FunctionIndex(function_index));
   return true;
 }
 

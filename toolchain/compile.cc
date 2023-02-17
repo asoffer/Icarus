@@ -76,8 +76,8 @@ bool Compile(serialization::UniqueModuleId module_id,
     return false;
   }
 
-  std::string_view file_content =
-      source_indexer.insert(serialization::ModuleIndex(0), *std::move(content));
+  std::string_view file_content = source_indexer.insert(
+      serialization::ModuleIndex::Self(), *std::move(content));
 
   auto parsed_nodes = frontend::Parse(file_content, **diagnostic_consumer);
   if ((*diagnostic_consumer)->num_consumed() != 0) { return false; }

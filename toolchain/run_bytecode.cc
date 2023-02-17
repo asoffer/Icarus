@@ -12,20 +12,71 @@
 #include "module/module.h"
 #include "module/resources.h"
 #include "semantic_analysis/instruction_set.h"
+#include "toolchain/bazel.h"
 #include "toolchain/flags.h"
 
+ABSL_FLAG(std::string, diagnostics, "console",
+          "Indicates how diagnostics should be emitted. Options: console "
+          "(default), or json.");
+ABSL_FLAG(std::string, module_identifier, "",
+          "Identifier to be used to uniquely identify this module amongst all "
+          "modules being linked together, and must not begin with a tilde (~) "
+          "character.");
+ABSL_FLAG(std::string, module_map_file, "",
+          "The path to the .icmodmap file describing the module map.");
 ABSL_FLAG(std::string, input, "", "The path to the .icm file to be executed.");
 
 namespace toolchain {
 
 bool HelpFilter(std::string_view module) { return true; }
 
-bool Execute(std::string const &input_file,
+bool Execute(serialization::UniqueModuleId module_id,
+             std::string const &input_file, std::string const &module_map_file,
              std::span<std::string_view const> arguments) {
   std::ifstream stream(input_file);
   if (not stream.is_open()) {
     std::cerr << "Failed to open '" << input_file << "'.\n";
     return false;
+  }
+
+  auto specification = BazelModuleMap(module_map_file);
+  if (not specification) {
+    // TODO log an error
+    std::cerr << "invalid spec.\n";
+    return false;
+  }
+  auto name_resolver = BazelNameResolver(std::move(specification->names));
+  ASSERT(name_resolver != nullptr);
+
+  frontend::SourceIndexer source_indexer;
+  auto diagnostic_consumer =
+      toolchain::DiagnosticConsumerFromFlag(FLAGS_diagnostics, source_indexer);
+  if (not diagnostic_consumer.ok()) {
+    std::cerr << diagnostic_consumer.status().message();
+    return false;
+  }
+
+  module::Resources resources(std::move(module_id), std::move(name_resolver),
+                              std::move(*diagnostic_consumer));
+  for (auto const &[id, path] : specification->paths) {
+    std::ifstream stream(path);
+    if (not stream.is_open()) {
+      std::cerr << "failed to open " << id.value() << " (" << path << ").\n";
+      return false;
+    }
+
+    serialization::Module proto;
+    if (not proto.ParseFromIstream(&stream)) {
+      std::cerr << "failed to parse " << id.value() << " (" << path << ").\n";
+      return false;
+    }
+
+    if (not resources.LoadFrom(std::move(proto))) {
+      // TODO Log an error.
+      std::cerr << "failed to load module " << id.value() << " (" << path
+                << ").\n";
+      return false;
+    }
   }
 
   serialization::Module proto;
@@ -34,10 +85,8 @@ bool Execute(std::string const &input_file,
     return false;
   }
 
-  std::optional resources = module::Resources::LoadPrimary(std::move(proto));
-  if (not resources) {
-    std::cerr << "Invalid module.\n";
-    return false;
+  if (not resources.LoadPrimary(proto)) {
+    std::cerr << "failed to load primary module.\n";
   }
 
   jasmin::ValueStack value_stack;
@@ -45,7 +94,7 @@ bool Execute(std::string const &input_file,
   value_stack.push(arguments.size());
   data_types::IntegerTable table;
   jasmin::Execute(
-      resources->primary_module().initializer(),
+      resources.primary_module().initializer(),
       jasmin::ExecutionState<semantic_analysis::InstructionSet>{table},
       value_stack);
   return true;
@@ -67,6 +116,9 @@ int main(int argc, char *argv[]) {
   absl::FailureSignalHandlerOptions opts;
   absl::InstallFailureSignalHandler(opts);
 
-  bool success = toolchain::Execute(absl::GetFlag(FLAGS_input), arguments);
+  bool success = toolchain::Execute(
+      serialization::UniqueModuleId(absl::GetFlag(FLAGS_module_identifier)),
+      absl::GetFlag(FLAGS_input), absl::GetFlag(FLAGS_module_map_file),
+      arguments);
   return success ? 0 : 1;
 }

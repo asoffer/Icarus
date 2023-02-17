@@ -14,6 +14,7 @@ proto_library(
 proto_library(
     name = "function_table",
     srcs = ["function_table.proto"],
+    deps = [":function_index"],
 )
 
 proto_library(

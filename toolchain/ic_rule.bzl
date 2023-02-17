@@ -1,6 +1,6 @@
 IcarusInfo = provider(
     "Information needed to compile and link an Icarus binary",
-    fields = ["icms"],
+    fields = ["icms", "icmods"],
 )
 
 def _tooling_transition_impl(settings, attr):
@@ -46,7 +46,7 @@ def _module_map_file(ctx, icm_deps):
             "{id}\n{name}\n{icm}".format(
                 id = dep.id,
                 name = dep.name,
-                icm = dep.icm.path)
+                icm = dep.icm.short_path)
             for dep in icm_deps.to_list()
         ])
     )
@@ -69,10 +69,10 @@ def _compile(ctx, icm_file, icm_deps):
         ),
         outputs = [icm_file],
         arguments = [
-            "--source={}".format(src_file.path),
+            "--source={}".format(src_file.short_path),
             "--module_identifier={}".format(_unique_id(ctx.label)),
-            "--output={}".format(icm_file.path),
-            "--module_map_file={}".format(module_map_file.path),
+            "--output={}".format(icm_file.short_path),
+            "--module_map_file={}".format(module_map_file.short_path),
         ],
         progress_message = "Compiling {}".format(ctx.label.name),
         executable = ctx.attr._compile[0][DefaultInfo].files_to_run.executable,
@@ -88,30 +88,24 @@ def _ic_binary_impl(ctx):
     ))
 
     module_map_file = _compile(ctx, icm_file, icm_deps)
-    runfiles = ctx.runfiles(files = [icm_file])
 
-    executable_path = "{name}%/{name}".format(name = ctx.label.name)
-    executable = ctx.actions.declare_file(executable_path)
-
-    runfiles = ctx.runfiles(files = [icm_file, ctx.executable._run_bytecode])
+    runfiles = ctx.runfiles(files = (
+        [icm_file, ctx.executable._run_bytecode, module_map_file] +
+        [d.icm for d in icm_deps.to_list()]))
     ctx.actions.write(
-        output = executable,
+        output = ctx.outputs.executable,
         is_executable = True,
         content = """
-        {executable} --input={icm}
+        echo "{executable} --input={icm} --module_map_file={mod}"
+        {executable} --input={icm} --module_map_file={mod}
         """.format(
             executable = ctx.executable._run_bytecode.short_path,
             icm = icm_file.short_path,
+            mod = module_map_file.short_path,
         )
     )
 
-    return [
-        DefaultInfo(
-            files = depset([icm_file, module_map_file]),
-            executable = executable,
-            runfiles = runfiles,
-        ),
-    ]
+    return [DefaultInfo(runfiles = runfiles)]
 
 
 ic_binary = rule(
@@ -155,14 +149,14 @@ def _ic_library_impl(ctx):
         icm = icm_file,
     )
 
-    _compile(ctx, icm_file, icm_deps)
-    runfiles = ctx.runfiles(files = [icm_file])
+    module_map_file = _compile(ctx, icm_file, icm_deps)
 
     return [
-        IcarusInfo(icms = depset([info], transitive = [icm_deps])),
-        DefaultInfo(
-            files = depset([icm_file]),
-            runfiles = runfiles,
+        IcarusInfo(
+            icms = depset([info], transitive = [icm_deps]),
+            icmods = depset([module_map_file], transitive = [
+                d[IcarusInfo].icmods for d in ctx.attr.deps
+            ]),
         ),
     ]
 

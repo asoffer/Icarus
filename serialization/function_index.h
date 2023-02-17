@@ -18,8 +18,7 @@ struct FunctionIndex {
 
   constexpr explicit FunctionIndex(underlying_type n) : index_(n) {}
 
-  friend bool operator==(FunctionIndex, FunctionIndex) = default;
-  friend bool operator!=(FunctionIndex, FunctionIndex) = default;
+  auto operator<=>(FunctionIndex const &) const = default;
 
   template <typename H>
   friend H AbslHashValue(H h, FunctionIndex index) {

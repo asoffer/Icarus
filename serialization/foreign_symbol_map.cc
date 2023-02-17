@@ -49,7 +49,6 @@ bool ForeignSymbolMap::Deserialize(proto::ForeignSymbolMap const& from,
 }
 
 uint32_t ForeignSymbolMap::index(void (*fn_ptr)()) const {
-  LOG("", "%p %u %u", this, index_.size(), data_.size());
   auto iter = index_.find(fn_ptr);
   ASSERT(iter != index_.end());
   return iter->second;
