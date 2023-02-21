@@ -14,5 +14,5 @@ c ::= import "std.c.types"
 #{export} Print ::= (s: [/]char) -> () {
   printf ::= builtin.foreign("printf",
                              ([*]char, c.unsigned_long_long, [*]char) -> c.int)
-  printf("%*s\n".data, s.length, s.data)
+  printf("%*s".data, s.length, s.data)
 }

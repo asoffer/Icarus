@@ -5,9 +5,9 @@
 // we are loading the "io" module from the standard library.
 io ::= import "std.io"
 
-// Once loaded any symbol exported from that module is usable if prefixed by
+// Once loaded, any symbol exported from that module is usable if prefixed by
 // `io`, the identifier declared above to represent the module. Note that there
 // is no requirement to have the identifier to be named like the module itself.
 // However, doing so is generally considered best-practice, as it reduces the
 // frequency with which readers will have to consult the `import` expression.
-io.Print("Hello, world!")
+io.Print("Hello, world!\n")

@@ -39,6 +39,18 @@ void ByteCodeValueEmitter::operator()(ast::Call const* node,
 
     Emit(expr, data);
   } else {
+    auto typed_function = callable_identifier.function();
+
+    auto const& parameters =
+        typed_function.type.get<core::FunctionType>(type_system()).parameters();
+
+    auto iter = parameters.begin();
+    for (auto const& argument : node->positional_arguments()) {
+      CastTo(&argument.expr(), QualifiedType(iter->value), data);
+      ++iter;
+    }
+
+    auto& f = module().function_table().function(typed_function.function);
     data.function().append<PushFunction>(&module().function_table().function(
         callable_identifier.function().function));
   }
