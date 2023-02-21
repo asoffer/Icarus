@@ -10,7 +10,7 @@ void ByteCodeValueEmitter::operator()(ast::FunctionLiteral const* node,
           type_system());
   size_t num_parameters = function_type.parameters().size();
 
-  auto [fn_id, fn_ptr] = module().function_table().emplace(
+  auto [fn_index, fn_ptr] = module().function_table().emplace(
       num_parameters, function_type.returns().size());
 
   nth::flyweight_map<ast::Declaration::Id const*, size_t> variable_offsets;

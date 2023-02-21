@@ -127,7 +127,7 @@ bool Compile(serialization::UniqueModuleId module_id,
 
   semantic_analysis::EmitByteCodeForModule(ast_module, context, resources);
 
-  return resources.primary_module().Serialize(output);
+  return resources.primary_module().Serialize(output, resources.function_map());
 }
 
 }  // namespace toolchain

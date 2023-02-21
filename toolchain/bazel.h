@@ -13,7 +13,7 @@ namespace toolchain {
 
 struct BazelSpecification {
   absl::flat_hash_map<module::ModuleName, serialization::UniqueModuleId> names;
-  absl::flat_hash_map<serialization::UniqueModuleId, std::string> paths;
+  std::vector<std::pair<serialization::UniqueModuleId, std::string>> paths;
 };
 
 std::optional<BazelSpecification> BazelModuleMap(std::string const& file_name);

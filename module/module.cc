@@ -117,7 +117,8 @@ void DeserializeTypeSystem(serialization::TypeSystem const& proto,
 }
 
 struct SerializationState {
-  SerializationState(Module& module) : module_(module) {}
+  SerializationState(Module& module, FunctionMap& fn_map)
+      : module_(module), fn_map_(fn_map) {}
   template <typename T>
   T& get() {
     constexpr auto t = nth::type<T>;
@@ -126,7 +127,7 @@ struct SerializationState {
     } else if constexpr (t == nth::type<serialization::ForeignSymbolMap>) {
       return module_.foreign_symbol_map();
     } else {
-      return module_.function_table();
+      return fn_map_;
     }
   }
 
@@ -134,6 +135,7 @@ struct SerializationState {
 
  private:
   Module& module_;
+  FunctionMap& fn_map_;
 };
 
 void SerializeFunction(semantic_analysis::IrFunction const& f,
@@ -145,9 +147,9 @@ void SerializeFunction(semantic_analysis::IrFunction const& f,
 }
 
 struct FunctionTableDeserializationState {
-  FunctionTableDeserializationState(Module& module,
+  FunctionTableDeserializationState(Module& module, FunctionMap& function_map,
                                     base::PtrSpan<Module const> deps)
-      : state_(module), dependencies_(deps) {}
+      : state_(module, function_map), dependencies_(deps) {}
   auto& function_state() { return state_; }
 
   semantic_analysis::IrFunction const* lookup(
@@ -173,7 +175,7 @@ struct FunctionTableDeserializationState {
 
 }  // namespace
 
-bool Module::Serialize(std::ostream& output) const {
+bool Module::Serialize(std::ostream& output, FunctionMap& function_map) const {
   serialization::Module proto;
 
   *proto.mutable_identifier() = id_.value();
@@ -182,7 +184,7 @@ bool Module::Serialize(std::ostream& output) const {
   serialization::ModuleMap::Serialize(module_map_, *proto.mutable_module_map());
 
   // TODO: Fix const-correctness in Jasmin.
-  SerializationState state(const_cast<Module&>(*this));
+  SerializationState state(const_cast<Module&>(*this), function_map);
 
   serialization::ForeignSymbolMap::Serialize(foreign_symbol_map_,
                                              *proto.mutable_foreign_symbols());
@@ -224,7 +226,8 @@ bool Module::Serialize(std::ostream& output) const {
 
 bool Module::DeserializeInto(serialization::Module proto,
                              base::PtrSpan<Module const> dependencies,
-                             Module& module) {
+                             serialization::ModuleIndex module_index,
+                             Module& module, FunctionMap& function_map) {
   data_types::Deserialize(proto.integers(), module.integer_table_);
 
   if (not serialization::ReadOnlyData::Deserialize(proto.read_only(),
@@ -262,11 +265,11 @@ bool Module::DeserializeInto(serialization::Module proto,
     }
   }
 
-  FunctionTableDeserializationState state(module, dependencies);
+  FunctionTableDeserializationState state(module, function_map, dependencies);
   if (not serialization::FunctionTable<
           semantic_analysis::IrFunction>::Deserialize(proto.function_table(),
                                                       module.function_table_,
-                                                      state)) {
+                                                      module_index, state)) {
     return false;
   }
   jasmin::Deserialize(proto.initializer().content(), module.initializer_,
@@ -279,12 +282,13 @@ std::pair<serialization::FunctionIndex, semantic_analysis::IrFunction const*>
 Module::Wrap(serialization::ModuleIndex index,
              serialization::FunctionIndex import_index,
              semantic_analysis::IrFunction const* f) {
-  return function_table().emplace_wrapper(
-      index, import_index, f, [&](semantic_analysis::IrFunction& fn) {
-        fn.append<semantic_analysis::PushFunction>(f);
-        fn.append<jasmin::Call>();
-        fn.append<jasmin::Return>();
-      });
+  auto result =
+      function_table().emplace(f->parameter_count(), f->return_count());
+  auto [fn_index, fn_ptr] = result;
+  fn_ptr->append<semantic_analysis::PushFunction>(f);
+  fn_ptr->append<jasmin::Call>();
+  fn_ptr->append<jasmin::Return>();
+  return result;
 }
 
 }  // namespace module

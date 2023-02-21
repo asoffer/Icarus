@@ -10,8 +10,7 @@
 #include "jasmin/instructions/core.h"
 #include "jasmin/instructions/stack.h"
 #include "jasmin/serialization.h"
-#include "nth/container/flyweight_set.h"
-#include "nth/numeric/integer.h"
+#include "module/function_map.h"
 #include "semantic_analysis/type_system.h"
 #include "serialization/foreign_symbol_map.h"
 #include "serialization/function_table.h"
@@ -131,12 +130,9 @@ struct PushStringLiteral : jasmin::StackMachineInstruction<PushStringLiteral> {
 };
 
 struct PushFunction : jasmin::StackMachineInstruction<PushFunction> {
-  struct serialization_state;
+  using serialization_state = module::FunctionMap;
 
-  static constexpr void execute(jasmin::ValueStack& value_stack,
-                                jasmin::Value value) {
-    value_stack.push(value);
-  }
+  static void execute(jasmin::ValueStack& value_stack, jasmin::Value value);
 
   static void serialize(jasmin::Serializer& serializer,
                         std::span<jasmin::Value const> values,
@@ -251,9 +247,6 @@ struct InstructionSet
 
 using internal_byte_code::InstructionSet;  // TODO: Make public.
 using IrFunction = jasmin::Function<internal_byte_code::InstructionSet>;
-
-struct PushFunction::serialization_state
-    : serialization::FunctionTable<IrFunction> {};
 
 }  // namespace semantic_analysis
 

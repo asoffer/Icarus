@@ -26,6 +26,7 @@ cc_library(
         "//core/type_system",
         "//data_types:integer",
         "//data_types:fn",
+        "//module:function_map",
         "//serialization:foreign_symbol_map",
         "//serialization:function_table",
         "//serialization:module_index",
@@ -39,8 +40,6 @@ cc_library(
         "@asoffer_jasmin//jasmin/instructions:core",
         "@asoffer_jasmin//jasmin/instructions:stack",
         "@asoffer_jasmin//jasmin:serialization",
-        "@asoffer_nth//nth/container:flyweight_map",
-        "@asoffer_nth//nth/container:flyweight_set",
     ],
 )
 

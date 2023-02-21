@@ -21,7 +21,7 @@ void ModuleMap::Serialize(ModuleMap const & from, proto::ModuleMap& to) {
 bool ModuleMap::Deserialize(proto::ModuleMap const& from, ModuleMap& to) {
   for (auto const& id : from.ids()) {
     auto [iter, inserted] = to.data_.insert(UniqueModuleId(id));
-    if (not inserted) { return false; }
+    // if (not inserted) { return false; }
   }
   return true;
 }

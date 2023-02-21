@@ -33,6 +33,7 @@ cc_library(
     hdrs = ["resources.h"],
     srcs = ["resources.cc"],
     deps = [
+        ":function_map",
         ":module",
         ":module_name",
         "//diagnostic/consumer",
@@ -53,5 +54,16 @@ cc_library(
         "//data_types:fn",
         "//core/type_system:type",
         "//semantic_analysis:type_system",
+    ],
+)
+
+cc_library(
+    name = "function_map",
+    visibility = ["//visibility:public"],
+    hdrs = ["function_map.h"],
+    deps = [
+        "//serialization:function_index",
+        "//serialization:module_index",
+        "@com_google_absl//absl/container:flat_hash_map"
     ],
 )

@@ -183,12 +183,17 @@ bool PushStringLiteral::deserialize(jasmin::Deserializer& deserializer,
   return true;
 }
 
+void PushFunction::execute(jasmin::ValueStack& value_stack,
+                           jasmin::Value value) {
+  value_stack.push(value);
+}
+
 void PushFunction::serialize(jasmin::Serializer& serializer,
                              std::span<jasmin::Value const> values,
                              serialization_state& state) {
   ASSERT(values.size() == 1);
   auto* ir_fn                   = values[0].as<IrFunction*>();
-  auto [module_index, fn_index] = state.find_wrapper(ir_fn);
+  auto [module_index, fn_index] = state.find(ir_fn);
   ASSERT(module_index != serialization::ModuleIndex::Invalid());
   ASSERT(fn_index != serialization::FunctionIndex::Invalid());
   serializer(module_index.value());
@@ -204,8 +209,8 @@ bool PushFunction::deserialize(jasmin::Deserializer& deserializer,
   if (not deserializer(module_index)) { return false; }
   if (not deserializer(function_index)) { return false; }
 
-  values[0] = &state.function(serialization::ModuleIndex(module_index),
-                              serialization::FunctionIndex(function_index));
+  values[0] = state.find(serialization::ModuleIndex(module_index),
+                         serialization::FunctionIndex(function_index));
   return true;
 }
 

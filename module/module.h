@@ -21,12 +21,14 @@
 namespace module {
 
 struct Module {
-  explicit Module(serialization::UniqueModuleId id) : id_(std::move(id)) {}
+  explicit Module(serialization::UniqueModuleId id, FunctionMap &function_map)
+      : id_(std::move(id)), function_table_(function_map) {}
 
-  bool Serialize(std::ostream &output) const;
+  bool Serialize(std::ostream &output, FunctionMap &function_map) const;
   static bool DeserializeInto(serialization::Module proto,
                               base::PtrSpan<Module const> dependencies,
-                              Module &module);
+                              serialization::ModuleIndex module_index,
+                              Module &module, FunctionMap &function_map);
 
   semantic_analysis::IrFunction &initializer() { return initializer_; }
   semantic_analysis::IrFunction const &initializer() const {
@@ -67,11 +69,12 @@ struct Module {
 
   auto const &read_only_data() const { return read_only_data_; }
   auto &read_only_data() { return read_only_data_; }
-  semantic_analysis::PushFunction::serialization_state const &function_table()
-      const {
+  serialization::FunctionTable<semantic_analysis::IrFunction> const &
+  function_table() const {
     return function_table_;
   }
-  semantic_analysis::PushFunction::serialization_state &function_table() {
+  serialization::FunctionTable<semantic_analysis::IrFunction>
+      &function_table() {
     return function_table_;
   }
 
@@ -96,7 +99,7 @@ struct Module {
   // TODO: Mutable because jasmin doesn't correctly pass const qualifiers
   // through `get`. Remove when that's fixed.
   mutable serialization::ForeignSymbolMap foreign_symbol_map_{&type_system_};
-  mutable semantic_analysis::PushFunction::serialization_state function_table_;
+  mutable serialization::FunctionTable<semantic_analysis::IrFunction> function_table_;
 
   // All integer constants used in the module.
   data_types::IntegerTable integer_table_;

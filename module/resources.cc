@@ -7,19 +7,25 @@ Resources::Resources(
     absl::AnyInvocable<serialization::UniqueModuleId(ModuleName const &) const>
         name_resolver,
     std::unique_ptr<diagnostic::DiagnosticConsumer> diagnostic_consumer)
-    : primary_module_(id),
+    : primary_module_(id, function_map_),
       name_resolver_(std::move(name_resolver)),
       diagnostic_consumer_(std::move(diagnostic_consumer)) {}
 
 Module *Resources::LoadFrom(serialization::Module module) {
+  serialization::ModuleIndex module_index(modules_.size());
   serialization::UniqueModuleId id(std::move(*module.mutable_identifier()));
-  auto m = std::make_unique<Module>(id);
-  if (not module::Module::DeserializeInto(std::move(module), modules_, *m)) {
+  auto m = std::make_unique<Module>(id, function_map_);
+  if (not module::Module::DeserializeInto(std::move(module), modules_,
+                                          module_index, *m, function_map_)) {
     return nullptr;
   }
 
   auto *ptr = m.get();
-  Populate(id, std::move(m));
+  auto [index, inserted] = primary_module().map().insert(id);
+  ASSERT(inserted);
+  ASSERT(index.value() == modules_.size());
+  modules_.push_back(std::move(m));
+
   return ptr;
 }
 
@@ -35,20 +41,11 @@ diagnostic::DiagnosticConsumer &Resources::diagnostic_consumer() {
 Module *Resources::LoadPrimary(serialization::Module module) {
   serialization::UniqueModuleId id(std::move(*module.mutable_identifier()));
   if (not module::Module::DeserializeInto(std::move(module), modules_,
-                                          primary_module())) {
+                                          serialization::ModuleIndex::Self(),
+                                          primary_module(), function_map_)) {
     return nullptr;
   }
   return &primary_module();
-}
-
-void Resources::Populate(serialization::UniqueModuleId const &id,
-                         std::unique_ptr<Module> m) {
-  Module &module                = primary_module();
-  serialization::ModuleMap &map = module.map();
-  auto [index, inserted]        = map.insert(id);
-  ASSERT(inserted);
-  ASSERT(index.value() == modules_.size());
-  modules_.push_back(std::move(m));
 }
 
 core::Type Resources::Translate(core::Type type,
@@ -95,7 +92,7 @@ core::Type Resources::Translate(core::Type type,
 
 Symbol Resources::TranslateToPrimary(serialization::ModuleIndex from,
                                      Symbol const &symbol) {
-  auto& m = module(from);
+  auto &m = module(from);
   core::Type type =
       Translate(symbol.type(), m.type_system(), primary_module().type_system());
   if (type == semantic_analysis::Type) {

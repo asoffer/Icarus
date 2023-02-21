@@ -3,6 +3,7 @@
 
 #include "absl/functional/any_invocable.h"
 #include "diagnostic/consumer/consumer.h"
+#include "module/function_map.h"
 #include "module/module.h"
 #include "module/module_name.h"
 #include "serialization/read_only_data.h"
@@ -25,6 +26,10 @@ struct Resources {
 
   Module& primary_module() { return primary_module_; }
   Module const& primary_module() const { return primary_module_; }
+
+  FunctionMap& function_map() { return function_map_; }
+  FunctionMap const& function_map() const { return function_map_; }
+
   Module& module(serialization::ModuleIndex index) {
     return *modules_[index.value()];
   }
@@ -50,10 +55,8 @@ struct Resources {
  private:
   explicit Resources() = default;
 
-  void Populate(serialization::UniqueModuleId const& id,
-                std::unique_ptr<Module> m);
-
-  Module primary_module_{serialization::UniqueModuleId("")};
+  FunctionMap function_map_;
+  Module primary_module_{serialization::UniqueModuleId(""), function_map_};
   std::vector<std::unique_ptr<Module>> modules_;
   serialization::ReadOnlyData read_only_data_;
 

@@ -42,6 +42,7 @@ cc_library(
         ":function_table_proto",
         ":module_index",
         "//base:debug",
+        "//module:function_map",
         "@asoffer_jasmin//jasmin:serialization",
         "@com_google_absl//absl/container:btree",
         "@com_google_absl//absl/container:flat_hash_map",

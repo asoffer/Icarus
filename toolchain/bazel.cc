@@ -26,7 +26,7 @@ std::optional<BazelSpecification> BazelModuleMap(std::string const& file_name) {
           index = 2;
         } break;
         case 2: {
-          specification->paths.emplace(id, line);
+          specification->paths.emplace_back(id, line);
           index = 0;
         } break;
       }
