@@ -94,6 +94,11 @@ struct Module {
 
   absl::flat_hash_map<std::string, std::vector<Symbol>> exported_symbols_;
 
+  absl::flat_hash_map<semantic_analysis::IrFunction const *,
+                      std::pair<serialization::FunctionIndex,
+                                semantic_analysis::IrFunction const *>>
+      wrappers_;
+
   // The type-system containing all types referenceable in this module.
   mutable semantic_analysis::TypeSystem type_system_;
   // TODO: Mutable because jasmin doesn't correctly pass const qualifiers

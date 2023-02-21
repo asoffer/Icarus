@@ -282,13 +282,17 @@ std::pair<serialization::FunctionIndex, semantic_analysis::IrFunction const*>
 Module::Wrap(serialization::ModuleIndex index,
              serialization::FunctionIndex import_index,
              semantic_analysis::IrFunction const* f) {
-  auto result =
-      function_table().emplace(f->parameter_count(), f->return_count());
-  auto [fn_index, fn_ptr] = result;
-  fn_ptr->append<semantic_analysis::PushFunction>(f);
-  fn_ptr->append<jasmin::Call>();
-  fn_ptr->append<jasmin::Return>();
-  return result;
+  auto [iter, inserted] = wrappers_.try_emplace(f);
+  if (inserted) {
+    auto result =
+        function_table().emplace(f->parameter_count(), f->return_count());
+    auto [fn_index, fn_ptr] = result;
+    fn_ptr->append<semantic_analysis::PushFunction>(f);
+    fn_ptr->append<jasmin::Call>();
+    fn_ptr->append<jasmin::Return>();
+    iter->second = result;
+  }
+  return iter->second;
 }
 
 }  // namespace module

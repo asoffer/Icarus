@@ -25,8 +25,7 @@ struct FunctionTable {
 
     // Note: This is correct because we only call `emplace` on the
     // currently-being compiled function.
-    function_map_.insert_function(&f, serialization::ModuleIndex::Self(),
-                                  index);
+    function_map_.insert_function(&f, ModuleIndex::Self(), index);
 
     return std::pair(index, &f);
   }
