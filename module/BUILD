@@ -14,7 +14,6 @@ cc_library(
         "//serialization:foreign_symbol_map",
         "//serialization:function_table",
         "//serialization:module",
-        "//serialization:module_map",
         "//serialization:read_only_data",
         "@asoffer_jasmin//jasmin:serialization",
     ],
@@ -33,12 +32,12 @@ cc_library(
     hdrs = ["resources.h"],
     srcs = ["resources.cc"],
     deps = [
-        ":function_map",
+        ":global_function_map",
+        ":global_module_map",
         ":module",
         ":module_name",
         "//diagnostic/consumer",
         "//serialization:foreign_symbol_map",
-        "//serialization:module_map",
         "//serialization:read_only_data",
         "@com_google_absl//absl/functional:any_invocable",
     ]
@@ -58,12 +57,28 @@ cc_library(
 )
 
 cc_library(
-    name = "function_map",
+    name = "global_function_map",
     visibility = ["//visibility:public"],
-    hdrs = ["function_map.h"],
+    hdrs = ["global_function_map.h"],
+    srcs = ["global_function_map.cc"],
     deps = [
         "//serialization:function_index",
         "//serialization:module_index",
+        "//serialization:unique_module_id",
         "@com_google_absl//absl/container:flat_hash_map"
+    ],
+)
+
+cc_library(
+    name = "global_module_map",
+    visibility = ["//visibility:public"],
+    hdrs = ["global_module_map.h"],
+    srcs = ["global_module_map.cc"],
+    deps = [
+        "//serialization:module_index",
+        "//serialization:module_map_proto",
+        "//serialization:unique_module_id",
+        "@com_google_absl//absl/container:flat_hash_map",
+        "@asoffer_nth//nth/container:flyweight_set",
     ],
 )

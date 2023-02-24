@@ -191,9 +191,10 @@ void PushFunction::execute(jasmin::ValueStack& value_stack,
 void PushFunction::serialize(jasmin::Serializer& serializer,
                              std::span<jasmin::Value const> values,
                              serialization_state& state) {
+  auto& fn_map = std::get<2>(state);
   ASSERT(values.size() == 1);
   auto* ir_fn                   = values[0].as<IrFunction*>();
-  auto [module_index, fn_index] = state.find(ir_fn);
+  auto [module_index, fn_index] = fn_map.find(ir_fn);
   ASSERT(module_index != serialization::ModuleIndex::Invalid());
   ASSERT(fn_index != serialization::FunctionIndex::Invalid());
   serializer(module_index.value());
@@ -203,14 +204,17 @@ void PushFunction::serialize(jasmin::Serializer& serializer,
 bool PushFunction::deserialize(jasmin::Deserializer& deserializer,
                                std::span<jasmin::Value> values,
                                serialization_state& state) {
+  auto& [current_index, module_map, fn_map] = state;
   ASSERT(values.size() == 1);
   serialization::ModuleIndex::underlying_type module_index;
   serialization::FunctionIndex::underlying_type function_index;
   if (not deserializer(module_index)) { return false; }
   if (not deserializer(function_index)) { return false; }
-
-  values[0] = state.find(serialization::ModuleIndex(module_index),
-                         serialization::FunctionIndex(function_index));
+  auto index =
+      module_map.read(current_index, serialization::ModuleIndex(module_index));
+  auto* f = ASSERT_NOT_NULL(
+      fn_map.find(index, serialization::FunctionIndex(function_index)));
+  values[0] = f;
   return true;
 }
 

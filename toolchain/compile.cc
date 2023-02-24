@@ -96,25 +96,48 @@ bool Compile(serialization::UniqueModuleId module_id,
   auto &diagnostic_consumer_ref = **diagnostic_consumer;
   module::Resources resources(std::move(module_id), std::move(name_resolver),
                               std::move(*diagnostic_consumer));
+
+  std::vector<std::pair<serialization::Module, module::Module *>> modules;
+
+  // Allocate all imported modules, and populate their module maps.
   for (auto const &[id, path] : specification->paths) {
     std::ifstream stream(path);
+
     if (not stream.is_open()) {
       std::cerr << "failed to open " << id.value() << " (" << path << ").\n";
       return false;
     }
 
-    serialization::Module proto;
+    auto &[proto, mptr] = modules.emplace_back();
     if (not proto.ParseFromIstream(&stream)) {
       std::cerr << "failed to parse " << id.value() << " (" << path << ").\n";
       return false;
     }
+    auto index = serialization::ModuleIndex(resources.imported_modules());
+    mptr = &resources.AllocateModule(id);
 
-    if (not resources.LoadFrom(std::move(proto))) {
+    resources.module_map().insert(serialization::ModuleIndex::Self(), index,
+                                  id);
+    if (not module::GlobalModuleMap::Deserialize(index, proto.module_map(),
+                                                 resources.module_map())) {
       // TODO Log an error.
       std::cerr << "failed to load module " << id.value() << " (" << path
                 << ").\n";
       return false;
     }
+  }
+
+  size_t i = 0;
+  for (auto const &[proto, mptr] : modules) {
+    serialization::ModuleIndex index(i);
+    if (not module::Module::DeserializeInto(
+            proto, resources.modules(), index, resources.module(index),
+            resources.module_map(), resources.function_map())) {
+      // TODO Log an error.
+      std::cerr << "failed to load module.";
+      return false;
+    }
+    ++i;
   }
 
   semantic_analysis::Context context;

@@ -31,7 +31,7 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
         co_return tv.TypeOf(node, Constant(t));
       } break;
       default: {
-        NOT_YET();
+        NOT_YET(node->DebugString());
       } break;
     }
   } else if (qt.type().is<SliceType>(tv.type_system())) {

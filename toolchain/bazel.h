@@ -7,7 +7,7 @@
 #include "absl/functional/any_invocable.h"
 #include "base/file.h"
 #include "module/module_name.h"
-#include "serialization/module_map.h"
+#include "serialization/unique_module_id.h"
 
 namespace toolchain {
 

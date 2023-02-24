@@ -42,7 +42,7 @@ cc_library(
         ":function_table_proto",
         ":module_index",
         "//base:debug",
-        "//module:function_map",
+        "//module:global_function_map",
         "@asoffer_jasmin//jasmin:serialization",
         "@com_google_absl//absl/container:btree",
         "@com_google_absl//absl/container:flat_hash_map",
@@ -105,19 +105,6 @@ cc_proto_library(
     name = "module_map_proto",
     visibility = ["//visibility:public"],
     deps = ["//serialization/proto:module_map"],
-)
-
-cc_library(
-    name = "module_map",
-    visibility = ["//visibility:public"],
-    hdrs = ["module_map.h"],
-    srcs = ["module_map.cc"],
-    deps = [
-        ":module_index",
-        ":module_map_proto",
-        ":unique_module_id",
-        "@asoffer_nth//nth/container:flyweight_set",
-    ],
 )
 
 cc_proto_library(

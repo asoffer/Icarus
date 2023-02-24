@@ -1,7 +1,6 @@
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "semantic_analysis/type_verification/verify.h"
-#include "serialization/module_map.h"
 #include "test/repl.h"
 
 namespace semantic_analysis {

@@ -9,7 +9,7 @@ cc_library(
         "//module:module_name",
         "//base:debug",
         "//base:file",
-        "//serialization:module_map",
+        "//serialization:unique_module_id",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/functional:any_invocable",
         "@com_google_absl//absl/container:flat_hash_map",

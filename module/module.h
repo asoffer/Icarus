@@ -8,6 +8,7 @@
 
 #include "base/ptr_span.h"
 #include "data_types/integer.h"
+#include "module/global_function_map.h"
 #include "module/symbol.h"
 #include "semantic_analysis/instruction_set.h"
 #include "semantic_analysis/type_system.h"
@@ -15,20 +16,21 @@
 #include "serialization/function_table.h"
 #include "serialization/module.pb.h"
 #include "serialization/module_index.h"
-#include "serialization/module_map.h"
 #include "serialization/read_only_data.h"
 
 namespace module {
 
 struct Module {
-  explicit Module(serialization::UniqueModuleId id, FunctionMap &function_map)
+  explicit Module(serialization::UniqueModuleId id,
+                  GlobalFunctionMap &function_map)
       : id_(std::move(id)), function_table_(function_map) {}
 
-  bool Serialize(std::ostream &output, FunctionMap &function_map) const;
-  static bool DeserializeInto(serialization::Module proto,
+  bool Serialize(std::ostream &output, GlobalFunctionMap &function_map) const;
+  static bool DeserializeInto(serialization::Module const &proto,
                               base::PtrSpan<Module const> dependencies,
                               serialization::ModuleIndex module_index,
-                              Module &module, FunctionMap &function_map);
+                              Module &module, GlobalModuleMap &module_map,
+                              GlobalFunctionMap &function_map);
 
   semantic_analysis::IrFunction &initializer() { return initializer_; }
   semantic_analysis::IrFunction const &initializer() const {
@@ -78,13 +80,8 @@ struct Module {
     return function_table_;
   }
 
-  serialization::ModuleMap const &map() const { return module_map_; }
-  serialization::ModuleMap &map() { return module_map_; }
-
   std::pair<serialization::FunctionIndex, semantic_analysis::IrFunction const *>
-  Wrap(serialization::ModuleIndex index,
-       serialization::FunctionIndex import_index,
-       semantic_analysis::IrFunction const *f);
+  Wrap(semantic_analysis::IrFunction const *f);
 
  private:
   serialization::UniqueModuleId id_;
@@ -104,13 +101,13 @@ struct Module {
   // TODO: Mutable because jasmin doesn't correctly pass const qualifiers
   // through `get`. Remove when that's fixed.
   mutable serialization::ForeignSymbolMap foreign_symbol_map_{&type_system_};
-  mutable serialization::FunctionTable<semantic_analysis::IrFunction> function_table_;
+  mutable serialization::FunctionTable<semantic_analysis::IrFunction>
+      function_table_;
 
   // All integer constants used in the module.
   data_types::IntegerTable integer_table_;
 
   mutable serialization::ReadOnlyData read_only_data_;
-  serialization::ModuleMap module_map_;
 };
 
 }  // namespace module

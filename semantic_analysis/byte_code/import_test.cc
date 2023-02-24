@@ -1,5 +1,4 @@
 #include "gtest/gtest.h"
-#include "serialization/module_map.h"
 #include "test/repl.h"
 
 namespace semantic_analysis {

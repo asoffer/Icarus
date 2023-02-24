@@ -11,41 +11,17 @@ Resources::Resources(
       name_resolver_(std::move(name_resolver)),
       diagnostic_consumer_(std::move(diagnostic_consumer)) {}
 
-Module *Resources::LoadFrom(serialization::Module module) {
-  serialization::ModuleIndex module_index(modules_.size());
-  serialization::UniqueModuleId id(std::move(*module.mutable_identifier()));
-  auto m = std::make_unique<Module>(id, function_map_);
-  if (not module::Module::DeserializeInto(std::move(module), modules_,
-                                          module_index, *m, function_map_)) {
-    return nullptr;
-  }
-
-  auto *ptr = m.get();
-  auto [index, inserted] = primary_module().map().insert(id);
-  ASSERT(inserted);
-  ASSERT(index.value() == modules_.size());
-  modules_.push_back(std::move(m));
-
-  return ptr;
+Module &Resources::AllocateModule(serialization::UniqueModuleId const &id) {
+  return *modules_.emplace_back(std::make_unique<Module>(id, function_map_));
 }
 
 serialization::ModuleIndex Resources::TryLoadModuleByName(
     ModuleName const &name) const {
-  return primary_module().map().index(name_resolver_(name));
+  return module_map_.index(name_resolver_(name));
 }
 
 diagnostic::DiagnosticConsumer &Resources::diagnostic_consumer() {
   return *ASSERT_NOT_NULL(diagnostic_consumer_);
-}
-
-Module *Resources::LoadPrimary(serialization::Module module) {
-  serialization::UniqueModuleId id(std::move(*module.mutable_identifier()));
-  if (not module::Module::DeserializeInto(std::move(module), modules_,
-                                          serialization::ModuleIndex::Self(),
-                                          primary_module(), function_map_)) {
-    return nullptr;
-  }
-  return &primary_module();
 }
 
 core::Type Resources::Translate(core::Type type,
@@ -100,9 +76,8 @@ Symbol Resources::TranslateToPrimary(serialization::ModuleIndex from,
                             primary_module().type_system()));
   } else if (type.is<core::FunctionType>(primary_module().type_system())) {
     auto fn_index = primary_module()
-                        .Wrap(from, symbol.as<TypedFunction>().function,
-                              &m.function_table().function(
-                                  symbol.as<TypedFunction>().function))
+                        .Wrap(&m.function_table().function(
+                            symbol.as<TypedFunction>().function))
                         .first;
     return Symbol(TypedFunction{
         .type     = type,

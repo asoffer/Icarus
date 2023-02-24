@@ -10,7 +10,8 @@
 #include "jasmin/instructions/core.h"
 #include "jasmin/instructions/stack.h"
 #include "jasmin/serialization.h"
-#include "module/function_map.h"
+#include "module/global_function_map.h"
+#include "module/global_module_map.h"
 #include "semantic_analysis/type_system.h"
 #include "serialization/foreign_symbol_map.h"
 #include "serialization/function_table.h"
@@ -130,7 +131,9 @@ struct PushStringLiteral : jasmin::StackMachineInstruction<PushStringLiteral> {
 };
 
 struct PushFunction : jasmin::StackMachineInstruction<PushFunction> {
-  using serialization_state = module::FunctionMap;
+  using serialization_state =
+      std::tuple<serialization::ModuleIndex, module::GlobalModuleMap&,
+                 module::GlobalFunctionMap&>;
 
   static void execute(jasmin::ValueStack& value_stack, jasmin::Value value);
 

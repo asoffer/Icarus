@@ -125,7 +125,7 @@ def _ic_binary_impl(ctx):
     ctx.actions.write(
         output = ctx.outputs.executable,
         is_executable = True,
-        content = """
+       content = """
         {executable} --input={icm} --module_map_file={mod}
         """.format(
             executable = ctx.executable._run_bytecode.short_path,

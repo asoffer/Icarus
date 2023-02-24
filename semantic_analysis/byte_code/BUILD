@@ -186,7 +186,6 @@ cc_test(
           ":byte_code",
           "//module:resources",
           "//semantic_analysis:type_system",
-          "//serialization:module_map",
           "//test:repl",
           "@com_google_googletest//:gtest_main",
       ],

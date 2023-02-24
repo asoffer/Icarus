@@ -6,7 +6,7 @@
 #include "absl/container/btree_map.h"
 #include "absl/container/flat_hash_map.h"
 #include "jasmin/serialization.h"
-#include "module/function_map.h"
+#include "module/global_function_map.h"
 #include "serialization/function_index.h"
 #include "serialization/module_index.h"
 #include "serialization/proto/function_table.pb.h"
@@ -15,17 +15,19 @@ namespace serialization {
 
 template <typename FunctionType>
 struct FunctionTable {
-  explicit FunctionTable(module::FunctionMap& map) : function_map_(map) {}
+  explicit FunctionTable(module::GlobalFunctionMap& map) : function_map_(map) {}
 
-  std::pair<FunctionIndex, FunctionType*> emplace(size_t parameters,
-                                                  size_t returns) {
+  std::pair<FunctionIndex, FunctionType*> emplace(
+      size_t parameters, size_t returns,
+      ModuleIndex module_index = ModuleIndex::Self()) {
     FunctionIndex index(functions_.size());
     auto& f = functions_.emplace_back(parameters, returns);
-    function_indices_.emplace(&f, FunctionIndex(functions_.size() - 1));
+    function_indices_.emplace(&f, index);
 
     // Note: This is correct because we only call `emplace` on the
     // currently-being compiled function.
-    function_map_.insert_function(&f, ModuleIndex::Self(), index);
+
+    function_map_.insert_function(&f, module_index, index);
 
     return std::pair(index, &f);
   }
@@ -67,7 +69,7 @@ struct FunctionTable {
   std::deque<FunctionType> functions_;
   absl::flat_hash_map<FunctionType const*, FunctionIndex> function_indices_;
 
-  module::FunctionMap& function_map_;
+  module::GlobalFunctionMap& function_map_;
 };
 
 template <typename FunctionType>
@@ -88,9 +90,7 @@ bool FunctionTable<FunctionType>::Deserialize(proto::FunctionTable const& from,
                                               ModuleIndex module_index,
                                               State& state) {
   for (auto const& function : from.functions()) {
-    auto [index, f] = to.emplace(function.parameters(), function.returns());
-    auto& fn_map = state.function_state().template get<module::FunctionMap>();
-    fn_map.insert_function(&f, module_index, index);
+    to.emplace(function.parameters(), function.returns(), module_index);
   }
 
   for (size_t i = 0; i < to.functions_.size(); ++i) {
