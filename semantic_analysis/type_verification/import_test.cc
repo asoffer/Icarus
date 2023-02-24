@@ -21,9 +21,10 @@ test::Repl MakeRepl(std::optional<std::string> name = std::nullopt) {
         }
       });
 
-  serialization::Module m;
-  m.set_identifier("module");
-  resources.LoadFrom(std::move(m));
+  serialization::UniqueModuleId id("module");
+  resources.AllocateModule(id);
+  resources.module_map().insert(serialization::ModuleIndex::Self(),
+                                serialization::ModuleIndex(0), id);
   return test::Repl(std::move(resources));
 }
 
