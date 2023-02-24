@@ -1,15 +1,14 @@
 c ::= import "std.c.types"
 
-#{export} PrintImpl ::= (n: i64) -> () {
+#{export} Print ::= (n: i64) -> () {
   printf ::= builtin.foreign("printf", ([*]char, i64) -> i32)
   printf("%lld".data, n)
 }
 
-// #{export} PrintImpl ::= (n: u64) -> () {
-//   // printf ::= builtin.foreign("printf", ([*]char, u64) -> i32)
-//   // printf("%llu".data, n)
-// }
-
+#{export} Print ::= (n: u64) -> () {
+  printf ::= builtin.foreign("printf", ([*]char, u64) -> i32)
+  printf("%llu".data, n)
+}
 
 #{export} Print ::= (s: [/]char) -> () {
   printf ::= builtin.foreign("printf",

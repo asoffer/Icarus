@@ -13,27 +13,31 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
     auto index = tv.EvaluateAs<serialization::ModuleIndex>(node->operand());
     auto &m    = tv.resources().module(index);
     std::span symbols = m.LoadSymbols(node->member_name());
-    switch (symbols.size()) {
-      case 0: {
-        NOT_YET();
-      } break;
-      case 1: {
-        module::Symbol s = tv.resources().TranslateToPrimary(index, symbols[0]);
-        core::Type t = s.type();
-        if (auto fn_type = t.get_if<core::FunctionType>(tv.type_system())) {
-          co_yield tv.ParametersOf(
-              node, absl::flat_hash_map<core::ParameterType,
-                                        Context::CallableIdentifier>{
-                        {fn_type->parameter_type(),
-                         Context::CallableIdentifier(
-                             s.as<module::TypedFunction>())}});
-        }
-        co_return tv.TypeOf(node, Constant(t));
-      } break;
-      default: {
-        NOT_YET(node->DebugString());
-      } break;
+
+    absl::flat_hash_map<core::ParameterType, Context::CallableIdentifier>
+        parameters_options;
+
+    if (symbols.empty()) { NOT_YET(); }
+    core::Type t;
+    for (auto const &symbol : symbols) {
+      module::Symbol s = tv.resources().TranslateToPrimary(index, symbol);
+      t                = s.type();
+      if (auto fn_type = t.get_if<core::FunctionType>(tv.type_system())) {
+        parameters_options.emplace(
+            fn_type->parameter_type(),
+            Context::CallableIdentifier(s.as<module::TypedFunction>()));
+      }
     }
+    if (not parameters_options.empty()) {
+      co_yield tv.ParametersOf(node, std::move(parameters_options));
+    }
+
+    // TODO: This is a gross hack where we just pick one of the symbols types.
+    // We should really add support for overload sets. However, this is correct
+    // if there is exactly one overload, and we never look at the value if there
+    // are multiple overloads. This will likely break if the return type for the
+    // overloads is different.
+    co_return tv.TypeOf(node, Constant(t));
   } else if (qt.type().is<SliceType>(tv.type_system())) {
     if (node->member_name() == "data") {
       co_return tv.TypeOf(
