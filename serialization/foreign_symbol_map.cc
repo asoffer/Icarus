@@ -48,8 +48,8 @@ bool ForeignSymbolMap::Deserialize(proto::ForeignSymbolMap const& from,
   return true;
 }
 
-uint32_t ForeignSymbolMap::index(void (*fn_ptr)()) const {
-  auto iter = index_.find(fn_ptr);
+uint32_t ForeignSymbolMap::index(core::Type t, void (*fn_ptr)()) const {
+  auto iter = index_.find(std::pair(t, fn_ptr));
   ASSERT(iter != index_.end());
   return iter->second;
 }
@@ -79,7 +79,8 @@ void ForeignSymbolMap::Populate(
       dlsym(RTLD_DEFAULT, iter->first.name.c_str()));
   char const* error = dlerror();
 
-  index_.emplace(iter->second, data_.index(iter));
+  auto [unused, inserted] = index_.emplace(
+      std::pair(iter->first.type, iter->second), data_.index(iter));
 
   // TODO: Handle errors.
   if (error != nullptr) { NOT_YET(iter->first.name); }

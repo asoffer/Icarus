@@ -31,7 +31,7 @@ struct ForeignSymbolMap {
   std::pair<uint32_t, bool> insert(ForeignSymbol&& symbol);
 
   uint32_t index(ForeignSymbol const&) const;
-  uint32_t index(void (*fn_ptr)()) const;
+  uint32_t index(core::Type t, void (*fn_ptr)()) const;
 
   ForeignSymbol const& symbol(uint32_t index) const;
 
@@ -51,7 +51,7 @@ struct ForeignSymbolMap {
   void Populate(nth::flyweight_map<ForeignSymbol, void (*)()>::iterator iter);
 
   nth::flyweight_map<ForeignSymbol, void (*)()> data_;
-  absl::flat_hash_map<void (*)(), uint32_t> index_;
+  absl::flat_hash_map<std::pair<core::Type, void (*)()>, uint32_t> index_;
 
   // While not impossible depending on the type system directly will hurt
   // compile-times sufficiently that it's worth avoiding.

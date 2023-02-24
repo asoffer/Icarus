@@ -137,8 +137,19 @@ void InvokeForeignFunction::execute(
 void InvokeForeignFunction::serialize(jasmin::Serializer& serializer,
                                       std::span<jasmin::Value const> values,
                                       serialization_state& state) {
+  auto& ts = state.get<TypeSystem>();
+  core::Parameters<core::Type> params;
+  auto const* p   = values[1].as<core::Parameter<core::Type> const*>();
+  auto const* end = p + values[2].as<size_t>();
+  for (; p != end; ++p) { params.append(*p); }
+  std::vector<core::Type> rets;
+  if (auto const* maybe_return_type = values[3].as<core::Type const*>()) {
+    rets.push_back(*maybe_return_type);
+  }
+  core::Type t = core::FunctionType(
+      ts, core::ParameterType(ts, std::move(params)), std::move(rets));
   ASSERT(values.size() == 4);
-  serializer(jasmin::Value(state.index(values[0].as<void (*)()>())));
+  serializer(jasmin::Value(state.index(t, values[0].as<void (*)()>())));
 }
 
 bool InvokeForeignFunction::deserialize(jasmin::Deserializer& deserializer,
