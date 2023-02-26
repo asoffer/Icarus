@@ -13,6 +13,7 @@ ic_binary(
 ic_binary(
     name = "function_calls",
     srcs = ["function_calls.ic"],
+    deps = ["//toolchain/stdlib:io"],
 )
 
 ic_binary(

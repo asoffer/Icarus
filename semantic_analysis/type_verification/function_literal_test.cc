@@ -69,5 +69,32 @@ TEST(FunctionLiteral, DISABLED_IncorrectReturnType) {
             HasDiagnostics(Pair("type-error", "incorrect-return-type"))));
 }
 
+TEST(FunctionLiteralElidedReturnType, Correct) {
+  test::Repl repl;
+
+  EXPECT_THAT(repl.type_check(R"(() -> {})"),
+              AllOf(HasQualTypes(Constant(core::FunctionType(
+                        repl.type_system(),
+                        core::ParameterType(repl.type_system(), {}), {}))),
+                    HasDiagnostics()));
+
+  core::Parameters<core::Type> parameters;
+  parameters.append("n", I(64));
+  parameters.append("b", Bool);
+  core::ParameterType parameter_type(repl.type_system(), std::move(parameters));
+
+  EXPECT_THAT(repl.type_check(R"((n: i64, b: bool) -> { return true })"),
+              AllOf(HasQualTypes(Constant(core::FunctionType(
+                        repl.type_system(), parameter_type, {Bool}))),
+                    HasDiagnostics()));
+  EXPECT_THAT(repl.type_check(R"(
+    (n: i64, b: bool) -> (bool, char) {
+      return b, !'x'
+    })"),
+              AllOf(HasQualTypes(Constant(core::FunctionType(
+                        repl.type_system(), parameter_type, {Bool, Char}))),
+                    HasDiagnostics()));
+}
+
 }  // namespace
 }  // namespace semantic_analysis

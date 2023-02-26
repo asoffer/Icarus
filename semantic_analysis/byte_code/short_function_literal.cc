@@ -1,10 +1,9 @@
-#include "core/arch.h"
 #include "nth/container/flyweight_map.h"
 #include "semantic_analysis/byte_code/emitter.h"
 
 namespace semantic_analysis {
 
-void ByteCodeValueEmitter::operator()(ast::FunctionLiteral const* node,
+void ByteCodeValueEmitter::operator()(ast::ShortFunctionLiteral const* node,
                                       FunctionData data) {
   auto const& function_type =
       context().qualified_type(node).type().get<core::FunctionType>(
@@ -20,11 +19,9 @@ void ByteCodeValueEmitter::operator()(ast::FunctionLiteral const* node,
   node->body_scope().ForEachNonConstantDeclaration(
       [&](ast::Declaration const* decl) {
         for (auto& id : decl->ids()) {
-          core::TypeContour contour =
-              ContourOf(context().qualified_type(&id).type(), type_system());
-          offset = core::FwdAlign(offset, contour.alignment());
           variable_offsets.try_emplace(&id, offset.value());
-          offset += contour.bytes();
+          // TODO: Alignment.
+          offset += SizeOf(context().qualified_type(&id).type(), type_system());
         }
       });
   fn_ptr->append<jasmin::StackAllocate>(offset.value());
@@ -62,15 +59,13 @@ void ByteCodeValueEmitter::operator()(ast::FunctionLiteral const* node,
       });
 
   FunctionData fn_data(*fn_ptr, variable_offsets);
-  for (auto const* stmt : node->stmts()) {
-    as<ByteCodeStatementEmitter>().Emit(stmt, fn_data);
-  }
+  Emit(node->body(), fn_data);
   fn_data.function().append<jasmin::Return>();
 
   data.function().append<PushFunction>(fn_ptr);
 }
 
-void ByteCodeStatementEmitter::operator()(ast::FunctionLiteral const*,
+void ByteCodeStatementEmitter::operator()(ast::ShortFunctionLiteral const*,
                                           FunctionData) {}
 
 }  // namespace semantic_analysis

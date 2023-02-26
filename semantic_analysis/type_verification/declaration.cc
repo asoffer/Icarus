@@ -1,3 +1,4 @@
+#include "absl/cleanup/cleanup.h"
 #include "ast/ast.h"
 #include "compiler/common_diagnostics.h"
 #include "semantic_analysis/type_system.h"
@@ -86,6 +87,16 @@ struct OutOfBoundsConstantInteger {
 
 VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
                                           ast::Declaration const *node) {
+  // It's possible to enter verification of a declaration directly, or through a
+  // declaration identifier (because we're verifying a call expression where the
+  // callee is an identifier possibly referencing a declaration we haven't seen
+  // yet). In the former case, we may never actually see the declaration
+  // identifiers, so we need to ensure that they're processed at some point in
+  // the future.
+  absl::Cleanup c = [&] {
+    for (auto const &id : node->ids()) { tv.schedule(&id); }
+  };
+
   std::span<QualifiedType const> initial_value_qts;
   std::span<QualifiedType const> type_expr_qts;
 

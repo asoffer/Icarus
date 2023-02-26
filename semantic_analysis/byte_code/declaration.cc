@@ -101,6 +101,9 @@ void ByteCodeStatementEmitter::operator()(ast::Declaration::Id const* node,
         NOT_YET(node->DebugString());
       }
     }
+  } else {
+    LOG("", "%s", node->DebugString());
+    NOT_YET();
   }
 }
 

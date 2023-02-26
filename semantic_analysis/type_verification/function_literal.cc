@@ -76,7 +76,31 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier& tv,
     co_return tv.Completed(node);
 
   } else {
-    NOT_YET();
+    for (auto const* stmt : node->stmts()) { co_await VerifyTypeOf(stmt); }
+
+    std::vector<std::span<QualifiedType const>> returns;
+    returns.reserve(node->returns().size());
+    for (auto const* return_stmt : node->returns()) {
+      returns.push_back(tv.context().return_types(return_stmt));
+    }
+    switch (returns.size()) {
+      case 0:
+        co_yield tv.TypeOf(node, Constant(core::FunctionType(
+                                     tv.type_system(), parameter_type, {})));
+        co_return tv.Completed(node);
+      case 1: {
+        std::vector<core::Type> return_types;
+        return_types.reserve(returns[0].size());
+        for (QualifiedType qt : returns[0]) {
+          return_types.push_back(qt.type());
+        }
+        co_yield tv.TypeOf(
+            node, Constant(core::FunctionType(tv.type_system(), parameter_type,
+                                              return_types)));
+        co_return tv.Completed(node);
+      }
+      default: NOT_YET();
+    }
   }
 }
 

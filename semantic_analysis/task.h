@@ -161,8 +161,6 @@ struct Task<KeyType, PhaseId, ReturnType>::Phase<P, true>
   }
 
   return_type await_resume() const noexcept {}
-
-  void* return_slot() { return nullptr; }
 };
 
 template <typename KeyType, PhaseIdentifier PhaseId,
@@ -188,15 +186,13 @@ struct Task<KeyType, PhaseId, ReturnType>::Phase<P, false>
     return not ready_to_continue;
   }
 
-  return_type await_resume() const noexcept {
-    return *reinterpret_cast<return_type const*>(return_slot_);
-  }
+  return_type await_resume() const noexcept { return return_slot_; }
 
-  void const* return_slot() const { return return_slot_; }
-  void* return_slot() { return return_slot_; }
+  return_type& return_slot() { return return_slot_; }
+  return_type const& return_slot() const { return return_slot_; }
 
  private:
-  alignas(return_type) char return_slot_[sizeof(return_type)];
+  return_type return_slot_;
 };
 
 template <typename KeyType, PhaseIdentifier PhaseId,
@@ -266,17 +262,19 @@ struct Scheduler {
         phase_entries[static_cast<size_t>(prerequisite.phase_identifier())];
 
     bool already_completed = (current_phase > prerequisite.phase_identifier());
+    using return_type      = typename task_type::template Phase<P>::return_type;
     if (already_completed) {
-      using return_type = typename task_type::template Phase<P>::return_type;
       if constexpr (not std::is_void_v<return_type>) {
-        if (auto* return_slot_ptr = prerequisite.return_slot()) {
-          auto* results_ptr = phase_entry.template results<return_type>();
-          new (return_slot_ptr)
-              return_type(results_ptr ? *results_ptr : return_type{});
+        if (auto* results_ptr = phase_entry.template results<return_type>()) {
+          prerequisite.return_slot() = *results_ptr;
         }
       }
     } else {
-      phase_entry.await(awaiting_handle, prerequisite.return_slot());
+      if constexpr (std::is_void_v<return_type>) {
+        phase_entry.await(awaiting_handle, nullptr);
+      } else {
+        phase_entry.await(awaiting_handle, &prerequisite.return_slot());
+      }
     }
     return already_completed;
   }
@@ -401,7 +399,7 @@ struct Scheduler {
     // Add all the entries awaiting the completion of this phase to the
     // ready-queue.
     for (auto [coroutine_handle, return_slot] : phase_entry.awaiting()) {
-      new (return_slot) return_type(*result_ptr);
+      *reinterpret_cast<return_type*>(return_slot) = *result_ptr;
       ready_.push(coroutine_handle);
     }
     phase_entry = PhaseEntry::ResultPointer(result_ptr);

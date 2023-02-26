@@ -59,7 +59,7 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
 
   std::span<absl::flat_hash_map<core::ParameterType,
                                 Context::CallableIdentifier> const>
-  callee_parameter_types = co_await VerifyParametersOf(node->callee());
+      callee_parameter_types = co_await VerifyParametersOf(node->callee());
   ASSERT(callee_parameter_types.size() == 1);
 
   core::Arguments<QualifiedType> arguments;
@@ -94,10 +94,10 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
         callee_parameter_type.first.value(), arguments,
         [&](QualifiedType argument_type, core::Type parameter_type) {
           switch (CanCast(argument_type, parameter_type, tv.type_system())) {
-          case CastKind::None:
-          case CastKind::Explicit: return false;
-          case CastKind::Implicit:
-          case CastKind::InPlace: return true;
+            case CastKind::None:
+            case CastKind::Explicit: return false;
+            case CastKind::Implicit:
+            case CastKind::InPlace: return true;
           }
         });
     if (not callability_result.ok()) { continue; }
@@ -111,7 +111,7 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
     case 1: {
       auto const &[parameter_type, callable_identifier] = *parameter_types[0];
 
-        std::span<core::Type const> return_types ;
+      std::span<core::Type const> return_types;
       if (auto const *expr = callable_identifier.expression()) {
         std::span callee_qts = co_await VerifyTypeOf(expr);
         if (callee_qts.size() != 1) { NOT_YET(); }
