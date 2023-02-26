@@ -20,8 +20,6 @@ void ByteCodeValueEmitter::operator()(ast::Call const* node,
     return;
   }
 
-  if (not node->named_arguments().empty()) { NOT_YET(); }
-
   auto const& callable_identifier = context().callee(node);
 
   if (auto const* expr = callable_identifier.expression()) {
@@ -37,6 +35,17 @@ void ByteCodeValueEmitter::operator()(ast::Call const* node,
       ++iter;
     }
 
+    for (; iter != parameters.end(); ++iter) {
+      for (auto const& argument : node->named_arguments()) {
+        if (argument.name() != iter->name) { continue; }
+        CastTo(&argument.expr(), QualifiedType(iter->value), data);
+        goto next_expr;
+      }
+      
+      NOT_YET("Default arguments not yet supported.");
+    next_expr:;
+    }
+
     Emit(expr, data);
   } else {
     auto typed_function = callable_identifier.function();
@@ -48,6 +57,16 @@ void ByteCodeValueEmitter::operator()(ast::Call const* node,
     for (auto const& argument : node->positional_arguments()) {
       CastTo(&argument.expr(), QualifiedType(iter->value), data);
       ++iter;
+    }
+
+    for (; iter != parameters.end(); ++iter) {
+      for (auto const& argument : node->named_arguments()) {
+        if (argument.name() != iter->name) { continue; }
+        CastTo(&argument.expr(), QualifiedType(iter->value), data);
+        goto next_typed_fn;
+      }
+      NOT_YET("Default arguments not yet supported.");
+    next_typed_fn:;
     }
 
     auto& f = module().function_table().function(typed_function.function);
