@@ -3,7 +3,7 @@
 namespace semantic_analysis {
 namespace {
 
-void EmitNonconstantDeclaration(ByteCodeStatementEmitter& emitter,
+void EmitNonconstantDeclaration(EmitterBase& emitter,
                                 ast::Declaration const* node,
                                 ByteCodeStatementEmitter::FunctionData data) {
   switch (node->kind()) {
@@ -25,8 +25,8 @@ void EmitNonconstantDeclaration(ByteCodeStatementEmitter& emitter,
   }
 }
 std::span<std::byte const> EmitConstantDeclaration(
-    ByteCodeStatementEmitter& emitter, ast::Declaration const* node,
-    QualifiedType qt, ByteCodeStatementEmitter::FunctionData data) {
+    EmitterBase& emitter, ast::Declaration const* node, QualifiedType qt,
+    EmitterBase::FunctionData data) {
   switch (node->kind()) {
     case ast::Declaration::kDefaultInit: {
       NOT_YET();
@@ -71,8 +71,8 @@ void ByteCodeStatementEmitter::operator()(ast::Declaration const* node,
   }
 }
 
-void ByteCodeStatementEmitter::operator()(ast::Declaration::Id const* node,
-                                          FunctionData data) {
+void ByteCodeValueEmitter::operator()(ast::Declaration::Id const* node,
+                                      FunctionData data) {
   auto const& declaration = node->declaration();
   if (declaration.ids().size() != 1) { NOT_YET(); }
   if (declaration.flags() & ast::Declaration::f_IsConst) {
@@ -102,14 +102,15 @@ void ByteCodeStatementEmitter::operator()(ast::Declaration::Id const* node,
       }
     }
   } else {
-    LOG("", "%s", node->DebugString());
-    NOT_YET();
+    data.function().append<jasmin::StackOffset>(data.OffsetFor(node));
+    data.function().append<jasmin::Load>(
+        SizeOf(context().qualified_type(node).type(), type_system()).value());
   }
 }
 
-void ByteCodeValueEmitter::operator()(ast::Declaration::Id const* node,
-                                      FunctionData data) {
-  as<ByteCodeStatementEmitter>().Emit(node, data);
+void ByteCodeStatementEmitter::operator()(ast::Declaration::Id const* node,
+                                          FunctionData data) {
+  UNREACHABLE();
 }
 
 }  // namespace semantic_analysis

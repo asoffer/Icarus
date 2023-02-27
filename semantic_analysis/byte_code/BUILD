@@ -22,6 +22,7 @@ cc_library(
     name = "emitter",
     hdrs = ["emitter.h"],
     srcs = [
+        "emitter.cc",
         "access.cc",
         "assignment.cc",
         "binary_operator.cc",

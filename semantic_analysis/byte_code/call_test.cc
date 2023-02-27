@@ -135,84 +135,290 @@ TEST(Call, MultipleArguments) {
     EXPECT_EQ(repl.execute<int64_t>(R"(
       f ::= (m: i64, n: i64) -> i64 { return m + n * n }
       f(3, 4)
-    )"), 19);
+    )"),
+              19);
   }
   {
     test::Repl repl;
     EXPECT_EQ(repl.execute<int64_t>(R"(
       f ::= (m: i64, n: i64) -> i64 { return m + n * n }
       f(3, n = 4)
-    )"), 19);
+    )"),
+              19);
   }
   {
     test::Repl repl;
     EXPECT_EQ(repl.execute<int64_t>(R"(
       f ::= (m: i64, n: i64) -> i64 { return m + n * n }
       f(m = 3, n = 4)
-    )"), 19);
+    )"),
+              19);
   }
   {
     test::Repl repl;
     EXPECT_EQ(repl.execute<int64_t>(R"(
       f ::= (m: i64, n: i64) -> i64 { return m + n * n }
       f(n = 3, m = 4)
-    )"), 13);
+    )"),
+              13);
   }
   {
     test::Repl repl;
     EXPECT_EQ(repl.execute<int64_t>(R"(
       f ::= (m: i64, n: i64) -> i64 { return m + n * n }
       3'f(4)
-    )"), 19);
+    )"),
+              19);
   }
   {
     test::Repl repl;
     EXPECT_EQ(repl.execute<int64_t>(R"(
       f ::= (m: i64, n: i64) -> i64 { return m + n * n }
       3'f(n = 4)
-    )"), 19);
+    )"),
+              19);
   }
   {
     test::Repl repl;
     EXPECT_EQ(repl.execute<int64_t>(R"(
       f ::= (m: i64, n: i64) -> i64 { return m + n * n }
       (m = 3)'f(n = 4)
-    )"), 19);
+    )"),
+              19);
   }
   {
     test::Repl repl;
     EXPECT_EQ(repl.execute<int64_t>(R"(
       f ::= (m: i64, n: i64) -> i64 { return m + n * n }
       (n = 3)'f(m = 4)
-    )"), 13);
+    )"),
+              13);
   }
   {
     test::Repl repl;
     EXPECT_EQ(repl.execute<int64_t>(R"(
       f ::= (m: i64, n: i64) -> i64 { return m + n * n }
       (3, 4)'f
-    )"), 19);
+    )"),
+              19);
   }
   {
     test::Repl repl;
     EXPECT_EQ(repl.execute<int64_t>(R"(
       f ::= (m: i64, n: i64) -> i64 { return m + n * n }
       (3, n = 4)'f
-    )"), 19);
+    )"),
+              19);
   }
   {
     test::Repl repl;
     EXPECT_EQ(repl.execute<int64_t>(R"(
       f ::= (m: i64, n: i64) -> i64 { return m + n * n }
       (m = 3, n = 4)'f
-    )"), 19);
+    )"),
+              19);
   }
   {
     test::Repl repl;
     EXPECT_EQ(repl.execute<int64_t>(R"(
       f ::= (m: i64, n: i64) -> i64 { return m + n * n }
       (n = 3, m = 4)'f
-    )"), 13);
+    )"),
+              13);
+  }
+}
+
+TEST(Call, EvaluationWithoutArgumentsNonConstant) {
+  {
+    test::Repl repl;
+    EXPECT_TRUE(repl.execute<bool>(R"((() -> {
+      f := () -> () {}
+      f()
+      return true
+    })())"));
+  }
+
+  {
+    test::Repl repl;
+    EXPECT_TRUE(repl.execute<bool>(R"((() -> {
+      f := () -> bool { return true }
+      return f()
+    })())"));
+  }
+
+  {
+    test::Repl repl;
+    EXPECT_TRUE(repl.execute<bool>(R"((() -> {
+      f := () -> bool { return true }
+      return 'f
+    })())"));
+  }
+}
+
+TEST(Call, EvaluationWithOneArgumentNonConstant) {
+  {
+    test::Repl repl;
+    EXPECT_TRUE(repl.execute<bool>(R"((() -> {
+      f := (b: bool) -> bool { return b }
+      return f(true)
+    })())"));
+  }
+
+  {
+    test::Repl repl;
+    EXPECT_TRUE(repl.execute<bool>(R"((() -> {
+      f := (b: bool) -> bool { return b }
+      return f(b = true)
+    })())"));
+  }
+
+  {
+    test::Repl repl;
+    EXPECT_TRUE(repl.execute<bool>(R"((() -> {
+      f := (b: bool) -> bool { return b }
+      return true'f
+    })())"));
+  }
+
+  {
+    test::Repl repl;
+    EXPECT_TRUE(repl.execute<bool>(R"((() -> {
+      f := (b: bool) -> bool { return b }
+      return (b = true)'f
+    })())"));
+  }
+}
+
+TEST(Call, EvaluationWithImplicitCastNonConstant) {
+  {
+    test::Repl repl;
+    EXPECT_TRUE(repl.execute<bool>(R"((() -> {
+      f := (n: i64) -> bool { return n < 10 as i64 }
+      return f(3)
+    })())"));
+  }
+
+  {
+    test::Repl repl;
+    EXPECT_TRUE(repl.execute<bool>(R"((() -> {
+      f := (n: i64) -> bool { return n < 10 as i64 }
+      return f(n = 3)
+    })())"));
+  }
+
+  {
+    test::Repl repl;
+    EXPECT_FALSE(repl.execute<bool>(R"((() -> {
+      f := (n: i64) -> bool { return n < 10 as i64 }
+      return 10'f
+    })())"));
+  }
+
+  {
+    test::Repl repl;
+    EXPECT_FALSE(repl.execute<bool>(R"((() -> {
+      f := (n: i64) -> bool { return n < 10 as i64 }
+      return (n = 10)'f
+    })())"));
+  }
+}
+
+TEST(Call, MultipleArgumentsNonConstant) {
+  {
+    test::Repl repl;
+    EXPECT_EQ(repl.execute<int64_t>(R"((() -> {
+      f := (m: i64, n: i64) -> i64 { return m + n * n }
+      return f(3, 4)
+    })())"),
+              19);
+  }
+  {
+    test::Repl repl;
+    EXPECT_EQ(repl.execute<int64_t>(R"((() -> {
+      f := (m: i64, n: i64) -> i64 { return m + n * n }
+      return f(3, n = 4)
+    })())"),
+              19);
+  }
+  {
+    test::Repl repl;
+    EXPECT_EQ(repl.execute<int64_t>(R"((() -> {
+      f := (m: i64, n: i64) -> i64 { return m + n * n }
+      return f(m = 3, n = 4)
+    })())"),
+              19);
+  }
+  {
+    test::Repl repl;
+    EXPECT_EQ(repl.execute<int64_t>(R"((() -> {
+      f := (m: i64, n: i64) -> i64 { return m + n * n }
+      return f(n = 3, m = 4)
+    })())"),
+              13);
+  }
+  {
+    test::Repl repl;
+    EXPECT_EQ(repl.execute<int64_t>(R"((() -> {
+      f := (m: i64, n: i64) -> i64 { return m + n * n }
+      return 3'f(4)
+    })())"),
+              19);
+  }
+  {
+    test::Repl repl;
+    EXPECT_EQ(repl.execute<int64_t>(R"((() -> {
+      f := (m: i64, n: i64) -> i64 { return m + n * n }
+      return 3'f(n = 4)
+    })())"),
+              19);
+  }
+  {
+    test::Repl repl;
+    EXPECT_EQ(repl.execute<int64_t>(R"((() -> {
+      f := (m: i64, n: i64) -> i64 { return m + n * n }
+      return (m = 3)'f(n = 4)
+    })())"),
+              19);
+  }
+  {
+    test::Repl repl;
+    EXPECT_EQ(repl.execute<int64_t>(R"((() -> {
+      f := (m: i64, n: i64) -> i64 { return m + n * n }
+      return (n = 3)'f(m = 4)
+    })())"),
+              13);
+  }
+  {
+    test::Repl repl;
+    EXPECT_EQ(repl.execute<int64_t>(R"((() -> {
+      f := (m: i64, n: i64) -> i64 { return m + n * n }
+      return (3, 4)'f
+    })())"),
+              19);
+  }
+  {
+    test::Repl repl;
+    EXPECT_EQ(repl.execute<int64_t>(R"((() -> {
+      f := (m: i64, n: i64) -> i64 { return m + n * n }
+      return (3, n = 4)'f
+    })())"),
+              19);
+  }
+  {
+    test::Repl repl;
+    EXPECT_EQ(repl.execute<int64_t>(R"((() -> {
+      f := (m: i64, n: i64) -> i64 { return m + n * n }
+      return (m = 3, n = 4)'f
+    })())"),
+              19);
+  }
+  {
+    test::Repl repl;
+    EXPECT_EQ(repl.execute<int64_t>(R"((() -> {
+      f := (m: i64, n: i64) -> i64 { return m + n * n }
+      return (n = 3, m = 4)'f
+    })())"),
+              13);
   }
 }
 

@@ -87,12 +87,12 @@ non_constants ::= () -> () {
   // with `:=`. This will mean their value can be rebound.
   f := (n: i64) => n * n
   io.Print("3 * 3 = ")
-// TODO  io.Print(f(3))
+  io.Print(f(3))
   io.Print("\n")
 
   f = (n: i64) => n * n * n
   io.Print("3 * 3 * 3 = ")
-// TODO   io.Print(f(3))
+  io.Print(f(3))
   io.Print("\n")
 }
 
@@ -137,7 +137,9 @@ named_arguments ::= () -> () {
   // Because parameter names are a part of the function type, even non-constant 
   // functions can be called with named arguments.
   g := (a: i64, b: i64) => a + b * b
-// TODO  io.Print("4 + 3 * 3 = ", g(a = 4, b = 3), "\n")
+  io.Print("4 + 3 * 3 = ")
+  io.Print(g(a = 4, b = 3))
+  io.Print("\n")
 }
 
 default_arguments ::= () -> () {
