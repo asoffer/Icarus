@@ -4,23 +4,33 @@ namespace semantic_analysis {
 
 void ByteCodeValueEmitter::operator()(ast::EnumLiteral const* node,
                                       FunctionData data) {
-  if (node->specified_values().size() != node->enumerators().size()) {
-    NOT_YET("Don't yet handle automatically assigned enumerator values.");
-  }
-
-    std::vector<std::pair<std::string, uint64_t>> enumerators;
+  absl::flat_hash_set<uint64_t> used_values;
+  std::vector<std::pair<std::string, uint64_t>> enumerators;
   for (auto const& [name, value_expr] : node->specified_values()) {
     core::Type t = context().qualified_type(value_expr.get()).type();
-    if (t == I(64)) {
-      enumerators.emplace_back(name, EvaluateAs<int64_t>(value_expr.get()));
-    } else if (t == U(64)) {
-      enumerators.emplace_back(name, EvaluateAs<uint64_t>(value_expr.get()));
-    } else if (t == Integer) {
-      // TODO: Use a real cast.
-      enumerators.emplace_back(
-          name, EvaluateAs<data_types::IntegerHandle>(value_expr.get())
-                    .value()
-                    .span()[0]);
+
+    uint64_t value;
+    // TODO: Handle casts correctly.
+    if (t == Integer) {
+      value = EvaluateAs<data_types::IntegerHandle>(value_expr.get())
+                  .value()
+                  .span()[0];
+    } else {
+      [[maybe_unused]] bool found =
+          WithPrimitiveType(t, [&, v = value_expr.get()]<std::integral T> {
+            value = EvaluateAs<T>(v);
+          });
+      ASSERT(found);
+    }
+    enumerators.emplace_back(name, value);
+    used_values.insert(value);
+    uint64_t i = 0;
+    for (std::string_view name : node->enumerators()) {
+      if (node->specified_values().contains(name)) { continue; }
+      while (used_values.contains(i)) { ++i; }
+      // Because we're counting up there's no need to insert `i`. We can just
+      // move past it.
+      enumerators.emplace_back(name, i++);
     }
   }
   core::Type type = EnumType(type_system(), std::move(enumerators));

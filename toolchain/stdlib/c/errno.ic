@@ -1,3 +1,5 @@
+c ::= import "std.c.types"
+
 #{export}
 error ::= enum {
   SUCCESS ::=  0
@@ -35,4 +37,9 @@ error ::= enum {
   EPIPE   ::= 32  // Broken pipe
   EDOM    ::= 33  // Math argument out of domain of func
   ERANGE  ::= 34  // Math result not representable
+}
+
+#{export} get ::= () -> error {
+  return error.SUCCESS
+  // TODO return @builtin.foreign("errno", *c.int) as error
 }

@@ -92,6 +92,16 @@ cc_library(
 )
 
 cc_test(
+    name = "access_test",
+    srcs = ["access_test.cc"],
+    deps = [
+        ":verify",
+        "//test:repl",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_test(
     name = "array_literal_test",
     srcs = ["array_literal_test.cc"],
     deps = [

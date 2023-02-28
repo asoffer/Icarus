@@ -3,6 +3,26 @@
 #include "semantic_analysis/type_verification/verify.h"
 
 namespace semantic_analysis {
+namespace {
+
+struct MissingConstantMember {
+  static constexpr std::string_view kCategory = "type-error";
+  static constexpr std::string_view kName     = "missing-constant-member";
+
+  diagnostic::DiagnosticMessage ToMessage() const {
+    return diagnostic::DiagnosticMessage(
+        diagnostic::Text("No member named `%s` in this expression.", member),
+        diagnostic::SourceQuote()
+            .Highlighted(expr_view, diagnostic::Style{})
+            .Highlighted(member_view, diagnostic::Style::ErrorText()));
+  }
+
+  std::string_view expr_view;
+  std::string_view member_view;
+  std::string member;
+};
+
+}  // namespace
 
 VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
                                           ast::Access const *node) {
@@ -10,6 +30,7 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
   if (operand_qts.size() != 1) { NOT_YET("log an error"); }
   QualifiedType qt = operand_qts[0];
   if (qt.type() == Module) {
+    if (not(qt.qualifiers() >= Qualifiers::Constant())) { NOT_YET(); }
     auto index = tv.EvaluateAs<serialization::ModuleIndex>(node->operand());
     auto &m    = tv.resources().module(index);
     std::span symbols = m.LoadSymbols(node->member_name());
@@ -47,6 +68,23 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
       co_return tv.TypeOf(node, QualifiedType(U(64), qt.qualifiers()));
     } else {
       NOT_YET("Log an error: ", node->member_name());
+    }
+  } else if (qt.type() == Type) {
+    if (not(qt.qualifiers() >= Qualifiers::Constant())) { NOT_YET(); }
+    core::Type t = tv.EvaluateAs<core::Type>(node->operand());
+    if (auto e = t.get_if<EnumType>(tv.type_system())) {
+      if (e->has_member(node->member_name())) {
+        co_return tv.TypeOf(node, Constant(t));
+      } else {
+        tv.ConsumeDiagnostic(MissingConstantMember{
+            .expr_view   = node->operand()->range(),
+            .member_view = node->member_range(),
+            .member      = std::string{node->member_name()},
+        });
+        co_return tv.TypeOf(node, Error(Constant(t)));
+      }
+    } else {
+      NOT_YET(DebugType(t, tv.type_system()));
     }
   } else {
     NOT_YET(DebugQualifiedType(qt, tv.type_system()));

@@ -53,6 +53,8 @@ void DebugType(std::ostream& os, core::Type t, TypeSystem& ts) {
       if (not param.name.empty()) { os << param.name << ": "; }
       DebugType(os, param.value, ts);
     }
+  } else if (auto p = t.get_if<EnumType>(ts)) {
+    os << "Enum(" << t.index() << ")";
   } else {
     os << "Unknown(" << t.index() << ", " << t.category() << ")";
   }

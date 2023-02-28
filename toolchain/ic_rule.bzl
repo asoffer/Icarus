@@ -11,8 +11,10 @@ def _unique_id(label):
 
 
 def _dotted_path(path):
-    if path.endswith(".icm"):
-        path = path[:-4]
+    path = str(path)
+    start = path.find("//")
+    if start != -1:
+        path = path[start + 2:]
     if path.startswith("toolchain/stdlib"):
         path = "std" + path[len("toolchain/stdlib"):]
     path = path.replace("/", ".").replace(":", ".")
@@ -26,7 +28,7 @@ def _module_map_file(ctx, module_map_file, short):
         content = '\n'.join([
             "{id}\n{name}\n{icm}".format(
                 id = _unique_id(lbl),
-                name = _dotted_path(icm.short_path),
+                name = _dotted_path(lbl),
                 icm = icm.short_path if short else icm.path)
             for (lbl, icm) in lbls
         ])

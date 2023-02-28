@@ -210,6 +210,23 @@ struct EnumTypeState {
     return values_;
   }
 
+  bool has_member(std::string_view name) const {
+    auto iter = std::lower_bound(values_.begin(), values_.end(), name,
+                                 [](auto const& pair, std::string_view name) {
+                                   return pair.first < name;
+                                 });
+    return iter != values_.end() and iter->first == name;
+  }
+
+  std::optional<uint64_t> value(std::string_view name) const {
+    auto iter = std::lower_bound(values_.begin(), values_.end(), name,
+                                 [](auto const& pair, std::string_view name) {
+                                   return pair.first < name;
+                                 });
+    if (iter == values_.end() or iter->first != name) { return std::nullopt; }
+    return iter->second;
+  }
+
   bool operator==(EnumTypeState const&) const = default;
   template <typename H>
   friend H AbslHashValue(H h, EnumTypeState const& state) {
@@ -233,6 +250,14 @@ struct EnumType
 
   std::span<std::pair<std::string, uint64_t> const> enumerators() const {
     return std::get<0>(decompose()).values();
+  }
+
+  bool has_member(std::string_view name) {
+    return std::get<0>(decompose()).has_member(name);
+  }
+
+  std::optional<uint64_t> value(std::string_view name) {
+    return std::get<0>(decompose()).value(name);
   }
 
  private:
