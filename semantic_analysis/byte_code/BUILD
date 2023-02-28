@@ -35,6 +35,7 @@ cc_library(
         "identifier.cc",
         "if_stmt.cc",
         "import.cc",
+        "enum_literal.cc",
         "function_type.cc",
         "function_literal.cc",
         "module.cc",
@@ -129,6 +130,17 @@ cc_test(
 cc_test(
       name = "cast_test",
       srcs = ["cast_test.cc"],
+      deps = [
+          ":byte_code",
+          "//semantic_analysis:type_system",
+          "//test:repl",
+          "@com_google_googletest//:gtest_main",
+      ],
+)
+
+cc_test(
+      name = "enum_literal_test",
+      srcs = ["enum_literal_test.cc"],
       deps = [
           ":byte_code",
           "//semantic_analysis:type_system",

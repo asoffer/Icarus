@@ -65,6 +65,12 @@ void SerializeTypeSystem(semantic_analysis::TypeSystem& type_system,
         SerializeType(return_type, *f.add_return_types(),
                       type_system.has_inline_storage(return_type.category()));
       }
+    } else if constexpr (type_category ==
+                         nth::type<semantic_analysis::EnumType>) {
+      auto& enumerators = *proto.add_enums()->mutable_enumerator();
+      for (auto const& [identifier, value] : t.enumerators()) {
+        enumerators[identifier] = value;
+      }
     } else {
       static_assert(type_category.dependent(false));
     }
@@ -113,6 +119,14 @@ void DeserializeTypeSystem(serialization::TypeSystem const& proto,
     core::FunctionType(type_system,
                        parameters.get<core::ParameterType>(type_system),
                        std::move(returns));
+  }
+
+  for (auto const& e : proto.enums()) {
+    std::vector<std::pair<std::string, uint64_t>> enumerators;
+    for (auto const & [identifier, value] : e.enumerator()) {
+      enumerators.emplace_back(identifier, value);
+    }
+    semantic_analysis::EnumType(type_system, std::move(enumerators));
   }
 }
 

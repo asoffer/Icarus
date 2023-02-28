@@ -15,6 +15,8 @@
 #include "core/type_system/sized_integer.h"
 #include "core/type_system/type_system.h"
 #include "data_types/char.h"
+#include "data_types/integer.h"
+#include "nth/numeric/integer.h"
 
 namespace semantic_analysis {
 
@@ -196,10 +198,56 @@ struct SliceType : core::TypeCategory<SliceType, core::Type> {
   core::Type pointee() const { return std::get<0>(decompose()); }
 };
 
+namespace internal_type_system {
+
+struct EnumTypeState {
+  EnumTypeState(std::vector<std::pair<std::string, uint64_t>> values)
+      : values_(std::move(values)) {
+    std::sort(values_.begin(), values_.end());
+  }
+
+  std::span<std::pair<std::string, uint64_t> const> values() const {
+    return values_;
+  }
+
+  bool operator==(EnumTypeState const&) const = default;
+  template <typename H>
+  friend H AbslHashValue(H h, EnumTypeState const& state) {
+    return H::combine_contiguous(std::move(h), state.values_.data(),
+                                 state.values_.size());
+  }
+
+ private:
+  std::vector<std::pair<std::string, uint64_t>> values_;
+};
+
+}  // namespace internal_type_system
+
+// The `EnumType` category represents a types that have a fixed set of
+// enumerated values defined by the user.
+struct EnumType
+    : core::TypeCategory<EnumType, internal_type_system::EnumTypeState> {
+  explicit EnumType(core::TypeSystemSupporting<EnumType> auto& s,
+                    std::vector<std::pair<std::string, uint64_t>> v)
+      : EnumType(s, internal_type_system::EnumTypeState(std::move(v))) {}
+
+  std::span<std::pair<std::string, uint64_t> const> enumerators() const {
+    return std::get<0>(decompose()).values();
+  }
+
+ private:
+  friend TypeCategory;
+
+  explicit EnumType(core::TypeSystemSupporting<EnumType> auto& s,
+                    internal_type_system::EnumTypeState state)
+      : core::TypeCategory<EnumType, internal_type_system::EnumTypeState>(
+            s, std::move(state)) {}
+};
+
 using TypeSystem =
     core::TypeSystem<PrimitiveType, core::SizedIntegerType, core::ParameterType,
                      core::PointerType, BufferPointerType, ArrayType, SliceType,
-                     core::FunctionType>;
+                     core::FunctionType, EnumType>;
 
 inline constexpr core::Type Bool =
     PrimitiveType(nth::type<TypeSystem>, Primitive::Bool);

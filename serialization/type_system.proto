@@ -34,4 +34,9 @@ message TypeSystem {
     repeated Type return_types = 2;
   }
   repeated FunctionType functions = 6;
+
+  message EnumType {
+    map<string, uint64> enumerator = 1;
+  }
+  repeated EnumType enums = 7;
 }

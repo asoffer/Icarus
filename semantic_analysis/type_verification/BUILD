@@ -56,6 +56,7 @@ cc_library(
         "cast.cc",
         "comparison_operator.cc",
         "declaration.cc",
+        "enum_literal.cc",
         "function_literal.cc",
         "function_type.cc",
         "identifier.cc",
@@ -173,6 +174,16 @@ cc_test(
 cc_test(
     name = "declaration_test",
     srcs = ["declaration_test.cc"],
+    deps = [
+        ":verify",
+        "//test:repl",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "enum_literal_test",
+    srcs = ["enum_literal_test.cc"],
     deps = [
         ":verify",
         "//test:repl",

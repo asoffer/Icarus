@@ -110,6 +110,7 @@ struct ByteCodeValueEmitter : Emitter<ByteCodeValueEmitter> {
   void operator()(ast::Call const *node, FunctionData data);
   void operator()(ast::Cast const *node, FunctionData data);
   void operator()(ast::ComparisonOperator const *node, FunctionData data);
+  void operator()(ast::EnumLiteral const *node, FunctionData data);
   void operator()(ast::FunctionLiteral const *node, FunctionData data);
   void operator()(ast::FunctionType const *node, FunctionData data);
   void operator()(ast::Declaration::Id const *node, FunctionData data);
@@ -121,8 +122,8 @@ struct ByteCodeValueEmitter : Emitter<ByteCodeValueEmitter> {
   void operator()(ast::UnaryOperator const *node, FunctionData data);
   void operator()(ast::Terminal const *node, FunctionData data);
   // TODO: ArgumentType, BinaryAssignmentOperator, BlockNode,
-  //       DesignatedInitializer, EnumLiteral, Index, InterfaceLiteral,
-  //       Label, ParameterizedStructLiteral, PatternMatch, ProgramArguments,
+  //       DesignatedInitializer, Index, InterfaceLiteral, Label,
+  //       ParameterizedStructLiteral, PatternMatch, ProgramArguments,
   //       ScopeLiteral, ScopeNode, StructLiteral, YieldStmt, WhileStmt,
 };
 
@@ -144,6 +145,7 @@ struct ByteCodeStatementEmitter : Emitter<ByteCodeStatementEmitter> {
   void operator()(ast::ComparisonOperator const *node, FunctionData data);
   void operator()(ast::Declaration::Id const *node, FunctionData data);
   void operator()(ast::Declaration const *node, FunctionData data);
+  void operator()(ast::EnumLiteral const *node, FunctionData data);
   void operator()(ast::FunctionLiteral const *node, FunctionData data);
   void operator()(ast::FunctionType const *node, FunctionData data);
   void operator()(ast::Identifier const *node, FunctionData data);
@@ -156,8 +158,8 @@ struct ByteCodeStatementEmitter : Emitter<ByteCodeStatementEmitter> {
   void operator()(ast::UnaryOperator const *node, FunctionData data);
   void operator()(ast::Terminal const *node, FunctionData data);
   // TODO: ArgumentType, BinaryAssignmentOperator, BlockNode,
-  //       DesignatedInitializer, EnumLiteral,  Index, InterfaceLiteral,
-  //       Label, ParameterizedStructLiteral, PatternMatch, ProgramArguments,
+  //       DesignatedInitializer, Index, InterfaceLiteral, Label,
+  //       ParameterizedStructLiteral, PatternMatch, ProgramArguments,
   //       ScopeLiteral, ScopeNode, StructLiteral, YieldStmt, WhileStmt
 };
 

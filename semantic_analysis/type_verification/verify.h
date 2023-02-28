@@ -152,6 +152,7 @@ struct TypeVerifier : VerificationScheduler {
   static VerificationTask VerifyType(TypeVerifier &, ast::Declaration const *);
   static VerificationTask VerifyType(TypeVerifier &,
                                      ast::Declaration::Id const *);
+  static VerificationTask VerifyType(TypeVerifier &, ast::EnumLiteral const *);
   static VerificationTask VerifyType(TypeVerifier &,
                                      ast::FunctionLiteral const *);
   static VerificationTask VerifyType(TypeVerifier &, ast::FunctionType const *);
@@ -170,9 +171,8 @@ struct TypeVerifier : VerificationScheduler {
   static VerificationTask VerifyType(TypeVerifier &, ast::Terminal const *);
 
   // TODO: ArgumentType, BinaryAssignmentOperator, BlockNode,
-  //       DesignatedInitializer, EnumLiteral, Index, InterfaceLiteral,
-  //       Label, ScopeLiteral, ScopeNode, StructLiteral, YieldStmt,
-  //       WhileStmt.
+  //       DesignatedInitializer, Index, InterfaceLiteral, Label, ScopeLiteral,
+  //       ScopeNode, StructLiteral, YieldStmt, WhileStmt.
 
   std::string TypeForDiagnostic(ast::Expression const &expression) const {
     return ::semantic_analysis::TypeForDiagnostic(expression, context(),
