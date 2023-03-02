@@ -174,6 +174,9 @@ core::TypeContour ContourOf(core::Type t, TypeSystem& ts) {
         contour.alignment());
   } else if (auto f = t.get_if<core::FunctionType>(ts)) {
     return core::TypeContour::Get<void (*)()>();
+  } else if (auto e = t.get_if<EnumType>(ts)) {
+    // TODO: Are all enums going to be 64-bits?
+    return core::TypeContour::Get<uint64_t>();
   } else {
     NOT_YET(DebugType(t, ts));
   }

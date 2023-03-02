@@ -40,8 +40,14 @@ void ByteCodeValueEmitter::operator()(ast::Access const* node,
         NOT_YET();
       } break;
     }
-  } else {
-    NOT_YET();
+  } else if (operand_qt.type() == Type) {
+    ASSERT(operand_qt.qualifiers() >= Qualifiers::Constant());
+    core::Type t = EvaluateAs<core::Type>(node->operand());
+    if (auto e = t.get_if<EnumType>(type_system())) {
+      data.function().append<jasmin::Push>(*e->value(node->member_name()));
+    } else {
+      NOT_YET();
+    }
   }
 }
 

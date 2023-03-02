@@ -34,5 +34,15 @@ TEST(Access, ReferenceEvaluation) {
   // EXPECT_EQ(std::string(ptr, 3), "abc");
 }
 
+TEST(Access, EnumeratorValue) {
+  test::Repl repl;
+
+  EXPECT_EQ(repl.execute<uint64_t>(R"(
+  e ::= enum { A ::= 3 }
+  e.A
+  )"),
+            3);
+}
+
 }  // namespace
 }  // namespace semantic_analysis
