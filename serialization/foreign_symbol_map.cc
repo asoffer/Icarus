@@ -23,7 +23,7 @@ std::pair<uint32_t, bool> ForeignSymbolMap::insert(ForeignSymbol&& symbol) {
 
 void ForeignSymbolMap::Serialize(ForeignSymbolMap const& from,
                                  proto::ForeignSymbolMap& to) {
-  for (auto const& [symbol, ptr] : from.data_) {
+  for (auto const& [symbol, unused] : from.data_) {
     auto& sym = *to.add_symbols();
     sym.set_name(symbol.name);
     auto& type = *sym.mutable_type();
@@ -48,8 +48,14 @@ bool ForeignSymbolMap::Deserialize(proto::ForeignSymbolMap const& from,
   return true;
 }
 
+uint32_t ForeignSymbolMap::index(core::Type t, void* ptr) const {
+  auto iter = index_.find(std::pair(t, ptr));
+  ASSERT(iter != index_.end());
+  return iter->second;
+}
+
 uint32_t ForeignSymbolMap::index(core::Type t, void (*fn_ptr)()) const {
-  auto iter = index_.find(std::pair(t, fn_ptr));
+  auto iter = index_.find(std::pair(t, reinterpret_cast<void*>(fn_ptr)));
   ASSERT(iter != index_.end());
   return iter->second;
 }
@@ -65,18 +71,20 @@ ForeignSymbol const& ForeignSymbolMap::symbol(uint32_t index) const {
   return data_.from_index(index).first;
 }
 
-std::type_identity_t<void (*)()> ForeignSymbolMap::function_pointer(
-    uint32_t index) {
+std::type_identity_t<void (*)()> ForeignSymbolMap::function(uint32_t index) {
+  // NOTE: This reinterpret_cast is not allowed according to the C++ Standard,
+  // but is guaranteed to be correct on POSIX compliant systems.
+  return reinterpret_cast<void (*)()>(data_.from_index(index).second);
+}
+
+void* ForeignSymbolMap::pointer(uint32_t index) {
   return data_.from_index(index).second;
 }
 
 void ForeignSymbolMap::Populate(
-    nth::flyweight_map<ForeignSymbol, void (*)()>::iterator iter) {
+    nth::flyweight_map<ForeignSymbol, void*>::iterator iter) {
   dlerror();  // Clear previous errors.
-  // NOTE: This reinterpret_cast is not allowed according to the C++ Standard,
-  // but is guaranteed to be correct on POSIX compliant systems.
-  iter->second = reinterpret_cast<void (*)()>(
-      dlsym(RTLD_DEFAULT, iter->first.name.c_str()));
+  iter->second      = dlsym(RTLD_DEFAULT, iter->first.name.c_str());
   char const* error = dlerror();
 
   auto [unused, inserted] = index_.emplace(

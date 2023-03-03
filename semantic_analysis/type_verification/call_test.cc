@@ -167,6 +167,28 @@ TEST(Call, BuiltinForeign) {
               AllOf(HasQualTypes(Constant(fn_type)), HasDiagnostics()));
 }
 
+TEST(Call, BuiltinForeignPointer) {
+  test::Repl repl;
+
+  EXPECT_THAT(repl.type_check(R"(
+  builtin.foreign("errno", *i32)
+  )"),
+              AllOf(HasQualTypes(
+                        QualifiedType(core::PointerType(repl.type_system(), I(32)))),
+                    HasDiagnostics()));
+}
+
+TEST(Call, BuiltinForeignBufferPointer) {
+  test::Repl repl;
+
+  EXPECT_THAT(repl.type_check(R"(
+  builtin.foreign("something", [*]bool)
+  )"),
+              AllOf(HasQualTypes(QualifiedType(
+                        BufferPointerType(repl.type_system(), Bool))),
+                    HasDiagnostics()));
+}
+
 TEST(Call, OverloadSets) {
   test::Repl repl;
 

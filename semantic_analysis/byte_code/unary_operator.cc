@@ -34,6 +34,9 @@ void ByteCodeValueEmitter::operator()(ast::UnaryOperator const *node,
           SizeOf(context().qualified_type(node).type(), type_system());
       data.function().append<jasmin::Load>(bytes_to_load.value());
     } break;
+    case ast::UnaryOperator::Kind::Address: {
+      as<ByteCodeReferenceEmitter>().Emit(node->operand(), data);
+    } break;
     default: NOT_YET(node->DebugString());
   }
 }

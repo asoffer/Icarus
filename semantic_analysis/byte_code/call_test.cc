@@ -19,11 +19,11 @@ TEST(Call, BuiltinForeign) {
   // Result needs to be computed before we look up `fn` in the foreign function
   // map, since it is populated during execution.
   EXPECT_EQ(reinterpret_cast<decltype(&MyFunction)>(
-                repl.foreign_symbol_map().function_pointer(0)),
+                repl.foreign_symbol_map().function(0)),
             &MyFunction);
 
   // TODO: Fix this. Provide access to the IrFunction*.
-  // void (*fn)() = repl.foreign_symbol_map().function_pointer(0);
+  // void (*fn)() = repl.foreign_symbol_map().function(0);
   // EXPECT_EQ(result, fn);
   //
   // data_types::IntegerTable table;

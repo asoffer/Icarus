@@ -20,11 +20,20 @@
 
 namespace semantic_analysis {
 
-struct BuiltinForeign : jasmin::StackMachineInstruction<BuiltinForeign> {
+struct BuiltinForeignFunction
+    : jasmin::StackMachineInstruction<BuiltinForeignFunction> {
   static void execute(jasmin::ValueStack& value_stack, core::Type t,
                       void* raw_table,
                       serialization::ForeignSymbolMap* foreign_symbol_map,
                       TypeSystem* ts);
+};
+
+struct BuiltinForeignPointer
+    : jasmin::StackMachineInstruction<BuiltinForeignPointer> {
+  using JasminExecutionState = serialization::ForeignSymbolMap;
+  static void execute(jasmin::ValueStack& value_stack,
+                      JasminExecutionState& foreign_symbol_map,
+                      core::Type type);
 };
 
 struct TranslateFunctionArguments
@@ -204,10 +213,11 @@ struct InstructionSet
           core::ParameterType::End<TypeSystem>,
           core::FunctionType::End<TypeSystem>, jasmin::StackAllocate,
           jasmin::StackOffset, jasmin::Load, AllocateTemporary,
-          DeallocateAllTemporaries, BuiltinForeign, InvokeForeignFunction,
-          PushStringLiteral, PushFunction, IncrementPointer,
-          TranslateFunctionArguments, ZeroExtend<true, true>,
-          ZeroExtend<false, true>, ZeroExtend<false, false>,
+          DeallocateAllTemporaries, BuiltinForeignFunction,
+          BuiltinForeignPointer, InvokeForeignFunction, PushStringLiteral,
+          PushFunction, IncrementPointer, TranslateFunctionArguments,
+          ZeroExtend<true, true>, ZeroExtend<false, true>,
+          ZeroExtend<false, false>,
           ApplyInstruction<jasmin::Equal, int8_t, int16_t, int32_t, int64_t,
                            uint8_t, uint16_t, uint32_t, uint64_t, float,
                            double>,

@@ -3,6 +3,7 @@
 
 #include <string>
 #include <type_traits>
+#include <variant>
 
 #include "core/type_system/type.h"
 #include "nth/container/flyweight_map.h"
@@ -32,10 +33,12 @@ struct ForeignSymbolMap {
 
   uint32_t index(ForeignSymbol const&) const;
   uint32_t index(core::Type t, void (*fn_ptr)()) const;
+  uint32_t index(core::Type t, void* ptr) const;
 
   ForeignSymbol const& symbol(uint32_t index) const;
 
-  std::type_identity_t<void (*)()> function_pointer(uint32_t index);
+  std::type_identity_t<void (*)()> function(uint32_t index);
+  void* pointer(uint32_t index);
 
   static void Serialize(ForeignSymbolMap const& from,
                         proto::ForeignSymbolMap& to);
@@ -48,10 +51,10 @@ struct ForeignSymbolMap {
   }
 
  private:
-  void Populate(nth::flyweight_map<ForeignSymbol, void (*)()>::iterator iter);
+  void Populate(nth::flyweight_map<ForeignSymbol, void*>::iterator iter);
 
-  nth::flyweight_map<ForeignSymbol, void (*)()> data_;
-  absl::flat_hash_map<std::pair<core::Type, void (*)()>, uint32_t> index_;
+  nth::flyweight_map<ForeignSymbol, void*> data_;
+  absl::flat_hash_map<std::pair<core::Type, void*>, uint32_t> index_;
 
   // While not impossible depending on the type system directly will hurt
   // compile-times sufficiently that it's worth avoiding.

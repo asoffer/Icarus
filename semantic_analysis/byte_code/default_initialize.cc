@@ -12,6 +12,24 @@ void EmitterBase::EmitDefaultInitialize(core::Type t, FunctionData data) {
       } else {
         data.function().append<Construct<uint64_t>>(0);
       }
+    } else if (i->bits() == 32) {
+      if (i->is_signed()) {
+        data.function().append<Construct<int32_t>>(0);
+      } else {
+        data.function().append<Construct<uint32_t>>(0);
+      }
+    } else if (i->bits() == 16) {
+      if (i->is_signed()) {
+        data.function().append<Construct<int16_t>>(0);
+      } else {
+        data.function().append<Construct<uint16_t>>(0);
+      }
+    } else if (i->bits() == 8) {
+      if (i->is_signed()) {
+        data.function().append<Construct<int8_t>>(0);
+      } else {
+        data.function().append<Construct<uint8_t>>(0);
+      }
     } else {
       NOT_YET();
     }

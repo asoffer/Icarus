@@ -10,13 +10,16 @@ void ByteCodeValueEmitter::operator()(ast::Call const* node,
   // bootstrapping step, so we simply hard-code it here, and poorly.
   if (ast::Access const* access = node->callee()->if_as<ast::Access>();
       access and access->member_name() == "foreign") {
-    core::Type fn_type = EvaluateAs<core::Type>(&node->arguments()[1].expr());
+    core::Type t = EvaluateAs<core::Type>(&node->arguments()[1].expr());
     Emit(&node->arguments()[0].expr(), data);
-    auto function_type    = fn_type.get<core::FunctionType>(type_system());
-    size_t num_parameters = function_type.parameters().size();
-    data.function().append<BuiltinForeign>(fn_type, &module().function_table(),
-                                           &module().foreign_symbol_map(),
-                                           &type_system());
+    if (auto function_type = t.get_if<core::FunctionType>(type_system())) {
+      size_t num_parameters = function_type->parameters().size();
+      data.function().append<BuiltinForeignFunction>(
+          t, &module().function_table(), &module().foreign_symbol_map(),
+          &type_system());
+    } else {
+      data.function().append<BuiltinForeignPointer>(t);
+    }
     return;
   }
 

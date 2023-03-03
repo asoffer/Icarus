@@ -46,15 +46,19 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
     ASSERT(name_qt.qualifiers() >= Qualifiers::Constant());
     ASSERT(type_qt.type() == Type);
     ASSERT(type_qt.qualifiers() >= Qualifiers::Constant());
-    core::Type fn_type =
-        tv.EvaluateAs<core::Type>(&node->arguments()[1].expr());
-
-    absl::flat_hash_map<core::ParameterType, Context::CallableIdentifier>
-        parameter_types{
-            {fn_type.get<core::FunctionType>(tv.type_system()).parameter_type(),
-             Context::CallableIdentifier(node->callee())}};
-    co_yield tv.ParametersOf(node, std::move(parameter_types));
-    co_return tv.TypeOf(node, Constant(fn_type));
+    core::Type t = tv.EvaluateAs<core::Type>(&node->arguments()[1].expr());
+    if (auto fn_type = t.get_if<core::FunctionType>(tv.type_system())) {
+      absl::flat_hash_map<core::ParameterType, Context::CallableIdentifier>
+          parameter_types{{fn_type->parameter_type(),
+                           Context::CallableIdentifier(node->callee())}};
+      co_yield tv.ParametersOf(node, std::move(parameter_types));
+      co_return tv.TypeOf(node, Constant(t));
+    } else if (t.is<core::PointerType>(tv.type_system()) or
+               t.is<BufferPointerType>(tv.type_system())) {
+      co_return tv.TypeOf(node, QualifiedType(t));
+    } else {
+      NOT_YET(DebugType(t, tv.type_system()));
+    }
   }
 
   std::span<absl::flat_hash_map<core::ParameterType,

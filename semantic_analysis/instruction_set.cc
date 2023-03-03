@@ -36,7 +36,7 @@ T Read(ffi_arg const& value) {
 
 }  // namespace
 
-void BuiltinForeign::execute(
+void BuiltinForeignFunction::execute(
     jasmin::ValueStack& value_stack, core::Type t, void* raw_table,
     serialization::ForeignSymbolMap* foreign_symbol_map, TypeSystem* ts) {
   auto fn_type     = t.get<core::FunctionType>(*ts);
@@ -56,11 +56,25 @@ void BuiltinForeign::execute(
   std::span returns      = fn_type.returns();
   auto [fn_index, f]     = table.emplace(parameters.size(), returns.size());
   ASSERT(returns.size() <= 1);
-  f->append<InvokeForeignFunction>(foreign_symbol_map->function_pointer(index),
+  f->append<InvokeForeignFunction>(foreign_symbol_map->function(index),
                                    parameters.data(), parameters.size(),
                                    returns.empty() ? nullptr : returns.data());
   f->append<jasmin::Return>();
   value_stack.push(f);
+}
+
+void BuiltinForeignPointer::execute(
+    jasmin::ValueStack& value_stack,
+    BuiltinForeignPointer::JasminExecutionState& foreign_symbol_map,
+    core::Type type) {
+  size_t length          = value_stack.pop<size_t>();
+  char const* data       = value_stack.pop<char const*>();
+  auto [index, inserted] = foreign_symbol_map.insert({
+      .type = type,
+      .name = std::string(data, length),
+  });
+
+  value_stack.push(foreign_symbol_map.pointer(index));
 }
 
 void InvokeForeignFunction::execute(
@@ -163,7 +177,7 @@ bool InvokeForeignFunction::deserialize(jasmin::Deserializer& deserializer,
   auto const& [type, name] = state.symbol(index.as<uint32_t>());
   auto function_type       = type.get<core::FunctionType>(type_system);
 
-  values[0] = state.function_pointer(index.as<uint32_t>());
+  values[0] = state.function(index.as<uint32_t>());
   values[1] = function_type.parameters().data();
   values[2] = function_type.parameters().size();
   values[3] =
