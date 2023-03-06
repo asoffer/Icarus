@@ -215,7 +215,7 @@ void Function::AppendNamedParameter() {
   internal::Impl(data_).append<core::ParameterType::AppendNamed>();
 }
 void Function::AppendAnonymousParameter() {
-  internal::Impl(data_).append<core::ParameterType::AppendNamed>();
+  internal::Impl(data_).append<core::ParameterType::Append>();
 }
 void Function::AppendEndParameterType(semantic_analysis::TypeSystem *ts) {
   internal::Impl(data_)
