@@ -62,11 +62,10 @@ void Function::AppendPush(jasmin::Value v) {
   internal::Impl(data_).append<jasmin::Push>(v);
 }
 void Function::AppendPushFunction(jasmin::Value v) {
-  internal::Impl(data_).append<semantic_analysis::PushFunction>(v);
+  internal::Impl(data_).append<PushFunction>(v);
 }
 void Function::AppendPushStringLiteral(std::string_view s) {
-  internal::Impl(data_).append<semantic_analysis::PushStringLiteral>(s.data(),
-                                                                     s.size());
+  internal::Impl(data_).append<PushStringLiteral>(s.data(), s.size());
 }
 
 void Function::AppendDuplicate() {
@@ -162,7 +161,7 @@ template void Function::AppendNegate<data_types::IntegerHandle>();
 
 template <typename T>
 void Function::AppendConstruct(std::type_identity_t<T> value) {
-  internal::Impl(data_).append<semantic_analysis::Construct<T>>(value);
+  internal::Impl(data_).append<Construct<T>>(value);
 }
 
 template void Function::AppendConstruct<bool>(bool value);
@@ -229,19 +228,19 @@ void Function::AppendEndFunctionType(semantic_analysis::TypeSystem *ts,
 }
 
 void Function::AppendIncrementPointer(size_t amount) {
-  internal::Impl(data_).append<semantic_analysis::IncrementPointer>(amount);
+  internal::Impl(data_).append<IncrementPointer>(amount);
 }
 
 void Function::AppendBuiltinForeignFunction(
     core::Type t, void *raw_table,
     serialization::ForeignSymbolMap *foreign_symbol_map,
     semantic_analysis::TypeSystem *ts) {
-  internal::Impl(data_).append<semantic_analysis::BuiltinForeignFunction>(
+  internal::Impl(data_).append<BuiltinForeignFunction>(
       t, raw_table, foreign_symbol_map, ts);
 }
 
 void Function::AppendBuiltinForeignPointer(core::Type t) {
-  internal::Impl(data_).append<semantic_analysis::BuiltinForeignPointer>(t);
+  internal::Impl(data_).append<BuiltinForeignPointer>(t);
 }
 
 template <typename Behavior, typename T>

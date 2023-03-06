@@ -10,7 +10,6 @@ cc_library(
         "//module",
         "//module:resources",
         "//semantic_analysis:context",
-        "//semantic_analysis:instruction_set",
         "//semantic_analysis:type_system",
         "@asoffer_jasmin//jasmin:execute",
         "@asoffer_jasmin//jasmin:function",

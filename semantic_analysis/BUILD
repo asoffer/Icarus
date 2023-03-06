@@ -13,38 +13,6 @@ cc_library(
 )
 
 cc_library(
-    name = "instruction_set",
-    hdrs = [
-        "instruction_set.h",
-    ],
-    srcs = [
-        "instruction_set.cc",
-    ],
-    deps = [
-        ":type_system",
-        "//core/type_system",
-        "//data_types:integer",
-        "//data_types:fn",
-        "//module:global_function_map",
-        "//module:global_module_map",
-        "//serialization:foreign_symbol_map",
-        "//serialization:function_table",
-        "//serialization:module_index",
-        "//serialization:read_only_data",
-        "//vm:instructions",
-        "@asoffer_nth//nth/numeric:integer",
-        "@asoffer_jasmin//jasmin:debug",
-        "@asoffer_jasmin//jasmin:function",
-        "@asoffer_jasmin//jasmin/instructions:arithmetic",
-        "@asoffer_jasmin//jasmin/instructions:bool",
-        "@asoffer_jasmin//jasmin/instructions:compare",
-        "@asoffer_jasmin//jasmin/instructions:core",
-        "@asoffer_jasmin//jasmin/instructions:stack",
-        "@asoffer_jasmin//jasmin:serialization",
-    ],
-)
-
-cc_library(
     name = "type_system",
     hdrs = ["type_system.h"],
     srcs = ["type_system.cc"],

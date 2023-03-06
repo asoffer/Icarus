@@ -1,4 +1,4 @@
-#include "semantic_analysis/instruction_set.h"
+#include "vm/instructions.h"
 
 #include <ffi.h>
 
@@ -7,23 +7,23 @@
 #include "jasmin/value.h"
 #include "serialization/function_table.h"
 
-namespace semantic_analysis {
+namespace vm {
 namespace {
 
 ffi_type* FfiType(core::Type t) {
-  if (t == Char) {
+  if (t == semantic_analysis::Char) {
     return std::is_signed_v<char> ? &ffi_type_schar : &ffi_type_uchar;
   }
-  if (t == I(8)) { return &ffi_type_sint8; }
-  if (t == I(16)) { return &ffi_type_sint16; }
-  if (t == I(32)) { return &ffi_type_sint32; }
-  if (t == I(64)) { return &ffi_type_sint64; }
-  if (t == U(8)) { return &ffi_type_uint8; }
-  if (t == U(16)) { return &ffi_type_uint16; }
-  if (t == U(32)) { return &ffi_type_uint32; }
-  if (t == U(64)) { return &ffi_type_uint64; }
-  if (t == F32) { return &ffi_type_float; }
-  if (t == F64) { return &ffi_type_double; }
+  if (t == semantic_analysis::I(8)) { return &ffi_type_sint8; }
+  if (t == semantic_analysis::I(16)) { return &ffi_type_sint16; }
+  if (t == semantic_analysis::I(32)) { return &ffi_type_sint32; }
+  if (t == semantic_analysis::I(64)) { return &ffi_type_sint64; }
+  if (t == semantic_analysis::U(8)) { return &ffi_type_uint8; }
+  if (t == semantic_analysis::U(16)) { return &ffi_type_uint16; }
+  if (t == semantic_analysis::U(32)) { return &ffi_type_uint32; }
+  if (t == semantic_analysis::U(64)) { return &ffi_type_uint64; }
+  if (t == semantic_analysis::F32) { return &ffi_type_float; }
+  if (t == semantic_analysis::F64) { return &ffi_type_double; }
   return &ffi_type_pointer;
 }
 
@@ -38,7 +38,8 @@ T Read(ffi_arg const& value) {
 
 void BuiltinForeignFunction::execute(
     jasmin::ValueStack& value_stack, core::Type t, void* raw_table,
-    serialization::ForeignSymbolMap* foreign_symbol_map, TypeSystem* ts) {
+    serialization::ForeignSymbolMap* foreign_symbol_map,
+    semantic_analysis::TypeSystem* ts) {
   auto fn_type     = t.get<core::FunctionType>(*ts);
   size_t length    = value_stack.pop<size_t>();
   char const* data = value_stack.pop<char const*>();
@@ -110,27 +111,27 @@ void InvokeForeignFunction::execute(
 
   if (maybe_return_type) {
     core::Type t = *maybe_return_type;
-    if (t == Char) {
+    if (t == semantic_analysis::Char) {
       value_stack.push(Read<char>(return_value));
-    } else if (t == I(8)) {
+    } else if (t == semantic_analysis::I(8)) {
       value_stack.push(Read<int8_t>(return_value));
-    } else if (t == I(16)) {
+    } else if (t == semantic_analysis::I(16)) {
       value_stack.push(Read<int16_t>(return_value));
-    } else if (t == I(32)) {
+    } else if (t == semantic_analysis::I(32)) {
       value_stack.push(Read<int32_t>(return_value));
-    } else if (t == I(64)) {
+    } else if (t == semantic_analysis::I(64)) {
       value_stack.push(Read<int64_t>(return_value));
-    } else if (t == U(8)) {
+    } else if (t == semantic_analysis::U(8)) {
       value_stack.push(Read<uint8_t>(return_value));
-    } else if (t == U(16)) {
+    } else if (t == semantic_analysis::U(16)) {
       value_stack.push(Read<uint16_t>(return_value));
-    } else if (t == U(32)) {
+    } else if (t == semantic_analysis::U(32)) {
       value_stack.push(Read<uint32_t>(return_value));
-    } else if (t == U(64)) {
+    } else if (t == semantic_analysis::U(64)) {
       value_stack.push(Read<uint64_t>(return_value));
-    } else if (t == F32) {
+    } else if (t == semantic_analysis::F32) {
       value_stack.push(Read<float>(return_value));
-    } else if (t == F64) {
+    } else if (t == semantic_analysis::F64) {
       value_stack.push(Read<double>(return_value));
     } else {
       value_stack.push(Read<char const*>(return_value));
@@ -152,7 +153,7 @@ void InvokeForeignFunction::execute(
 void InvokeForeignFunction::serialize(jasmin::Serializer& serializer,
                                       std::span<jasmin::Value const> values,
                                       serialization_state& state) {
-  auto& ts = state.get<TypeSystem>();
+  auto& ts = state.get<semantic_analysis::TypeSystem>();
   core::Parameters<core::Type> params;
   auto const* p   = values[1].as<core::Parameter<core::Type> const*>();
   auto const* end = p + values[2].as<size_t>();
@@ -174,7 +175,7 @@ bool InvokeForeignFunction::deserialize(jasmin::Deserializer& deserializer,
   jasmin::Value index = jasmin::Value::Uninitialized();
   if (not deserializer(index)) { return false; }
 
-  auto& type_system        = state.get<TypeSystem>();
+  auto& type_system        = state.get<semantic_analysis::TypeSystem>();
   auto const& [type, name] = state.symbol(index.as<uint32_t>());
   auto function_type       = type.get<core::FunctionType>(type_system);
 
@@ -253,7 +254,7 @@ void TranslateFunctionArguments::execute(
   values.reserve(parameters->size());
   for (auto iter = parameters->rbegin(); iter != parameters->rend(); ++iter) {
     values.push_back(value_stack.pop_value());
-    if (iter->value == Type) { NOT_YET(); }
+    if (iter->value == semantic_analysis::Type) { NOT_YET(); }
   }
 
   for (auto iter = values.rbegin(); iter != values.rend(); ++iter) {
@@ -261,4 +262,4 @@ void TranslateFunctionArguments::execute(
   }
 }
 
-}  // namespace semantic_analysis
+}  // namespace vm
