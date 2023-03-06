@@ -21,31 +21,31 @@ void ByteCodeValueEmitter::CastTo(ast::Expression const* node,
     if (to_qt.type() == I(8)) {
       intptr_t value = i->span()[0];
       if (*i < 0) { value = -value; }
-      data.function().append<jasmin::Push>(static_cast<int8_t>(value));
+      data.function().AppendPush(static_cast<int8_t>(value));
     } else if (to_qt.type() == I(16)) {
       intptr_t value = i->span()[0];
       if (*i < 0) { value = -value; }
-      data.function().append<jasmin::Push>(static_cast<int16_t>(value));
+      data.function().AppendPush(static_cast<int16_t>(value));
     } else if (to_qt.type() == I(32)) {
       intptr_t value = i->span()[0];
       if (*i < 0) { value = -value; }
-      data.function().append<jasmin::Push>(static_cast<int32_t>(value));
+      data.function().AppendPush(static_cast<int32_t>(value));
     } else if (to_qt.type() == I(64)) {
       intptr_t value = i->span()[0];
       if (*i < 0) { value = -value; }
-      data.function().append<jasmin::Push>(static_cast<int64_t>(value));
+      data.function().AppendPush(static_cast<int64_t>(value));
     } else if (to_qt.type() == U(8)) {
       uintptr_t value = i->span()[0];
-      data.function().append<jasmin::Push>(static_cast<uint8_t>(value));
+      data.function().AppendPush(static_cast<uint8_t>(value));
     } else if (to_qt.type() == U(16)) {
       uintptr_t value = i->span()[0];
-      data.function().append<jasmin::Push>(static_cast<uint16_t>(value));
+      data.function().AppendPush(static_cast<uint16_t>(value));
     } else if (to_qt.type() == U(32)) {
       uintptr_t value = i->span()[0];
-      data.function().append<jasmin::Push>(static_cast<uint32_t>(value));
+      data.function().AppendPush(static_cast<uint32_t>(value));
     } else if (to_qt.type() == U(64)) {
       uintptr_t value = i->span()[0];
-      data.function().append<jasmin::Push>(static_cast<uint64_t>(value));
+      data.function().AppendPush(static_cast<uint64_t>(value));
     } else {
       NOT_YET();
     }
@@ -57,19 +57,19 @@ void ByteCodeValueEmitter::CastTo(ast::Expression const* node,
     if (auto to = to_qt.type().get_if<core::SizedIntegerType>(type_system())) {
       if (to->is_signed()) {
         if (from->is_signed()) {
-          data.function().append<ZeroExtend<true, true>>(ZeroExtendOptions{
+          data.function().AppendZeroExtendSignedSigned(vm::ZeroExtendOptions{
               .from_bits = static_cast<uint32_t>(from->bits()),
               .to_bits   = static_cast<uint32_t>(to->bits())});
         } else {
-          data.function().append<ZeroExtend<false, true>>(ZeroExtendOptions{
+          data.function().AppendZeroExtendUnsignedSigned(vm::ZeroExtendOptions{
               .from_bits = static_cast<uint32_t>(from->bits()),
               .to_bits   = static_cast<uint32_t>(to->bits())});
         }
       } else {
         ASSERT(from->is_signed() == false);
-        data.function().append<ZeroExtend<false, false>>(
-            ZeroExtendOptions{.from_bits = static_cast<uint32_t>(from->bits()),
-                              .to_bits   = static_cast<uint32_t>(to->bits())});
+        data.function().AppendZeroExtendUnsignedUnsigned(vm::ZeroExtendOptions{
+            .from_bits = static_cast<uint32_t>(from->bits()),
+            .to_bits   = static_cast<uint32_t>(to->bits())});
       }
     } else {
       NOT_YET();
@@ -94,8 +94,7 @@ void ByteCodeStatementEmitter::operator()(ast::Cast const* node,
     Emit(node->expr(), data);
   } else {
     as<ByteCodeValueEmitter>().Emit(node->expr(), data);
-    data.function().append<jasmin::Drop>(
-        SizeOf(to_type, type_system()).value());
+    data.function().AppendDrop(SizeOf(to_type, type_system()).value());
   }
 }
 

@@ -1,5 +1,6 @@
 #include "gtest/gtest.h"
 #include "test/repl.h"
+#include "vm/execute.h"
 
 namespace semantic_analysis {
 namespace {
@@ -43,7 +44,7 @@ TYPED_TEST_SUITE(ArithmeticOperatorTest, ArithmeticTypes);
 TYPED_TEST(ArithmeticOperatorTest, Add) {
   core::Type type = TypeFor<TypeParam>();
   test::Repl repl;
-  IrFunction const& f = *repl.execute<IrFunction const*>(
+  vm::Function const& f = *repl.execute<vm::Function const*>(
       absl::StrFormat(R"((x: %v, y: %v) -> %v { return x + y })",
                       StringOf(type), StringOf(type), StringOf(type)));
 
@@ -51,23 +52,23 @@ TYPED_TEST(ArithmeticOperatorTest, Add) {
   data_types::IntegerTable table;
   jasmin::ExecutionState<InstructionSet> state{table};
 
-  jasmin::Execute(f, state, {TypeParam{3}, TypeParam{4}}, result);
+  vm::Execute(f, state, {TypeParam{3}, TypeParam{4}}, result);
   EXPECT_EQ(result, TypeParam{7});
 
-  jasmin::Execute(f, state, {TypeParam{0}, TypeParam{3}}, result);
+  vm::Execute(f, state, {TypeParam{0}, TypeParam{3}}, result);
   EXPECT_EQ(result, TypeParam{3});
 
-  jasmin::Execute(f, state, {TypeParam{3}, TypeParam{0}}, result);
+  vm::Execute(f, state, {TypeParam{3}, TypeParam{0}}, result);
   EXPECT_EQ(result, TypeParam{3});
 
   if constexpr (std::is_signed_v<TypeParam>) {
-    jasmin::Execute(f, state, {TypeParam{3}, TypeParam{-3}}, result);
+    vm::Execute(f, state, {TypeParam{3}, TypeParam{-3}}, result);
     EXPECT_EQ(result, TypeParam{0});
 
-    jasmin::Execute(f, state,
-                    {std::numeric_limits<TypeParam>::max(),
-                     -std::numeric_limits<TypeParam>::max()},
-                    result);
+    vm::Execute(f, state,
+                {std::numeric_limits<TypeParam>::max(),
+                 -std::numeric_limits<TypeParam>::max()},
+                result);
     EXPECT_EQ(result, TypeParam{0});
   }
 }
@@ -75,7 +76,7 @@ TYPED_TEST(ArithmeticOperatorTest, Add) {
 TYPED_TEST(ArithmeticOperatorTest, Sub) {
   core::Type type = TypeFor<TypeParam>();
   test::Repl repl;
-  IrFunction const& f = *repl.execute<IrFunction const*>(
+  vm::Function const& f = *repl.execute<vm::Function const*>(
       absl::StrFormat(R"((x: %v, y: %v) -> %v { return x - y })",
                       StringOf(type), StringOf(type), StringOf(type)));
 
@@ -83,23 +84,23 @@ TYPED_TEST(ArithmeticOperatorTest, Sub) {
   data_types::IntegerTable table;
   jasmin::ExecutionState<InstructionSet> state{table};
 
-  jasmin::Execute(f, state, {TypeParam{4}, TypeParam{3}}, result);
+  vm::Execute(f, state, {TypeParam{4}, TypeParam{3}}, result);
   EXPECT_EQ(result, TypeParam{1});
 
-  jasmin::Execute(f, state, {TypeParam{3}, TypeParam{0}}, result);
+  vm::Execute(f, state, {TypeParam{3}, TypeParam{0}}, result);
   EXPECT_EQ(result, TypeParam{3});
 
-  jasmin::Execute(f, state,
-                  {std::numeric_limits<TypeParam>::max(),
-                   std::numeric_limits<TypeParam>::max()},
-                  result);
+  vm::Execute(f, state,
+              {std::numeric_limits<TypeParam>::max(),
+               std::numeric_limits<TypeParam>::max()},
+              result);
   EXPECT_EQ(result, TypeParam{0});
 }
 
 TYPED_TEST(ArithmeticOperatorTest, Mul) {
   core::Type type = TypeFor<TypeParam>();
   test::Repl repl;
-  IrFunction const& f = *repl.execute<IrFunction const*>(
+  vm::Function const& f = *repl.execute<vm::Function const*>(
       absl::StrFormat(R"((x: %v, y: %v) -> %v { return x * y })",
                       StringOf(type), StringOf(type), StringOf(type)));
 
@@ -107,23 +108,23 @@ TYPED_TEST(ArithmeticOperatorTest, Mul) {
   data_types::IntegerTable table;
   jasmin::ExecutionState<InstructionSet> state{table};
 
-  jasmin::Execute(f, state, {TypeParam{4}, TypeParam{3}}, result);
+  vm::Execute(f, state, {TypeParam{4}, TypeParam{3}}, result);
   EXPECT_EQ(result, TypeParam{12});
 
-  jasmin::Execute(f, state, {TypeParam{0}, TypeParam{3}}, result);
+  vm::Execute(f, state, {TypeParam{0}, TypeParam{3}}, result);
   EXPECT_EQ(result, TypeParam{0});
 
-  jasmin::Execute(f, state, {TypeParam{3}, TypeParam{1}}, result);
+  vm::Execute(f, state, {TypeParam{3}, TypeParam{1}}, result);
   EXPECT_EQ(result, TypeParam{3});
 
-  jasmin::Execute(f, state, {TypeParam{1}, TypeParam{3}}, result);
+  vm::Execute(f, state, {TypeParam{1}, TypeParam{3}}, result);
   EXPECT_EQ(result, TypeParam{3});
 }
 
 TYPED_TEST(ArithmeticOperatorTest, Div) {
   core::Type type = TypeFor<TypeParam>();
   test::Repl repl;
-  IrFunction const& f = *repl.execute<IrFunction const*>(
+  vm::Function const& f = *repl.execute<vm::Function const*>(
       absl::StrFormat(R"((x: %v, y: %v) -> %v { return x / y })",
                       StringOf(type), StringOf(type), StringOf(type)));
 
@@ -131,20 +132,20 @@ TYPED_TEST(ArithmeticOperatorTest, Div) {
   data_types::IntegerTable table;
   jasmin::ExecutionState<InstructionSet> state{table};
 
-  jasmin::Execute(f, state, {TypeParam{4}, TypeParam{3}}, result);
+  vm::Execute(f, state, {TypeParam{4}, TypeParam{3}}, result);
   EXPECT_EQ(result, TypeParam{1});
 
-  jasmin::Execute(f, state, {TypeParam{3}, TypeParam{4}}, result);
+  vm::Execute(f, state, {TypeParam{3}, TypeParam{4}}, result);
   EXPECT_EQ(result, TypeParam{0});
 
-  jasmin::Execute(f, state, {TypeParam{6}, TypeParam{3}}, result);
+  vm::Execute(f, state, {TypeParam{6}, TypeParam{3}}, result);
   EXPECT_EQ(result, TypeParam{2});
 
-  jasmin::Execute(f, state, {TypeParam{6}, TypeParam{1}}, result);
+  vm::Execute(f, state, {TypeParam{6}, TypeParam{1}}, result);
   EXPECT_EQ(result, TypeParam{6});
 
   if constexpr (std::is_signed_v<TypeParam>) {
-    jasmin::Execute(f, state, {TypeParam{6}, TypeParam{-1}}, result);
+    vm::Execute(f, state, {TypeParam{6}, TypeParam{-1}}, result);
     EXPECT_EQ(result, TypeParam{-6});
   }
 }
@@ -152,7 +153,7 @@ TYPED_TEST(ArithmeticOperatorTest, Div) {
 TYPED_TEST(ArithmeticOperatorTest, Mod) {
   core::Type type = TypeFor<TypeParam>();
   test::Repl repl;
-  IrFunction const& f = *repl.execute<IrFunction const*>(
+  vm::Function const& f = *repl.execute<vm::Function const*>(
       absl::StrFormat(R"((x: %v, y: %v) -> %v { return x %% y })",
                       StringOf(type), StringOf(type), StringOf(type)));
 
@@ -160,16 +161,16 @@ TYPED_TEST(ArithmeticOperatorTest, Mod) {
   data_types::IntegerTable table;
   jasmin::ExecutionState<InstructionSet> state{table};
 
-  jasmin::Execute(f, state, {TypeParam{4}, TypeParam{3}}, result);
+  vm::Execute(f, state, {TypeParam{4}, TypeParam{3}}, result);
   EXPECT_EQ(result, TypeParam{1});
 
-  jasmin::Execute(f, state, {TypeParam{3}, TypeParam{4}}, result);
+  vm::Execute(f, state, {TypeParam{3}, TypeParam{4}}, result);
   EXPECT_EQ(result, TypeParam{3});
 
-  jasmin::Execute(f, state, {TypeParam{6}, TypeParam{3}}, result);
+  vm::Execute(f, state, {TypeParam{6}, TypeParam{3}}, result);
   EXPECT_EQ(result, TypeParam{0});
 
-  jasmin::Execute(f, state, {TypeParam{6}, TypeParam{1}}, result);
+  vm::Execute(f, state, {TypeParam{6}, TypeParam{1}}, result);
   EXPECT_EQ(result, TypeParam{0});
 }
 
@@ -194,7 +195,7 @@ TEST(LogicalOperatorTest, All) {
 TEST(LogicalOperatorTest, DISABLED_ShortCircuitingAnd) {
   test::Repl repl;
 
-  IrFunction const& f = *repl.execute<IrFunction const*>(R"(
+  vm::Function const& f = *repl.execute<vm::Function const*>(R"(
   increment_and_return ::= (b: bool, n: *i64) -> bool {
     @n = @n + (1 as i64)
     return b
@@ -208,7 +209,7 @@ TEST(LogicalOperatorTest, DISABLED_ShortCircuitingAnd) {
   {
     int64_t n = 0;
     bool result;
-    jasmin::Execute(f, state, {true, true, &n}, result);
+    vm::Execute(f, state, {true, true, &n}, result);
     EXPECT_TRUE(result);
     EXPECT_EQ(n, 1);
   }
@@ -216,7 +217,7 @@ TEST(LogicalOperatorTest, DISABLED_ShortCircuitingAnd) {
   {
     int64_t n = 0;
     bool result;
-    jasmin::Execute(f, state, {true, false, &n}, result);
+    vm::Execute(f, state, {true, false, &n}, result);
     EXPECT_FALSE(result);
     EXPECT_EQ(n, 1);
   }
@@ -224,7 +225,7 @@ TEST(LogicalOperatorTest, DISABLED_ShortCircuitingAnd) {
   {
     int64_t n = 0;
     bool result;
-    jasmin::Execute(f, state, {false, true, &n}, result);
+    vm::Execute(f, state, {false, true, &n}, result);
     EXPECT_FALSE(result);
     EXPECT_EQ(n, 1);
   }
@@ -232,7 +233,7 @@ TEST(LogicalOperatorTest, DISABLED_ShortCircuitingAnd) {
   {
     int64_t n = 0;
     bool result;
-    jasmin::Execute(f, state, {false, false, &n}, result);
+    vm::Execute(f, state, {false, false, &n}, result);
     EXPECT_FALSE(result);
     EXPECT_EQ(n, 1);
   }
@@ -241,7 +242,7 @@ TEST(LogicalOperatorTest, DISABLED_ShortCircuitingAnd) {
 TEST(LogicalOperatorTest, DISABLED_ShortCircuitingOr) {
   test::Repl repl;
 
-  IrFunction const& f = *repl.execute<IrFunction const*>(R"(
+  vm::Function const& f = *repl.execute<vm::Function const*>(R"(
   increment_and_return ::= (b: bool, n: *i64) -> bool {
     @n = @n + (1 as i64)
     return b
@@ -254,7 +255,7 @@ TEST(LogicalOperatorTest, DISABLED_ShortCircuitingOr) {
   {
     int64_t n = 0;
     bool result;
-    jasmin::Execute(f, state, {true, true, &n}, result);
+    vm::Execute(f, state, {true, true, &n}, result);
     EXPECT_TRUE(result);
     EXPECT_EQ(n, 1);
   }
@@ -262,7 +263,7 @@ TEST(LogicalOperatorTest, DISABLED_ShortCircuitingOr) {
   {
     int64_t n = 0;
     bool result;
-    jasmin::Execute(f, state, {true, false, &n}, result);
+    vm::Execute(f, state, {true, false, &n}, result);
     EXPECT_FALSE(result);
     EXPECT_EQ(n, 1);
   }
@@ -270,7 +271,7 @@ TEST(LogicalOperatorTest, DISABLED_ShortCircuitingOr) {
   {
     int64_t n = 0;
     bool result;
-    jasmin::Execute(f, state, {false, true, &n}, result);
+    vm::Execute(f, state, {false, true, &n}, result);
     EXPECT_FALSE(result);
     EXPECT_EQ(n, 1);
   }
@@ -278,7 +279,7 @@ TEST(LogicalOperatorTest, DISABLED_ShortCircuitingOr) {
   {
     int64_t n = 0;
     bool result;
-    jasmin::Execute(f, state, {false, false, &n}, result);
+    vm::Execute(f, state, {false, false, &n}, result);
     EXPECT_FALSE(result);
     EXPECT_EQ(n, 1);
   }

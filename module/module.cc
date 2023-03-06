@@ -1,5 +1,6 @@
 #include "module/module.h"
 
+#include "vm/implementation.h"
 #include "jasmin/serialization.h"
 #include "nth/meta/sequence.h"
 #include "nth/meta/type.h"
@@ -123,7 +124,7 @@ void DeserializeTypeSystem(serialization::TypeSystem const& proto,
 
   for (auto const& e : proto.enums()) {
     std::vector<std::pair<std::string, uint64_t>> enumerators;
-    for (auto const & [identifier, value] : e.enumerator()) {
+    for (auto const& [identifier, value] : e.enumerator()) {
       enumerators.emplace_back(identifier, value);
     }
     semantic_analysis::EnumType(type_system, std::move(enumerators));
@@ -154,12 +155,13 @@ struct SerializationState {
       push_fn_state_;
 };
 
-void SerializeFunction(semantic_analysis::IrFunction const& f,
+void SerializeFunction(vm::Function const& f,
                        serialization::proto::Function& proto,
                        SerializationState& state) {
   proto.set_parameters(f.parameter_count());
   proto.set_returns(f.return_count());
-  jasmin::Serialize(f, *proto.mutable_content(), state);
+  jasmin::Serialize(vm::internal::Impl(f.raw()), *proto.mutable_content(),
+                    state);
 }
 
 struct FunctionTableDeserializationState {
@@ -197,7 +199,7 @@ bool Module::Serialize(std::ostream& output,
 
   SerializeFunction(initializer_, *proto.mutable_initializer(), state);
 
-  serialization::FunctionTable<semantic_analysis::IrFunction>::Serialize(
+  serialization::FunctionTable<vm::Function>::Serialize(
       function_table_, *proto.mutable_function_table(), state);
 
   serialization::ReadOnlyData::Serialize(read_only_data_,
@@ -235,7 +237,6 @@ bool Module::DeserializeInto(serialization::Module const& proto,
                              serialization::ModuleIndex module_index,
                              Module& module, GlobalModuleMap& module_map,
                              GlobalFunctionMap& function_map) {
-
   data_types::Deserialize(proto.integers(), module.integer_table_);
 
   if (not serialization::ReadOnlyData::Deserialize(proto.read_only(),
@@ -272,28 +273,28 @@ bool Module::DeserializeInto(serialization::Module const& proto,
 
   FunctionTableDeserializationState state(module, module_index, module_map,
                                           function_map, dependencies);
-  if (not serialization::FunctionTable<
-          semantic_analysis::IrFunction>::Deserialize(proto.function_table(),
-                                                      module.function_table_,
-                                                      module_index, state)) {
+  if (not serialization::FunctionTable<vm::Function>::Deserialize(
+          proto.function_table(), module.function_table_, module_index,
+          state)) {
     return false;
   }
-  jasmin::Deserialize(proto.initializer().content(), module.initializer_,
+  jasmin::Deserialize(proto.initializer().content(),
+                      vm::internal::Impl(module.initializer_.raw()),
                       state.function_state());
 
   return true;
 }
 
-std::pair<serialization::FunctionIndex, semantic_analysis::IrFunction const*>
-Module::Wrap(semantic_analysis::IrFunction const* f) {
+std::pair<serialization::FunctionIndex, vm::Function const*> Module::Wrap(
+    vm::Function const* f) {
   auto [iter, inserted] = wrappers_.try_emplace(f);
   if (inserted) {
     auto result =
         function_table().emplace(f->parameter_count(), f->return_count());
     auto [fn_index, fn_ptr] = result;
-    fn_ptr->append<semantic_analysis::PushFunction>(f);
-    fn_ptr->append<jasmin::Call>();
-    fn_ptr->append<jasmin::Return>();
+    fn_ptr->AppendPushFunction(f);
+    fn_ptr->AppendCall();
+    fn_ptr->AppendReturn();
     iter->second = result;
   }
   return iter->second;

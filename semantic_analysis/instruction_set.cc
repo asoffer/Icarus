@@ -44,8 +44,9 @@ void BuiltinForeignFunction::execute(
   char const* data = value_stack.pop<char const*>();
   std::string name(data, length);
 
-  auto& table =
-      *static_cast<serialization::FunctionTable<IrFunction>*>(raw_table);
+  auto& table = *static_cast<
+      serialization::FunctionTable<jasmin::Function<InstructionSet>>*>(
+      raw_table);
 
   auto [index, inserted] = foreign_symbol_map->insert({
       .type = fn_type,
@@ -218,7 +219,8 @@ void PushFunction::serialize(jasmin::Serializer& serializer,
                              serialization_state& state) {
   auto& fn_map = std::get<2>(state);
   ASSERT(values.size() == 1);
-  auto* ir_fn                   = values[0].as<IrFunction*>();
+  // TODO: Make this void* more well-typed.
+  auto* ir_fn                   = values[0].as<void*>();
   auto [module_index, fn_index] = fn_map.find(ir_fn);
   ASSERT(module_index != serialization::ModuleIndex::Invalid());
   ASSERT(fn_index != serialization::FunctionIndex::Invalid());

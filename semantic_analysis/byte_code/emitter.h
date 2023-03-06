@@ -12,16 +12,18 @@
 #include "semantic_analysis/context.h"
 #include "semantic_analysis/instruction_set.h"
 #include "semantic_analysis/type_system.h"
+#include "vm/function.h"
+#include "vm/execute.h"
 
 namespace semantic_analysis {
 
 struct FunctionData {
-  FunctionData(IrFunction &function,
+  FunctionData(vm::Function &function,
                nth::flyweight_map<ast::Declaration::Id const *, size_t>
                    &variable_offsets)
       : function_(function), variable_offsets_(variable_offsets) {}
 
-  IrFunction &function() { return function_; }
+  vm::Function &function() { return function_; }
 
   size_t OffsetFor(ast::Declaration::Id const *id) const {
     auto iter = variable_offsets_.find(id);
@@ -34,7 +36,7 @@ struct FunctionData {
   }
 
  private:
-  IrFunction &function_;
+  vm::Function &function_;
   nth::flyweight_map<ast::Declaration::Id const *, size_t> &variable_offsets_;
 };
 
@@ -216,7 +218,7 @@ T Emitter<E>::EvaluateAs(ast::Expression const *expression) {
   bool has_error = (qt.qualifiers() >= Qualifiers::Error());
   ASSERT(not has_error);
 
-  IrFunction f(0, 1);
+  vm::Function f(0, 1);
 
   // This `variable_offsets` map is intentionally empty. There will never be
   // declarations from which data needs to be loaded. Because `EvaluateAs` is
@@ -227,11 +229,11 @@ T Emitter<E>::EvaluateAs(ast::Expression const *expression) {
 
   this->as<ByteCodeValueEmitter>().Emit(expression,
                                         FunctionData(f, variable_offsets));
-  f.append<jasmin::Return>();
+  f.AppendReturn();
 
   T result;
   data_types::IntegerTable table;
-  jasmin::Execute(f, jasmin::ExecutionState<InstructionSet>{table}, {}, result);
+  vm::Execute(f, jasmin::ExecutionState<InstructionSet>{table}, {}, result);
   return result;
 }
 
@@ -240,16 +242,14 @@ void EmitterBase::EmitInitialize(NodeType const *node, FunctionData data) {
   as<ByteCodeValueEmitter>().Emit(node, data);
   std::span qts = context().qualified_types(node);
   if (qts.size() == 1) {
-    data.function().append<jasmin::Store>(
-        SizeOf(qts[0].type(), type_system()).value());
+    data.function().AppendStore(SizeOf(qts[0].type(), type_system()).value());
   } else {
     for (auto iter = qts.rbegin(); iter != qts.rend(); ++iter) {
-      data.function().append<jasmin::DuplicateAt>(qts.size());
-      data.function().append<jasmin::Swap>();
-      data.function().append<jasmin::Store>(
-          SizeOf(iter->type(), type_system()).value());
+      data.function().AppendDuplicateAt(qts.size());
+      data.function().AppendSwap();
+      data.function().AppendStore(SizeOf(iter->type(), type_system()).value());
     }
-    data.function().append<jasmin::Drop>(qts.size());
+    data.function().AppendDrop(qts.size());
   }
 }
 

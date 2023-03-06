@@ -32,6 +32,7 @@ cc_library(
         "//serialization:function_table",
         "//serialization:module_index",
         "//serialization:read_only_data",
+        "//vm:instructions",
         "@asoffer_nth//nth/numeric:integer",
         "@asoffer_jasmin//jasmin:debug",
         "@asoffer_jasmin//jasmin:function",

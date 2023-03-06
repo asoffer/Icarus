@@ -14,11 +14,11 @@ void ByteCodeValueEmitter::operator()(ast::Call const* node,
     Emit(&node->arguments()[0].expr(), data);
     if (auto function_type = t.get_if<core::FunctionType>(type_system())) {
       size_t num_parameters = function_type->parameters().size();
-      data.function().append<BuiltinForeignFunction>(
+      data.function().AppendBuiltinForeignFunction(
           t, &module().function_table(), &module().foreign_symbol_map(),
           &type_system());
     } else {
-      data.function().append<BuiltinForeignPointer>(t);
+      data.function().AppendBuiltinForeignPointer(t);
     }
     return;
   }
@@ -73,12 +73,12 @@ void ByteCodeValueEmitter::operator()(ast::Call const* node,
     }
 
     auto& f = module().function_table().function(typed_function.function);
-    data.function().append<PushFunction>(&module().function_table().function(
+    data.function().AppendPushFunction(&module().function_table().function(
         callable_identifier.function().function));
   }
 
-  auto* f = data.function().raw_instructions().back().as<IrFunction const*>();
-  data.function().append<jasmin::Call>();
+  auto* f = data.function().raw_instructions().back().as<vm::Function const*>();
+  data.function().AppendCall();
 }
 
 void ByteCodeStatementEmitter::operator()(ast::Call const* node,
@@ -86,7 +86,7 @@ void ByteCodeStatementEmitter::operator()(ast::Call const* node,
   this->as<ByteCodeValueEmitter>().Emit(node, data);
   // TODO: Drop any unnecessary return values. Counting is more subtle than
   // this:
-  data.function().append<jasmin::Drop>(context().qualified_types(node).size());
+  data.function().AppendDrop(context().qualified_types(node).size());
 }
 
 }  // namespace semantic_analysis

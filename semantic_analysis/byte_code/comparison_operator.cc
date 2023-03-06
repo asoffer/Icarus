@@ -1,6 +1,6 @@
-#include "serialization/module_index.h"
 #include "semantic_analysis/byte_code/emitter.h"
 #include "semantic_analysis/type_verification/casting.h"
+#include "serialization/module_index.h"
 
 namespace semantic_analysis {
 
@@ -14,7 +14,7 @@ void ByteCodeValueEmitter::operator()(ast::ComparisonOperator const* node,
   auto op_iter        = ops.begin();
   Emit(exprs.front(), data);
   auto& f = data.function();
-  f.append<jasmin::Duplicate>();
+  f.AppendDuplicate();
 
   std::vector<jasmin::OpCodeRange> branches;
   branches.reserve(ops.size());
@@ -22,8 +22,8 @@ void ByteCodeValueEmitter::operator()(ast::ComparisonOperator const* node,
   core::Type prev_type = context().qualified_type(exprs.front()).type();
   for (auto expr_iter = exprs.begin() + 1; expr_iter != exprs.end();
        ++expr_iter, ++op_iter) {
-    f.append<jasmin::Swap>();
-    f.append<jasmin::Drop>(1);
+    f.AppendSwap();
+    f.AppendDrop(1);
 
     core::Type curr_type   = context().qualified_type(*expr_iter).type();
     core::Type common_type = CommonType(prev_type, curr_type, type_system());
@@ -35,47 +35,47 @@ void ByteCodeValueEmitter::operator()(ast::ComparisonOperator const* node,
     WithPrimitiveType(common_type, [&]<Numeric T> {
       switch (*op_iter) {
         case frontend::Operator::Gt:
-          f.append<jasmin::DuplicateAt>(0);
-          f.append<jasmin::DuplicateAt>(2);
-          f.append<jasmin::LessThan<T>>();
-          f.append<jasmin::Not>();
+          f.AppendDuplicateAt(0);
+          f.AppendDuplicateAt(2);
+          f.AppendLessThan<vm::Function::Consume, T>();
+          f.AppendNot();
           break;
         case frontend::Operator::Lt:
-          f.append<jasmin::AppendLessThan<T>>();
-          f.append<jasmin::Not>();
+          f.AppendLessThan<vm::Function::Append, T>();
+          f.AppendNot();
           break;
         case frontend::Operator::Le:
-          f.append<jasmin::DuplicateAt>(0);
-          f.append<jasmin::DuplicateAt>(2);
-          f.append<jasmin::LessThan<T>>();
+          f.AppendDuplicateAt(0);
+          f.AppendDuplicateAt(2);
+          f.AppendLessThan<vm::Function::Consume, T>();
           break;
         case frontend::Operator::Ge:
-          f.append<jasmin::AppendLessThan<T>>();
+          f.AppendLessThan<vm::Function::Append, T>();
           break;
         case frontend::Operator::Eq:
-          f.append<jasmin::AppendEqual<T>>();
-          f.append<jasmin::Not>();
+          f.AppendEqual<vm::Function::Append, T>();
+          f.AppendNot();
           break;
         case frontend::Operator::Ne:
-          f.append<jasmin::AppendEqual<T>>();
+          f.AppendEqual<vm::Function::Append, T>();
           break;
         default: UNREACHABLE();
       }
-      branches.push_back(f.append_with_placeholders<jasmin::JumpIf>());
+      branches.push_back(f.AppendJumpIfWithPlaceholders());
     });
   }
-  auto true_branch = f.append_with_placeholders<jasmin::Jump>();
+  auto true_branch = f.AppendJumpWithPlaceholders();
 
   // Failure branch
   jasmin::OpCodeRange false_land(f.raw_instructions().size(), 0);
-  f.append<jasmin::Drop>(2);
-  f.append<jasmin::Push>(false);
-  auto final_branch = f.append_with_placeholders<jasmin::Jump>();
+  f.AppendDrop(2);
+  f.AppendPush(false);
+  auto final_branch = f.AppendJumpWithPlaceholders();
 
   // Success branch
   jasmin::OpCodeRange true_land(f.raw_instructions().size(), 0);
-  f.append<jasmin::Drop>(2);
-  f.append<jasmin::Push>(true);
+  f.AppendDrop(2);
+  f.AppendPush(true);
   jasmin::OpCodeRange final_land(f.raw_instructions().size(), 0);
 
 

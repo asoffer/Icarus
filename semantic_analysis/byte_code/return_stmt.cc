@@ -7,7 +7,7 @@ void ByteCodeStatementEmitter::operator()(ast::ReturnStmt const* node,
   for (auto const* expr : node->exprs()) {
     as<ByteCodeValueEmitter>().Emit(expr, data);
   }
-  data.function().append<jasmin::Return>();
+  data.function().AppendReturn();
 }
 
 }  // namespace semantic_analysis

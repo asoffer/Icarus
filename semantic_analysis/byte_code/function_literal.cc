@@ -27,7 +27,7 @@ void ByteCodeValueEmitter::operator()(ast::FunctionLiteral const* node,
           offset += contour.bytes();
         }
       });
-  fn_ptr->append<jasmin::StackAllocate>(offset.value());
+  fn_ptr->AppendStackAllocate(offset.value());
 
   size_t parameter_index = 0;
   node->body_scope().ForEachNonConstantDeclaration(
@@ -39,20 +39,19 @@ void ByteCodeValueEmitter::operator()(ast::FunctionLiteral const* node,
                 SizeOf(function_type.parameters()[parameter_index].value,
                        type_system());
             if (parameter_size.value() <= jasmin::ValueSize) {
-              fn_ptr->append<jasmin::StackOffset>(iter->second);
-              fn_ptr->append<jasmin::DuplicateAt>(num_parameters -
-                                                  parameter_index);
-              fn_ptr->append<jasmin::Store>(parameter_size.value());
+              fn_ptr->AppendStackOffset(iter->second);
+              fn_ptr->AppendDuplicateAt(num_parameters - parameter_index);
+              fn_ptr->AppendStore(parameter_size.value());
             } else if (function_type.parameters()[parameter_index]
                            .value.is<SliceType>(type_system())) {
-              fn_ptr->append<jasmin::StackOffset>(iter->second);
-              fn_ptr->append<IncrementPointer>(jasmin::ValueSize);
-              fn_ptr->append<jasmin::Swap>();
-              fn_ptr->append<jasmin::Store>(jasmin::ValueSize);
+              fn_ptr->AppendStackOffset(iter->second);
+              fn_ptr->AppendIncrementPointer(jasmin::ValueSize);
+              fn_ptr->AppendSwap();
+              fn_ptr->AppendStore(jasmin::ValueSize);
 
-              fn_ptr->append<jasmin::StackOffset>(iter->second);
-              fn_ptr->append<jasmin::Swap>();
-              fn_ptr->append<jasmin::Store>(jasmin::ValueSize);
+              fn_ptr->AppendStackOffset(iter->second);
+              fn_ptr->AppendSwap();
+              fn_ptr->AppendStore(jasmin::ValueSize);
             } else {
               NOT_YET();
             }
@@ -65,9 +64,9 @@ void ByteCodeValueEmitter::operator()(ast::FunctionLiteral const* node,
   for (auto const* stmt : node->stmts()) {
     as<ByteCodeStatementEmitter>().Emit(stmt, fn_data);
   }
-  fn_data.function().append<jasmin::Return>();
+  fn_data.function().AppendReturn();
 
-  data.function().append<PushFunction>(fn_ptr);
+  data.function().AppendPushFunction(fn_ptr);
 }
 
 void ByteCodeStatementEmitter::operator()(ast::FunctionLiteral const*,

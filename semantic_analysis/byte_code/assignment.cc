@@ -17,9 +17,9 @@ void ByteCodeStatementEmitter::operator()(ast::Assignment const* node,
   auto& f = data.function();
   for (auto const * l : node->lhs()) {
     as<ByteCodeReferenceEmitter>().Emit(l, data);
-    f.append<jasmin::Swap>();
-    auto t = context().qualified_type(l).type();
-    f.append<jasmin::Store>(SizeOf(t, type_system()).value());
+    f.AppendSwap();
+    f.AppendStore(
+        SizeOf(context().qualified_type(l).type(), type_system()).value());
   }
 }
 

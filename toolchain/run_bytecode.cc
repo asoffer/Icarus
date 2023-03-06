@@ -14,6 +14,7 @@
 #include "semantic_analysis/instruction_set.h"
 #include "toolchain/bazel.h"
 #include "toolchain/flags.h"
+#include "vm/execute.h"
 
 ABSL_FLAG(std::string, diagnostics, "console",
           "Indicates how diagnostics should be emitted. Options: console "
@@ -119,10 +120,9 @@ bool Execute(serialization::UniqueModuleId module_id,
   value_stack.push(arguments.data());
   value_stack.push(arguments.size());
   data_types::IntegerTable table;
-  jasmin::Execute(
-      resources.primary_module().initializer(),
-      jasmin::ExecutionState<semantic_analysis::InstructionSet>{table},
-      value_stack);
+  vm::Execute(resources.primary_module().initializer(),
+              jasmin::ExecutionState<semantic_analysis::InstructionSet>{table},
+              value_stack);
   return true;
 }
 

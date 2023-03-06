@@ -59,7 +59,8 @@ struct FunctionTable {
                                 State& state) {
     proto.set_parameters(f.parameter_count());
     proto.set_returns(f.return_count());
-    jasmin::Serialize(f, *proto.mutable_content(), state);
+    // TODO: jasmin::Serialize(vm::internal::Impl(f.raw()), *proto.mutable_content(),
+    //                   state);
   }
 
   // NOTE: This looks a lot like the implementation of `nth::flyweight_set`, but
@@ -93,12 +94,14 @@ bool FunctionTable<FunctionType>::Deserialize(proto::FunctionTable const& from,
     to.emplace(function.parameters(), function.returns(), module_index);
   }
 
-  for (size_t i = 0; i < to.functions_.size(); ++i) {
-    if (not jasmin::Deserialize(from.functions(i).content(), to.functions_[i],
-                                state.function_state())) {
-      return false;
-    }
-  }
+  // TODO
+  // for (size_t i = 0; i < to.functions_.size(); ++i) {
+  //   if (not jasmin::Deserialize(from.functions(i).content(),
+  //                               vm::internal::Impl(to.functions_[i].raw()),
+  //                               state.function_state())) {
+  //     return false;
+  //   }
+  // }
   return true;
 }
 

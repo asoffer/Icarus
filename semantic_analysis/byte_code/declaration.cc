@@ -9,14 +9,14 @@ void EmitNonconstantDeclaration(EmitterBase& emitter,
   switch (node->kind()) {
     case ast::Declaration::kDefaultInit: {
       for (auto const& id : node->ids()) {
-        data.function().append<jasmin::StackOffset>(data.OffsetFor(&id));
+        data.function().AppendStackOffset(data.OffsetFor(&id));
         emitter.EmitDefaultInitialize(
             emitter.context().qualified_type(&id).type(), data);
       }
     } break;
     case ast::Declaration::kInferred: {
       for (auto const& id : node->ids()) {
-        data.function().append<jasmin::StackOffset>(data.OffsetFor(&id));
+        data.function().AppendStackOffset(data.OffsetFor(&id));
       }
       // TODO: Improve this EmitInitialize should be it's own derived CRTP.
       emitter.EmitInitialize(node->init_val(), data);
@@ -33,7 +33,7 @@ std::span<std::byte const> EmitConstantDeclaration(
     } break;
     case ast::Declaration::kInferred: {
       if (node->ids().size() != 1) { NOT_YET(); }
-      std::span x =  emitter.EvaluateConstant(node->init_val(), qt);
+      std::span x = emitter.EvaluateConstant(node->init_val(), qt);
       return x;
     } break;
     default: NOT_YET(node->DebugString());
@@ -59,7 +59,7 @@ void ByteCodeStatementEmitter::operator()(ast::Declaration const* node,
                  type_system().index<core::FunctionType>()) {
         auto const* f =
             jasmin::Value::Load(evaluation.data(), evaluation.size())
-                .as<semantic_analysis::IrFunction const*>();
+                .as<vm::Function const*>();
         module().Export(node->ids()[0].name(), qt.type(), f);
       } else {
         NOT_YET();
@@ -82,10 +82,10 @@ void ByteCodeValueEmitter::operator()(ast::Declaration::Id const* node,
         EmitConstantDeclaration(*this, &declaration, qt, data);
     if (evaluation.size() <= jasmin::ValueSize) {
       if (qt.type().is<core::FunctionType>(type_system())) {
-        data.function().append<PushFunction>(
+        data.function().AppendPushFunction(
             jasmin::Value::Load(evaluation.data(), evaluation.size()));
       } else {
-        data.function().append<jasmin::Push>(
+        data.function().AppendPush(
             jasmin::Value::Load(evaluation.data(), evaluation.size()));
       }
     } else {
@@ -93,7 +93,7 @@ void ByteCodeValueEmitter::operator()(ast::Declaration::Id const* node,
         if (st->pointee() == Char) {
           std::string_view view =
               *reinterpret_cast<std::string_view const*>(evaluation.data());
-          data.function().append<PushStringLiteral>(view.data(), view.size());
+          data.function().AppendPushStringLiteral(view);
         } else {
           NOT_YET(node->DebugString());
         }
@@ -102,8 +102,8 @@ void ByteCodeValueEmitter::operator()(ast::Declaration::Id const* node,
       }
     }
   } else {
-    data.function().append<jasmin::StackOffset>(data.OffsetFor(node));
-    data.function().append<jasmin::Load>(
+    data.function().AppendStackOffset(data.OffsetFor(node));
+    data.function().AppendLoad(
         SizeOf(context().qualified_type(node).type(), type_system()).value());
   }
 }

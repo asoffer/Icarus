@@ -17,6 +17,7 @@
 #include "serialization/module.pb.h"
 #include "serialization/module_index.h"
 #include "serialization/read_only_data.h"
+#include "vm/function.h"
 
 namespace module {
 
@@ -32,10 +33,8 @@ struct Module {
                               Module &module, GlobalModuleMap &module_map,
                               GlobalFunctionMap &function_map);
 
-  semantic_analysis::IrFunction &initializer() { return initializer_; }
-  semantic_analysis::IrFunction const &initializer() const {
-    return initializer_;
-  }
+  vm::Function &initializer() { return initializer_; }
+  vm::Function const &initializer() const { return initializer_; }
 
   semantic_analysis::TypeSystem &type_system() const { return type_system_; }
 
@@ -61,8 +60,7 @@ struct Module {
     exported_symbols_[name].push_back(std::move(s));
   }
 
-  void Export(std::string_view name, core::Type t,
-              semantic_analysis::IrFunction const *f) {
+  void Export(std::string_view name, core::Type t, vm::Function const *f) {
     Export(name, Symbol(TypedFunction{
                      .type     = t,
                      .function = function_table().find(f),
@@ -71,29 +69,27 @@ struct Module {
 
   auto const &read_only_data() const { return read_only_data_; }
   auto &read_only_data() { return read_only_data_; }
-  serialization::FunctionTable<semantic_analysis::IrFunction> const &
-  function_table() const {
+  serialization::FunctionTable<vm::Function> const &function_table() const {
     return function_table_;
   }
-  serialization::FunctionTable<semantic_analysis::IrFunction>
-      &function_table() {
+  serialization::FunctionTable<vm::Function> &function_table() {
     return function_table_;
   }
 
-  std::pair<serialization::FunctionIndex, semantic_analysis::IrFunction const *>
-  Wrap(semantic_analysis::IrFunction const *f);
+  std::pair<serialization::FunctionIndex, vm::Function const *> Wrap(
+      vm::Function const *f);
 
  private:
   serialization::UniqueModuleId id_;
 
   // Accepts two arguments (a slice represented as data followed by length).
-  semantic_analysis::IrFunction initializer_{2, 0};
+  vm::Function initializer_{2, 0};
 
   absl::flat_hash_map<std::string, std::vector<Symbol>> exported_symbols_;
 
-  absl::flat_hash_map<semantic_analysis::IrFunction const *,
-                      std::pair<serialization::FunctionIndex,
-                                semantic_analysis::IrFunction const *>>
+  absl::flat_hash_map<
+      vm::Function const *,
+      std::pair<serialization::FunctionIndex, vm::Function const *>>
       wrappers_;
 
   // The type-system containing all types referenceable in this module.
@@ -101,8 +97,7 @@ struct Module {
   // TODO: Mutable because jasmin doesn't correctly pass const qualifiers
   // through `get`. Remove when that's fixed.
   mutable serialization::ForeignSymbolMap foreign_symbol_map_{&type_system_};
-  mutable serialization::FunctionTable<semantic_analysis::IrFunction>
-      function_table_;
+  mutable serialization::FunctionTable<vm::Function> function_table_;
 
   // All integer constants used in the module.
   data_types::IntegerTable integer_table_;

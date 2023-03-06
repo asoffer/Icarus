@@ -12,15 +12,16 @@
 #include "semantic_analysis/context.h"
 #include "semantic_analysis/instruction_set.h"
 #include "semantic_analysis/type_system.h"
+#include "vm/execute.h"
 
 namespace semantic_analysis {
 
 void EmitByteCodeForModule(ast::Module const& ast_module, Context& context,
                            module::Resources& resources);
 
-// Returns an `IrFunction` accepting no parameters and whose execution computes
+// Returns an `vm::Function` accepting no parameters and whose execution computes
 // the value associated with `expression`.
-IrFunction EmitByteCode(QualifiedType qualified_type,
+vm::Function EmitByteCode(QualifiedType qualified_type,
                         ast::Expression const& expression, Context& context,
                         module::Resources& module);
 
@@ -36,20 +37,20 @@ T EvaluateAs(Context& context, module::Resources& resources,
   bool has_error = (qt.qualifiers() >= Qualifiers::Error());
   ASSERT(not has_error);
 
-  IrFunction f = EmitByteCode(qt, *expr, context, resources);
+  vm::Function f = EmitByteCode(qt, *expr, context, resources);
 
   data_types::IntegerTable table;
   jasmin::ExecutionState<InstructionSet> state{table};
   T result;
   if (PassInRegister(qt, resources.primary_module().type_system())) {
-    jasmin::Execute(f, state, {}, result);
+    vm::Execute(f, state, {}, result);
   } else {
-    IrFunction wrapper(0, 0);
-    wrapper.append<jasmin::Push>(&result);
-    wrapper.append<jasmin::Push>(&f);
-    wrapper.append<jasmin::Call>();
-    wrapper.append<jasmin::Return>();
-    jasmin::Execute(f, state, {});
+    vm::Function wrapper(0, 0);
+    wrapper.AppendPush(&result);
+    wrapper.AppendPush(&f);
+    wrapper.AppendCall();
+    wrapper.AppendReturn();
+    vm::Execute(f, state, {});
   }
 
   return result;

@@ -8,8 +8,7 @@
 
 namespace test {
 
-std::optional<semantic_analysis::IrFunction> Repl::ExecutionFunction(
-    std::string&& content) {
+std::optional<vm::Function> Repl::ExecutionFunction(std::string&& content) {
   consumer_->clear();
   source_content_.push_back(std::move(content));
   auto nodes              = frontend::Parse(source_content_.back(), *consumer_);

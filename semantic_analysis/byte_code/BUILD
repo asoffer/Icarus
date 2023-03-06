@@ -53,6 +53,8 @@ cc_library(
         "//semantic_analysis:instruction_set",
         "//semantic_analysis:type_system",
         "//semantic_analysis/type_verification:casting",
+        "//vm:function",
+        "//vm:execute",
         "@asoffer_jasmin//jasmin:execute",
         "@asoffer_jasmin//jasmin:function",
         "@asoffer_jasmin//jasmin:op_code",
@@ -79,6 +81,7 @@ cc_test(
           ":byte_code",
           "//semantic_analysis:type_system",
           "//test:repl",
+          "//vm:execute",
           "@com_google_googletest//:gtest_main",
       ],
 )
@@ -90,6 +93,7 @@ cc_test(
           ":byte_code",
           "//semantic_analysis:type_system",
           "//test:repl",
+          "//vm:execute",
           "@com_google_googletest//:gtest_main",
       ],
 )
@@ -123,6 +127,7 @@ cc_test(
           ":byte_code",
           "//semantic_analysis:type_system",
           "//test:repl",
+          "//vm:execute",
           "@com_google_googletest//:gtest_main",
       ],
 )
@@ -156,6 +161,7 @@ cc_test(
           ":byte_code",
           "//semantic_analysis:type_system",
           "//test:repl",
+          "//vm:execute",
           "@com_google_googletest//:gtest_main",
       ],
 )
@@ -189,6 +195,7 @@ cc_test(
           ":byte_code",
           "//semantic_analysis:type_system",
           "//test:repl",
+          "//vm:execute",
           "@com_google_googletest//:gtest_main",
       ],
 )
@@ -212,6 +219,7 @@ cc_test(
           ":byte_code",
           "//semantic_analysis:type_system",
           "//test:repl",
+          "//vm:execute",
           "@com_google_googletest//:gtest_main",
       ],
 )

@@ -1,5 +1,6 @@
 #include "gtest/gtest.h"
 #include "test/repl.h"
+#include "vm/execute.h"
 
 namespace semantic_analysis {
 namespace {
@@ -7,8 +8,7 @@ namespace {
 TEST(Assignment, DISABLED_SingleValue) {
   test::Repl repl;
 
-  IrFunction const& f =
-      *repl.execute<IrFunction const*>(R"(
+  vm::Function const& f = *repl.execute<vm::Function const*>(R"(
   () -> i64 {
     n: i64
     n = 4 as i64
@@ -18,15 +18,14 @@ TEST(Assignment, DISABLED_SingleValue) {
   data_types::IntegerTable table;
   jasmin::ExecutionState<InstructionSet> state{table};
 
-  jasmin::Execute(f, state, {int64_t{4}}, result);
+  vm::Execute(f, state, {int64_t{4}}, result);
   EXPECT_EQ(result, 4);
 }
 
 TEST(Assignment, DISABLED_MultipleValues) {
   test::Repl repl;
 
-  IrFunction const& f =
-      *repl.execute<IrFunction const*>(R"(
+  vm::Function const& f = *repl.execute<vm::Function const*>(R"(
   (x: i64, y: i64) -> i64 {
     m: i64
     n: i64
@@ -37,18 +36,17 @@ TEST(Assignment, DISABLED_MultipleValues) {
   data_types::IntegerTable table;
   jasmin::ExecutionState<InstructionSet> state{table};
 
-  jasmin::Execute(f, state, {int64_t{4}, int64_t{5}}, result);
+  vm::Execute(f, state, {int64_t{4}, int64_t{5}}, result);
   EXPECT_EQ(result, 45);
 
-  jasmin::Execute(f, state, {int64_t{5}, int64_t{4}}, result);
+  vm::Execute(f, state, {int64_t{5}, int64_t{4}}, result);
   EXPECT_EQ(result, 54);
 }
 
 TEST(Assignment, DISABLED_Intertwined) {
   test::Repl repl;
 
-  IrFunction const& f =
-      *repl.execute<IrFunction const*>(R"(
+  vm::Function const& f = *repl.execute<vm::Function const*>(R"(
   (x: i64, y: i64) -> i64 {
     m := x
     n := y
@@ -59,7 +57,7 @@ TEST(Assignment, DISABLED_Intertwined) {
   data_types::IntegerTable table;
   jasmin::ExecutionState<InstructionSet> state{table};
 
-  jasmin::Execute(f, state, {int64_t{4}, int64_t{5}}, result);
+  vm::Execute(f, state, {int64_t{4}, int64_t{5}}, result);
   EXPECT_EQ(result, 45);
 }
 

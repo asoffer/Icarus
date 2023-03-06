@@ -10,14 +10,14 @@ void ByteCodeValueEmitter::operator()(ast::Identifier const* node,
     if (qt.qualifiers() >= Qualifiers::Constant()) {
       std::span<std::byte const> evaluation = EvaluateConstant(id, qt);
       if (evaluation.size() <= jasmin::ValueSize) {
-        data.function().append<jasmin::Push>(
+        data.function().AppendPush(
             jasmin::Value::Load(evaluation.data(), evaluation.size()));
       } else {
         if (auto st = qt.type().get_if<SliceType>(type_system())) {
           if (st->pointee() == Char) {
             std::string_view view =
                 *reinterpret_cast<std::string_view const*>(evaluation.data());
-            data.function().append<PushStringLiteral>(view.data(), view.size());
+            data.function().AppendPushStringLiteral(view);
           } else {
             NOT_YET(node->DebugString());
           }
@@ -26,17 +26,16 @@ void ByteCodeValueEmitter::operator()(ast::Identifier const* node,
         }
       }
     } else {
-      data.function().append<jasmin::StackOffset>(data.OffsetFor(id));
+      data.function().AppendStackOffset(data.OffsetFor(id));
       core::Bytes bytes_to_load = SizeOf(qt.type(), type_system());
       if (bytes_to_load.value() <= jasmin::ValueSize) {
-        data.function().append<jasmin::Load>(bytes_to_load.value());
+        data.function().AppendLoad(bytes_to_load.value());
       } else if (bytes_to_load.value() <= 2 * jasmin::ValueSize) {
-        data.function().append<jasmin::Duplicate>();
-        data.function().append<jasmin::Load>(jasmin::ValueSize);
-        data.function().append<jasmin::Swap>();
-        data.function().append<IncrementPointer>(jasmin::ValueSize);
-        data.function().append<jasmin::Load>(bytes_to_load.value() -
-                                             jasmin::ValueSize);
+        data.function().AppendDuplicate();
+        data.function().AppendLoad(jasmin::ValueSize);
+        data.function().AppendSwap();
+        data.function().AppendIncrementPointer(jasmin::ValueSize);
+        data.function().AppendLoad(bytes_to_load.value() - jasmin::ValueSize);
       }
     }
   }
@@ -53,7 +52,7 @@ void ByteCodeReferenceEmitter::operator()(ast::Identifier const* node,
     if (qt.qualifiers() >= Qualifiers::Constant()) {
       NOT_YET();
     } else {
-      data.function().append<jasmin::StackOffset>(data.OffsetFor(id));
+      data.function().AppendStackOffset(data.OffsetFor(id));
     }
   }
 }

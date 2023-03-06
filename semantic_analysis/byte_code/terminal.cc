@@ -6,19 +6,18 @@ void ByteCodeValueEmitter::operator()(ast::Terminal const* node,
                                       FunctionData data) {
   QualifiedType qt = context().qualified_type(node);
   if (qt.type() == Bool) {
-    data.function().append<jasmin::Push>(node->value<bool>());
+    data.function().AppendPush(node->value<bool>());
   } else if (qt.type() == SliceType(type_system(), Char)) {
-    std::string_view slice = node->value<std::string>();
-    data.function().append<PushStringLiteral>(slice.data(), slice.size());
+    data.function().AppendPushStringLiteral(node->value<std::string>());
   } else if (qt.type() == Integer) {
-    data.function().append<jasmin::Push>(
+    data.function().AppendPush(
         module().integer_table().insert(node->value<nth::Integer>()));
   } else if (qt.type() == F64) {
     // TODO: Long-term these won't be doubles, but rather a "rational" type that
     // is arbitrary-precision.
-    data.function().append<jasmin::Push>(node->value<double>());
+    data.function().AppendPush(node->value<double>());
   } else if (qt.type() == Type) {
-    data.function().append<jasmin::Push>(node->value<core::Type>());
+    data.function().AppendPush(node->value<core::Type>());
   } else {
     NOT_YET(node->DebugString());
   }

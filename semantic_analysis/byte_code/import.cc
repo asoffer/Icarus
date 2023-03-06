@@ -5,7 +5,7 @@ namespace semantic_analysis {
 
 void ByteCodeValueEmitter::operator()(ast::Import const* node,
                                       FunctionData data) {
-  data.function().append<jasmin::Push>(
+  data.function().AppendPush(
       context().constant<serialization::ModuleIndex>(node));
 }
 

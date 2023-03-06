@@ -15,6 +15,8 @@ cc_library(
         "//serialization:function_table",
         "//serialization:module",
         "//serialization:read_only_data",
+        "//vm:function",
+        "//vm:implementation",
         "@asoffer_jasmin//jasmin:serialization",
     ],
 )

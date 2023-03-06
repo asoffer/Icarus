@@ -1,5 +1,6 @@
 #include "gtest/gtest.h"
 #include "test/repl.h"
+#include "vm/execute.h"
 
 namespace semantic_analysis {
 namespace {
@@ -7,8 +8,7 @@ namespace {
 TEST(IfStmt, DISABLED_Computation) {
   test::Repl repl;
 
-  IrFunction const& f =
-      *repl.execute<IrFunction const*>(R"(
+  vm::Function const& f = *repl.execute<vm::Function const*>(R"(
   (b: bool) -> i64 {
     n: i64
     if (b) {
@@ -22,10 +22,10 @@ TEST(IfStmt, DISABLED_Computation) {
   data_types::IntegerTable table;
   jasmin::ExecutionState<InstructionSet> state{table};
 
-  jasmin::Execute(f, state, {true}, result);
+  vm::Execute(f, state, {true}, result);
   EXPECT_EQ(result, 3);
 
-  jasmin::Execute(f, state, {false}, result);
+  vm::Execute(f, state, {false}, result);
   EXPECT_EQ(result, 4);
 }
 

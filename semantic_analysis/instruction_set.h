@@ -17,6 +17,7 @@
 #include "serialization/function_table.h"
 #include "serialization/module_index.h"
 #include "serialization/read_only_data.h"
+#include "vm/instructions.h"
 
 namespace semantic_analysis {
 
@@ -58,48 +59,6 @@ struct InvokeForeignFunction
                       core::Parameter<core::Type> const* parameters,
                       size_t parameter_count,
                       core::Type const* maybe_return_type);
-};
-
-struct ZeroExtendOptions {
-  uint32_t from_bits;
-  uint32_t to_bits;
-};
-
-template <bool FromSigned, bool ToSigned>
-struct ZeroExtend
-    : jasmin::StackMachineInstruction<ZeroExtend<FromSigned, ToSigned>> {
-  using Options = ZeroExtendOptions;
-
-  static void execute(jasmin::ValueStack& value_stack, Options options) {
-    std::conditional_t<FromSigned, int64_t, uint64_t> scratch;
-    if (options.from_bits <= 8) {
-      using from_type = std::conditional_t<FromSigned, int8_t, uint8_t>;
-      scratch         = value_stack.pop<from_type>();
-    } else if (options.from_bits <= 16) {
-      using from_type = std::conditional_t<FromSigned, int16_t, uint16_t>;
-      scratch         = value_stack.pop<from_type>();
-    } else if (options.from_bits <= 32) {
-      using from_type = std::conditional_t<FromSigned, int32_t, uint32_t>;
-      scratch         = value_stack.pop<from_type>();
-    } else {
-      using from_type = std::conditional_t<FromSigned, int64_t, uint64_t>;
-      scratch         = value_stack.pop<from_type>();
-    }
-
-    if (options.to_bits <= 8) {
-      using to_type = std::conditional_t<ToSigned, int8_t, uint8_t>;
-      value_stack.push(static_cast<to_type>(scratch));
-    } else if (options.to_bits <= 16) {
-      using to_type = std::conditional_t<ToSigned, int16_t, uint16_t>;
-      value_stack.push(static_cast<to_type>(scratch));
-    } else if (options.to_bits <= 32) {
-      using to_type = std::conditional_t<ToSigned, int32_t, uint32_t>;
-      value_stack.push(static_cast<to_type>(scratch));
-    } else {
-      using to_type = std::conditional_t<ToSigned, int64_t, uint64_t>;
-      value_stack.push(static_cast<to_type>(scratch));
-    }
-  }
 };
 
 struct TemporarySpace {
@@ -197,12 +156,10 @@ struct IncrementPointer : jasmin::StackMachineInstruction<IncrementPointer> {
   }
 };
 
-namespace internal_byte_code {
-
 template <template <typename> typename I, typename... Ts>
 using ApplyInstruction = jasmin::MakeInstructionSet<I<Ts>...>;
 
-// TOOD: core::*Type instructions should be registerable and not required to
+// TODO: core::*Type instructions should be registerable and not required to
 // be explicitly added here.
 struct InstructionSet
     : jasmin::MakeInstructionSet<
@@ -216,8 +173,8 @@ struct InstructionSet
           DeallocateAllTemporaries, BuiltinForeignFunction,
           BuiltinForeignPointer, InvokeForeignFunction, PushStringLiteral,
           PushFunction, IncrementPointer, TranslateFunctionArguments,
-          ZeroExtend<true, true>, ZeroExtend<false, true>,
-          ZeroExtend<false, false>,
+          vm::ZeroExtend<true, true>, vm::ZeroExtend<false, true>,
+          vm::ZeroExtend<false, false>,
           ApplyInstruction<jasmin::Equal, int8_t, int16_t, int32_t, int64_t,
                            uint8_t, uint16_t, uint32_t, uint64_t, float,
                            double>,
@@ -255,11 +212,6 @@ struct InstructionSet
                            uint8_t, uint16_t, uint32_t, uint64_t, float,
                            double>,
           jasmin::DumpValueStack> {};
-
-}  // namespace internal_byte_code
-
-using internal_byte_code::InstructionSet;  // TODO: Make public.
-using IrFunction = jasmin::Function<internal_byte_code::InstructionSet>;
 
 }  // namespace semantic_analysis
 

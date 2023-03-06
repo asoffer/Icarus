@@ -9,11 +9,9 @@ void ByteCodeValueEmitter::operator()(ast::Access const* node,
   if (operand_qt.type().get_if<SliceType>(type_system())) {
     Emit(node->operand(), data);
 
-    if (node->member_name() == "length") {
-      data.function().append<jasmin::Swap>();
-    }
+    if (node->member_name() == "length") { data.function().AppendSwap(); }
 
-    data.function().append<jasmin::Drop>(1);
+    data.function().AppendDrop(1);
   } else if (operand_qt.type() == Module) {
     auto& m = resources().module(
         EvaluateAs<serialization::ModuleIndex>(node->operand()));
@@ -31,7 +29,7 @@ void ByteCodeValueEmitter::operator()(ast::Access const* node,
         } else if (symbol_type == Type) {
           core::Type t = resources().Translate(symbols[0].as<core::Type>(),
                                                m.type_system(), type_system());
-          data.function().append<jasmin::Push>(t);
+          data.function().AppendPush(t);
         } else {
           NOT_YET();
         }
@@ -44,7 +42,7 @@ void ByteCodeValueEmitter::operator()(ast::Access const* node,
     ASSERT(operand_qt.qualifiers() >= Qualifiers::Constant());
     core::Type t = EvaluateAs<core::Type>(node->operand());
     if (auto e = t.get_if<EnumType>(type_system())) {
-      data.function().append<jasmin::Push>(*e->value(node->member_name()));
+      data.function().AppendPush(*e->value(node->member_name()));
     } else {
       NOT_YET();
     }

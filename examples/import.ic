@@ -10,15 +10,24 @@ io ::= import "std.io"
 // is no requirement to have the identifier to be named like the module itself.
 // However, doing so is generally considered best-practice, as it reduces the
 // frequency with which readers will have to consult the `import` expression.
-io.Print("Hello, world!\n")
+// io.Print("Hello, world!\n")
 
 // `import` expressions are idempotent in the sense that importing the same,
 // module multiple times produces the same module, even if it's bound to a
 // different identifier. The imported module is only processed once.
-also_io ::= import "std.io"
-also_io.Print("Hello from the same module!\n")
+// also_io ::= import "std.io"
+// also_io.Print("Hello from the same module!\n")
+// 
+// // The `import` expression has type `module`, and can be used directly without
+// // first assigning to an identifier. While we do not encourage this style, it
+// // showcases how modules are values just like any other in the language.
+// (import "std.io").Print("Hello yet again!\n")
 
-// The `import` expression has type `module`, and can be used directly without
-// first assigning to an identifier. While we do not encourage this style, it
-// showcases how modules are values just like any other in the language.
-(import "std.io").Print("Hello yet again!\n")
+f ::= (n: i64) -> () {
+  if (n == 3) {
+    return 
+  }
+  io.Print("Hello")
+}
+
+f(4)

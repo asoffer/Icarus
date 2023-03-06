@@ -4,30 +4,29 @@ namespace semantic_analysis {
 
 void ByteCodeValueEmitter::operator()(ast::FunctionType const* node,
                                       FunctionData data) {
-  data.function().append<core::ParameterType::Begin>();
+  data.function().AppendBeginParameterType();
 
   for (auto const* parameter : node->parameters()) {
     if (auto const* p = parameter->if_as<ast::Declaration>()) {
       if (auto const* type_expression = p->type_expr()) {
         if (p->ids().size() != 1) { NOT_YET(); }
         std::string_view name = p->ids()[0].name();
-        data.function().append<jasmin::Push>(name.data());
-        data.function().append<jasmin::Push>(name.size());
+        data.function().AppendPush(name.data());
+        data.function().AppendPush(name.size());
         Emit(type_expression, data);
-        data.function().append<core::ParameterType::AppendNamed>();
+        data.function().AppendNamedParameter();
       } else {
         NOT_YET();
       }
     } else {
       Emit(parameter, data);
-      data.function().append<core::ParameterType::Append>();
+      data.function().AppendAnonymousParameter();
     }
   }
 
-  data.function().append<core::ParameterType::End<TypeSystem>>(&type_system());
+  data.function().AppendEndParameterType(&type_system());
   for (auto const* output : node->outputs()) { Emit(output, data); }
-  data.function().append<core::FunctionType::End<TypeSystem>>(
-      &type_system(), node->outputs().size());
+  data.function().AppendEndFunctionType(&type_system(), node->outputs().size());
 }
 
 void ByteCodeStatementEmitter::operator()(ast::FunctionType const* node,

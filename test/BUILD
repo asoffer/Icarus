@@ -33,6 +33,8 @@ cc_library(
         "//diagnostic/consumer:tracking",
         "//frontend:parse",
         "//semantic_analysis/type_verification:verify",
+        "//vm:execute",
+        "//vm:function",
         "@asoffer_jasmin//jasmin:execute",
         "@com_google_absl//absl/strings",
         "@com_google_googletest//:gtest",

@@ -13,7 +13,7 @@ namespace {
 TEST(Call, BuiltinForeign) {
   test::Repl repl;
 
-  auto result = repl.execute<IrFunction const *>(
+  auto result = repl.execute<vm::Function const *>(
       R"(builtin.foreign("MyFunction", i32 -> i32))");
 
   // Result needs to be computed before we look up `fn` in the foreign function
@@ -22,7 +22,7 @@ TEST(Call, BuiltinForeign) {
                 repl.foreign_symbol_map().function(0)),
             &MyFunction);
 
-  // TODO: Fix this. Provide access to the IrFunction*.
+  // TODO: Fix this. Provide access to the vm::Function*.
   // void (*fn)() = repl.foreign_symbol_map().function(0);
   // EXPECT_EQ(result, fn);
   //
@@ -30,7 +30,7 @@ TEST(Call, BuiltinForeign) {
   // jasmin::ExecutionState<InstructionSet> state{table};
   //
   // int32_t value;
-  // jasmin::Execute(*fn, state, {int32_t{7}}, value);
+  // vm::Execute(*fn, state, {int32_t{7}}, value);
   // EXPECT_EQ(value, MyFunction(7));
 }
 

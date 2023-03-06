@@ -10,7 +10,7 @@ std::span<std::byte const> EmitterBase::EvaluateConstant(
     // TODO: Integers are an annoying special case at the moment.
     core::TypeContour contour = ContourOf(qt.type(), type_system());
     if (PassInRegister(contour)) {
-      IrFunction f(0, contour.bytes().value() / jasmin::ValueSize);
+      vm::Function f(0, contour.bytes().value() / jasmin::ValueSize);
 
       // This `variable_offsets` map is intentionally empty. There will never
       // be declarations from which data needs to be loaded. Because
@@ -21,12 +21,12 @@ std::span<std::byte const> EmitterBase::EvaluateConstant(
       nth::flyweight_map<ast::Declaration::Id const *, size_t> variable_offsets;
 
       as<ByteCodeValueEmitter>().Emit(expr, FunctionData(f, variable_offsets));
-      f.append<jasmin::Return>();
+      f.AppendReturn();
 
       data_types::IntegerTable table;
       jasmin::ValueStack value_stack;
-      jasmin::Execute(f, jasmin::ExecutionState<InstructionSet>{table},
-                      value_stack);
+      vm::Execute(f, jasmin::ExecutionState<InstructionSet>{table},
+                  value_stack);
       result_ptr->resize(contour.bytes().value());
       std::byte *data = result_ptr->data();
       for (std::byte *ptr = data + result_ptr->size() - jasmin::ValueSize;

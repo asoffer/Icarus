@@ -16,6 +16,8 @@
 #include "semantic_analysis/instruction_set.h"
 #include "semantic_analysis/type_system.h"
 #include "serialization/foreign_symbol_map.h"
+#include "vm/function.h"
+#include "vm/execute.h"
 
 namespace test {
 
@@ -140,7 +142,7 @@ struct Repl {
 
       if constexpr (FitsInRegister<type>()) {
         type result;
-        jasmin::Execute(*f, state, {}, result);
+        vm::Execute(*f, state, {}, result);
         if constexpr (t == nth::type<T>) {
           return result;
         } else {
@@ -163,7 +165,9 @@ struct Repl {
   serialization::ForeignSymbolMap& foreign_symbol_map() {
     return module().foreign_symbol_map();
   }
-  semantic_analysis::TypeSystem& type_system() { return module().type_system(); }
+  semantic_analysis::TypeSystem& type_system() {
+    return module().type_system();
+  }
   semantic_analysis::Context const& context() const { return context_; }
   ast::Module const& ast_module() const { return ast_module_; }
   module::Module& module() { return resources().primary_module(); }
@@ -175,7 +179,7 @@ struct Repl {
     return stmts.back()->as<ast::Expression>();
   }
 
-  semantic_analysis::IrFunction const* function(data_types::LocalFnId f) {
+  vm::Function const* function(data_types::LocalFnId f) {
     return &module().function_table().function(f);
   }
 
@@ -188,8 +192,7 @@ struct Repl {
                           semantic_analysis::QualifiedType qt);
   void PrintType(std::ostream& os, core::Type t);
 
-  std::optional<semantic_analysis::IrFunction> ExecutionFunction(
-      std::string&& source);
+  std::optional<vm::Function> ExecutionFunction(std::string&& source);
 
   module::Resources resources_;
   std::deque<std::string> source_content_;

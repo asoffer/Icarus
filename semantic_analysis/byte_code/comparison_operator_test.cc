@@ -1,5 +1,6 @@
 #include "gtest/gtest.h"
 #include "test/repl.h"
+#include "vm/execute.h"
 
 namespace semantic_analysis {
 namespace {
@@ -39,7 +40,7 @@ TEST_P(ComparisonOperatorTest, LessThan) {
   core::Type type = GetParam();
 
   test::Repl repl;
-  IrFunction const& f = *repl.execute<IrFunction const*>(
+  vm::Function const& f = *repl.execute<vm::Function const*>(
       absl::StrFormat(R"((x: %v, y: %v) -> bool { return x < y })",
                       StringOf(type), StringOf(type)));
 
@@ -47,13 +48,13 @@ TEST_P(ComparisonOperatorTest, LessThan) {
   data_types::IntegerTable table;
   jasmin::ExecutionState<InstructionSet> state{table};
 
-  jasmin::Execute(f, state, {Value(type, 3), Value(type, 4)}, result);
+  vm::Execute(f, state, {Value(type, 3), Value(type, 4)}, result);
   EXPECT_TRUE(result);
 
-  jasmin::Execute(f, state, {Value(type, 3), Value(type, 3)}, result);
+  vm::Execute(f, state, {Value(type, 3), Value(type, 3)}, result);
   EXPECT_FALSE(result);
 
-  jasmin::Execute(f, state, {Value(type, 4), Value(type, 3)}, result);
+  vm::Execute(f, state, {Value(type, 4), Value(type, 3)}, result);
   EXPECT_FALSE(result);
 }
 
@@ -62,7 +63,7 @@ TEST_P(ComparisonOperatorTest, LessThanOrEqual) {
 
   test::Repl repl;
 
-  IrFunction const& f = *repl.execute<IrFunction const*>(
+  vm::Function const& f = *repl.execute<vm::Function const*>(
       absl::StrFormat(R"((x: %v, y: %v) -> bool { return x <= y })",
                       StringOf(type), StringOf(type)));
 
@@ -70,13 +71,13 @@ TEST_P(ComparisonOperatorTest, LessThanOrEqual) {
   data_types::IntegerTable table;
   jasmin::ExecutionState<InstructionSet> state{table};
 
-  jasmin::Execute(f, state, {Value(type, 3), Value(type, 4)}, result);
+  vm::Execute(f, state, {Value(type, 3), Value(type, 4)}, result);
   EXPECT_TRUE(result);
 
-  jasmin::Execute(f, state, {Value(type, 3), Value(type, 3)}, result);
+  vm::Execute(f, state, {Value(type, 3), Value(type, 3)}, result);
   EXPECT_TRUE(result);
 
-  jasmin::Execute(f, state, {Value(type, 4), Value(type, 3)}, result);
+  vm::Execute(f, state, {Value(type, 4), Value(type, 3)}, result);
   EXPECT_FALSE(result);
 }
 
@@ -85,7 +86,7 @@ TEST_P(ComparisonOperatorTest, Equal) {
 
   test::Repl repl;
 
-  IrFunction const& f = *repl.execute<IrFunction const*>(
+  vm::Function const& f = *repl.execute<vm::Function const*>(
       absl::StrFormat(R"((x: %v, y: %v) -> bool { return x == y })",
                       StringOf(type), StringOf(type)));
 
@@ -93,23 +94,22 @@ TEST_P(ComparisonOperatorTest, Equal) {
   data_types::IntegerTable table;
   jasmin::ExecutionState<InstructionSet> state{table};
 
-  jasmin::Execute(f, state, {Value(type, 3), Value(type, 4)}, result);
+  vm::Execute(f, state, {Value(type, 3), Value(type, 4)}, result);
   EXPECT_FALSE(result);
 
-  jasmin::Execute(f,  state,{Value(type, 3), Value(type, 3)}, result);
+  vm::Execute(f, state, {Value(type, 3), Value(type, 3)}, result);
   EXPECT_TRUE(result);
 
-  jasmin::Execute(f, state, {Value(type, 4), Value(type, 3)}, result);
+  vm::Execute(f, state, {Value(type, 4), Value(type, 3)}, result);
   EXPECT_FALSE(result);
 }
-
 
 TEST_P(ComparisonOperatorTest, GreaterThanOrEqual) {
   core::Type type = GetParam();
 
   test::Repl repl;
 
-  IrFunction const& f = *repl.execute<IrFunction const*>(
+  vm::Function const& f = *repl.execute<vm::Function const*>(
       absl::StrFormat(R"((x: %v, y: %v) -> bool { return x >= y })",
                       StringOf(type), StringOf(type)));
 
@@ -117,13 +117,13 @@ TEST_P(ComparisonOperatorTest, GreaterThanOrEqual) {
   data_types::IntegerTable table;
   jasmin::ExecutionState<InstructionSet> state{table};
 
-  jasmin::Execute(f, state, {Value(type, 3), Value(type, 4)}, result);
+  vm::Execute(f, state, {Value(type, 3), Value(type, 4)}, result);
   EXPECT_FALSE(result);
 
-  jasmin::Execute(f, state, {Value(type, 3), Value(type, 3)}, result);
+  vm::Execute(f, state, {Value(type, 3), Value(type, 3)}, result);
   EXPECT_TRUE(result);
 
-  jasmin::Execute(f, state, {Value(type, 4), Value(type, 3)}, result);
+  vm::Execute(f, state, {Value(type, 4), Value(type, 3)}, result);
   EXPECT_TRUE(result);
 }
 
@@ -132,7 +132,7 @@ TEST_P(ComparisonOperatorTest, GreaterThan) {
 
   test::Repl repl;
 
-  IrFunction const& f = *repl.execute<IrFunction const*>(
+  vm::Function const& f = *repl.execute<vm::Function const*>(
       absl::StrFormat(R"((x: %v, y: %v) -> bool { return x > y })",
                       StringOf(type), StringOf(type)));
 
@@ -140,13 +140,13 @@ TEST_P(ComparisonOperatorTest, GreaterThan) {
   data_types::IntegerTable table;
   jasmin::ExecutionState<InstructionSet> state{table};
 
-  jasmin::Execute(f, state, {Value(type, 3), Value(type, 4)}, result);
+  vm::Execute(f, state, {Value(type, 3), Value(type, 4)}, result);
   EXPECT_FALSE(result);
 
-  jasmin::Execute(f, state, {Value(type, 3), Value(type, 3)}, result);
+  vm::Execute(f, state, {Value(type, 3), Value(type, 3)}, result);
   EXPECT_FALSE(result);
 
-  jasmin::Execute(f, state, {Value(type, 4), Value(type, 3)}, result);
+  vm::Execute(f, state, {Value(type, 4), Value(type, 3)}, result);
   EXPECT_TRUE(result);
 }
 
@@ -157,49 +157,49 @@ INSTANTIATE_TEST_SUITE_P(All, ComparisonOperatorTest,
 TEST(ComparisonOperatorTest, Chains) {
   test::Repl repl;
 
-  IrFunction const& f = *repl.execute<IrFunction const*>(
+  vm::Function const& f = *repl.execute<vm::Function const*>(
       R"((x: i64, y: i64, z: i64) -> bool { return x > y == z })");
 
   bool result;
   data_types::IntegerTable table;
   jasmin::ExecutionState<InstructionSet> state{table};
 
-  jasmin::Execute(f, state, {int64_t{4}, int64_t{4}, int64_t{4}}, result);
+  vm::Execute(f, state, {int64_t{4}, int64_t{4}, int64_t{4}}, result);
   EXPECT_FALSE(result);
-  jasmin::Execute(f, state, {int64_t{3}, int64_t{4}, int64_t{4}}, result);
-  EXPECT_FALSE(result);
-
-  jasmin::Execute(f, state, {int64_t{4}, int64_t{3}, int64_t{4}}, result);
-  EXPECT_FALSE(result);
-  jasmin::Execute(f, state, {int64_t{3}, int64_t{3}, int64_t{4}}, result);
+  vm::Execute(f, state, {int64_t{3}, int64_t{4}, int64_t{4}}, result);
   EXPECT_FALSE(result);
 
-  jasmin::Execute(f, state, {int64_t{4}, int64_t{4}, int64_t{3}}, result);
+  vm::Execute(f, state, {int64_t{4}, int64_t{3}, int64_t{4}}, result);
   EXPECT_FALSE(result);
-  jasmin::Execute(f, state, {int64_t{3}, int64_t{4}, int64_t{3}}, result);
+  vm::Execute(f, state, {int64_t{3}, int64_t{3}, int64_t{4}}, result);
   EXPECT_FALSE(result);
 
-  jasmin::Execute(f, state, {int64_t{4}, int64_t{3}, int64_t{3}}, result);
+  vm::Execute(f, state, {int64_t{4}, int64_t{4}, int64_t{3}}, result);
+  EXPECT_FALSE(result);
+  vm::Execute(f, state, {int64_t{3}, int64_t{4}, int64_t{3}}, result);
+  EXPECT_FALSE(result);
+
+  vm::Execute(f, state, {int64_t{4}, int64_t{3}, int64_t{3}}, result);
   EXPECT_TRUE(result);
-  jasmin::Execute(f, state, {int64_t{3}, int64_t{3}, int64_t{3}}, result);
+  vm::Execute(f, state, {int64_t{3}, int64_t{3}, int64_t{3}}, result);
   EXPECT_FALSE(result);
 }
 
 TEST(ComparisonOperatorTest, DISABLED_Casting) {
   test::Repl repl;
 
-  IrFunction const& f = *repl.execute<IrFunction const*>(
+  vm::Function const& f = *repl.execute<vm::Function const*>(
       R"((x: i64, y: i64, z: i32) -> bool { return x > y })");
 
   bool result;
   data_types::IntegerTable table;
   jasmin::ExecutionState<InstructionSet> state{table};
 
-  jasmin::Execute(f, state, {int64_t{4}, int32_t{3}}, result);
+  vm::Execute(f, state, {int64_t{4}, int32_t{3}}, result);
   EXPECT_TRUE(result);
-  jasmin::Execute(f, state, {int64_t{4}, int32_t{4}}, result);
+  vm::Execute(f, state, {int64_t{4}, int32_t{4}}, result);
   EXPECT_FALSE(result);
-  jasmin::Execute(f, state, {int64_t{4}, int32_t{5}}, result);
+  vm::Execute(f, state, {int64_t{4}, int32_t{5}}, result);
   EXPECT_FALSE(result);
 }
 

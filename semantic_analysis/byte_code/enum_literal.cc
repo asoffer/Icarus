@@ -34,7 +34,7 @@ void ByteCodeValueEmitter::operator()(ast::EnumLiteral const* node,
     }
   }
   core::Type type = EnumType(type_system(), std::move(enumerators));
-  data.function().append<jasmin::Push>(type);
+  data.function().AppendPush(type);
 }
 
 void ByteCodeStatementEmitter::operator()(ast::EnumLiteral const*,

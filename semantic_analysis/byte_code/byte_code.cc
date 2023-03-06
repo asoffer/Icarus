@@ -21,19 +21,19 @@ void EmitByteCodeForModule(ast::Module const &ast_module, Context &context,
         }
       });
   auto &f = resources.primary_module().initializer();
-  f.append<jasmin::StackAllocate>(offset.value());
+  f.AppendStackAllocate(offset.value());
   e.Emit(&ast_module, FunctionData(f, variable_offsets));
-  f.append<jasmin::Return>();
+  f.AppendReturn();
 }
 
-IrFunction EmitByteCode(QualifiedType qualified_type,
+vm::Function EmitByteCode(QualifiedType qualified_type,
                         ast::Expression const &expression, Context &context,
                         module::Resources &resources) {
   core::TypeContour contour = ContourOf(
       qualified_type.type(), resources.primary_module().type_system());
   size_t values_needed = contour.bytes().value() / jasmin::ValueSize +
                          (((contour.bytes().value() % jasmin::ValueSize) != 0));
-  IrFunction f(0, values_needed);
+  vm::Function f(0, values_needed);
   ByteCodeValueEmitter e(context, resources);
 
   // This `variable_offsets` map is intentionally empty. There will never be
@@ -43,7 +43,7 @@ IrFunction EmitByteCode(QualifiedType qualified_type,
   // value directly rather than adding instructions which load at runtime.
   nth::flyweight_map<ast::Declaration::Id const *, size_t> variable_offsets;
   e.Emit(&expression, FunctionData(f, variable_offsets));
-  f.append<jasmin::Return>();
+  f.AppendReturn();
   return f;
 }
 
@@ -57,12 +57,12 @@ std::span<std::byte const> EvaluateConstant(Context &context,
     // TODO: Integers are an annoying special case at the moment.
     core::TypeContour contour = ContourOf(qt.type(), resources.primary_module().type_system());
     if (PassInRegister(contour)) {
-      IrFunction f = EmitByteCode(qt, *expr, context, resources);
+      vm::Function f = EmitByteCode(qt, *expr, context, resources);
 
       data_types::IntegerTable table;
       jasmin::ValueStack value_stack;
-      jasmin::Execute(f, jasmin::ExecutionState<InstructionSet>{table},
-                      value_stack);
+      vm::Execute(f, jasmin::ExecutionState<InstructionSet>{table},
+                  value_stack);
       result_ptr->resize(contour.bytes().value());
       std::byte *data = result_ptr->data();
       for (std::byte *ptr = data + result_ptr->size() - jasmin::ValueSize;
