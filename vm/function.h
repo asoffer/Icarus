@@ -6,7 +6,7 @@
 #include "jasmin/value.h"
 #include "semantic_analysis/type_system.h"
 #include "serialization/foreign_symbol_map.h"
-#include "vm/instructions.h"
+#include "vm/immediate_values.h"
 
 namespace vm {
 

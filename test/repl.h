@@ -13,7 +13,6 @@
 #include "module/module.h"
 #include "module/resources.h"
 #include "semantic_analysis/context.h"
-#include "semantic_analysis/instruction_set.h"
 #include "semantic_analysis/type_system.h"
 #include "serialization/foreign_symbol_map.h"
 #include "vm/function.h"
@@ -138,7 +137,7 @@ struct Repl {
     using type = nth::type_t<t>;
 
     if (std::optional f = ExecutionFunction(std::move(source))) {
-      jasmin::ExecutionState<semantic_analysis::InstructionSet> state{table_};
+      vm::ExecutionState state{table_};
 
       if constexpr (FitsInRegister<type>()) {
         type result;

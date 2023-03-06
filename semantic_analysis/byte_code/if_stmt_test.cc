@@ -20,7 +20,7 @@ TEST(IfStmt, DISABLED_Computation) {
   })");
   int64_t result;
   data_types::IntegerTable table;
-  jasmin::ExecutionState<InstructionSet> state{table};
+  vm::ExecutionState state{table};
 
   vm::Execute(f, state, {true}, result);
   EXPECT_EQ(result, 3);

@@ -50,7 +50,6 @@ cc_library(
         "//module",
         "//module:resources",
         "//semantic_analysis:context",
-        "//semantic_analysis:instruction_set",
         "//semantic_analysis:type_system",
         "//semantic_analysis/type_verification:casting",
         "//vm:function",

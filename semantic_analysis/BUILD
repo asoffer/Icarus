@@ -5,7 +5,6 @@ cc_library(
     hdrs = ["context.h"],
     srcs = ["context.cc"],
     deps = [
-        ":instruction_set",
         ":type_system",
         "//ast",
         "//base:debug",

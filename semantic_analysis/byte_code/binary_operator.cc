@@ -1,3 +1,4 @@
+#include "jasmin/instructions/arithmetic.h"
 #include "semantic_analysis/byte_code/emitter.h"
 #include "semantic_analysis/type_verification/casting.h"
 

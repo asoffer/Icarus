@@ -6,13 +6,9 @@
 
 #include "jasmin/instruction.h"
 #include "jasmin/value_stack.h"
+#include "vm/immediate_values.h"
 
 namespace vm {
-
-struct ZeroExtendOptions {
-  uint32_t from_bits;
-  uint32_t to_bits;
-};
 
 template <bool FromSigned, bool ToSigned>
 struct ZeroExtend

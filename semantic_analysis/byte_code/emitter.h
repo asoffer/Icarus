@@ -10,7 +10,6 @@
 #include "module/resources.h"
 #include "nth/container/flyweight_map.h"
 #include "semantic_analysis/context.h"
-#include "semantic_analysis/instruction_set.h"
 #include "semantic_analysis/type_system.h"
 #include "vm/function.h"
 #include "vm/execute.h"
@@ -233,7 +232,7 @@ T Emitter<E>::EvaluateAs(ast::Expression const *expression) {
 
   T result;
   data_types::IntegerTable table;
-  vm::Execute(f, jasmin::ExecutionState<InstructionSet>{table}, {}, result);
+  vm::Execute(f, vm::ExecutionState{table}, {}, result);
   return result;
 }
 

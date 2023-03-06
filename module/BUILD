@@ -6,10 +6,10 @@ cc_library(
     hdrs = ["module.h"],
     srcs = ["module.cc"],
     deps = [
+        ":global_module_map",
         ":symbol",
         "//base:ptr_span",
         "//data_types:integer",
-        "//semantic_analysis:instruction_set",
         "//semantic_analysis:type_system",
         "//serialization:foreign_symbol_map",
         "//serialization:function_table",

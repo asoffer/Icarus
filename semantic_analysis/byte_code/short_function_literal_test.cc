@@ -13,7 +13,7 @@ TEST(FunctionLiteral, NoParameters) {
   vm::Function const& f = *repl.execute<vm::Function const*>("() => true");
   bool result;
   data_types::IntegerTable table;
-  jasmin::ExecutionState<InstructionSet> state{table};
+  vm::ExecutionState state{table};
 
   vm::Execute(f, state, {}, result);
   EXPECT_TRUE(result);
@@ -25,7 +25,7 @@ TEST(FunctionLiteral, OneParameter) {
   vm::Function const& f = *repl.execute<vm::Function const*>("(n: i64) => -n");
   int64_t result;
   data_types::IntegerTable table;
-  jasmin::ExecutionState<InstructionSet> state{table};
+  vm::ExecutionState state{table};
 
   vm::Execute(f, state, {int64_t{3}}, result);
   EXPECT_EQ(result, -3);

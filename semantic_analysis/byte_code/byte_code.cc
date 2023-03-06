@@ -61,8 +61,7 @@ std::span<std::byte const> EvaluateConstant(Context &context,
 
       data_types::IntegerTable table;
       jasmin::ValueStack value_stack;
-      vm::Execute(f, jasmin::ExecutionState<InstructionSet>{table},
-                  value_stack);
+      vm::Execute(f, vm::ExecutionState{table}, value_stack);
       result_ptr->resize(contour.bytes().value());
       std::byte *data = result_ptr->data();
       for (std::byte *ptr = data + result_ptr->size() - jasmin::ValueSize;

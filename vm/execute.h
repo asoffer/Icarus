@@ -1,17 +1,28 @@
 #ifndef ICARUS_VM_EXECUTE_H
 #define ICARUS_VM_EXECUTE_H
 
-#include "jasmin/execution_state.h"
+#include "data_types/integer.h"
 #include "jasmin/value_stack.h"
 #include "vm/function.h"
-#include "vm/implementation.h"
 
 namespace vm {
 
-using ExecutionState =
-    jasmin::ExecutionState<semantic_analysis::InstructionSet>;
-void Execute(Function const& f, ExecutionState state,
-             jasmin::ValueStack& value_stack);
+struct ExecutionState {
+  ExecutionState(data_types::IntegerTable& table);
+
+  ExecutionState(ExecutionState const& state);
+  ExecutionState(ExecutionState&& state);
+  ExecutionState& operator=(ExecutionState const& state);
+  ExecutionState& operator=(ExecutionState&& state);
+  ~ExecutionState();
+
+  friend void Execute(Function const& f, ExecutionState state,
+                      jasmin::ValueStack& value_stack);
+
+ private:
+  alignas(void*) char data_[2 * sizeof(void*)];
+};
+
 void Execute(Function const& f, ExecutionState state,
              std::initializer_list<jasmin::Value> values);
 

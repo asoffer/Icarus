@@ -13,6 +13,16 @@ inline IrFunction const &Impl(char const *p) {
   return *reinterpret_cast<IrFunction const *>(p);
 }
 
+using ExecutionState =
+    jasmin::ExecutionState<semantic_analysis::InstructionSet>;
+
+inline ExecutionState &ExecutionStateImpl(char *p) {
+  return *reinterpret_cast<ExecutionState *>(p);
+}
+inline ExecutionState const &ExecutionStateImpl(char const *p) {
+  return *reinterpret_cast<ExecutionState const *>(p);
+}
+
 }  // namespace vm::internal
 
 #endif  // ICARUS_VM_IMPLEMENTATION_H

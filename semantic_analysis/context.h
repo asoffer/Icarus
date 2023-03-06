@@ -5,7 +5,6 @@
 #include "absl/container/node_hash_map.h"
 #include "ast/ast.h"
 #include "module/symbol.h"
-#include "semantic_analysis/instruction_set.h"
 #include "semantic_analysis/type_system.h"
 
 namespace semantic_analysis {

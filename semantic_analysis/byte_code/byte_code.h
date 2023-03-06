@@ -10,7 +10,6 @@
 #include "module/module.h"
 #include "module/resources.h"
 #include "semantic_analysis/context.h"
-#include "semantic_analysis/instruction_set.h"
 #include "semantic_analysis/type_system.h"
 #include "vm/execute.h"
 
@@ -40,7 +39,7 @@ T EvaluateAs(Context& context, module::Resources& resources,
   vm::Function f = EmitByteCode(qt, *expr, context, resources);
 
   data_types::IntegerTable table;
-  jasmin::ExecutionState<InstructionSet> state{table};
+  vm::ExecutionState state{table};
   T result;
   if (PassInRegister(qt, resources.primary_module().type_system())) {
     vm::Execute(f, state, {}, result);

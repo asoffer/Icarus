@@ -27,7 +27,7 @@ TEST(Call, BuiltinForeign) {
   // EXPECT_EQ(result, fn);
   //
   // data_types::IntegerTable table;
-  // jasmin::ExecutionState<InstructionSet> state{table};
+  // vm::ExecutionState state{table};
   //
   // int32_t value;
   // vm::Execute(*fn, state, {int32_t{7}}, value);

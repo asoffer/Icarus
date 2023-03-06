@@ -11,7 +11,6 @@
 #include "jasmin/execute.h"
 #include "module/module.h"
 #include "module/resources.h"
-#include "semantic_analysis/instruction_set.h"
 #include "toolchain/bazel.h"
 #include "toolchain/flags.h"
 #include "vm/execute.h"
@@ -121,8 +120,7 @@ bool Execute(serialization::UniqueModuleId module_id,
   value_stack.push(arguments.size());
   data_types::IntegerTable table;
   vm::Execute(resources.primary_module().initializer(),
-              jasmin::ExecutionState<semantic_analysis::InstructionSet>{table},
-              value_stack);
+              vm::ExecutionState{table}, value_stack);
   return true;
 }
 

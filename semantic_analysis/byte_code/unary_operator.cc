@@ -1,3 +1,4 @@
+#include "jasmin/instructions/arithmetic.h"
 #include "semantic_analysis/byte_code/emitter.h"
 
 namespace semantic_analysis {

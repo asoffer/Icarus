@@ -7,6 +7,7 @@ cc_library(
     deps = [
         ":function",
         ":implementation",
+        "//data_types:integer",
         "@asoffer_jasmin//jasmin:execute",
         "@asoffer_jasmin//jasmin:execution_state",
         "@asoffer_jasmin//jasmin:function",
@@ -19,8 +20,8 @@ cc_library(
     hdrs = ["function.h"],
     srcs = ["function.cc"],
     deps = [
+        ":immediate_values",
         ":implementation",
-        ":instructions",
         "//core/type_system:type",
         "//serialization:foreign_symbol_map",
         "@asoffer_jasmin//jasmin:function",
@@ -41,9 +42,17 @@ cc_library(
 )
 
 cc_library(
+    name = "immediate_values",
+    hdrs = ["immediate_values.h"],
+    visibility = ["//visibility:private"],
+    deps = [],
+)
+
+cc_library(
     name = "instructions",
     hdrs = ["instructions.h"],
     deps = [
+        ":immediate_values",
         "@asoffer_jasmin//jasmin:instruction",
         "@asoffer_jasmin//jasmin:value_stack",
     ],

@@ -81,7 +81,6 @@ cc_library(
         "//module:resources",
         "//semantic_analysis/byte_code",
         "//semantic_analysis:context",
-        "//semantic_analysis:instruction_set",
         "//semantic_analysis:type_system",
         "//semantic_analysis:task",
         "@asoffer_jasmin//jasmin:execute",
