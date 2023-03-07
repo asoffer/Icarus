@@ -61,7 +61,7 @@ void BuiltinForeignFunction::execute(
 
 void BuiltinForeignPointer::execute(
     jasmin::ValueStack& value_stack,
-    BuiltinForeignPointer::JasminExecutionState& foreign_symbol_map,
+    BuiltinForeignPointer::execution_state& foreign_symbol_map,
     core::Type type) {
   size_t length          = value_stack.pop<size_t>();
   char const* data       = value_stack.pop<char const*>();

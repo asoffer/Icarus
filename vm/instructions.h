@@ -74,9 +74,9 @@ struct BuiltinForeignFunction
 
 struct BuiltinForeignPointer
     : jasmin::StackMachineInstruction<BuiltinForeignPointer> {
-  using JasminExecutionState = serialization::ForeignSymbolMap;
+  using execution_state = serialization::ForeignSymbolMap;
   static void execute(jasmin::ValueStack& value_stack,
-                      JasminExecutionState& foreign_symbol_map,
+                      execution_state& foreign_symbol_map,
                       core::Type type);
 };
 
@@ -117,9 +117,9 @@ struct TemporarySpace {
 };
 
 struct AllocateTemporary : jasmin::StackMachineInstruction<AllocateTemporary> {
-  using JasminFunctionState = TemporarySpace;
+  using function_state = TemporarySpace;
   static void execute(jasmin::ValueStack& value_stack,
-                      JasminFunctionState& space, size_t size_in_bytes) {
+                      function_state& space, size_t size_in_bytes) {
     auto* p = space.allocate(size_in_bytes);
     value_stack.push(p);
   }
@@ -189,8 +189,8 @@ struct Destroy : jasmin::StackMachineInstruction<Destroy<T>> {
 
 struct DeallocateAllTemporaries
     : jasmin::StackMachineInstruction<DeallocateAllTemporaries> {
-  using JasminFunctionState = TemporarySpace;
-  static void execute(JasminFunctionState& space) { space.free_all(); }
+  using function_state = TemporarySpace;
+  static void execute(function_state& space) { space.free_all(); }
 };
 
 struct IncrementPointer : jasmin::StackMachineInstruction<IncrementPointer> {

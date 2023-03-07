@@ -32,9 +32,8 @@ struct IntegerHandle {
   nth::Integer const& value() const { return *ptr_; }
 
   struct Negate : jasmin::StackMachineInstruction<Negate> {
-    using JasminExecutionState = IntegerTable;
-    static IntegerHandle execute(JasminExecutionState& table,
-                                 IntegerHandle handle) {
+    using execution_state = IntegerTable;
+    static IntegerHandle execute(execution_state& table, IntegerHandle handle) {
       return table.insert(-handle.value());
     }
   };

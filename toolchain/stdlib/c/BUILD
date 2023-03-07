@@ -12,4 +12,5 @@ ic_library(
     name = "errno",
     srcs = ["errno.ic"],
     visibility = ["//visibility:public"],
+    deps= [":types"],
 )
