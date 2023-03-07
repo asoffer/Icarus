@@ -2,6 +2,7 @@ syntax = "proto3";
 
 import "serialization/constants.proto";
 import "serialization/proto/foreign_symbol_map.proto";
+import "serialization/proto/function.proto";
 import "serialization/proto/function_index.proto";
 import "serialization/proto/function_table.proto";
 import "serialization/proto/module_map.proto";

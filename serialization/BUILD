@@ -29,31 +29,21 @@ cc_library(
 )
 
 cc_proto_library(
-    name = "function_table_proto",
-    deps = ["//serialization/proto:function_table"],
+    name = "function_proto",
+    deps = ["//serialization/proto:function"],
+    visibility = ["//visibility:public"],
 )
 
-cc_library(
-    name = "function_table",
-    hdrs = ["function_table.h"],
+cc_proto_library(
+    name = "function_table_proto",
     visibility = ["//visibility:public"],
-    deps = [
-        ":function_index",
-        ":function_table_proto",
-        ":module_index",
-        "//base:debug",
-        "//module:global_function_map",
-        "@asoffer_jasmin//jasmin:serialization",
-        "@com_google_absl//absl/container:btree",
-        "@com_google_absl//absl/container:flat_hash_map",
-    ],
+    deps = ["//serialization/proto:function_table"],
 )
 
 cc_proto_library(
     name = "foreign_symbol_map_proto",
     deps = ["//serialization/proto:foreign_symbol_map"],
 )
-
 
 cc_library(
     name = "foreign_symbol_map",
@@ -76,6 +66,7 @@ proto_library(
         ":constants_proto",
         ":type_system_proto",
         "//serialization/proto:foreign_symbol_map",
+        "//serialization/proto:function",
         "//serialization/proto:function_index",
         "//serialization/proto:function_table",
         "//serialization/proto:module_map",

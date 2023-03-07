@@ -7,6 +7,11 @@ proto_library(
 )
 
 proto_library(
+    name = "function",
+    srcs = ["function.proto"],
+)
+
+proto_library(
     name = "function_index",
     srcs = ["function_index.proto"],
 )
@@ -14,7 +19,10 @@ proto_library(
 proto_library(
     name = "function_table",
     srcs = ["function_table.proto"],
-    deps = [":function_index"],
+    deps = [
+        ":function",
+        ":function_index",
+    ],
 )
 
 proto_library(

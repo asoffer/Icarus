@@ -1,10 +1,10 @@
 #include "module/module.h"
 
-#include "vm/implementation.h"
 #include "jasmin/serialization.h"
 #include "nth/meta/sequence.h"
 #include "nth/meta/type.h"
 #include "serialization/module.pb.h"
+#include "vm/serialization.h"
 
 namespace module {
 namespace {
@@ -131,54 +131,6 @@ void DeserializeTypeSystem(serialization::TypeSystem const& proto,
   }
 }
 
-struct SerializationState {
-  SerializationState(Module& module, serialization::ModuleIndex module_index,
-                     GlobalModuleMap& module_map, GlobalFunctionMap& fn_map)
-      : module_(module), push_fn_state_(module_index, module_map, fn_map) {}
-  template <typename T>
-  T& get() {
-    constexpr auto t = nth::type<T>;
-    if constexpr (t == nth::type<serialization::ReadOnlyData>) {
-      return module_.read_only_data();
-    } else if constexpr (t == nth::type<serialization::ForeignSymbolMap>) {
-      return module_.foreign_symbol_map();
-    } else {
-      return push_fn_state_;
-    }
-  }
-
-  Module& module() { return module_; }
-
- private:
-  Module& module_;
-  std::tuple<serialization::ModuleIndex, GlobalModuleMap&, GlobalFunctionMap&>
-      push_fn_state_;
-};
-
-void SerializeFunction(vm::Function const& f,
-                       serialization::proto::Function& proto,
-                       SerializationState& state) {
-  proto.set_parameters(f.parameter_count());
-  proto.set_returns(f.return_count());
-  jasmin::Serialize(vm::internal::Impl(f.raw()), *proto.mutable_content(),
-                    state);
-}
-
-struct FunctionTableDeserializationState {
-  FunctionTableDeserializationState(Module& module,
-                                    serialization::ModuleIndex module_index,
-                                    GlobalModuleMap& module_map,
-                                    GlobalFunctionMap& function_map,
-                                    base::PtrSpan<Module const> deps)
-      : state_(module, module_index, module_map, function_map),
-        dependencies_(deps) {}
-  auto& function_state() { return state_; }
-
- private:
-  SerializationState state_;
-  base::PtrSpan<Module const> dependencies_;
-};
-
 }  // namespace
 
 bool Module::Serialize(std::ostream& output,
@@ -190,17 +142,17 @@ bool Module::Serialize(std::ostream& output,
 
   GlobalModuleMap unused;
   // TODO: Fix const-correctness in Jasmin.
-  SerializationState state(const_cast<Module&>(*this),
-                           serialization::ModuleIndex::Invalid(), unused,
-                           function_map);
+  vm::SerializationState state(const_cast<Module&>(*this).read_only_data(),
+                               const_cast<Module&>(*this).foreign_symbol_map(),
+                               serialization::ModuleIndex::Invalid(), unused,
+                               function_map);
 
   serialization::ForeignSymbolMap::Serialize(foreign_symbol_map_,
                                              *proto.mutable_foreign_symbols());
 
-  SerializeFunction(initializer_, *proto.mutable_initializer(), state);
+  vm::Serialize(initializer_, *proto.mutable_initializer(), state);
 
-  serialization::FunctionTable<vm::Function>::Serialize(
-      function_table_, *proto.mutable_function_table(), state);
+  vm::Serialize(function_table_, *proto.mutable_function_table(), state);
 
   serialization::ReadOnlyData::Serialize(read_only_data_,
                                          *proto.mutable_read_only());
@@ -271,16 +223,14 @@ bool Module::DeserializeInto(serialization::Module const& proto,
     }
   }
 
-  FunctionTableDeserializationState state(module, module_index, module_map,
-                                          function_map, dependencies);
-  if (not serialization::FunctionTable<vm::Function>::Deserialize(
-          proto.function_table(), module.function_table_, module_index,
-          state)) {
+  vm::SerializationState state(module.read_only_data(),
+                               module.foreign_symbol_map(), module_index,
+                               module_map, function_map);
+  if (not vm::Deserialize(proto.function_table(), module.function_table_,
+                          module_index, state)) {
     return false;
   }
-  jasmin::Deserialize(proto.initializer().content(),
-                      vm::internal::Impl(module.initializer_.raw()),
-                      state.function_state());
+  vm::Deserialize(proto.initializer(), module.initializer_, state);
 
   return true;
 }

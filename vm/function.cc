@@ -243,6 +243,15 @@ void Function::AppendBuiltinForeignPointer(core::Type t) {
   internal::Impl(data_).append<BuiltinForeignPointer>(t);
 }
 
+void Function::AppendInvokeForeignFunction(void (*fn_ptr)(),
+                                           core::FunctionType t) {
+  auto const &parameters = t.parameters();
+  std::span returns      = t.returns();
+  internal::Impl(data_).append<InvokeForeignFunction>(
+      fn_ptr, parameters.data(), parameters.size(),
+      returns.empty() ? nullptr : returns.data());
+}
+
 template <typename Behavior, typename T>
 void Function::AppendLessThan() {
   if constexpr (nth::type<Behavior> == nth::type<Function::Append>) {

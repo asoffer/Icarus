@@ -6,7 +6,6 @@ cc_library(
     srcs = ["execute.cc"],
     deps = [
         ":function",
-        ":implementation",
         "//data_types:integer",
         "@asoffer_jasmin//jasmin:execute",
         "@asoffer_jasmin//jasmin:execution_state",
@@ -17,51 +16,30 @@ cc_library(
 
 cc_library(
     name = "function",
-    hdrs = ["function.h"],
-    srcs = ["function.cc"],
+    hdrs = [
+        "function.h",
+        "function_table.h"
+    ],
+    srcs = [
+        "function.cc",
+        "function_table.cc",
+        "implementation.h",
+        "instructions.h",
+        "instructions.cc",
+    ],
     deps = [
         ":immediate_values",
-        ":implementation",
-        "//core/type_system:type",
-        "//serialization:foreign_symbol_map",
-        "@asoffer_jasmin//jasmin:function",
-        "@asoffer_jasmin//jasmin:value",
-    ]
-)
-
-
-cc_library(
-    name = "implementation",
-    hdrs = ["implementation.h"],
-    # TODO visibility = ["//visibility:private"],
-    deps = [
-        ":instructions",
-        "@asoffer_jasmin//jasmin:function",
-        "@asoffer_jasmin//jasmin:value",
-    ]
-)
-
-cc_library(
-    name = "immediate_values",
-    hdrs = ["immediate_values.h"],
-    visibility = ["//visibility:private"],
-    deps = [],
-)
-
-cc_library(
-    name = "instructions",
-    hdrs = ["instructions.h"],
-    srcs = ["instructions.cc"],
-    deps = [
-        ":immediate_values",
-        "//semantic_analysis:type_system",
+        "//base:debug",
         "//core/type_system",
+        "//core/type_system:type",
         "//data_types:integer",
         "//data_types:fn",
         "//module:global_function_map",
         "//module:global_module_map",
+        "//semantic_analysis:type_system",
         "//serialization:foreign_symbol_map",
-        "//serialization:function_table",
+        "//serialization:function_index",
+        "//serialization:function_table_proto",
         "//serialization:module_index",
         "//serialization:read_only_data",
         "@asoffer_nth//nth/numeric:integer",
@@ -74,7 +52,30 @@ cc_library(
         "@asoffer_jasmin//jasmin/instructions:core",
         "@asoffer_jasmin//jasmin/instructions:stack",
         "@asoffer_jasmin//jasmin:serialization",
+        "@asoffer_jasmin//jasmin:value",
         "@asoffer_jasmin//jasmin:value_stack",
+        "@com_google_absl//absl/container:btree",
+        "@com_google_absl//absl/container:flat_hash_map",
+    ]
+)
 
+
+cc_library(
+    name = "immediate_values",
+    hdrs = ["immediate_values.h"],
+    visibility = ["//visibility:private"],
+    deps = [],
+)
+
+cc_library(
+    name = "serialization",
+    hdrs = ["serialization.h"],
+    srcs = ["serialization.cc"],
+    deps = [
+        ":function",
+        "//serialization:foreign_symbol_map",
+        "//serialization:function_proto",
+        "//serialization:module",
+        "//serialization:read_only_data",
     ],
 )

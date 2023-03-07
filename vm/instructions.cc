@@ -5,7 +5,7 @@
 #include "absl/container/inlined_vector.h"
 #include "data_types/fn.h"
 #include "jasmin/value.h"
-#include "serialization/function_table.h"
+#include "vm/function.h"
 
 namespace vm {
 namespace {
@@ -37,17 +37,13 @@ T Read(ffi_arg const& value) {
 }  // namespace
 
 void BuiltinForeignFunction::execute(
-    jasmin::ValueStack& value_stack, core::Type t, void* raw_table,
+    jasmin::ValueStack& value_stack, core::Type t, FunctionTable* table,
     serialization::ForeignSymbolMap* foreign_symbol_map,
     semantic_analysis::TypeSystem* ts) {
   auto fn_type     = t.get<core::FunctionType>(*ts);
   size_t length    = value_stack.pop<size_t>();
   char const* data = value_stack.pop<char const*>();
   std::string name(data, length);
-
-  auto& table = *static_cast<
-      serialization::FunctionTable<jasmin::Function<InstructionSet>>*>(
-      raw_table);
 
   auto [index, inserted] = foreign_symbol_map->insert({
       .type = fn_type,
@@ -56,12 +52,10 @@ void BuiltinForeignFunction::execute(
 
   auto const& parameters = fn_type.parameters();
   std::span returns      = fn_type.returns();
-  auto [fn_index, f]     = table.emplace(parameters.size(), returns.size());
+  auto [fn_index, f]     = table->emplace(parameters.size(), returns.size());
   ASSERT(returns.size() <= 1);
-  f->append<InvokeForeignFunction>(foreign_symbol_map->function(index),
-                                   parameters.data(), parameters.size(),
-                                   returns.empty() ? nullptr : returns.data());
-  f->append<jasmin::Return>();
+  f->AppendInvokeForeignFunction(foreign_symbol_map->function(index), fn_type);
+  f->AppendReturn();
   value_stack.push(f);
 }
 

@@ -12,11 +12,10 @@ cc_library(
         "//data_types:integer",
         "//semantic_analysis:type_system",
         "//serialization:foreign_symbol_map",
-        "//serialization:function_table",
         "//serialization:module",
         "//serialization:read_only_data",
         "//vm:function",
-        "//vm:implementation",
+        "//vm:serialization",
         "@asoffer_jasmin//jasmin:serialization",
     ],
 )

@@ -13,11 +13,11 @@
 #include "module/symbol.h"
 #include "semantic_analysis/type_system.h"
 #include "serialization/foreign_symbol_map.h"
-#include "serialization/function_table.h"
 #include "serialization/module.pb.h"
 #include "serialization/module_index.h"
 #include "serialization/read_only_data.h"
 #include "vm/function.h"
+#include "vm/function_table.h"
 
 namespace module {
 
@@ -69,12 +69,8 @@ struct Module {
 
   auto const &read_only_data() const { return read_only_data_; }
   auto &read_only_data() { return read_only_data_; }
-  serialization::FunctionTable<vm::Function> const &function_table() const {
-    return function_table_;
-  }
-  serialization::FunctionTable<vm::Function> &function_table() {
-    return function_table_;
-  }
+  vm::FunctionTable const &function_table() const { return function_table_; }
+  vm::FunctionTable &function_table() { return function_table_; }
 
   std::pair<serialization::FunctionIndex, vm::Function const *> Wrap(
       vm::Function const *f);
@@ -97,7 +93,7 @@ struct Module {
   // TODO: Mutable because jasmin doesn't correctly pass const qualifiers
   // through `get`. Remove when that's fixed.
   mutable serialization::ForeignSymbolMap foreign_symbol_map_{&type_system_};
-  mutable serialization::FunctionTable<vm::Function> function_table_;
+  mutable vm::FunctionTable function_table_;
 
   // All integer constants used in the module.
   data_types::IntegerTable integer_table_;

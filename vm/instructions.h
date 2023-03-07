@@ -19,9 +19,9 @@
 #include "module/global_module_map.h"
 #include "semantic_analysis/type_system.h"
 #include "serialization/foreign_symbol_map.h"
-#include "serialization/function_table.h"
 #include "serialization/module_index.h"
 #include "serialization/read_only_data.h"
+#include "vm/function_table.h"
 #include "vm/immediate_values.h"
 #include "vm/instructions.h"
 
@@ -67,7 +67,7 @@ struct ZeroExtend
 struct BuiltinForeignFunction
     : jasmin::StackMachineInstruction<BuiltinForeignFunction> {
   static void execute(jasmin::ValueStack& value_stack, core::Type t,
-                      void* raw_table,
+                      FunctionTable* table,
                       serialization::ForeignSymbolMap* foreign_symbol_map,
                       semantic_analysis::TypeSystem* ts);
 };

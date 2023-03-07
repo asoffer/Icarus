@@ -54,6 +54,7 @@ struct Function {
       serialization::ForeignSymbolMap *foreign_symbol_map,
       semantic_analysis::TypeSystem *ts);
   void AppendBuiltinForeignPointer(core::Type t);
+  void AppendInvokeForeignFunction(void (*fn_ptr)(), core::FunctionType t);
 
   void AppendNot();
   void AppendXor();
