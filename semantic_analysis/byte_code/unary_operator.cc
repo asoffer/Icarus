@@ -16,6 +16,10 @@ void ByteCodeValueEmitter::operator()(ast::UnaryOperator const *node,
       data.function().AppendPush(&type_system());
       data.function().AppendMakePointerType();
     } break;
+    case ast::UnaryOperator::Kind::Not: {
+      Emit(node->operand(), data);
+      data.function().AppendNot();
+    } break;
     case ast::UnaryOperator::Kind::Negate: {
       auto type = context().qualified_type(node).type();
       if (type == Integer) {

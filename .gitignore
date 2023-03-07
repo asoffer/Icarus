@@ -9,3 +9,4 @@ docs/Gemfile.lock
 compile_commands.json
 external
 .vscode/
+ignored/

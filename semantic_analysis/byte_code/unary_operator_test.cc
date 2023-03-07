@@ -43,5 +43,11 @@ TEST(UnaryOperator, Negation) {
             nth::Integer(1234));
 }
 
+TEST(UnaryOperator, Not) {
+  test::Repl repl;
+  EXPECT_FALSE(repl.execute<bool>("not true"));
+  EXPECT_TRUE(repl.execute<bool>("not false"));
+}
+
 }  // namespace
 }  // namespace semantic_analysis
