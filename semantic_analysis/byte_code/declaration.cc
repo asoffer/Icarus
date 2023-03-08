@@ -33,8 +33,7 @@ std::span<std::byte const> EmitConstantDeclaration(
     } break;
     case ast::Declaration::kInferred: {
       if (node->ids().size() != 1) { NOT_YET(); }
-      std::span x = emitter.EvaluateConstant(node->init_val(), qt);
-      return x;
+      return emitter.EvaluateConstant(node->init_val(), qt);
     } break;
     default: NOT_YET(node->DebugString());
   }

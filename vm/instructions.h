@@ -139,6 +139,8 @@ struct PushStringLiteral : jasmin::StackMachineInstruction<PushStringLiteral> {
   static bool deserialize(jasmin::Deserializer& deserializer,
                           std::span<jasmin::Value> values,
                           serialization_state& state);
+
+  static std::string debug(std::span<jasmin::Value const, 2> immediates);
 };
 
 struct PushFunction : jasmin::StackMachineInstruction<PushFunction> {
@@ -154,6 +156,8 @@ struct PushFunction : jasmin::StackMachineInstruction<PushFunction> {
   static bool deserialize(jasmin::Deserializer& deserializer,
                           std::span<jasmin::Value> values,
                           serialization_state& state);
+
+  static std::string debug(std::span<jasmin::Value const, 1> immediates);
 };
 
 template <typename T>
@@ -196,6 +200,11 @@ struct DeallocateAllTemporaries
 struct IncrementPointer : jasmin::StackMachineInstruction<IncrementPointer> {
   static void execute(jasmin::ValueStack& value_stack, size_t amount) {
     value_stack.push(value_stack.pop<char*>() + amount);
+  }
+
+  static std::string debug(std::span<jasmin::Value const, 1> immediates) {
+    return "increment-pointer " + std::to_string(immediates[0].as<size_t>()) +
+           " byte(s)";
   }
 };
 

@@ -55,7 +55,7 @@ void Function::AppendReturn() {
   internal::Impl(data_).append<jasmin::Return>();
 }
 void Function::AppendDrop(size_t n) {
-  internal::Impl(data_).append<jasmin::Drop>(n);
+  if (n != 0) { internal::Impl(data_).append<jasmin::Drop>(n); }
 }
 void Function::AppendSwap() { internal::Impl(data_).append<jasmin::Swap>(); }
 void Function::AppendPush(jasmin::Value v) {

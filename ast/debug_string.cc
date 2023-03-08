@@ -406,7 +406,13 @@ void ParameterizedStructLiteral::DebugStrAppend(std::string *out,
 }
 
 void Terminal::DebugStrAppend(std::string *out, size_t indent) const {
-  out->append(range());
+  if (type() == nth::type<std::string>) {
+    out->append("\"");
+    out->append(range());
+    out->append("\"");
+  } else {
+    out->append(range());
+  }
 }
 
 void UnaryOperator::DebugStrAppend(std::string *out, size_t indent) const {
