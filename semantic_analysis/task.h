@@ -2,7 +2,6 @@
 #define ICARUS_SEMANTIC_ANALYSIS_TASK_H
 
 #include <coroutine>
-#include <optional>
 #include <queue>
 #include <span>
 #include <utility>
@@ -177,8 +176,8 @@ struct Task<KeyType, PhaseId, ReturnType>::Phase<P, false>
   using return_type           = typename Base::return_type;
   using task_type             = typename Base::task_type;
 
-  explicit Phase(key_type const& key) : Base(key) {}
-  explicit Phase(key_type&& key) : Base(std::move(key)) {}
+  explicit Phase(key_type const& key) : Base(key), return_slot_{} {}
+  explicit Phase(key_type&& key) : Base(std::move(key)), return_slot_{} {}
 
   bool await_suspend(
       std::coroutine_handle<typename task_type::promise_type> handle) noexcept {
