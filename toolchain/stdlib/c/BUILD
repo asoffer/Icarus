@@ -9,8 +9,36 @@ ic_library(
 )
 
 ic_library(
+    name = "ctype",
+    srcs = ["ctype.ic"],
+    visibility = ["//visibility:public"],
+    deps= [":types"],
+)
+
+ic_library(
     name = "errno",
     srcs = ["errno.ic"],
+    visibility = ["//visibility:public"],
+    deps= [":types"],
+)
+
+ic_library(
+    name = "math",
+    srcs = ["math.ic"],
+    visibility = ["//visibility:public"],
+    deps= [":types"],
+)
+
+ic_library(
+    name = "stdlib",
+    srcs = ["stdlib.ic"],
+    visibility = ["//visibility:public"],
+    deps= [":types"],
+)
+
+ic_library(
+    name = "string",
+    srcs = ["string.ic"],
     visibility = ["//visibility:public"],
     deps= [":types"],
 )

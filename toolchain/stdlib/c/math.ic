@@ -1,4 +1,4 @@
-c ::= import "c/types.ic"
+c ::= import "std.c.types"
 
 // Basic operations
 #{export} fabsf      ::= builtin.foreign("fabsf", c.float -> c.float)
@@ -75,7 +75,6 @@ c ::= import "c/types.ic"
 #{export} acosh   ::= builtin.foreign("acosh", c.double -> c.double)
 #{export} atanhf  ::= builtin.foreign("atanhf", c.float -> c.float)
 #{export} atanh   ::= builtin.foreign("atanh", c.double -> c.double)
-#{export} atanh2  ::= builtin.foreign("atanh2", (c.double, c.double) -> c.double)
 
 // Error and gamma functions
 #{export} erff    ::= builtin.foreign("erff", c.float -> c.float)

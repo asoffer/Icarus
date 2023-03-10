@@ -1,4 +1,7 @@
-c ::= import "c/types.ic"
+// This module provides an interface to functions in the <string.h> C-header
+// file.
+
+c ::= import "std.c.types"
 
 #{export} isalnum  ::= builtin.foreign("isalnum", c.int -> c.int)
 #{export} isalpha  ::= builtin.foreign("isalpha", c.int -> c.int)
