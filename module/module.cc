@@ -175,6 +175,10 @@ bool Module::Serialize(std::ostream& output,
         serialization::FunctionIndex::Serialize(
             symbol.as<TypedFunction>().function,
             *exported_symbol.mutable_function());
+      } else if (symbol_type.category() ==
+                 type_system().index<semantic_analysis::PrimitiveType>()) {
+        exported_symbol.set_raw_value(
+            symbol.as<TypedValue>().value.raw_value());
       } else {
         NOT_YET();
       }
@@ -216,6 +220,15 @@ bool Module::DeserializeInto(serialization::Module const& proto,
         module.exported_symbols_[name].push_back(TypedFunction{
             .type     = symbol_type,
             .function = f,
+        });
+      } else if (symbol_type.category() ==
+                 module.type_system_
+                     .index<semantic_analysis::PrimitiveType>()) {
+        jasmin::Value v = jasmin::Value::Uninitialized();
+        v.set_raw_value(symbol.raw_value());
+        module.exported_symbols_[name].push_back(TypedValue{
+            .type  = symbol_type,
+            .value = v,
         });
       } else {
         NOT_YET(semantic_analysis::DebugType(symbol_type, module.type_system_));

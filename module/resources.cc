@@ -83,6 +83,9 @@ Symbol Resources::TranslateToPrimary(serialization::ModuleIndex from,
         .type     = type,
         .function = fn_index,
     });
+  } else if (type.category() ==
+             m.type_system().index<semantic_analysis::PrimitiveType>()) {
+    return symbol;
   } else {
     NOT_YET(semantic_analysis::DebugType(type, primary_module().type_system()));
   }

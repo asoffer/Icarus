@@ -60,6 +60,10 @@ struct Module {
     exported_symbols_[name].push_back(std::move(s));
   }
 
+  void Export(std::string_view name, core::Type t, jasmin::Value v) {
+    Export(name, Symbol(TypedValue{.type = t, .value = v}));
+  }
+
   void Export(std::string_view name, core::Type t, vm::Function const *f) {
     Export(name, Symbol(TypedFunction{
                      .type     = t,

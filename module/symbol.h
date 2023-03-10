@@ -4,6 +4,7 @@
 #include "base/debug.h"
 #include "core/type_system/type.h"
 #include "data_types/fn.h"
+#include "jasmin/value.h"
 
 namespace module {
 
@@ -12,9 +13,16 @@ struct TypedFunction {
   data_types::LocalFnId function;
 };
 
+struct TypedValue {
+  core::Type type;
+  jasmin::Value value;
+};
+
 struct Symbol {
   enum class Kind { Type, Function };
+
   Symbol(core::Type t) : symbol_(t) {}
+  Symbol(TypedValue v) : symbol_(v) {}
   Symbol(TypedFunction f) : symbol_(f) {}
 
   core::Type type() const;
@@ -26,7 +34,7 @@ struct Symbol {
   }
 
  private:
-  std::variant<core::Type, TypedFunction> symbol_;
+  std::variant<core::Type, TypedFunction, TypedValue> symbol_;
 };
 
 }  // namespace module

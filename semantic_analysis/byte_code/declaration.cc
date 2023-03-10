@@ -60,6 +60,13 @@ void ByteCodeStatementEmitter::operator()(ast::Declaration const* node,
             jasmin::Value::Load(evaluation.data(), evaluation.size())
                 .as<vm::Function const*>();
         module().Export(node->ids()[0].name(), qt.type(), f);
+      } else if (qt.type() == Integer) {
+      } else if (qt.type().category() ==
+                     type_system().index<PrimitiveType>() and
+                 evaluation.size() <= jasmin::ValueSize) {
+        module().Export(
+            node->ids()[0].name(), qt.type(),
+            jasmin::Value::Load(evaluation.data(), evaluation.size()));
       } else {
         NOT_YET();
       }

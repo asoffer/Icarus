@@ -30,6 +30,11 @@ void ByteCodeValueEmitter::operator()(ast::Access const* node,
           core::Type t = resources().Translate(symbols[0].as<core::Type>(),
                                                m.type_system(), type_system());
           data.function().AppendPush(t);
+        } else if (symbol_type.category() ==
+                   type_system().index<PrimitiveType>()) {
+          // TODO: There's no need for translation here, but do we want to call
+          // a translation for consistency?
+          data.function().AppendPush(symbols[0].as<module::TypedValue>().value);
         } else {
           NOT_YET();
         }

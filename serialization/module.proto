@@ -16,6 +16,7 @@ message Symbol {
   oneof o {
     Type type = 2;
     proto.FunctionIndex function = 3;
+    uint64 raw_value = 4;
   }
 }
 
