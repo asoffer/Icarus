@@ -92,6 +92,9 @@ struct Function {
   void AppendEndParameterType(semantic_analysis::TypeSystem *ts);
   void AppendEndFunctionType(semantic_analysis::TypeSystem *ts, size_t count);
 
+  void AppendBuiltinAsciiDecode();
+  void AppendBuiltinAsciiEncode();
+
   jasmin::OpCodeRange AppendJumpWithPlaceholders();
   jasmin::OpCodeRange AppendJumpIfWithPlaceholders();
 

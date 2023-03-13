@@ -8,6 +8,7 @@ cc_library(
     deps = [
         ":global_module_map",
         ":symbol",
+        ":type_system",
         "//base:ptr_span",
         "//data_types:integer",
         "//semantic_analysis:type_system",
@@ -81,5 +82,17 @@ cc_library(
         "//serialization:unique_module_id",
         "@com_google_absl//absl/container:flat_hash_map",
         "@asoffer_nth//nth/container:flyweight_set",
+    ],
+)
+
+
+cc_library(
+    name = "type_system",
+    visibility = ["//visibility:public"],
+    hdrs = ["type_system.h"],
+    srcs = ["type_system.cc"],
+    deps = [
+        "//semantic_analysis:type_system",
+        "//serialization:type_system",
     ],
 )

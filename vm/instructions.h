@@ -76,8 +76,7 @@ struct BuiltinForeignPointer
     : jasmin::StackMachineInstruction<BuiltinForeignPointer> {
   using execution_state = serialization::ForeignSymbolMap;
   static void execute(jasmin::ValueStack& value_stack,
-                      execution_state& foreign_symbol_map,
-                      core::Type type);
+                      execution_state& foreign_symbol_map, core::Type type);
 };
 
 struct TranslateFunctionArguments
@@ -118,8 +117,8 @@ struct TemporarySpace {
 
 struct AllocateTemporary : jasmin::StackMachineInstruction<AllocateTemporary> {
   using function_state = TemporarySpace;
-  static void execute(jasmin::ValueStack& value_stack,
-                      function_state& space, size_t size_in_bytes) {
+  static void execute(jasmin::ValueStack& value_stack, function_state& space,
+                      size_t size_in_bytes) {
     auto* p = space.allocate(size_in_bytes);
     value_stack.push(p);
   }
@@ -211,6 +210,23 @@ struct IncrementPointer : jasmin::StackMachineInstruction<IncrementPointer> {
 template <template <typename> typename I, typename... Ts>
 using ApplyInstruction = jasmin::MakeInstructionSet<I<Ts>...>;
 
+struct BuiltinAsciiDecode
+    : jasmin::StackMachineInstruction<BuiltinAsciiDecode> {
+  static uint8_t execute(data_types::Char c) { return c.as_type<uint8_t>(); }
+
+  static std::string debug() { return "builtin.ascii-decode "; }
+};
+
+struct BuiltinAsciiEncode
+    : jasmin::StackMachineInstruction<BuiltinAsciiEncode> {
+  static data_types::Char execute(uint8_t n) { return data_types::Char(n); }
+
+  static std::string debug() { return "builtin.ascii-encode "; }
+};
+
+using BuiltinInstructionSet =
+    jasmin::MakeInstructionSet<BuiltinAsciiDecode, BuiltinAsciiEncode>;
+
 // TODO: core::*Type instructions should be registerable and not required to
 // be explicitly added here.
 struct InstructionSet
@@ -264,7 +280,7 @@ struct InstructionSet
           ApplyInstruction<jasmin::Negate, int8_t, int16_t, int32_t, int64_t,
                            uint8_t, uint16_t, uint32_t, uint64_t, float,
                            double>,
-          jasmin::DumpValueStack> {};
+          jasmin::DumpValueStack, BuiltinInstructionSet> {};
 
 }  // namespace vm
 

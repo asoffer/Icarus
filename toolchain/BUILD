@@ -1,4 +1,5 @@
 package(default_visibility = ["//visibility:public"])
+load("//toolchain:ic_rule.bzl", "ic_builtin")
 
 cc_library(
     name = "bazel",
@@ -14,6 +15,25 @@ cc_library(
         "@com_google_absl//absl/functional:any_invocable",
         "@com_google_absl//absl/container:flat_hash_map",
     ]
+)
+
+cc_binary(
+    name = "builtin_compiler",
+    srcs = ["builtin.cc"],
+    deps = [
+        ":flags",
+        "//core/type_system:type",
+        "//module:global_function_map",
+        "//module:type_system",
+        "//serialization:module",
+        "//semantic_analysis:type_system",
+        "//vm:function",
+        "//vm:serialization",
+        "@com_google_absl//absl/debugging:failure_signal_handler",
+        "@com_google_absl//absl/debugging:symbolize",
+        "@com_google_absl//absl/flags:flag",
+        "@com_google_absl//absl/flags:parse",
+    ],
 )
 
 cc_binary(
@@ -67,4 +87,8 @@ cc_binary(
         "@com_google_absl//absl/flags:flag",
         "@com_google_absl//absl/flags:parse",
     ],
+)
+
+ic_builtin(
+    name = "builtin"
 )

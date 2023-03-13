@@ -332,4 +332,12 @@ jasmin::OpCodeRange Function::AppendJumpIfWithPlaceholders() {
   return internal::Impl(data_).append_with_placeholders<jasmin::JumpIf>();
 }
 
+void Function::AppendBuiltinAsciiDecode() {
+  internal::Impl(data_).append<BuiltinAsciiDecode>();
+}
+
+void Function::AppendBuiltinAsciiEncode() {
+  internal::Impl(data_).append<BuiltinAsciiEncode>();
+}
+
 }  // namespace vm

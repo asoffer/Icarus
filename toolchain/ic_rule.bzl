@@ -15,6 +15,8 @@ def _dotted_path(path):
     start = path.find("//")
     if start != -1:
         path = path[start + 2:]
+    if path == "toolchain:builtin":
+        path = "builtin"
     if path.startswith("toolchain/stdlib"):
         path = "std" + path[len("toolchain/stdlib"):]
     path = path.replace("/", ".").replace(":", ".")
@@ -22,7 +24,15 @@ def _dotted_path(path):
 
 
 def _module_map_file(ctx, module_map_file, short):
+
     lbls = depset(transitive = [d[IcarusInfo].lbls for d in ctx.attr.deps]).to_list()
+    print('\n'.join([
+            "{id}\n{name}\n{icm}".format(
+                id = _unique_id(lbl),
+                name = _dotted_path(lbl),
+                icm = icm.short_path if short else icm.path)
+            for (lbl, icm) in lbls
+        ]))
     ctx.actions.write(
         output = module_map_file,
         content = '\n'.join([
@@ -59,10 +69,11 @@ def _compile_one(ctx, icm_file, icm_deps, module_map_file, short):
  
 
 def _ic_library_impl(ctx):
-    src_deps = depset(transitive = [d[IcarusInfo].srcs for d in ctx.attr.deps])
-    icm_deps = depset(transitive = [d[IcarusInfo].icms for d in ctx.attr.deps])
-    mod_deps = depset(transitive = [d[IcarusInfo].mods for d in ctx.attr.deps])
-    lbl_deps = depset(transitive = [d[IcarusInfo].lbls for d in ctx.attr.deps])
+    deps = [ctx.attr._builtin] + ctx.attr.deps
+    src_deps = depset(transitive = [d[IcarusInfo].srcs for d in deps])
+    icm_deps = depset(transitive = [d[IcarusInfo].icms for d in deps])
+    mod_deps = depset(transitive = [d[IcarusInfo].mods for d in deps])
+    lbl_deps = depset(transitive = [d[IcarusInfo].lbls for d in deps])
 
     icm_file = ctx.actions.declare_file("{label}.icm".format(
         label = ctx.label.name
@@ -96,19 +107,22 @@ ic_library = rule(
             executable = True,
             cfg = ic_tooling_transition,
         ),
+        "_builtin": attr.label(
+            default = Label("//toolchain:builtin"),
+        ),
         "_allowlist_function_transition": attr.label(
             default = "@bazel_tools//tools/allowlists/function_transition_allowlist"
         ),
-
     },
 )
 
 
 def _ic_binary_impl(ctx):
-    src_deps = depset(transitive = [d[IcarusInfo].srcs for d in ctx.attr.deps])
-    icm_deps = depset(transitive = [d[IcarusInfo].icms for d in ctx.attr.deps])
-    mod_deps = depset(transitive = [d[IcarusInfo].mods for d in ctx.attr.deps])
-    lbl_deps = depset(transitive = [d[IcarusInfo].lbls for d in ctx.attr.deps])
+    deps = [ctx.attr._builtin] + ctx.attr.deps
+    src_deps = depset(transitive = [d[IcarusInfo].srcs for d in deps])
+    icm_deps = depset(transitive = [d[IcarusInfo].icms for d in deps])
+    mod_deps = depset(transitive = [d[IcarusInfo].mods for d in deps])
+    lbl_deps = depset(transitive = [d[IcarusInfo].lbls for d in deps])
 
     icm_file = ctx.actions.declare_file("{label}.icm".format(
         label = ctx.label.name
@@ -155,6 +169,9 @@ ic_binary = rule(
             executable = True,
             cfg = ic_tooling_transition,
         ),
+        "_builtin": attr.label(
+            default = Label("//toolchain:builtin"),
+        ),
         "_run_bytecode": attr.label(
             default = Label("//toolchain:run_bytecode"),
             allow_single_file = True,
@@ -167,3 +184,46 @@ ic_binary = rule(
     },
     executable = True,
 )
+
+def _ic_builtin_impl(ctx):
+    icm_file = ctx.actions.declare_file("{label}.icm".format(
+        label = ctx.label.name
+    ))
+
+    mod_file = ctx.actions.declare_file(ctx.label.name + ".icmod")
+    ctx.actions.write(output = mod_file, content = '')
+
+    ctx.actions.run(
+        outputs = [icm_file],
+        arguments = ["--output={}".format(icm_file.path)],
+        progress_message = "Compiling {}".format(ctx.label.name),
+        executable = ctx.attr._compile[0][DefaultInfo].files_to_run.executable,
+    )
+
+    info = IcarusInfo(
+            srcs = depset(),
+            icms = depset([icm_file]),
+            mods = depset(),
+            lbls = depset([(ctx.label, icm_file)]),
+        )
+    return [
+        info,
+        DefaultInfo(files = depset([icm_file, mod_file])),
+    ]
+
+
+ic_builtin = rule(
+    implementation = _ic_builtin_impl,
+    attrs = {
+        "_compile": attr.label(
+            default = Label("//toolchain:builtin_compiler"),
+            allow_single_file = True,
+            executable = True,
+            cfg = ic_tooling_transition,
+        ),
+        "_allowlist_function_transition": attr.label(
+            default = "@bazel_tools//tools/allowlists/function_transition_allowlist"
+        ),
+    },
+)
+
