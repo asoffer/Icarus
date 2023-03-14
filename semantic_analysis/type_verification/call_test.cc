@@ -14,9 +14,9 @@ using ::testing::Pair;
 TEST(Call, NoParameters) {
   test::Repl repl;
   EXPECT_THAT(repl.type_check(R"((() => true)())"),
-              AllOf(HasQualTypes(QualifiedType(Bool)), HasDiagnostics()));
+              AllOf(HasQualTypes(Constant(Bool)), HasDiagnostics()));
   EXPECT_THAT(repl.type_check(R"('(() => true))"),
-              AllOf(HasQualTypes(QualifiedType(Bool)), HasDiagnostics()));
+              AllOf(HasQualTypes(Constant(Bool)), HasDiagnostics()));
   EXPECT_THAT(
       repl.type_check(R"((() => true)(true))"),
       AllOf(HasQualTypes(Error()),
@@ -38,13 +38,13 @@ TEST(Call, NoParameters) {
 TEST(Call, OneParameterWithoutImplicitConversions) {
   test::Repl repl;
   EXPECT_THAT(repl.type_check(R"(((b: bool) => b)(true))"),
-              AllOf(HasQualTypes(QualifiedType(Bool)), HasDiagnostics()));
+              AllOf(HasQualTypes(Constant(Bool)), HasDiagnostics()));
   EXPECT_THAT(repl.type_check(R"(((b: bool) => b)(b = true))"),
-              AllOf(HasQualTypes(QualifiedType(Bool)), HasDiagnostics()));
+              AllOf(HasQualTypes(Constant(Bool)), HasDiagnostics()));
   EXPECT_THAT(repl.type_check(R"(true'((b: bool) => b))"),
-              AllOf(HasQualTypes(QualifiedType(Bool)), HasDiagnostics()));
+              AllOf(HasQualTypes(Constant(Bool)), HasDiagnostics()));
   EXPECT_THAT(repl.type_check(R"((b = true)'((b: bool) => b))"),
-              AllOf(HasQualTypes(QualifiedType(Bool)), HasDiagnostics()));
+              AllOf(HasQualTypes(Constant(Bool)), HasDiagnostics()));
 
   EXPECT_THAT(
       repl.type_check(R"(((b: bool) => b)())"),
@@ -79,54 +79,54 @@ TEST(Call, OneParameterWithoutImplicitConversions) {
 TEST(Call, OneParameterWithImplicitConversions) {
   test::Repl repl;
   EXPECT_THAT(repl.type_check(R"(((n: i64) => n)(3))"),
-              AllOf(HasQualTypes(QualifiedType(I(64))), HasDiagnostics()));
+              AllOf(HasQualTypes(Constant(I(64))), HasDiagnostics()));
   EXPECT_THAT(repl.type_check(R"(((n: i64) => n)(n = 3))"),
-              AllOf(HasQualTypes(QualifiedType(I(64))), HasDiagnostics()));
+              AllOf(HasQualTypes(Constant(I(64))), HasDiagnostics()));
   EXPECT_THAT(repl.type_check(R"(3'((n: i64) => n))"),
-              AllOf(HasQualTypes(QualifiedType(I(64))), HasDiagnostics()));
+              AllOf(HasQualTypes(Constant(I(64))), HasDiagnostics()));
   EXPECT_THAT(repl.type_check(R"((n = 3)'((n: i64) => n))"),
-              AllOf(HasQualTypes(QualifiedType(I(64))), HasDiagnostics()));
+              AllOf(HasQualTypes(Constant(I(64))), HasDiagnostics()));
 }
 
 
 TEST(Call, OneParameterWithDefaults) {
   test::Repl repl;
   EXPECT_THAT(repl.type_check(R"(((b := true) => b)())"),
-              AllOf(HasQualTypes(QualifiedType(Bool)), HasDiagnostics()));
+              AllOf(HasQualTypes(Constant(Bool)), HasDiagnostics()));
   EXPECT_THAT(repl.type_check(R"('((b := true) => b))"),
-              AllOf(HasQualTypes(QualifiedType(Bool)), HasDiagnostics()));
+              AllOf(HasQualTypes(Constant(Bool)), HasDiagnostics()));
 }
 
 TEST(Call, MultipleParametersWithoutImplicitConversions) {
   test::Repl repl;
   EXPECT_THAT(repl.type_check(R"(((b: bool, f: f64) => b)(true, 1.0))"),
-              AllOf(HasQualTypes(QualifiedType(Bool)), HasDiagnostics()));
+              AllOf(HasQualTypes(Constant(Bool)), HasDiagnostics()));
   EXPECT_THAT(repl.type_check(R"(((b: bool, f: f64) => b)(b = true, f = 1.0))"),
-              AllOf(HasQualTypes(QualifiedType(Bool)), HasDiagnostics()));
+              AllOf(HasQualTypes(Constant(Bool)), HasDiagnostics()));
   EXPECT_THAT(repl.type_check(R"(((b: bool, f: f64) => b)(true, f = 1.0))"),
-              AllOf(HasQualTypes(QualifiedType(Bool)), HasDiagnostics()));
+              AllOf(HasQualTypes(Constant(Bool)), HasDiagnostics()));
   EXPECT_THAT(repl.type_check(R"(((b: bool, f: f64) => b)(f = 1.0, b = true))"),
-              AllOf(HasQualTypes(QualifiedType(Bool)), HasDiagnostics()));
+              AllOf(HasQualTypes(Constant(Bool)), HasDiagnostics()));
   EXPECT_THAT(repl.type_check(R"(true'((b: bool, f: f64) => b)(1.0))"),
-              AllOf(HasQualTypes(QualifiedType(Bool)), HasDiagnostics()));
+              AllOf(HasQualTypes(Constant(Bool)), HasDiagnostics()));
   EXPECT_THAT(repl.type_check(R"(true'((b: bool, f: f64) => b)(f = 1.0))"),
-              AllOf(HasQualTypes(QualifiedType(Bool)), HasDiagnostics()));
+              AllOf(HasQualTypes(Constant(Bool)), HasDiagnostics()));
   EXPECT_THAT(
       repl.type_check(R"((b = true)'((b: bool, f: f64) => b)(f = 1.0))"),
-      AllOf(HasQualTypes(QualifiedType(Bool)), HasDiagnostics()));
+      AllOf(HasQualTypes(Constant(Bool)), HasDiagnostics()));
   EXPECT_THAT(
       repl.type_check(R"((f = 1.0)'((b: bool, f: f64) => b)(b = true))"),
-      AllOf(HasQualTypes(QualifiedType(Bool)), HasDiagnostics()));
+      AllOf(HasQualTypes(Constant(Bool)), HasDiagnostics()));
   EXPECT_THAT(repl.type_check(R"((true, 1.0)'((b: bool, f: f64) => b))"),
-              AllOf(HasQualTypes(QualifiedType(Bool)), HasDiagnostics()));
+              AllOf(HasQualTypes(Constant(Bool)), HasDiagnostics()));
   EXPECT_THAT(repl.type_check(R"((true, f = 1.0)'((b: bool, f: f64) => b))"),
-              AllOf(HasQualTypes(QualifiedType(Bool)), HasDiagnostics()));
+              AllOf(HasQualTypes(Constant(Bool)), HasDiagnostics()));
   EXPECT_THAT(
       repl.type_check(R"((b = true, f = 1.0)'((b: bool, f: f64) => b))"),
-      AllOf(HasQualTypes(QualifiedType(Bool)), HasDiagnostics()));
+      AllOf(HasQualTypes(Constant(Bool)), HasDiagnostics()));
   EXPECT_THAT(
       repl.type_check(R"((f = 1.0, b = true)'((b: bool, f: f64) => b))"),
-      AllOf(HasQualTypes(QualifiedType(Bool)), HasDiagnostics()));
+      AllOf(HasQualTypes(Constant(Bool)), HasDiagnostics()));
 
   EXPECT_THAT(
       repl.type_check(R"(((b: bool, f: f64) => b)(1.0, true))"),
@@ -197,7 +197,7 @@ TEST(Call, OverloadSets) {
   f ::= (n: i32) => n
   f()
   )"),
-              AllOf(HasQualTypes(QualifiedType(Bool)), HasDiagnostics()));
+              AllOf(HasQualTypes(Constant(Bool)), HasDiagnostics()));
 
   EXPECT_THAT(repl.type_check(R"(
   x: i32

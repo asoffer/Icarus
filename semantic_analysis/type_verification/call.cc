@@ -68,6 +68,7 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
 
   core::Arguments<QualifiedType> arguments;
   bool has_error = false;
+  bool is_constant = true;
   for (auto const &argument : node->arguments()) {
     std::span argument_qts = co_await VerifyTypeOf(&argument.expr());
     if (argument_qts.size() != 1) {
@@ -76,6 +77,7 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
     } else if (argument_qts[0].qualifiers() >= Qualifiers::Error()) {
       has_error = true;
     } else {
+      is_constant &= (argument_qts[0].qualifiers() >= Qualifiers::Constant());
       if (argument.named()) {
         arguments.named_emplace(argument.name(), argument_qts[0]);
       } else {
@@ -131,7 +133,11 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
       std::vector<QualifiedType> qts;
       qts.reserve(return_types.size());
       tv.context().set_callee(node, &parameter_types.back()->second);
-      for (core::Type t : return_types) { qts.emplace_back(t); }
+      if (is_constant) {
+        for (core::Type t : return_types) { qts.push_back(Constant(t)); }
+      } else {
+        for (core::Type t : return_types) { qts.emplace_back(t); }
+      }
       co_return tv.TypeOf(node, std::move(qts));
     }
     default: NOT_YET("Log an error");
