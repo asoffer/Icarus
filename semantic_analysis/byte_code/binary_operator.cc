@@ -12,36 +12,38 @@ void ByteCodeValueEmitter::operator()(ast::BinaryOperator const *node,
   auto &f                = data.function();
   switch (node->kind()) {
     case ast::BinaryOperator::Kind::Add: {
-      Emit(&node->lhs(), data);
-      Emit(&node->rhs(), data);
+      CastTo(&node->lhs(), QualifiedType(common_type), data);
+      CastTo(&node->rhs(), QualifiedType(common_type), data);
       WithPrimitiveType(common_type,
                         [&]<jasmin::Addable T> { f.AppendBinary<'+', T>(); });
     } break;
     case ast::BinaryOperator::Kind::Sub: {
-      Emit(&node->lhs(), data);
-      Emit(&node->rhs(), data);
+      CastTo(&node->lhs(), QualifiedType(common_type), data);
+      CastTo(&node->rhs(), QualifiedType(common_type), data);
       WithPrimitiveType(common_type, [&]<jasmin::Subtractable T> {
         f.AppendBinary<'-', T>();
       });
     } break;
     case ast::BinaryOperator::Kind::Mul: {
-      Emit(&node->lhs(), data);
-      Emit(&node->rhs(), data);
       WithPrimitiveType(common_type, [&]<jasmin::Multiplicable T> {
+        CastTo(&node->lhs(), QualifiedType(common_type), data);
+        CastTo(&node->rhs(), QualifiedType(common_type), data);
         f.AppendBinary<'*', T>();
       });
     } break;
     case ast::BinaryOperator::Kind::Div: {
-      Emit(&node->lhs(), data);
-      Emit(&node->rhs(), data);
-      WithPrimitiveType(common_type,
-                        [&]<jasmin::Divisible T> { f.AppendBinary<'/', T>(); });
+      WithPrimitiveType(common_type, [&]<jasmin::Divisible T> {
+        CastTo(&node->lhs(), QualifiedType(common_type), data);
+        CastTo(&node->rhs(), QualifiedType(common_type), data);
+        f.AppendBinary<'/', T>();
+      });
     } break;
     case ast::BinaryOperator::Kind::Mod: {
-      Emit(&node->lhs(), data);
-      Emit(&node->rhs(), data);
-      WithPrimitiveType(common_type,
-                        [&]<jasmin::Modable T> { f.AppendBinary<'%', T>(); });
+      WithPrimitiveType(common_type, [&]<jasmin::Modable T> {
+        CastTo(&node->lhs(), QualifiedType(common_type), data);
+        CastTo(&node->rhs(), QualifiedType(common_type), data);
+        f.AppendBinary<'%', T>();
+      });
     } break;
     case ast::BinaryOperator::Kind::And: {
       Emit(&node->lhs(), data);

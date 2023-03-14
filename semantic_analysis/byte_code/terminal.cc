@@ -16,6 +16,8 @@ void ByteCodeValueEmitter::operator()(ast::Terminal const* node,
     // TODO: Long-term these won't be doubles, but rather a "rational" type that
     // is arbitrary-precision.
     data.function().AppendPush(node->value<double>());
+  } else if (qt.type() == Char) {
+    data.function().AppendPush(node->value<data_types::Char>());
   } else if (qt.type() == Type) {
     data.function().AppendPush(node->value<core::Type>());
   } else {

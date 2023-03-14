@@ -21,6 +21,9 @@ TEST(Terminal, Evaluation) {
   EXPECT_EQ(repl.execute<core::Type>("u16"), U(16));
   EXPECT_EQ(repl.execute<core::Type>("u32"), U(32));
   EXPECT_EQ(repl.execute<core::Type>("u64"), U(64));
+  EXPECT_EQ(repl.execute<data_types::Char>("!'a'"), data_types::Char('a'));
+  EXPECT_EQ(repl.execute<data_types::Char>("!'%'"), data_types::Char('%'));
+  EXPECT_EQ(repl.execute<data_types::Char>("!'\n'"), data_types::Char('\n'));
   EXPECT_EQ(repl.execute<double>("1.25"), 1.25);
   EXPECT_THAT(repl.execute<data_types::IntegerHandle>("1234").value(),
               nth::Integer(1234));
