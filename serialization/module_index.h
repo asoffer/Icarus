@@ -29,9 +29,7 @@ struct ModuleIndex
 
   // An identifier for the module which holds all builtin data accessible
   // through the `builtin` keyword.
-  static constexpr ModuleIndex Builtin() {
-    return ModuleIndex(std::numeric_limits<underlying_type>::max() - 2);
-  }
+  static constexpr ModuleIndex Builtin() { return ModuleIndex(0); }
 
   // No module has this identifier.
   static constexpr ModuleIndex Invalid() { return ModuleIndex(); }

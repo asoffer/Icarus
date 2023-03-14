@@ -4,6 +4,11 @@ namespace semantic_analysis {
 
 void ByteCodeValueEmitter::operator()(ast::Identifier const* node,
                                       FunctionData data) {
+  if (node->name() == "builtin") {
+    data.function().AppendPush(serialization::ModuleIndex::Builtin());
+    return;
+  }
+
   auto symbol = context().symbol(node);
   if (auto const* id = symbol.get_if<ast::Declaration::Id const>()) {
     auto qt = context().qualified_type(id);

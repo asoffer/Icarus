@@ -528,19 +528,6 @@ struct BlockNode : ParameterizedExpression, WithScope {
   ScopeNode *parent_ = nullptr;
 };
 
-// Represents the identifier `builtin` which can be accessed to get any builtin
-// (language-supported) functions/values.
-struct Builtin : Expression {
-  explicit Builtin(std::string_view range)
-      : Expression(IndexOf<Builtin>(), range) {}
-  void DebugStrAppend(std::string *out, size_t indent) const override {
-    out->append("builtin");
-  }
-  void Initialize(Node::Initializer &initializer) override {
-    scope_ = initializer.scope;
-  }
-};
-
 // Call:
 // Represents a function call, or call to any other callable object.
 //

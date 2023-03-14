@@ -28,5 +28,12 @@ TEST(Identifier, Evaluation) {
             int64_t{0});
 }
 
+TEST(Builtin, Evaluation) {
+  test::Repl repl;
+
+  EXPECT_EQ(repl.execute<serialization::ModuleIndex>("builtin"),
+            serialization::ModuleIndex::Builtin());
+}
+
 }  // namespace
 }  // namespace semantic_analysis

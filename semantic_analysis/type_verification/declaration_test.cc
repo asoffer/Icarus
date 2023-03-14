@@ -38,6 +38,13 @@ TEST(Declaration, DefaultInitialization) {
   // TODO: Parameters
 }
 
+TEST(Declaration, ReservedIdentifier) {
+  test::Repl repl;
+  EXPECT_THAT(repl.type_check(R"(builtin := true)"),
+              AllOf(HasQualTypes(Error()),
+                    HasDiagnostics(Pair("name-error", "reserved"))));
+}
+
 TEST(Declaration, RequiresConstantType) {
   test::Repl repl;
   EXPECT_THAT(repl.type_check(R"(

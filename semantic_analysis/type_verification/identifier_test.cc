@@ -11,6 +11,12 @@ using ::test::HasQualTypes;
 using ::testing::AllOf;
 using ::testing::Pair;
 
+TEST(Identifier, Builtin) {
+  test::Repl repl;
+  EXPECT_THAT(repl.type_check(R"(builtin)"),
+              AllOf(HasQualTypes(Constant(Module)), HasDiagnostics()));
+}
+
 TEST(Identifier, Success) {
   test::Repl repl;
   EXPECT_THAT(repl.type_check(R"(

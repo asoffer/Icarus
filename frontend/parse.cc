@@ -861,7 +861,7 @@ std::unique_ptr<ast::Node> BuildAccess(
   auto range =
       std::string_view(nodes[0]->range().begin(), nodes[2]->range().end());
   auto &&operand = move_as<ast::Expression>(nodes[0]);
-  if (nodes[2]->is<ast::Identifier>() or nodes[2]->is<ast::Builtin>()) {
+  if (nodes[2]->is<ast::Identifier>()) {
     return std::make_unique<ast::Access>(range, nodes[2]->range().size(),
                                          std::move(operand));
   } else {

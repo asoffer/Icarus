@@ -24,15 +24,7 @@ def _dotted_path(path):
 
 
 def _module_map_file(ctx, module_map_file, short):
-
     lbls = depset(transitive = [d[IcarusInfo].lbls for d in ctx.attr.deps]).to_list()
-    print('\n'.join([
-            "{id}\n{name}\n{icm}".format(
-                id = _unique_id(lbl),
-                name = _dotted_path(lbl),
-                icm = icm.short_path if short else icm.path)
-            for (lbl, icm) in lbls
-        ]))
     ctx.actions.write(
         output = module_map_file,
         content = '\n'.join([

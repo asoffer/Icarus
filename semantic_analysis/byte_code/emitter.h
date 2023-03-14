@@ -107,7 +107,6 @@ struct ByteCodeValueEmitter : Emitter<ByteCodeValueEmitter> {
   void operator()(ast::Access const *node, FunctionData data);
   void operator()(ast::Assignment const *node, FunctionData data);
   void operator()(ast::BinaryOperator const *node, FunctionData data);
-  void operator()(ast::Builtin const *node, FunctionData data);
   void operator()(ast::Call const *node, FunctionData data);
   void operator()(ast::Cast const *node, FunctionData data);
   void operator()(ast::ComparisonOperator const *node, FunctionData data);
@@ -140,7 +139,6 @@ struct ByteCodeStatementEmitter : Emitter<ByteCodeStatementEmitter> {
   void operator()(ast::Access const *node, FunctionData data);
   void operator()(ast::Assignment const *node, FunctionData data);
   void operator()(ast::BinaryOperator const *node, FunctionData data);
-  void operator()(ast::Builtin const *node, FunctionData data);
   void operator()(ast::Call const *node, FunctionData data);
   void operator()(ast::Cast const *node, FunctionData data);
   void operator()(ast::ComparisonOperator const *node, FunctionData data);
@@ -178,7 +176,6 @@ struct ByteCodeReferenceEmitter : Emitter<ByteCodeReferenceEmitter> {
   // Unreachable operators.
   void operator()(ast::ArgumentType const *, FunctionData) { UNREACHABLE(); }
   void operator()(ast::BlockNode const *, FunctionData) { UNREACHABLE(); }
-  void operator()(ast::Builtin const *, FunctionData) { UNREACHABLE(); }
   void operator()(ast::Declaration const *, FunctionData) { UNREACHABLE(); }
   void operator()(ast::Declaration::Id const *, FunctionData) { UNREACHABLE(); }
   void operator()(ast::DesignatedInitializer const *, FunctionData) {

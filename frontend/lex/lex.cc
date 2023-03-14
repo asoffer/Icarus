@@ -3,8 +3,6 @@
 #include <cctype>
 #include <cmath>
 
-#include "nth/meta/sequence.h"
-#include "nth/meta/type.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/container/node_hash_set.h"
 #include "absl/status/statusor.h"
@@ -13,8 +11,11 @@
 #include "frontend/lex/numbers.h"
 #include "frontend/lex/operators.h"
 #include "frontend/lex/syntax.h"
+#include "nth/meta/sequence.h"
+#include "nth/meta/type.h"
 #include "nth/numeric/integer.h"
 #include "semantic_analysis/type_system.h"
+#include "serialization/module_index.h"
 
 namespace frontend {
 namespace {
@@ -358,8 +359,6 @@ Lexeme ConsumeWord(std::string_view &cursor) {
     return Lexeme(std::make_unique<ast::Terminal>(word, data_types::Null()));
   } else if (word == "arguments") {
     return Lexeme(std::make_unique<ast::ProgramArguments>(word));
-  } else if (word == "builtin") {
-    return Lexeme(std::make_unique<ast::Builtin>(word));
   }
 
   if (auto iter = ReservedTypes().find(word); iter != ReservedTypes().end()) {

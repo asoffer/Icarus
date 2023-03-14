@@ -25,7 +25,6 @@ cc_library(
         "access.cc",
         "assignment.cc",
         "binary_operator.cc",
-        "builtin.cc",
         "call.cc",
         "cast.cc",
         "comparison_operator.cc",
@@ -92,17 +91,6 @@ cc_test(
           "//semantic_analysis:type_system",
           "//test:repl",
           "//vm:execute",
-          "@com_google_googletest//:gtest_main",
-      ],
-)
-
-cc_test(
-      name = "builtin_test",
-      srcs = ["builtin_test.cc"],
-      deps = [
-          ":byte_code",
-          "//semantic_analysis:type_system",
-          "//test:repl",
           "@com_google_googletest//:gtest_main",
       ],
 )

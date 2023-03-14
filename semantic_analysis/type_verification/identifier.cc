@@ -27,6 +27,10 @@ struct UncapturedIdentifier {
 
 VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
                                           ast::Identifier const *node) {
+  if (node->name() == "builtin") {
+    co_return tv.TypeOf(node, Constant(Module));
+  }
+
   // TODO: Track cyclic dependencies
   using symbol_ref_type = Context::symbol_ref_type;
   std::vector<std::pair<symbol_ref_type, QualifiedType>> viable;

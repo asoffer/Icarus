@@ -83,10 +83,36 @@ struct OutOfBoundsConstantInteger {
   std::string type;
 };
 
+struct Reserved {
+  static constexpr std::string_view kCategory = "name-error";
+  static constexpr std::string_view kName     = "reserved";
+
+  diagnostic::DiagnosticMessage ToMessage() const {
+    return diagnostic::DiagnosticMessage(
+        diagnostic::Text("\"%s\" is a reserved keyword and cannot be the name "
+                         "of a variable.",
+                         name),
+        diagnostic::SourceQuote().Highlighted(view, diagnostic::Style{}));
+  }
+
+  std::string_view name;
+  std::string_view view;
+};
+
 }  // namespace
 
 VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
                                           ast::Declaration const *node) {
+  for (auto const &id : node->ids()) {
+    if (id.name() == "builtin") {
+      tv.ConsumeDiagnostic(Reserved{
+          .name = id.name(),
+          .view = id.range(),
+      });
+      co_return tv.TypeOf(node, Error());
+    }
+  }
+
   // It's possible to enter verification of a declaration directly, or through a
   // declaration identifier (because we're verifying a call expression where the
   // callee is an identifier possibly referencing a declaration we haven't seen

@@ -143,7 +143,6 @@ struct TypeVerifier : VerificationScheduler {
                                      ast::BinaryOperator const *);
   static VerificationTask VerifyType(TypeVerifier &,
                                      ast::BindingDeclaration const *);
-  static VerificationTask VerifyType(TypeVerifier &, ast::Builtin const *);
   static VerificationTask VerifyType(TypeVerifier &, ast::Call const *);
   static VerificationTask VerifyType(TypeVerifier &, ast::Cast const *);
   static VerificationTask VerifyType(TypeVerifier &,
