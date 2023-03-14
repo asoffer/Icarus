@@ -94,6 +94,7 @@ struct Function {
 
   void AppendBuiltinAsciiDecode();
   void AppendBuiltinAsciiEncode();
+  void AppendBuiltinOpaque();
 
   jasmin::OpCodeRange AppendJumpWithPlaceholders();
   jasmin::OpCodeRange AppendJumpIfWithPlaceholders();

@@ -63,6 +63,9 @@ void SerializeTypeSystem(semantic_analysis::TypeSystem& type_system,
       for (auto const& [identifier, value] : t.enumerators()) {
         enumerators[identifier] = value;
       }
+    } else if constexpr (type_category ==
+                         nth::type<semantic_analysis::OpaqueType>) {
+      // TODO: Verify that we need to do anything here to make this work.
     } else {
       static_assert(type_category.dependent(false));
     }
@@ -70,4 +73,3 @@ void SerializeTypeSystem(semantic_analysis::TypeSystem& type_system,
 }
 
 }  // namespace module
-

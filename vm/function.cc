@@ -340,4 +340,8 @@ void Function::AppendBuiltinAsciiEncode() {
   internal::Impl(data_).append<BuiltinAsciiEncode>();
 }
 
+void Function::AppendBuiltinOpaque() {
+  internal::Impl(data_).append<BuiltinOpaque>();
+}
+
 }  // namespace vm

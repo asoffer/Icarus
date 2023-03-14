@@ -269,10 +269,23 @@ struct EnumType
             s, std::move(state)) {}
 };
 
+struct OpaqueType : core::TypeCategory<OpaqueType, size_t> {
+  explicit OpaqueType(core::TypeSystemSupporting<OpaqueType> auto& s)
+      : OpaqueType(s, counter.fetch_add(1, std::memory_order_relaxed)) {}
+
+  size_t index() const { return std::get<0>(decompose()); }
+
+  // TODO: Make private.
+  explicit OpaqueType(core::TypeSystemSupporting<OpaqueType> auto& s, size_t n)
+      : core::TypeCategory<OpaqueType, size_t>(s, n) {}
+
+  static std::atomic<size_t> counter;
+};
+
 using TypeSystem =
     core::TypeSystem<PrimitiveType, core::SizedIntegerType, core::ParameterType,
                      core::PointerType, BufferPointerType, ArrayType, SliceType,
-                     core::FunctionType, EnumType>;
+                     core::FunctionType, EnumType, OpaqueType>;
 
 inline constexpr core::Type Bool =
     PrimitiveType(nth::type<TypeSystem>, Primitive::Bool);

@@ -224,8 +224,19 @@ struct BuiltinAsciiEncode
   static std::string debug() { return "builtin.ascii-encode "; }
 };
 
+struct BuiltinOpaque : jasmin::StackMachineInstruction<BuiltinOpaque> {
+  using execution_state = semantic_analysis::TypeSystem;
+  static void execute(jasmin::ValueStack& value_stack, execution_state& state) {
+    core::Type t = semantic_analysis::OpaqueType(state);
+    value_stack.push(t);
+  }
+
+  static std::string debug() { return "builtin.ascii-encode "; }
+};
+
 using BuiltinInstructionSet =
-    jasmin::MakeInstructionSet<BuiltinAsciiDecode, BuiltinAsciiEncode>;
+    jasmin::MakeInstructionSet<BuiltinAsciiDecode, BuiltinAsciiEncode,
+                               BuiltinOpaque>;
 
 // TODO: core::*Type instructions should be registerable and not required to
 // be explicitly added here.

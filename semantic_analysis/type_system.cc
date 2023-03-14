@@ -191,4 +191,6 @@ bool PassInRegister(core::TypeContour contour) {
          contour.alignment() <= core::Alignment{jasmin::ValueAlignment};
 }
 
+std::atomic<size_t> OpaqueType::counter = 0;
+
 }  // namespace semantic_analysis

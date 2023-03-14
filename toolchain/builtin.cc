@@ -86,6 +86,19 @@ serialization::Module BuiltinModule() {
     fn->AppendReturn();
   }
 
+  {
+    auto &symbol = *exported["opaque"].add_symbols();
+    core::FunctionType t(
+        ts, core::ParameterType(ts, core::Parameters<core::Type>{}),
+        {semantic_analysis::Type});
+    SerializeType(t, *symbol.mutable_symbol_type(), false);
+
+    auto [index, fn] = table.emplace(0, 1);
+    symbol.mutable_function()->set_index(index.value());
+    fn->AppendBuiltinOpaque();
+    fn->AppendReturn();
+  }
+
   vm::SerializationState state(rodata, foreign_map,
                                serialization::ModuleIndex::Self(), mod_map,
                                fn_map);

@@ -20,7 +20,7 @@ struct ExecutionState {
                       jasmin::ValueStack& value_stack);
 
  private:
-  alignas(void*) char data_[2 * sizeof(void*)];
+  alignas(void*) char data_[3 * sizeof(void*)];
 };
 
 void Execute(Function const& f, ExecutionState state,
