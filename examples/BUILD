@@ -6,6 +6,12 @@ filegroup(
 )
 
 ic_binary(
+    name = "enum",
+    srcs = ["enum.ic"],
+    deps = ["//toolchain/stdlib:io"],
+)
+
+ic_binary(
     name = "foreign_function",
     srcs = ["foreign_function.ic"],
 )

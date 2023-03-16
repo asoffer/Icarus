@@ -58,6 +58,8 @@ Relation Comparison(core::Type lhs, core::Type rhs, TypeSystem &ts) {
       return (rhs == F32 or rhs == F64) ? Relation::Ordered
                                         : Relation::Unordered;
     }
+  } else if (auto le = lhs.get_if<EnumType>(ts)) {
+    return le == rhs ? Relation::Comparable : Relation::Unordered;
   }
 
   NOT_YET(DebugType(lhs, ts), DebugType(rhs, ts));

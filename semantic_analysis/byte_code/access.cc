@@ -51,6 +51,8 @@ void ByteCodeValueEmitter::operator()(ast::Access const* node,
     } else {
       NOT_YET();
     }
+  } else {
+    NOT_YET(node->DebugString(), DebugType(operand_qt.type(), type_system()));
   }
 }
 

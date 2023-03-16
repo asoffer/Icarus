@@ -6,6 +6,7 @@
 namespace semantic_analysis {
 namespace {
 
+using ::testing::_;
 using ::testing::ElementsAre;
 using ::testing::IsEmpty;
 using ::testing::Pair;
@@ -25,6 +26,24 @@ TEST(EnumLiteral, ElementsWithValues) {
   std::span enums = t.get<EnumType>(repl.type_system()).enumerators();
   std::vector e(enums.begin(), enums.end());
   EXPECT_THAT(e, ElementsAre(Pair("A", 1), Pair("B", 5)));
+}
+
+TEST(EnumLiteral, ElementsWithSomeValues) {
+  test::Repl repl;
+
+  auto t          = repl.execute<core::Type>(R"(enum { A \\ B ::= 3 \\ C })");
+  std::span enums = t.get<EnumType>(repl.type_system()).enumerators();
+  std::vector e(enums.begin(), enums.end());
+  EXPECT_THAT(e, ElementsAre(Pair("A", _), Pair("B", 3), Pair("C", _)));
+}
+
+TEST(EnumLiteral, ElementsWithNoValues) {
+  test::Repl repl;
+
+  auto t          = repl.execute<core::Type>(R"(enum { A \\ B \\ C })");
+  std::span enums = t.get<EnumType>(repl.type_system()).enumerators();
+  std::vector e(enums.begin(), enums.end());
+  EXPECT_THAT(e, ElementsAre(Pair("A", _), Pair("B", _), Pair("C", _)));
 }
 
 }  // namespace

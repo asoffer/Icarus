@@ -15,3 +15,11 @@ c ::= import "std.c.types"
                              ([*]char, c.unsigned_long_long, [*]char) -> c.int)
   printf("%*s".data, s.length, s.data)
 }
+
+#{export} Print ::= (b: bool) -> () {
+  if (b) { 
+    Print("true")
+  } else {
+    Print("false")
+  }
+}

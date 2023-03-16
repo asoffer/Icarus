@@ -1,5 +1,5 @@
--- ::= import "core.ic"
-io ::= import "io.ic"
+// -- ::= import "core.ic"
+io ::= import "std.io"
 
 io.Print("Basic enums:\n")
 // Enums are defined by simply listing the values without commas, one per
@@ -37,66 +37,66 @@ io.Print("\n")
 
 io.Print("--------------------------------------------------------------------\n")
 
-io.Print("Basic flags:\n")
-// Flags are like enums but whereas enums can only hold one value at a time,
-// flags can have each option either set or unset.
-Color ::= flags { RED \\ GREEN \\ BLUE }
-
-// Just as with enums, there is no builting stringification. Users must define
-// their own.
-io.Print("My favorite color is ")
-Print(Color.RED)
-io.Print("\n")
-
-// Unlike enums, flags do have a default value where none of the options are
-// set.
-black: Color
-io.Print("Black is ")
-Print(black)
-io.Print("\n")
-
-// To set more than one option, use the or-operator `|`.
-cyan ::= (Color.GREEN | Color.BLUE)
-magenta ::= (Color.RED | Color.BLUE)
-yellow ::= (Color.GREEN | Color.RED)
-
-io.Print("Yellow is just ")
-Print(yellow)
-io.Print("\n")
-
-// Flag values can also be negated with `not`:
-io.Print("Cyan is ")
-Print(not Color.RED)
-io.Print("\n")
-
-// Flags do come with a partial ordering where "less than" means having a
-// subset of the optinos set.
-io.Print("Red is \"less than\" magenta: ")
-io.Print(Color.RED < magenta)
-io.Print("\n")
-io.Print("However, Red and blue are not comparable:\n")
-io.Print("  RED < BLUE: ")
-io.Print(Color.RED < Color.BLUE)
-io.Print("\n")
-io.Print("  BLUE < RED: ")
-io.Print(Color.BLUE < Color.RED)
-io.Print("\n")
-
-// Flags can be xor-ed together:
-io.Print("Cyan is ")
-Print(magenta ^ yellow)
-io.Print("\n")
-
-// Lastly, flags can be intersected with the and-operator `&`.
-io.Print("(not red and not blue) is ")
-Print(not Color.RED & not Color.BLUE)
-io.Print("\n")
-
-io.Print("Magenta is ")
-Print(Color.RED | Color.BLUE)
-io.Print("\n")
-
-io.Print("--------------------------------------------------------------------\n")
+// io.Print("Basic flags:\n")
+// // Flags are like enums but whereas enums can only hold one value at a time,
+// // flags can have each option either set or unset.
+// Color ::= flags { RED \\ GREEN \\ BLUE }
+// 
+// // Just as with enums, there is no builting stringification. Users must define
+// // their own.
+// io.Print("My favorite color is ")
+// Print(Color.RED)
+// io.Print("\n")
+// 
+// // Unlike enums, flags do have a default value where none of the options are
+// // set.
+// black: Color
+// io.Print("Black is ")
+// Print(black)
+// io.Print("\n")
+// 
+// // To set more than one option, use the or-operator `|`.
+// cyan ::= (Color.GREEN | Color.BLUE)
+// magenta ::= (Color.RED | Color.BLUE)
+// yellow ::= (Color.GREEN | Color.RED)
+// 
+// io.Print("Yellow is just ")
+// Print(yellow)
+// io.Print("\n")
+// 
+// // Flag values can also be negated with `not`:
+// io.Print("Cyan is ")
+// Print(not Color.RED)
+// io.Print("\n")
+// 
+// // Flags do come with a partial ordering where "less than" means having a
+// // subset of the optinos set.
+// io.Print("Red is \"less than\" magenta: ")
+// io.Print(Color.RED < magenta)
+// io.Print("\n")
+// io.Print("However, Red and blue are not comparable:\n")
+// io.Print("  RED < BLUE: ")
+// io.Print(Color.RED < Color.BLUE)
+// io.Print("\n")
+// io.Print("  BLUE < RED: ")
+// io.Print(Color.BLUE < Color.RED)
+// io.Print("\n")
+// 
+// // Flags can be xor-ed together:
+// io.Print("Cyan is ")
+// Print(magenta ^ yellow)
+// io.Print("\n")
+// 
+// // Lastly, flags can be intersected with the and-operator `&`.
+// io.Print("(not red and not blue) is ")
+// Print(not Color.RED & not Color.BLUE)
+// io.Print("\n")
+// 
+// io.Print("Magenta is ")
+// Print(Color.RED | Color.BLUE)
+// io.Print("\n")
+// 
+// io.Print("--------------------------------------------------------------------\n")
 
 Print ::= (x: Suit) -> () {
   if (x == Suit.CLUB) {
@@ -110,11 +110,11 @@ Print ::= (x: Suit) -> () {
   }
 }
 
-Print ::= (x: Color) -> () {
-  sep := ""
-  io.Print("Color[")
-  if (Color.RED <= x) { io.Print("RED") \\ sep = ", " }
-  if (Color.GREEN <= x) { io.Print(sep) \\ io.Print("GREEN") \\ sep = ", " }
-  if (Color.BLUE <= x) { io.Print(sep) \\ io.Print("BLUE") }
-  io.Print("]")
-}
+// Print ::= (x: Color) -> () {
+//   sep := ""
+//   io.Print("Color[")
+//   if (Color.RED <= x) { io.Print("RED") \\ sep = ", " }
+//   if (Color.GREEN <= x) { io.Print(sep) \\ io.Print("GREEN") \\ sep = ", " }
+//   if (Color.BLUE <= x) { io.Print(sep) \\ io.Print("BLUE") }
+//   io.Print("]")
+// }

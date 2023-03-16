@@ -24,14 +24,14 @@ void ByteCodeValueEmitter::operator()(ast::EnumLiteral const* node,
     }
     enumerators.emplace_back(name, value);
     used_values.insert(value);
-    uint64_t i = 0;
-    for (std::string_view name : node->enumerators()) {
-      if (node->specified_values().contains(name)) { continue; }
-      while (used_values.contains(i)) { ++i; }
-      // Because we're counting up there's no need to insert `i`. We can just
-      // move past it.
-      enumerators.emplace_back(name, i++);
-    }
+  }
+
+  for (uint64_t i = 0; std::string_view name : node->enumerators()) {
+    if (node->specified_values().contains(name)) { continue; }
+    while (used_values.contains(i)) { ++i; }
+    // Because we're counting up there's no need to insert `i`. We can just
+    // move past it.
+    enumerators.emplace_back(name, i++);
   }
   core::Type type = EnumType(type_system(), std::move(enumerators));
   data.function().AppendPush(type);

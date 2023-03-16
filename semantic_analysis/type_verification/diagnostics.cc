@@ -76,7 +76,9 @@ struct StringifyType {
     return ASSERT_NOT_NULL(node)->visit<StringifyType>(*this);
   }
 
-  std::string operator()(ast::Access const *node) { NOT_YET(); }
+  std::string operator()(ast::Access const *node) {
+    NOT_YET(node->DebugString());
+  }
 
   std::string operator()(ast::ArrayLiteral const *node) {
     // TODO: We can probably develop a better heuristic for the element type by
