@@ -12,6 +12,7 @@ core::Type TypeOfNode(ast::Terminal const& node, TypeSystem& type_system) {
   if (node.type() == nth::type<core::Type>) { return Type; }
   if (node.type() == nth::type<nth::Integer>) { return Integer; }
   if (node.type() == nth::type<double>) { return F64; }
+  if (node.type() == nth::type<data_types::addr_t>) { return NullPtr; }
   if (node.type() == nth::type<std::string>) {
     return SliceType(type_system, Char);
   }

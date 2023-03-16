@@ -139,6 +139,7 @@ enum class Primitive : uint8_t {
   Integer,
   Module,
   EmptyArray,
+  NullPtr,
   Error
 };
 using PrimitiveType = core::FiniteSetType<Primitive>;
@@ -305,6 +306,8 @@ inline constexpr core::Type Module =
     PrimitiveType(nth::type<TypeSystem>, Primitive::Module);
 inline constexpr core::Type EmptyArray =
     PrimitiveType(nth::type<TypeSystem>, Primitive::EmptyArray);
+inline constexpr core::Type NullPtr =
+    PrimitiveType(nth::type<TypeSystem>, Primitive::NullPtr);
 inline constexpr core::Type ErrorType =
     PrimitiveType(nth::type<TypeSystem>, Primitive::Error);
 

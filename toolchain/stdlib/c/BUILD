@@ -42,3 +42,10 @@ ic_library(
     visibility = ["//visibility:public"],
     deps= [":types"],
 )
+
+ic_library(
+    name = "time",
+    srcs = ["time.ic"],
+    visibility = ["//visibility:public"],
+    deps= [":types"],
+)

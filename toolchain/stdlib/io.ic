@@ -16,6 +16,12 @@ c ::= import "std.c.types"
   printf("%*s".data, s.length, s.data)
 }
 
+// TODO: We probably do not want to support this.
+#{export} Print ::= (s: [*]char) -> () {
+  printf ::= builtin.foreign("printf", ([*]char, [*]char) -> c.int)
+  printf("%s".data, s)
+}
+
 #{export} Print ::= (b: bool) -> () {
   if (b) { 
     Print("true")

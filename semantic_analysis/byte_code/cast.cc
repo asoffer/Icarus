@@ -11,6 +11,17 @@ void ByteCodeValueEmitter::CastTo(ast::Expression const* node,
     Emit(node, data);
     return;
   }
+  if (from_qt.qualifiers() >= Qualifiers::Reference()) {
+    if (auto p = to_qt.type().get_if<core::PointerType>(type_system());
+        p and p->pointee() == from_qt.type()) {
+      as<ByteCodeReferenceEmitter>().Emit(node, data);
+      return;
+    } else if (auto p = to_qt.type().get_if<BufferPointerType>(type_system());
+               p and p->pointee() == from_qt.type()) {
+      as<ByteCodeReferenceEmitter>().Emit(node, data);
+      return;
+    }
+  }
 
   if (from_qt.type() == Integer) {
     std::span<std::byte const> evaluation = EvaluateConstant(node, from_qt);
@@ -74,6 +85,8 @@ void ByteCodeValueEmitter::CastTo(ast::Expression const* node,
     } else {
       NOT_YET();
     }
+  } else if (auto from = from_qt.type() == NullPtr) {
+    Emit(node, data);
   } else {
     NOT_YET(DebugQualifiedType(from_qt, type_system()), " -> ",
             DebugQualifiedType(to_qt, type_system()));

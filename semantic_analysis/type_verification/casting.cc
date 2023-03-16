@@ -9,6 +9,15 @@ namespace semantic_analysis {
 
 CastKind CanCast(QualifiedType from, core::Type to, TypeSystem& type_system) {
   if (from.type() == to) { return CastKind::InPlace; }
+  if (from.qualifiers() >= Qualifiers::Reference()) {
+    if (auto p = to.get_if<core::PointerType>(type_system);
+        p and p->pointee() == from.type()) {
+      return CastKind::InPlace;
+    } else if (auto p = to.get_if<BufferPointerType>(type_system);
+               p and p->pointee() == from.type()) {
+      return CastKind::InPlace;
+    }
+  }
 
   return type_system.visit(from.type(), [&](auto from_type) -> CastKind {
     auto category_type = nth::type<std::decay_t<decltype(from_type)>>;
@@ -66,6 +75,11 @@ CastKind CanCast(QualifiedType from, core::Type to, TypeSystem& type_system) {
           } else {
             return CastKind::None;
           }
+        case Primitive::NullPtr:
+          return (to.is<core::PointerType>(type_system) or
+                  to.is<BufferPointerType>(type_system))
+                     ? CastKind::Implicit
+                     : CastKind::None;
         case Primitive::EmptyArray: NOT_YET();
         case Primitive::Type:
         case Primitive::Module:

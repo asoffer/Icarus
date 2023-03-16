@@ -20,6 +20,8 @@ void ByteCodeValueEmitter::operator()(ast::Terminal const* node,
     data.function().AppendPush(node->value<data_types::Char>());
   } else if (qt.type() == Type) {
     data.function().AppendPush(node->value<core::Type>());
+  } else if (qt.type() == NullPtr) {
+    data.function().AppendPush(data_types::Null());
   } else {
     NOT_YET(node->DebugString());
   }
