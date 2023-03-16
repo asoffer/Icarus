@@ -16,6 +16,7 @@ serialization::ModuleIndex GlobalModuleMap::read(
     serialization::ModuleIndex module_index,
     serialization::ModuleIndex dep_index) const {
   if (dep_index == serialization::ModuleIndex::Self()) { return module_index; }
+  if (dep_index == serialization::ModuleIndex::Builtin()) { return dep_index; }
   auto iter = mapping_.find(std::pair(module_index, dep_index));
   ASSERT(iter != mapping_.end());
   return iter->second;

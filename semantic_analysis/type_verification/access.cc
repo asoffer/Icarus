@@ -11,7 +11,7 @@ struct MissingConstantMember {
 
   diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(
-        diagnostic::Text("No member named `%s` in this expression.", member),
+        diagnostic::Text("No member named `%s` in this %s.", member, type),
         diagnostic::SourceQuote()
             .Highlighted(expr_view, diagnostic::Style{})
             .Highlighted(member_view, diagnostic::Style::ErrorText()));
@@ -20,6 +20,7 @@ struct MissingConstantMember {
   std::string_view expr_view;
   std::string_view member_view;
   std::string member;
+  std::string type;
 };
 
 }  // namespace
@@ -38,7 +39,15 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
     absl::flat_hash_map<core::ParameterType, Context::CallableIdentifier>
         parameters_options;
 
-    if (symbols.empty()) { NOT_YET(); }
+    if (symbols.empty()) {
+      tv.ConsumeDiagnostic(MissingConstantMember{
+          .expr_view   = node->operand()->range(),
+          .member_view = node->member_range(),
+          .member      = std::string{node->member_name()},
+          .type = "module",
+      });
+      co_return tv.TypeOf(node, Error());
+    }
     core::Type t;
     for (auto const &symbol : symbols) {
       module::Symbol s = tv.resources().TranslateToPrimary(index, symbol);
@@ -80,6 +89,7 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
             .expr_view   = node->operand()->range(),
             .member_view = node->member_range(),
             .member      = std::string{node->member_name()},
+            .type        = "enum",
         });
         co_return tv.TypeOf(node, Error(Constant(t)));
       }

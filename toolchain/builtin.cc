@@ -99,6 +99,26 @@ serialization::Module BuiltinModule() {
     fn->AppendReturn();
   }
 
+  {
+    auto &symbol = *exported["slice"].add_symbols();
+    core::FunctionType t(
+        ts,
+        core::ParameterType(ts,
+                            core::Parameters<core::Type>{
+                                {.value = semantic_analysis::BufferPointerType(
+                                     ts, semantic_analysis::Char)},
+                                {.value = semantic_analysis::U(64)}}),
+        {semantic_analysis::SliceType(ts, semantic_analysis::Char)});
+    SerializeType(t, *symbol.mutable_symbol_type(), false);
+
+    // From the perspective of Jasmin this function has two inputs and two
+    // returns, though the function itself only has one return in Icarus: A
+    // slice.
+    auto [index, fn] = table.emplace(2, 2);
+    symbol.mutable_function()->set_index(index.value());
+    fn->AppendReturn();
+  }
+
   vm::SerializationState state(rodata, foreign_map,
                                serialization::ModuleIndex::Self(), mod_map,
                                fn_map);

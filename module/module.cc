@@ -80,19 +80,20 @@ void DeserializeTypeSystem(serialization::TypeSystem const& proto,
 
 }  // namespace
 
-bool Module::Serialize(std::ostream& output,
+bool Module::Serialize(std::ostream& output, GlobalModuleMap module_map,
                        GlobalFunctionMap& function_map) const {
   serialization::Module proto;
 
   *proto.mutable_identifier() = id_.value();
   SerializeTypeSystem(type_system(), *proto.mutable_type_system());
 
-  GlobalModuleMap unused;
   // TODO: Fix const-correctness in Jasmin.
   vm::SerializationState state(const_cast<Module&>(*this).read_only_data(),
                                const_cast<Module&>(*this).foreign_symbol_map(),
-                               serialization::ModuleIndex::Invalid(), unused,
+                               serialization::ModuleIndex::Invalid(), module_map,
                                function_map);
+
+  GlobalModuleMap::Serialize(module_map, *proto.mutable_module_map());
 
   serialization::ForeignSymbolMap::Serialize(foreign_symbol_map_,
                                              *proto.mutable_foreign_symbols());

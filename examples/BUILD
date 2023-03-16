@@ -1,4 +1,4 @@
-load("//toolchain:ic_rule.bzl", "ic_binary")
+load("//toolchain:ic_rule.bzl", "ic_library", "ic_binary")
 
 filegroup(
     name = "example_file",
@@ -11,6 +11,7 @@ ic_binary(
     deps = [
         "//toolchain/stdlib:io",
         "//toolchain/stdlib/c:time",
+        ":utility",
     ],
 )
 
@@ -40,4 +41,12 @@ ic_binary(
 ic_binary(
     name = "minimal_program",
     srcs = ["minimal_program.ic"],
+)
+
+ic_library(
+    name = "utility",
+    srcs = ["utility.ic"],
+    deps = [
+        "//toolchain/stdlib/c:string",
+    ],
 )

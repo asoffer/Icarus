@@ -1,9 +1,10 @@
-io ::= import "std.io"
-c  ::= import "std.c.time"
+io   ::= import "std.io"
+c    ::= import "std.c.time"
+util ::= import "examples.utility"
 
 now := c.time(null)
 io.Print("Current time is: ")
-io.Print(c.ctime(now))
+io.Print(util.null_terminated_slice(c.ctime(now)))
 
 // timeinfo := c.gmtime(now)
 // io.Print("In UTC: ", c.asctime(timeinfo))

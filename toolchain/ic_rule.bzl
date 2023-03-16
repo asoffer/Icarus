@@ -15,8 +15,6 @@ def _dotted_path(path):
     start = path.find("//")
     if start != -1:
         path = path[start + 2:]
-    if path == "toolchain:builtin":
-        path = "builtin"
     if path.startswith("toolchain/stdlib"):
         path = "std" + path[len("toolchain/stdlib"):]
     path = path.replace("/", ".").replace(":", ".")

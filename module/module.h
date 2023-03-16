@@ -26,7 +26,8 @@ struct Module {
                   GlobalFunctionMap &function_map)
       : id_(std::move(id)), function_table_(function_map) {}
 
-  bool Serialize(std::ostream &output, GlobalFunctionMap &function_map) const;
+  bool Serialize(std::ostream &output, GlobalModuleMap module_map,
+                 GlobalFunctionMap &function_map) const;
   static bool DeserializeInto(serialization::Module const &proto,
                               base::PtrSpan<Module const> dependencies,
                               serialization::ModuleIndex module_index,
