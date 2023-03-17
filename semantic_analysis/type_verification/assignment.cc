@@ -41,15 +41,14 @@ struct AssigningToNonReference {
 
 }  // namespace
 
-VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
-                                          ast::Assignment const *node) {
+VerificationTask TypeVerifier::VerifyType(ast::Assignment const *node) {
   std::vector<QualifiedType> rhs_qts;
   std::vector<core::Type> lhs_types;
   for (auto const *l : node->lhs()) {
     std::span qts = co_await VerifyTypeOf(l);
     if (qts.size() != 1) { NOT_YET(); }
     if (not(qts[0].qualifiers() >= Qualifiers::Reference())) {
-      tv.ConsumeDiagnostic(AssigningToNonReference{.lhs = l->range()});
+      ConsumeDiagnostic(AssigningToNonReference{.lhs = l->range()});
     }
     lhs_types.push_back(qts[0].type());
   }
@@ -63,13 +62,13 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
   if (lhs_types.size() != rhs_qts.size()) { NOT_YET(); }
 
   for (size_t i = 0; i < lhs_types.size(); ++i) {
-    auto kind = CanCast(rhs_qts[i], lhs_types[i], tv.type_system());
+    auto kind = CanCast(rhs_qts[i], lhs_types[i], type_system());
     switch (kind) {
       case CastKind::None:
       case CastKind::Explicit:
-        tv.ConsumeDiagnostic(TypeMismatch{
-            .lhs_type = tv.TypeForDiagnostic(*node->lhs()[i]),
-            .rhs_type = tv.TypeForDiagnostic(*node->rhs()[i]),
+        ConsumeDiagnostic(TypeMismatch{
+            .lhs_type = TypeForDiagnostic(*node->lhs()[i]),
+            .rhs_type = TypeForDiagnostic(*node->rhs()[i]),
             // TODO: set the range to point more directly to the things we
             // care about.
             .view     = node->range(),
@@ -81,7 +80,7 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
     }
   }
 
-  co_return tv.Completed(node);
+  co_return Completed(node);
 }
 
 }  // namespace semantic_analysis

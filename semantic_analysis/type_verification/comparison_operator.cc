@@ -67,8 +67,7 @@ Relation Comparison(core::Type lhs, core::Type rhs, TypeSystem &ts) {
 
 }  // namespace
 
-VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
-                                          ast::ComparisonOperator const *node) {
+VerificationTask TypeVerifier::VerifyType(ast::ComparisonOperator const *node) {
   std::vector<core::Type> operand_types;
   Qualifiers qualifiers = Qualifiers::Constant();
   operand_types.reserve(node->exprs().size());
@@ -82,30 +81,30 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
       all_length_one = false;
     }
   }
-  if (not all_length_one) { co_return tv.TypeOf(node, Error(Bool)); }
+  if (not all_length_one) { co_return TypeOf(node, Error(Bool)); }
 
   QualifiedType qt(Bool, qualifiers);
   for (size_t i = 0; i < node->ops().size(); ++i) {
     auto const *lhs = node->exprs()[i];
     auto const *rhs = node->exprs()[i + 1];
-    auto lhs_type  = operand_types[i];
-    auto rhs_type  = operand_types[i + 1];
-    auto op = node->ops()[i];
+    auto lhs_type   = operand_types[i];
+    auto rhs_type   = operand_types[i + 1];
+    auto op         = node->ops()[i];
 
-    switch (Comparison(lhs_type, rhs_type, tv.type_system())) {
+    switch (Comparison(lhs_type, rhs_type, type_system())) {
       case Relation::Unordered: {
-        tv.ConsumeDiagnostic(ComparingIncomparables{
-            .lhs  = tv.TypeForDiagnostic(*lhs),
-            .rhs  = tv.TypeForDiagnostic(*rhs),
+        ConsumeDiagnostic(ComparingIncomparables{
+            .lhs  = TypeForDiagnostic(*lhs),
+            .rhs  = TypeForDiagnostic(*rhs),
             .view = node->binary_range(i),
         });
         qt = Error(Bool);
       } break;
       case Relation::Comparable:
         if (op != frontend::Operator::Eq and op != frontend::Operator::Ne) {
-          tv.ConsumeDiagnostic(ComparingIncomparables{
-              .lhs  = tv.TypeForDiagnostic(*lhs),
-              .rhs  = tv.TypeForDiagnostic(*rhs),
+          ConsumeDiagnostic(ComparingIncomparables{
+              .lhs  = TypeForDiagnostic(*lhs),
+              .rhs  = TypeForDiagnostic(*rhs),
               .view = node->binary_range(i),
           });
           qt = Error(Bool);
@@ -113,7 +112,7 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
       case Relation::Ordered: break;
     }
   }
-  co_return tv.TypeOf(node, qt);
+  co_return TypeOf(node, qt);
 }
 
 }  // namespace semantic_analysis

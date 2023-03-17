@@ -38,8 +38,7 @@ struct NonBooleanCondition {
 
 }  // namespace
 
-VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
-                                          ast::IfStmt const *node) {
+VerificationTask TypeVerifier::VerifyType(ast::IfStmt const *node) {
   std::span condition_qts = co_await VerifyTypeOf(&node->condition());
   switch (condition_qts.size()) {
     case 0: NOT_YET("Log an error");
@@ -47,9 +46,9 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
       bool condition_has_error = false;
       QualifiedType qt         = condition_qts[0];
       if (qt.type() != Bool) {
-        tv.ConsumeDiagnostic(NonBooleanCondition{
+        ConsumeDiagnostic(NonBooleanCondition{
             .view = node->range(),
-            .type = tv.TypeForDiagnostic(node->condition()),
+            .type = TypeForDiagnostic(node->condition()),
         });
         condition_has_error = true;
       }
@@ -69,7 +68,7 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
         // fixing the bug in the conditional statement.
         if (not condition_has_error) {
           if (qt.qualifiers() >= Qualifiers::Constant()) {
-            if (tv.EvaluateAs<bool>(&node->condition())) {
+            if (EvaluateAs<bool>(&node->condition())) {
               for (auto const *stmt : node->true_block()) {
                 co_await VerifyTypeOf(stmt);
               }
@@ -79,7 +78,7 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
               }
             }
           } else {
-            tv.ConsumeDiagnostic(NonConstantConditionError{
+            ConsumeDiagnostic(NonConstantConditionError{
                 .view = node->condition().range(),
             });
           }
@@ -94,7 +93,7 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
         }
       }
 
-      co_return tv.TypeOf(node, std::move(yielded_qts));
+      co_return TypeOf(node, std::move(yielded_qts));
     } break;
     default: NOT_YET("Log an error");
   }

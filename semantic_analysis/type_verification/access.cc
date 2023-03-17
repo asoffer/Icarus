@@ -25,41 +25,40 @@ struct MissingConstantMember {
 
 }  // namespace
 
-VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
-                                          ast::Access const *node) {
+VerificationTask TypeVerifier::VerifyType(ast::Access const *node) {
   std::span operand_qts = co_await VerifyTypeOf(node->operand());
   if (operand_qts.size() != 1) { NOT_YET("log an error"); }
   QualifiedType qt = operand_qts[0];
   if (qt.type() == Module) {
     if (not(qt.qualifiers() >= Qualifiers::Constant())) { NOT_YET(); }
-    auto index = tv.EvaluateAs<serialization::ModuleIndex>(node->operand());
-    auto &m    = tv.resources().module(index);
+    auto index        = EvaluateAs<serialization::ModuleIndex>(node->operand());
+    auto &m           = resources().module(index);
     std::span symbols = m.LoadSymbols(node->member_name());
 
     absl::flat_hash_map<core::ParameterType, Context::CallableIdentifier>
         parameters_options;
 
     if (symbols.empty()) {
-      tv.ConsumeDiagnostic(MissingConstantMember{
+      ConsumeDiagnostic(MissingConstantMember{
           .expr_view   = node->operand()->range(),
           .member_view = node->member_range(),
           .member      = std::string{node->member_name()},
-          .type = "module",
+          .type        = "module",
       });
-      co_return tv.TypeOf(node, Error());
+      co_return TypeOf(node, Error());
     }
     core::Type t;
     for (auto const &symbol : symbols) {
-      module::Symbol s = tv.resources().TranslateToPrimary(index, symbol);
+      module::Symbol s = resources().TranslateToPrimary(index, symbol);
       t                = s.type();
-      if (auto fn_type = t.get_if<core::FunctionType>(tv.type_system())) {
+      if (auto fn_type = t.get_if<core::FunctionType>(type_system())) {
         parameters_options.emplace(
             fn_type->parameter_type(),
             Context::CallableIdentifier(s.as<module::TypedFunction>()));
       }
     }
     if (not parameters_options.empty()) {
-      co_yield tv.ParametersOf(node, std::move(parameters_options));
+      co_yield ParametersOf(node, std::move(parameters_options));
     }
 
     // TODO: This is a gross hack where we just pick one of the symbols types.
@@ -67,37 +66,37 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
     // if there is exactly one overload, and we never look at the value if there
     // are multiple overloads. This will likely break if the return type for the
     // overloads is different.
-    co_return tv.TypeOf(node, Constant(t));
-  } else if (qt.type().is<SliceType>(tv.type_system())) {
+    co_return TypeOf(node, Constant(t));
+  } else if (qt.type().is<SliceType>(type_system())) {
     if (node->member_name() == "data") {
-      co_return tv.TypeOf(
-          node, QualifiedType(BufferPointerType(tv.type_system(), Char),
-                              qt.qualifiers()));
+      co_return TypeOf(node,
+                       QualifiedType(BufferPointerType(type_system(), Char),
+                                     qt.qualifiers()));
     } else if (node->member_name() == "length") {
-      co_return tv.TypeOf(node, QualifiedType(U(64), qt.qualifiers()));
+      co_return TypeOf(node, QualifiedType(U(64), qt.qualifiers()));
     } else {
       NOT_YET("Log an error: ", node->member_name());
     }
   } else if (qt.type() == Type) {
     if (not(qt.qualifiers() >= Qualifiers::Constant())) { NOT_YET(); }
-    core::Type t = tv.EvaluateAs<core::Type>(node->operand());
-    if (auto e = t.get_if<EnumType>(tv.type_system())) {
+    core::Type t = EvaluateAs<core::Type>(node->operand());
+    if (auto e = t.get_if<EnumType>(type_system())) {
       if (e->has_member(node->member_name())) {
-        co_return tv.TypeOf(node, Constant(t));
+        co_return TypeOf(node, Constant(t));
       } else {
-        tv.ConsumeDiagnostic(MissingConstantMember{
+        ConsumeDiagnostic(MissingConstantMember{
             .expr_view   = node->operand()->range(),
             .member_view = node->member_range(),
             .member      = std::string{node->member_name()},
             .type        = "enum",
         });
-        co_return tv.TypeOf(node, Error(Constant(t)));
+        co_return TypeOf(node, Error(Constant(t)));
       }
     } else {
-      NOT_YET(DebugType(t, tv.type_system()));
+      NOT_YET(DebugType(t, type_system()));
     }
   } else {
-    NOT_YET(DebugQualifiedType(qt, tv.type_system()));
+    NOT_YET(DebugQualifiedType(qt, type_system()));
   }
 }
 

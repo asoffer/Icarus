@@ -24,8 +24,7 @@ struct SliceDataTypeNotAType {
 
 // Verifies that the array type has constant integer lengths and that the data
 // type expression is a type.
-VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
-                                          ast::SliceType const *node) {
+VerificationTask TypeVerifier::VerifyType(ast::SliceType const *node) {
   std::span data_qts = co_await VerifyTypeOf(&node->data_type());
 
   bool error    = false;
@@ -33,7 +32,7 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
 
   if (data_qts.size() != 1) { NOT_YET(); }
   if (data_qts[0].type() != Type) {
-    tv.ConsumeDiagnostic(SliceDataTypeNotAType{
+    ConsumeDiagnostic(SliceDataTypeNotAType{
         .view = node->data_type().range(),
     });
     error = true;
@@ -41,7 +40,7 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
     constant = false;
   }
 
-  co_return tv.TypeOf(
+  co_return TypeOf(
       node, QualifiedType(
                 Type, ((error ? Qualifiers::Error() : Qualifiers()) |
                        (constant ? Qualifiers::Constant() : Qualifiers()))));

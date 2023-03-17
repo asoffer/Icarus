@@ -53,29 +53,28 @@ struct NonIntegralEnumerator {
 
 }  // namespace
 
-VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
-                                          ast::EnumLiteral const *node) {
-  co_yield tv.TypeOf(node, Constant(Type));
+VerificationTask TypeVerifier::VerifyType(ast::EnumLiteral const *node) {
+  co_yield TypeOf(node, Constant(Type));
 
   for (auto const &[name, value] : node->specified_values()) {
     auto qts = co_await VerifyTypeOf(value.get());
     if (qts.size() != 1) {
-      tv.ConsumeDiagnostic(MultipleValuesAssignedToEnumerator{
+      ConsumeDiagnostic(MultipleValuesAssignedToEnumerator{
           .count = qts.size(), .view = value->range()});
       continue;
     }
     if (not(qts[0].qualifiers() >= Qualifiers::Constant())) {
-      tv.ConsumeDiagnostic(NonConstantEnumerator{.view = value->range()});
+      ConsumeDiagnostic(NonConstantEnumerator{.view = value->range()});
     }
     if (not IsIntegral(qts[0].type())) {
-      tv.ConsumeDiagnostic(NonIntegralEnumerator{
+      ConsumeDiagnostic(NonIntegralEnumerator{
           .view = value->range(),
-          .type = tv.TypeForDiagnostic(*value),
+          .type = TypeForDiagnostic(*value),
       });
     }
   }
 
-  co_return tv.Completed(node);
+  co_return Completed(node);
 }
 
 }  // namespace semantic_analysis

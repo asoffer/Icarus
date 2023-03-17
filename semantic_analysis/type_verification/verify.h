@@ -85,9 +85,7 @@ struct TypeVerifier : VerificationScheduler {
     resources().diagnostic_consumer().Consume(std::forward<D>(d));
   }
 
-  VerificationTask operator()(auto const *node) {
-    return VerifyType(*this, node);
-  }
+  VerificationTask operator()(auto const *node) { return VerifyType(node); }
 
   auto TypeOf(ast::Expression const *node, QualifiedType qualified_type) {
     return VerificationTask::YieldResult<TypeVerificationPhase::VerifyType>(
@@ -131,42 +129,34 @@ struct TypeVerifier : VerificationScheduler {
   }
 
   template <typename NodeType>
-  static VerificationTask VerifyType(TypeVerifier &tv, NodeType const *) {
+  VerificationTask VerifyType(NodeType const *) {
     NOT_YET(nth::type<NodeType>);
   }
 
-  static VerificationTask VerifyType(TypeVerifier &, ast::Access const *);
-  static VerificationTask VerifyType(TypeVerifier &, ast::Assignment const *);
-  static VerificationTask VerifyType(TypeVerifier &, ast::ArrayLiteral const *);
-  static VerificationTask VerifyType(TypeVerifier &, ast::ArrayType const *);
-  static VerificationTask VerifyType(TypeVerifier &,
-                                     ast::BinaryOperator const *);
-  static VerificationTask VerifyType(TypeVerifier &,
-                                     ast::BindingDeclaration const *);
-  static VerificationTask VerifyType(TypeVerifier &, ast::Call const *);
-  static VerificationTask VerifyType(TypeVerifier &, ast::Cast const *);
-  static VerificationTask VerifyType(TypeVerifier &,
-                                     ast::ComparisonOperator const *);
-  static VerificationTask VerifyType(TypeVerifier &, ast::Declaration const *);
-  static VerificationTask VerifyType(TypeVerifier &,
-                                     ast::Declaration::Id const *);
-  static VerificationTask VerifyType(TypeVerifier &, ast::EnumLiteral const *);
-  static VerificationTask VerifyType(TypeVerifier &,
-                                     ast::FunctionLiteral const *);
-  static VerificationTask VerifyType(TypeVerifier &, ast::FunctionType const *);
-  static VerificationTask VerifyType(TypeVerifier &, ast::Identifier const *);
-  static VerificationTask VerifyType(TypeVerifier &, ast::IfStmt const *);
-  static VerificationTask VerifyType(TypeVerifier &, ast::Import const *);
-  static VerificationTask VerifyType(TypeVerifier &, ast::Module const *);
-  static VerificationTask VerifyType(TypeVerifier &,
-                                     ast::ShortFunctionLiteral const *);
-  static VerificationTask VerifyType(TypeVerifier &, ast::SliceType const *);
-  static VerificationTask VerifyType(TypeVerifier &,
-                                     ast::ProgramArguments const *);
-  static VerificationTask VerifyType(TypeVerifier &, ast::ReturnStmt const *);
-  static VerificationTask VerifyType(TypeVerifier &,
-                                     ast::UnaryOperator const *);
-  static VerificationTask VerifyType(TypeVerifier &, ast::Terminal const *);
+  VerificationTask VerifyType(ast::Access const *);
+  VerificationTask VerifyType(ast::Assignment const *);
+  VerificationTask VerifyType(ast::ArrayLiteral const *);
+  VerificationTask VerifyType(ast::ArrayType const *);
+  VerificationTask VerifyType(ast::BinaryOperator const *);
+  VerificationTask VerifyType(ast::BindingDeclaration const *);
+  VerificationTask VerifyType(ast::Call const *);
+  VerificationTask VerifyType(ast::Cast const *);
+  VerificationTask VerifyType(ast::ComparisonOperator const *);
+  VerificationTask VerifyType(ast::Declaration const *);
+  VerificationTask VerifyType(ast::Declaration::Id const *);
+  VerificationTask VerifyType(ast::EnumLiteral const *);
+  VerificationTask VerifyType(ast::FunctionLiteral const *);
+  VerificationTask VerifyType(ast::FunctionType const *);
+  VerificationTask VerifyType(ast::Identifier const *);
+  VerificationTask VerifyType(ast::IfStmt const *);
+  VerificationTask VerifyType(ast::Import const *);
+  VerificationTask VerifyType(ast::Module const *);
+  VerificationTask VerifyType(ast::ShortFunctionLiteral const *);
+  VerificationTask VerifyType(ast::SliceType const *);
+  VerificationTask VerifyType(ast::ProgramArguments const *);
+  VerificationTask VerifyType(ast::ReturnStmt const *);
+  VerificationTask VerifyType(ast::UnaryOperator const *);
+  VerificationTask VerifyType(ast::Terminal const *);
 
   // TODO: ArgumentType, BinaryAssignmentOperator, BlockNode,
   //       DesignatedInitializer, Index, InterfaceLiteral, Label, ScopeLiteral,

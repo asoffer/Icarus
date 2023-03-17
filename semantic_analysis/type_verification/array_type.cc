@@ -53,8 +53,7 @@ struct NonTypeArrayTypeMatch {
 
 // Verifies that the array type has constant integer lengths and that the data
 // type expression is a type.
-VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
-                                          ast::ArrayType const *node) {
+VerificationTask TypeVerifier::VerifyType(ast::ArrayType const *node) {
   std::vector<QualifiedType> length_results;
   length_results.reserve(node->lengths().size());
   bool error    = false;
@@ -68,7 +67,7 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
     length_results.push_back(result[0]);
 
     if (not IsIntegral(result[0].type())) {
-      tv.ConsumeDiagnostic(NonIntegralArrayLength{.view = node->range()});
+      ConsumeDiagnostic(NonIntegralArrayLength{.view = node->range()});
       error = true;
     }
   }
@@ -77,7 +76,7 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
 
   if (data_qts.size() != 1) { NOT_YET(); }
   if (data_qts[0].type() != Type) {
-    tv.ConsumeDiagnostic(ArrayDataTypeNotAType{
+    ConsumeDiagnostic(ArrayDataTypeNotAType{
         .view = node->data_type().range(),
     });
     error = true;
@@ -85,7 +84,7 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
     constant = false;
   }
 
-  co_return tv.TypeOf(
+  co_return TypeOf(
       node, QualifiedType(
                 Type, ((error ? Qualifiers::Error() : Qualifiers()) |
                        (constant ? Qualifiers::Constant() : Qualifiers()))));

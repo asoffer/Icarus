@@ -4,10 +4,9 @@
 
 namespace semantic_analysis {
 
-VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
-                                          ast::Module const *node) {
+VerificationTask TypeVerifier::VerifyType(ast::Module const *node) {
   for (auto const *stmt : node->stmts()) { co_await VerifyTypeOf(stmt); }
-  co_return tv.Completed(node);
+  co_return Completed(node);
 }
 
 }  // namespace semantic_analysis

@@ -49,26 +49,24 @@ struct NoSuchModule {
 
 }  // namespace
 
-VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
-                                          ast::Import const *node) {
+VerificationTask TypeVerifier::VerifyType(ast::Import const *node) {
   std::span arguments = co_await VerifyTypeOf(node->operand());
   ASSERT(arguments.size() == 1);
 
   auto qt = Constant(Module);
-  if (arguments[0].type() != SliceType(tv.type_system(), Char)) {
-    tv.ConsumeDiagnostic(
-        InvalidImport{.type = tv.TypeForDiagnostic(*node->operand()),
-                      .view = node->operand()->range()});
+  if (arguments[0].type() != SliceType(type_system(), Char)) {
+    ConsumeDiagnostic(InvalidImport{.type = TypeForDiagnostic(*node->operand()),
+                                    .view = node->operand()->range()});
     qt = Error(qt);
   }
 
   if (not(arguments[0].qualifiers() >= Qualifiers::Constant())) {
-    tv.ConsumeDiagnostic(NonConstantImport{.view = node->operand()->range()});
+    ConsumeDiagnostic(NonConstantImport{.view = node->operand()->range()});
     qt = Error(qt);
   }
 
   if (not(qt.qualifiers() >= Qualifiers::Error())) {
-    std::span name_bytes = tv.EvaluateConstant(node->operand(), arguments[0]);
+    std::span name_bytes = EvaluateConstant(node->operand(), arguments[0]);
     char const *ptr;
     size_t length;
     auto *p = name_bytes.data();
@@ -76,19 +74,19 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
     std::memcpy(&length, p + jasmin::ValueSize, sizeof(length));
     std::string_view name(ptr, length);
 
-    auto index = tv.resources().TryLoadModuleByName(module::ModuleName(name));
+    auto index = resources().TryLoadModuleByName(module::ModuleName(name));
     if (index == serialization::ModuleIndex::Invalid()) {
-      tv.ConsumeDiagnostic(NoSuchModule{.view = node->operand()->range()});
+      ConsumeDiagnostic(NoSuchModule{.view = node->operand()->range()});
       qt = Error(qt);
     } else {
-      auto [ptr, inserted] = tv.context().insert_constant(node);
+      auto [ptr, inserted] = context().insert_constant(node);
       ASSERT(inserted);
       ptr->resize(sizeof(index));
       std::memcpy(ptr->data(), &index, sizeof(index));
     }
   }
 
-  co_return tv.TypeOf(node, qt);
+  co_return TypeOf(node, qt);
 }
 
 }  // namespace semantic_analysis

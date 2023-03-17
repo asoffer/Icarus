@@ -4,7 +4,7 @@
 namespace semantic_analysis {
 
 VerificationTask TypeVerifier::VerifyType(
-    TypeVerifier& tv, ast::ShortFunctionLiteral const* node) {
+    ast::ShortFunctionLiteral const* node) {
   core::Parameters<core::Type> parameters;
   bool has_error = false;
   for (auto const& parameter : node->parameters()) {
@@ -19,12 +19,12 @@ VerificationTask TypeVerifier::VerifyType(
     parameters.append(parameter.name, parameter_qts[0].type(), parameter.flags);
   }
 
-  core::ParameterType parameter_type(tv.type_system(), parameters);
+  core::ParameterType parameter_type(type_system(), parameters);
   absl::flat_hash_map<core::ParameterType, Context::CallableIdentifier>
       parameter_types{{parameter_type, Context::CallableIdentifier(node)}};
-  co_yield tv.ParametersOf(node, std::move(parameter_types));
+  co_yield ParametersOf(node, std::move(parameter_types));
 
-  if (has_error) { co_return tv.TypeOf(node, Error()); }
+  if (has_error) { co_return TypeOf(node, Error()); }
 
   std::span body_qualified_types = co_await VerifyTypeOf(node->body());
 
@@ -38,9 +38,9 @@ VerificationTask TypeVerifier::VerifyType(
     }
   }
 
-  co_return tv.TypeOf(
-      node, Constant(core::FunctionType(tv.type_system(), parameter_type,
-                                        std::move(body_types))));
+  co_return TypeOf(node,
+                   Constant(core::FunctionType(type_system(), parameter_type,
+                                               std::move(body_types))));
 }
 
 }  // namespace semantic_analysis

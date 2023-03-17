@@ -25,11 +25,8 @@ struct UncapturedIdentifier {
 
 }  // namespace
 
-VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
-                                          ast::Identifier const *node) {
-  if (node->name() == "builtin") {
-    co_return tv.TypeOf(node, Constant(Module));
-  }
+VerificationTask TypeVerifier::VerifyType(ast::Identifier const *node) {
+  if (node->name() == "builtin") { co_return TypeOf(node, Constant(Module)); }
 
   // TODO: Track cyclic dependencies
   using symbol_ref_type = Context::symbol_ref_type;
@@ -52,14 +49,14 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
       ASSERT(inserted);
     }
   }
-  co_yield tv.ParametersOf(node, std::move(parameters_options));
+  co_yield ParametersOf(node, std::move(parameters_options));
 
   for (auto const &id : scope.visible_ancestor_declaration_id_named(name)) {
     std::span qts = co_await VerifyTypeOf(&id);
     ASSERT(qts.size() == 1);
 
     if (qts[0].qualifiers() >= Qualifiers::Error()) {
-      co_return tv.TypeOf(node, Error());
+      co_return TypeOf(node, Error());
     } else {
       viable.emplace_back(&id, qts[0]);
     }
@@ -80,33 +77,33 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
       auto const &[symbol_ref, symbol_qt] = viable[0];
       qt                                  = symbol_qt;
 
-      tv.context().set_symbol(node, symbol_ref);
+      context().set_symbol(node, symbol_ref);
 
       if (qt.qualifiers() >= Qualifiers::Error()) {
-        co_return tv.TypeOf(node, qt);
+        co_return TypeOf(node, qt);
       }
 
       if (not(qt.qualifiers() >= Qualifiers::Constant())) {
         qt = Reference(qt);
       }
 
-      co_return tv.TypeOf(node, qt);
+      co_return TypeOf(node, qt);
     }
     case 0: {
       if (std::empty(
               node->scope()->ancestor_declaration_id_named(node->name()))) {
-        tv.ConsumeDiagnostic(compiler::UndeclaredIdentifier{
+        ConsumeDiagnostic(compiler::UndeclaredIdentifier{
             .id   = node->name(),
             .view = node->range(),
         });
       } else {
-        tv.ConsumeDiagnostic(UncapturedIdentifier{
+        ConsumeDiagnostic(UncapturedIdentifier{
             .id   = node->name(),
             .view = node->range(),
         });
       }
       qt = Error();
-      co_return tv.TypeOf(node, qt);
+      co_return TypeOf(node, qt);
     }
     default: {
       Qualifiers qualifiers = Qualifiers::Constant();
@@ -120,10 +117,10 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
         member_types.insert(qt.type());
       }
 
-      if (error) { co_return tv.TypeOf(node, qt); }
+      if (error) { co_return TypeOf(node, qt); }
 
       // TODO: Implement correctly.
-      co_return tv.TypeOf(node, qt);
+      co_return TypeOf(node, qt);
     }
   }
 }

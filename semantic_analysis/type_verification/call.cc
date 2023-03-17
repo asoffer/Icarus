@@ -24,8 +24,7 @@ struct UncallableWithArguments {
 
 }  // namespace
 
-VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
-                                          ast::Call const *node) {
+VerificationTask TypeVerifier::VerifyType(ast::Call const *node) {
   // TODO: Remove this hack. We haven't yet figured out precisely how to
   // represent compile-time-only, or functions whose return type is dependent on
   // a compile-time parameter, but supporting `builtin.foreign` is an important
@@ -42,22 +41,22 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
     ASSERT(type_argument_qts.size() == 1);
     QualifiedType name_qt = name_argument_qts[0];
     QualifiedType type_qt = type_argument_qts[0];
-    ASSERT(name_qt.type() == SliceType(tv.type_system(), Char));
+    ASSERT(name_qt.type() == SliceType(type_system(), Char));
     ASSERT(name_qt.qualifiers() >= Qualifiers::Constant());
     ASSERT(type_qt.type() == Type);
     ASSERT(type_qt.qualifiers() >= Qualifiers::Constant());
-    core::Type t = tv.EvaluateAs<core::Type>(&node->arguments()[1].expr());
-    if (auto fn_type = t.get_if<core::FunctionType>(tv.type_system())) {
+    core::Type t = EvaluateAs<core::Type>(&node->arguments()[1].expr());
+    if (auto fn_type = t.get_if<core::FunctionType>(type_system())) {
       absl::flat_hash_map<core::ParameterType, Context::CallableIdentifier>
           parameter_types{{fn_type->parameter_type(),
                            Context::CallableIdentifier(node->callee())}};
-      co_yield tv.ParametersOf(node, std::move(parameter_types));
-      co_return tv.TypeOf(node, Constant(t));
-    } else if (t.is<core::PointerType>(tv.type_system()) or
-               t.is<BufferPointerType>(tv.type_system())) {
-      co_return tv.TypeOf(node, QualifiedType(t));
+      co_yield ParametersOf(node, std::move(parameter_types));
+      co_return TypeOf(node, Constant(t));
+    } else if (t.is<core::PointerType>(type_system()) or
+               t.is<BufferPointerType>(type_system())) {
+      co_return TypeOf(node, QualifiedType(t));
     } else {
-      NOT_YET(DebugType(t, tv.type_system()));
+      NOT_YET(DebugType(t, type_system()));
     }
   }
 
@@ -67,7 +66,7 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
   ASSERT(callee_parameter_types.size() == 1);
 
   core::Arguments<QualifiedType> arguments;
-  bool has_error = false;
+  bool has_error   = false;
   bool is_constant = true;
   for (auto const &argument : node->arguments()) {
     std::span argument_qts = co_await VerifyTypeOf(&argument.expr());
@@ -86,7 +85,7 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
     }
   }
 
-  if (has_error) { co_return tv.TypeOf(node, Error()); }
+  if (has_error) { co_return TypeOf(node, Error()); }
 
   std::vector<
       std::pair<core::ParameterType const, Context::CallableIdentifier> const *>
@@ -99,7 +98,7 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
     auto callability_result = core::Callability(
         callee_parameter_type.first.value(), arguments,
         [&](QualifiedType argument_type, core::Type parameter_type) {
-          switch (CanCast(argument_type, parameter_type, tv.type_system())) {
+          switch (CanCast(argument_type, parameter_type, type_system())) {
             case CastKind::None:
             case CastKind::Explicit: return false;
             case CastKind::Implicit:
@@ -112,8 +111,8 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
 
   switch (parameter_types.size()) {
     case 0:
-      tv.ConsumeDiagnostic(UncallableWithArguments{});
-      co_return tv.TypeOf(node, Error());
+      ConsumeDiagnostic(UncallableWithArguments{});
+      co_return TypeOf(node, Error());
     case 1: {
       auto const &[parameter_type, callable_identifier] = *parameter_types[0];
 
@@ -123,22 +122,22 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
         if (callee_qts.size() != 1) { NOT_YET(); }
         return_types = callee_qts[0]
                            .type()
-                           .get<core::FunctionType>(tv.type_system())
+                           .get<core::FunctionType>(type_system())
                            .returns();
 
       } else {
         auto [type, fn] = callable_identifier.function();
-        return_types = type.get<core::FunctionType>(tv.type_system()).returns();
+        return_types    = type.get<core::FunctionType>(type_system()).returns();
       }
       std::vector<QualifiedType> qts;
       qts.reserve(return_types.size());
-      tv.context().set_callee(node, &parameter_types.back()->second);
+      context().set_callee(node, &parameter_types.back()->second);
       if (is_constant) {
         for (core::Type t : return_types) { qts.push_back(Constant(t)); }
       } else {
         for (core::Type t : return_types) { qts.emplace_back(t); }
       }
-      co_return tv.TypeOf(node, std::move(qts));
+      co_return TypeOf(node, std::move(qts));
     }
     default: NOT_YET("Log an error");
   }

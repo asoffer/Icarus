@@ -26,18 +26,17 @@ struct ProgramArgumentAccess {
 
 }  // namespace
 
-VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
-                                          ast::ProgramArguments const *node) {
-  QualifiedType qualified_type(SliceType(tv.type_system(), Char));
+VerificationTask TypeVerifier::VerifyType(ast::ProgramArguments const *node) {
+  QualifiedType qualified_type(SliceType(type_system(), Char));
   for (ast::Scope const &s : node->scope()->ancestors()) {
     if (s.kind() == ast::Scope::Kind::BoundaryExecutable and s.parent()) {
-      tv.ConsumeDiagnostic(ProgramArgumentAccess{.view = node->range()});
+      ConsumeDiagnostic(ProgramArgumentAccess{.view = node->range()});
       qualified_type = Error(qualified_type);
       break;
     }
   }
 
-  co_return tv.TypeOf(node, qualified_type);
+  co_return TypeOf(node, qualified_type);
 }
 
 }  // namespace semantic_analysis

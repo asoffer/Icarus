@@ -1,11 +1,10 @@
 #include "ast/ast.h"
-#include "semantic_analysis/type_verification/verify.h"
 #include "semantic_analysis/type_verification/casting.h"
+#include "semantic_analysis/type_verification/verify.h"
 
 namespace semantic_analysis {
 
-VerificationTask TypeVerifier::VerifyType(TypeVerifier& tv,
-                                          ast::FunctionLiteral const* node) {
+VerificationTask TypeVerifier::VerifyType(ast::FunctionLiteral const* node) {
   core::Parameters<core::Type> parameters;
   bool has_error = false;
   for (auto const& parameter : node->parameters()) {
@@ -21,12 +20,12 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier& tv,
     parameters.append(parameter.name, parameter_qts[0].type(), parameter.flags);
   }
 
-  core::ParameterType parameter_type(tv.type_system(), parameters);
+  core::ParameterType parameter_type(type_system(), parameters);
   absl::flat_hash_map<core::ParameterType, Context::CallableIdentifier>
       parameter_types{{parameter_type, Context::CallableIdentifier(node)}};
-  co_yield tv.ParametersOf(node, std::move(parameter_types));
+  co_yield ParametersOf(node, std::move(parameter_types));
 
-  if (has_error) { co_return tv.TypeOf(node, Error()); }
+  if (has_error) { co_return TypeOf(node, Error()); }
 
   if (std::optional outputs = node->outputs()) {
     std::vector<core::Type> return_types;
@@ -43,29 +42,28 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier& tv,
       }
     }
     for (auto const* output : *outputs) {
-      return_types.push_back(tv.EvaluateAs<core::Type>(output));
+      return_types.push_back(EvaluateAs<core::Type>(output));
     }
 
     std::span<core::Type const> specified_return_types = return_types;
 
-    co_yield tv.TypeOf(
-        node, Constant(core::FunctionType(tv.type_system(), parameter_type,
-                                          return_types)));
+    co_yield TypeOf(node, Constant(core::FunctionType(
+                              type_system(), parameter_type, return_types)));
 
     for (auto const* stmt : node->stmts()) { co_await VerifyTypeOf(stmt); }
 
     for (auto const* return_stmt : node->returns()) {
-      std::span returned_types = tv.context().return_types(return_stmt);
+      std::span returned_types = context().return_types(return_stmt);
 
       if (specified_return_types.size() != returned_types.size()) { NOT_YET(); }
       for (size_t i = 0; i < specified_return_types.size(); ++i) {
         switch (CanCast(returned_types[i], specified_return_types[i],
-                        tv.type_system())) {
+                        type_system())) {
           case CastKind::None:
           case CastKind::Explicit:
-            NOT_YET(DebugType(specified_return_types[i], tv.type_system()), " ",
-                    DebugQualifiedType(returned_types[i], tv.type_system()),
-                    " ", node->DebugString());
+            NOT_YET(DebugType(specified_return_types[i], type_system()), " ",
+                    DebugQualifiedType(returned_types[i], type_system()), " ",
+                    node->DebugString());
 
           case CastKind::Implicit:
           case CastKind::InPlace: continue;
@@ -73,7 +71,7 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier& tv,
       }
     }
 
-    co_return tv.Completed(node);
+    co_return Completed(node);
 
   } else {
     for (auto const* stmt : node->stmts()) { co_await VerifyTypeOf(stmt); }
@@ -81,23 +79,23 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier& tv,
     std::vector<std::span<QualifiedType const>> returns;
     returns.reserve(node->returns().size());
     for (auto const* return_stmt : node->returns()) {
-      returns.push_back(tv.context().return_types(return_stmt));
+      returns.push_back(context().return_types(return_stmt));
     }
     switch (returns.size()) {
       case 0:
-        co_yield tv.TypeOf(node, Constant(core::FunctionType(
-                                     tv.type_system(), parameter_type, {})));
-        co_return tv.Completed(node);
+        co_yield TypeOf(node, Constant(core::FunctionType(type_system(),
+                                                          parameter_type, {})));
+        co_return Completed(node);
       case 1: {
         std::vector<core::Type> return_types;
         return_types.reserve(returns[0].size());
         for (QualifiedType qt : returns[0]) {
           return_types.push_back(qt.type());
         }
-        co_yield tv.TypeOf(
-            node, Constant(core::FunctionType(tv.type_system(), parameter_type,
+        co_yield TypeOf(
+            node, Constant(core::FunctionType(type_system(), parameter_type,
                                               return_types)));
-        co_return tv.Completed(node);
+        co_return Completed(node);
       }
       default: NOT_YET();
     }

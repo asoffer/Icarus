@@ -136,14 +136,13 @@ struct DereferencingNonPointer {
 
 }  // namespace
 
-VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
-                                          ast::UnaryOperator const *node) {
+VerificationTask TypeVerifier::VerifyType(ast::UnaryOperator const *node) {
   std::span operand_qts = co_await VerifyTypeOf(node->operand());
 
   QualifiedType qt;
 
   if (operand_qts.size() != 1) {
-    tv.ConsumeDiagnostic(UnexpandedUnaryOperatorArgument{
+    ConsumeDiagnostic(UnexpandedUnaryOperatorArgument{
         .num_arguments = operand_qts.size(),
         .view          = node->operand()->range(),
     });
@@ -160,9 +159,9 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
       case ast::UnaryOperator::Kind::BufferPointer: {
         qt = QualifiedType(Type, operand_qualifiers & ~Qualifiers::Buffer());
         if (operand_type != Type) {
-          tv.ConsumeDiagnostic(NotAType{
+          ConsumeDiagnostic(NotAType{
               .view = node->operand()->range(),
-              .type = tv.TypeForDiagnostic(*node->operand()),
+              .type = TypeForDiagnostic(*node->operand()),
           });
           qt = Error(qt);
         }
@@ -172,14 +171,14 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
       } break;
       case ast::UnaryOperator::Kind::At: {
         if (auto ptr_type =
-                operand_type.get_if<core::PointerType>(tv.type_system())) {
+                operand_type.get_if<core::PointerType>(type_system())) {
           qt = Reference(ptr_type->pointee());
-        } else if (auto ptr_type = operand_type.get_if<BufferPointerType>(
-                       tv.type_system())) {
+        } else if (auto ptr_type =
+                       operand_type.get_if<BufferPointerType>(type_system())) {
           qt = QualifiedType(ptr_type->pointee(), Qualifiers::Buffer());
         } else {
-          tv.ConsumeDiagnostic(DereferencingNonPointer{
-              .type = tv.TypeForDiagnostic(*node->operand()),
+          ConsumeDiagnostic(DereferencingNonPointer{
+              .type = TypeForDiagnostic(*node->operand()),
               .view = node->range(),
           });
           qt = Error();
@@ -187,20 +186,20 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
       } break;
       case ast::UnaryOperator::Kind::Address: {
         if (operand_qualifiers >= Qualifiers::Buffer()) {
-          qt = QualifiedType(BufferPointerType(tv.type_system(), operand_type));
+          qt = QualifiedType(BufferPointerType(type_system(), operand_type));
         } else if (operand_qualifiers >= Qualifiers::Reference()) {
-          qt = QualifiedType(core::PointerType(tv.type_system(), operand_type));
+          qt = QualifiedType(core::PointerType(type_system(), operand_type));
         } else {
-          tv.ConsumeDiagnostic(NonAddressableExpression{.view = node->range()});
+          ConsumeDiagnostic(NonAddressableExpression{.view = node->range()});
           qt = Error();
         }
       } break;
       case ast::UnaryOperator::Kind::Pointer: {
         qt = QualifiedType(Type, operand_qualifiers & ~Qualifiers::Buffer());
         if (operand_type != Type) {
-          tv.ConsumeDiagnostic(NotAType{
+          ConsumeDiagnostic(NotAType{
               .view = node->operand()->range(),
-              .type = tv.TypeForDiagnostic(*node->operand()),
+              .type = TypeForDiagnostic(*node->operand()),
           });
           qt = Error(qt);
         }
@@ -211,22 +210,22 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
           qt = QualifiedType(operand_type,
                              operand_qualifiers & Qualifiers::Constant());
         } else if (auto i = operand_type.get_if<core::SizedIntegerType>(
-                       tv.type_system())) {
+                       type_system())) {
           if (i->is_signed()) {
             qt = QualifiedType(operand_type,
                                operand_qualifiers & Qualifiers::Constant());
 
           } else {
-            tv.ConsumeDiagnostic(NegatingUnsignedInteger{
-                .type = tv.TypeForDiagnostic(*node->operand()),
+            ConsumeDiagnostic(NegatingUnsignedInteger{
+                .type = TypeForDiagnostic(*node->operand()),
                 .view = node->range(),
             });
             qt = Error(operand_qualifiers & Qualifiers::Constant());
           }
         } else {
-          tv.ConsumeDiagnostic(InvalidUnaryOperatorCall{
+          ConsumeDiagnostic(InvalidUnaryOperatorCall{
               .op   = "-",
-              .type = tv.TypeForDiagnostic(*node->operand()),
+              .type = TypeForDiagnostic(*node->operand()),
               .view = node->range(),
           });
           qt = Error(operand_qualifiers & Qualifiers::Constant());
@@ -240,9 +239,9 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
           //       operand_type, operand_qt.quals() &
           //       type::Qualifiers::Constant());
         } else {
-          tv.ConsumeDiagnostic(InvalidUnaryOperatorCall{
+          ConsumeDiagnostic(InvalidUnaryOperatorCall{
               .op   = "not",
-              .type = tv.TypeForDiagnostic(*node->operand()),
+              .type = TypeForDiagnostic(*node->operand()),
               .view = node->range(),
           });
           qt = Error(operand_qualifiers & Qualifiers::Constant());
@@ -251,7 +250,7 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
       default: UNREACHABLE(node->DebugString());
     }
   }
-  co_return tv.TypeOf(node, qt);
+  co_return TypeOf(node, qt);
 }
 
 }  // namespace semantic_analysis

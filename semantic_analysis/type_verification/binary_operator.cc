@@ -79,14 +79,13 @@ QualifiedType VerifyArithmeticOperator(TypeVerifier &tv,
 
 }  // namespace
 
-VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
-                                          ast::BinaryOperator const *node) {
+VerificationTask TypeVerifier::VerifyType(ast::BinaryOperator const *node) {
   std::span lhs_qts = co_await VerifyTypeOf(&node->lhs());
   std::span rhs_qts = co_await VerifyTypeOf(&node->rhs());
 
   bool can_continue = true;
   if (lhs_qts.size() != 1) {
-    tv.ConsumeDiagnostic(UnexpandedBinaryOperatorArgument{
+    ConsumeDiagnostic(UnexpandedBinaryOperatorArgument{
         .num_arguments = lhs_qts.size(),
         .view          = node->lhs().range(),
     });
@@ -94,14 +93,14 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
   }
 
   if (rhs_qts.size() != 1) {
-    tv.ConsumeDiagnostic(UnexpandedBinaryOperatorArgument{
+    ConsumeDiagnostic(UnexpandedBinaryOperatorArgument{
         .num_arguments = rhs_qts.size(),
         .view          = node->rhs().range(),
     });
     can_continue = false;
   }
 
-  if (not can_continue) { co_return tv.TypeOf(node, Error()); }
+  if (not can_continue) { co_return TypeOf(node, Error()); }
 
   auto lhs_qt = lhs_qts[0];
   auto rhs_qt = rhs_qts[0];
@@ -109,19 +108,19 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
   QualifiedType qt;
   switch (node->kind()) {
     case ast::BinaryOperator::Kind::Add: {
-      qt = VerifyArithmeticOperator<'+'>(tv, node, lhs_qt, rhs_qt);
+      qt = VerifyArithmeticOperator<'+'>(*this, node, lhs_qt, rhs_qt);
     } break;
     case ast::BinaryOperator::Kind::Sub: {
-      qt = VerifyArithmeticOperator<'-'>(tv, node, lhs_qt, rhs_qt);
+      qt = VerifyArithmeticOperator<'-'>(*this, node, lhs_qt, rhs_qt);
     } break;
     case ast::BinaryOperator::Kind::Mul: {
-      qt = VerifyArithmeticOperator<'*'>(tv, node, lhs_qt, rhs_qt);
+      qt = VerifyArithmeticOperator<'*'>(*this, node, lhs_qt, rhs_qt);
     } break;
     case ast::BinaryOperator::Kind::Div: {
-      qt = VerifyArithmeticOperator<'/'>(tv, node, lhs_qt, rhs_qt);
+      qt = VerifyArithmeticOperator<'/'>(*this, node, lhs_qt, rhs_qt);
     } break;
     case ast::BinaryOperator::Kind::Mod: {
-      qt = VerifyArithmeticOperator<'%'>(tv, node, lhs_qt, rhs_qt);
+      qt = VerifyArithmeticOperator<'%'>(*this, node, lhs_qt, rhs_qt);
     } break;
     case ast::BinaryOperator::Kind::And:
     case ast::BinaryOperator::Kind::Or:
@@ -131,7 +130,7 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
                                      Qualifiers::Temporary());
       } else {
         // `and`, `or`, and `xor` cannot be overloaded.
-        tv.ConsumeDiagnostic(LogicalBinaryOperatorNeedsBool{
+        ConsumeDiagnostic(LogicalBinaryOperatorNeedsBool{
             .kind = node->kind(),
             .view = node->operator_range(),
         });
@@ -144,7 +143,7 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
     case ast::BinaryOperator::Kind::BlockJump: NOT_YET();
   }
 
-  co_return tv.TypeOf(node, qt);
+  co_return TypeOf(node, qt);
 }
 
 }  // namespace semantic_analysis

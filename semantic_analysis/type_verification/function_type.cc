@@ -32,8 +32,7 @@ struct NonTypeFunctionOutput {
 
 }  // namespace
 
-VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
-                                          ast::FunctionType const *node) {
+VerificationTask TypeVerifier::VerifyType(ast::FunctionType const *node) {
   Qualifiers qualifiers = Qualifiers::Constant();
 
   for (auto const *p : node->parameters()) {
@@ -50,7 +49,7 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
         qualifiers &= ~Qualifiers::Constant();
       }
       if (qt.type() != Type) {
-        tv.ConsumeDiagnostic(NonTypeFunctionInput{.view = p->range()});
+        ConsumeDiagnostic(NonTypeFunctionInput{.view = p->range()});
         qualifiers |= Qualifiers::Error();
       }
     }
@@ -67,11 +66,11 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
 
     if (qt.type() != Type) {
       qualifiers |= Qualifiers::Error();
-      tv.ConsumeDiagnostic(NonTypeFunctionOutput{.view = out->range()});
+      ConsumeDiagnostic(NonTypeFunctionOutput{.view = out->range()});
     }
   }
 
-  co_return tv.TypeOf(node, QualifiedType(Type, qualifiers));
+  co_return TypeOf(node, QualifiedType(Type, qualifiers));
 }
 
 }  // namespace semantic_analysis

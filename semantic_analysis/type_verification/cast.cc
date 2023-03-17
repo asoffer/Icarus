@@ -51,47 +51,45 @@ struct NoViableCast {
 
 }  // namespace
 
-VerificationTask TypeVerifier::VerifyType(TypeVerifier& tv,
-                                          ast::Cast const* node) {
+VerificationTask TypeVerifier::VerifyType(ast::Cast const* node) {
   std::span type_qts = co_await VerifyTypeOf(node->type());
   if (type_qts.size() != 1) { NOT_YET("Log an error"); }
 
   if (type_qts[0].type() != Type) {
-    tv.ConsumeDiagnostic(NonTypeInDeclaration{
+    ConsumeDiagnostic(NonTypeInDeclaration{
         .type = "TODO",
         .view = node->type()->range(),
     });
-    co_return tv.TypeOf(node, Error());
+    co_return TypeOf(node, Error());
   } else if (not(type_qts[0].qualifiers() >= Qualifiers::Constant())) {
-    tv.ConsumeDiagnostic(NonConstantTypeInDeclaration{
+    ConsumeDiagnostic(NonConstantTypeInDeclaration{
         .view = node->type()->range(),
     });
-    co_return tv.TypeOf(node, Error());
+    co_return TypeOf(node, Error());
   }
 
   std::span expr_qts = co_await VerifyTypeOf(node->expr());
   if (expr_qts.size() != 1) { NOT_YET("Log an error"); }
   QualifiedType qt = expr_qts[0];
 
-  core::Type t = tv.EvaluateAs<core::Type>(node->type());
-  switch (CanCast(qt, t, tv.type_system())) {
+  core::Type t = EvaluateAs<core::Type>(node->type());
+  switch (CanCast(qt, t, type_system())) {
     case CastKind::None:
-      tv.ConsumeDiagnostic(NoViableCast{
-          .from_type = tv.TypeForDiagnostic(*node->expr()),
-          .to_type   = tv.ExpressionForDiagnostic(*node->type()),
+      ConsumeDiagnostic(NoViableCast{
+          .from_type = TypeForDiagnostic(*node->expr()),
+          .to_type   = ExpressionForDiagnostic(*node->type()),
           .view      = node->type()->range(),
       });
 
-      co_return tv.TypeOf(
-          node,
-          Error(QualifiedType(t, qt.qualifiers() & Qualifiers::Constant())));
+      co_return TypeOf(node, Error(QualifiedType(
+                                 t, qt.qualifiers() & Qualifiers::Constant())));
     case CastKind::Explicit:
     case CastKind::Implicit:
-      co_return tv.TypeOf(
+      co_return TypeOf(
           node, QualifiedType(t, qt.qualifiers() & (Qualifiers::Constant() |
                                                     Qualifiers::Error())));
     case CastKind::InPlace:
-      co_return tv.TypeOf(
+      co_return TypeOf(
           node, QualifiedType(t, qt.qualifiers() & (Qualifiers::Constant() |
                                                     Qualifiers::Buffer() |
                                                     Qualifiers::Error())));

@@ -38,9 +38,8 @@ std::optional<core::Type> GuessIntendedArrayType(
 
 }  // namespace
 
-VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
-                                          ast::ArrayLiteral const *node) {
-  if (node->empty()) { co_return tv.TypeOf(node, Constant(EmptyArray)); }
+VerificationTask TypeVerifier::VerifyType(ast::ArrayLiteral const *node) {
+  if (node->empty()) { co_return TypeOf(node, Constant(EmptyArray)); }
 
   std::vector<QualifiedType> element_qualified_types;
   element_qualified_types.reserve(node->elements().size());
@@ -55,7 +54,7 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
     }
   }
 
-  if (error) { co_return tv.TypeOf(node, Error()); }
+  if (error) { co_return TypeOf(node, Error()); }
 
   absl::flat_hash_map<core::Type, int> element_type_count;
 
@@ -70,8 +69,7 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
 
   if (element_type_count.size() == 1) {
     core::Type t = element_type_count.begin()->first;
-    qt =
-        QualifiedType(ArrayType(tv.type_system(), num_elements, t), qualifiers);
+    qt = QualifiedType(ArrayType(type_system(), num_elements, t), qualifiers);
   } else if (std::optional<core::Type> t =
                  GuessIntendedArrayType(element_type_count)) {
     std::vector<std::string_view> mistyped_elements;
@@ -82,21 +80,21 @@ VerificationTask TypeVerifier::VerifyType(TypeVerifier &tv,
       }
       ++i;
     }
-    tv.ConsumeDiagnostic(InconsistentArrayType{
+    ConsumeDiagnostic(InconsistentArrayType{
         .highlights = std::move(mistyped_elements),
     });
 
-    qt = Error(QualifiedType(ArrayType(tv.type_system(), num_elements, *t),
-                             qualifiers));
+    qt = Error(
+        QualifiedType(ArrayType(type_system(), num_elements, *t), qualifiers));
   } else {
-    tv.ConsumeDiagnostic(InconsistentArrayType{
+    ConsumeDiagnostic(InconsistentArrayType{
         .highlights = {node->range()},
     });
 
     qt = Error(qualifiers);
   }
 
-  co_return tv.TypeOf(node, qt);
+  co_return TypeOf(node, qt);
 }
 
 }  // namespace semantic_analysis
