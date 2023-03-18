@@ -5,6 +5,7 @@
 #include "base/ptr_span.h"
 #include "diagnostic/consumer/consumer.h"
 #include "module/global_function_map.h"
+#include "module/global_index_map.h"
 #include "module/global_module_map.h"
 #include "module/module.h"
 #include "module/module_name.h"
@@ -29,6 +30,12 @@ struct Resources {
   GlobalFunctionMap& function_map() { return function_map_; }
   GlobalFunctionMap const& function_map() const { return function_map_; }
 
+  GlobalIndexMap& enum_map() { return enum_map_; }
+  GlobalIndexMap const& enum_map() const { return enum_map_; }
+
+  GlobalIndexMap& opaque_map() { return opaque_map_; }
+  GlobalIndexMap const& opaque_map() const { return opaque_map_; }
+
   GlobalModuleMap& module_map() { return module_map_; }
   GlobalModuleMap const& module_map() const { return module_map_; }
 
@@ -47,7 +54,8 @@ struct Resources {
 
   // Assuming `type` is a type with respect to the type system `from`, returns
   // the corresponding type with respect to the type system `to`.
-  core::Type Translate(core::Type type, semantic_analysis::TypeSystem& from,
+  core::Type Translate(core::Type type, serialization::ModuleIndex module_index,
+                       semantic_analysis::TypeSystem& from,
                        semantic_analysis::TypeSystem& to) const;
 
   // Assuming `symbol` is defined relative to the module indexed by `from`,
@@ -63,6 +71,8 @@ struct Resources {
   std::vector<std::unique_ptr<Module>> modules_;
   serialization::ReadOnlyData read_only_data_;
 
+  GlobalIndexMap enum_map_;
+  GlobalIndexMap opaque_map_;
   GlobalFunctionMap function_map_;
   GlobalModuleMap module_map_;
   absl::AnyInvocable<serialization::UniqueModuleId(ModuleName const&) const>

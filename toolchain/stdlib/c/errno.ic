@@ -39,7 +39,7 @@ error ::= enum {
   ERANGE  ::= 34  // Math result not representable
 }
 
-#{export} get ::= () -> u64 {
-  return 0 as u64
+#{export} get ::= () -> error {
+  return error.SUCCESS
   // TODO return @builtin.foreign("errno", *c.int) as error
 }

@@ -6,6 +6,7 @@ cc_library(
     hdrs = ["module.h"],
     srcs = ["module.cc"],
     deps = [
+        ":global_index_map",
         ":global_module_map",
         ":symbol",
         ":type_system",
@@ -18,6 +19,7 @@ cc_library(
         "//vm:function",
         "//vm:serialization",
         "@asoffer_jasmin//jasmin:serialization",
+        "@com_google_absl//absl/cleanup",
     ],
 )
 
@@ -35,6 +37,7 @@ cc_library(
     srcs = ["resources.cc"],
     deps = [
         ":global_function_map",
+        ":global_index_map",
         ":global_module_map",
         ":module",
         ":module_name",
@@ -67,6 +70,19 @@ cc_library(
         "//serialization:function_index",
         "//serialization:module_index",
         "//serialization:unique_module_id",
+        "@com_google_absl//absl/container:flat_hash_map"
+    ],
+)
+
+
+cc_library(
+    name = "global_index_map",
+    visibility = ["//visibility:public"],
+    hdrs = ["global_index_map.h"],
+    srcs = ["global_index_map.cc"],
+    deps = [
+        "//serialization:function_index",
+        "//serialization:module_index",
         "@com_google_absl//absl/container:flat_hash_map"
     ],
 )

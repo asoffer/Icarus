@@ -132,7 +132,8 @@ bool Compile(serialization::UniqueModuleId module_id,
     serialization::ModuleIndex index(i);
     if (not module::Module::DeserializeInto(
             proto, resources.modules(), index, resources.module(index),
-            resources.module_map(), resources.function_map())) {
+            resources.module_map(), resources.function_map(),
+            resources.enum_map(), resources.opaque_map())) {
       // TODO Log an error.
       std::cerr << "failed to load module.";
       return false;

@@ -11,7 +11,7 @@ f := c.fopen("examples/example_file.txt".data, "r".data)
 // TODO: Support freeing any pointer type generically?
 free ::= builtin.foreign("free", [*]char -> ())
 
-if (errno.get() == 0 as u64) {
+if (errno.get() == errno.error.SUCCESS) {
   io.Print("First line of file is:\n")
   p: [*]char
   num: u64

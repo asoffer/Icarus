@@ -111,7 +111,7 @@ struct StringifyType {
         NOT_YET();
       }
     } else {
-      NOT_YET();
+      NOT_YET(node->DebugString());
     }
   }
 

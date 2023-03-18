@@ -33,6 +33,7 @@ void ByteCodeValueEmitter::operator()(ast::EnumLiteral const* node,
     // move past it.
     enumerators.emplace_back(name, i++);
   }
+
   core::Type type = EnumType(type_system(), std::move(enumerators));
   data.function().AppendPush(type);
 }

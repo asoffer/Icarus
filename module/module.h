@@ -9,6 +9,7 @@
 #include "base/ptr_span.h"
 #include "data_types/integer.h"
 #include "module/global_function_map.h"
+#include "module/global_index_map.h"
 #include "module/global_module_map.h"
 #include "module/symbol.h"
 #include "semantic_analysis/type_system.h"
@@ -32,7 +33,9 @@ struct Module {
                               base::PtrSpan<Module const> dependencies,
                               serialization::ModuleIndex module_index,
                               Module &module, GlobalModuleMap &module_map,
-                              GlobalFunctionMap &function_map);
+                              GlobalFunctionMap &function_map,
+                              GlobalIndexMap &enum_map,
+                              GlobalIndexMap &opaque_map);
 
   vm::Function &initializer() { return initializer_; }
   vm::Function const &initializer() const { return initializer_; }

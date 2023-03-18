@@ -13,8 +13,8 @@ void ByteCodeValueEmitter::operator()(ast::Access const* node,
 
     data.function().AppendDrop(1);
   } else if (operand_qt.type() == Module) {
-    auto& m = resources().module(
-        EvaluateAs<serialization::ModuleIndex>(node->operand()));
+    auto module_index = EvaluateAs<serialization::ModuleIndex>(node->operand());
+    auto& m           = resources().module(module_index);
     std::span symbols = m.LoadSymbols(node->member_name());
     switch (symbols.size()) {
       case 0: {
@@ -22,13 +22,14 @@ void ByteCodeValueEmitter::operator()(ast::Access const* node,
       } break;
       case 1: {
         core::Type symbol_type = resources().Translate(
-            symbols[0].type(), m.type_system(), type_system());
+            symbols[0].type(), module_index, m.type_system(), type_system());
         if (auto fn_type =
                 symbol_type.get_if<core::FunctionType>(type_system())) {
           NOT_YET();
         } else if (symbol_type == Type) {
-          core::Type t = resources().Translate(symbols[0].as<core::Type>(),
-                                               m.type_system(), type_system());
+          core::Type t =
+              resources().Translate(symbols[0].as<core::Type>(), module_index,
+                                    m.type_system(), type_system());
           data.function().AppendPush(t);
         } else if (symbol_type.category() ==
                    type_system().index<PrimitiveType>()) {

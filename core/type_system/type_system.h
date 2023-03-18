@@ -111,11 +111,6 @@ struct TypeCategory {
   uint64_t category() const { return type_.category(); }
   uint64_t index() const { return type_.index(); }
 
-  static CrtpDerived FromIndex(size_t index,
-                               TypeSystemSupporting<CrtpDerived> auto& sys) {
-    return Construct(Type(sys.template index<CrtpDerived>(), index), sys);
-  }
-
   constexpr state_type_tuple decompose() const requires(kStoreInline) {
     return state_type_tuple(get_inline_value(type_.index()));
   }
@@ -165,8 +160,8 @@ struct TypeCategory {
                          get_inline_value(t.index()));
     } else {
       return std::apply(
-          [&]<typename... Args>(Args&&... args) {
-            return CrtpDerived(sys, std::forward<Args>(args)...);
+          [&]<typename... Args>(Args const&... args) {
+            return CrtpDerived(sys, args...);
           },
           static_cast<manager_type&>(sys).from_index(t.index()));
     }

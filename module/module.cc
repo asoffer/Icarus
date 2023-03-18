@@ -1,5 +1,6 @@
 #include "module/module.h"
 
+#include "absl/cleanup/cleanup.h"
 #include "jasmin/serialization.h"
 #include "module/type_system.h"
 #include "nth/meta/sequence.h"
@@ -25,8 +26,11 @@ void SerializeType(core::Type t, serialization::Type& proto,
   }
 }
 
-void DeserializeTypeSystem(serialization::TypeSystem const& proto,
-                           semantic_analysis::TypeSystem& type_system) {
+void DeserializeTypeSystem(serialization::ModuleIndex index,
+                           serialization::TypeSystem const& proto,
+                           semantic_analysis::TypeSystem& type_system,
+                           GlobalIndexMap& enum_map,
+                           GlobalIndexMap& opaque_map) {
   for (auto const& parameter_type : proto.parameters()) {
     core::Parameters<core::Type> parameters;
     parameters.reserve(parameter_type.parameters().size());
@@ -69,12 +73,16 @@ void DeserializeTypeSystem(serialization::TypeSystem const& proto,
                        std::move(returns));
   }
 
+  size_t serialized_index = 0;
   for (auto const& e : proto.enums()) {
+    absl::Cleanup c = [&] { ++serialized_index; };
     std::vector<std::pair<std::string, uint64_t>> enumerators;
     for (auto const& [identifier, value] : e.enumerator()) {
       enumerators.emplace_back(identifier, value);
     }
-    semantic_analysis::EnumType(type_system, std::move(enumerators));
+    core::Type t =
+        semantic_analysis::EnumType(type_system, std::move(enumerators));
+    enum_map.insert(serialized_index, index, t.index());
   }
 }
 
@@ -142,7 +150,9 @@ bool Module::DeserializeInto(serialization::Module const& proto,
                              base::PtrSpan<Module const> dependencies,
                              serialization::ModuleIndex module_index,
                              Module& module, GlobalModuleMap& module_map,
-                             GlobalFunctionMap& function_map) {
+                             GlobalFunctionMap& function_map,
+                             GlobalIndexMap& enum_map,
+                             GlobalIndexMap& opaque_map) {
   data_types::Deserialize(proto.integers(), module.integer_table_);
 
   if (not serialization::ReadOnlyData::Deserialize(proto.read_only(),
@@ -152,7 +162,8 @@ bool Module::DeserializeInto(serialization::Module const& proto,
     return false;
   }
 
-  DeserializeTypeSystem(proto.type_system(), module.type_system_);
+  DeserializeTypeSystem(module_index, proto.type_system(), module.type_system_,
+                        enum_map, opaque_map);
 
   for (auto const& [name, symbols] : proto.exported()) {
     for (auto const& symbol : symbols.symbols()) {

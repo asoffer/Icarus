@@ -25,46 +25,55 @@ diagnostic::DiagnosticConsumer &Resources::diagnostic_consumer() {
 }
 
 core::Type Resources::Translate(core::Type type,
+                                serialization::ModuleIndex module_index,
                                 semantic_analysis::TypeSystem &from,
                                 semantic_analysis::TypeSystem &to) const {
   namespace sa = semantic_analysis;
   switch (type.category()) {
-    case sa::TypeSystem::index<sa::OpaqueType>():  // TODO this is in general
-                                                   // wrong.
-    case sa::TypeSystem::index<sa::EnumType>():    // TODO this is in general
-                                                   // wrong.
     case sa::TypeSystem::index<sa::PrimitiveType>():
     case sa::TypeSystem::index<core::SizedIntegerType>(): return type;
     case sa::TypeSystem::index<core::ParameterType>(): {
       core::Parameters<core::Type> parameters =
           type.get<core::ParameterType>(from).value();
       for (auto &param : parameters) {
-        param.value = Translate(param.value, from, to);
+        param.value = Translate(param.value, module_index, from, to);
       }
       return core::ParameterType(to, std::move(parameters));
     }
     case sa::TypeSystem::index<core::PointerType>():
       return core::PointerType(
-          to, Translate(type.get<core::PointerType>(from).pointee(), from, to));
+          to, Translate(type.get<core::PointerType>(from).pointee(),
+                        module_index, from, to));
     case sa::TypeSystem::index<sa::BufferPointerType>():
       return sa::BufferPointerType(
-          to,
-          Translate(type.get<sa::BufferPointerType>(from).pointee(), from, to));
+          to, Translate(type.get<sa::BufferPointerType>(from).pointee(),
+                        module_index, from, to));
     case sa::TypeSystem::index<sa::ArrayType>(): NOT_YET(); break;
     case sa::TypeSystem::index<sa::SliceType>():
       return sa::SliceType(
-          to, Translate(type.get<sa::SliceType>(from).pointee(), from, to));
+          to, Translate(type.get<sa::SliceType>(from).pointee(), module_index,
+                        from, to));
     case sa::TypeSystem::index<core::FunctionType>(): {
       auto f = type.get<core::FunctionType>(from);
       std::vector<core::Type> return_types;
       return_types.reserve(f.returns().size());
       for (core::Type t : f.returns()) {
-        return_types.push_back(Translate(t, from, to));
+        return_types.push_back(Translate(t, module_index, from, to));
       }
       return core::FunctionType(
           to,
-          Translate(f.parameter_type(), from, to).get<core::ParameterType>(to),
+          Translate(f.parameter_type(), module_index, from, to)
+              .get<core::ParameterType>(to),
           std::move(return_types));
+    }
+    case sa::TypeSystem::index<sa::EnumType>(): {
+      return 
+        core::Type(sa::TypeSystem::index<sa::EnumType>(),
+                        enum_map_.find(module_index, type.index()));
+    }
+    case sa::TypeSystem::index<sa::OpaqueType>(): {
+      return core::Type(sa::TypeSystem::index<sa::OpaqueType>(),
+                        opaque_map_.find(module_index, type.index()));
     }
   }
   UNREACHABLE(DebugType(type, from));
@@ -73,10 +82,11 @@ core::Type Resources::Translate(core::Type type,
 Symbol Resources::TranslateToPrimary(serialization::ModuleIndex from,
                                      Symbol const &symbol) {
   auto &m = module(from);
-  core::Type type =
-      Translate(symbol.type(), m.type_system(), primary_module().type_system());
+  core::Type type = Translate(symbol.type(), from, m.type_system(),
+                              primary_module().type_system());
   if (type == semantic_analysis::Type) {
-    return Symbol(Translate(symbol.as<core::Type>(), module(from).type_system(),
+    return Symbol(Translate(symbol.as<core::Type>(), from,
+                            module(from).type_system(),
                             primary_module().type_system()));
   } else if (type.is<core::FunctionType>(primary_module().type_system())) {
     auto fn_index = primary_module()
