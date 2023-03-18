@@ -11,19 +11,18 @@
 
 namespace diagnostic {
 
-// namespace {
-// inline int NumDigits(frontend::LineNum line) {
-//   auto n = line.value;
-//   if (n == 0) { return 1; }
-//   int counter = 0;
-//   while (n != 0) {
-//     n /= 10;
-//     ++counter;
-//   }
-//   return counter;
-// }
-//
-// }  // namespace
+namespace {
+inline int NumDigits(size_t n) {
+  if (n == 0) { return 1; }
+  int counter = 0;
+  while (n != 0) {
+    n /= 10;
+    ++counter;
+  }
+  return counter;
+}
+
+}  // namespace
 
 void ConsoleRenderer::Flush() {
   if (not has_data_) { return; }
@@ -45,12 +44,21 @@ void ConsoleRenderer::WriteSourceQuote(SourceQuote const &quote) {
   for (auto const &highlight : highlights) {
     auto &entry       = source_indexer_.EntryFor(highlight.range);
     auto [start, end] = entry.lines_containing(highlight.range);
+    std::string text_width_str, number_width_str;
+    size_t number_width = NumDigits(end - 1);
+    for (size_t i = 0; i < 80; ++i) { text_width_str += "\u2500"; }
+    for (size_t i = 0; i < number_width; ++i) { number_width_str += "\u2500"; }
+    absl::FPrintF(out_, "    \u256d%s\u252c%s\u256e\n", number_width_str,
+                  text_width_str);
     // TODO: get the filename for this module id from the ModuleMap.
-    auto mid = entry.module_index();
     for (size_t line_number = start; line_number < end; ++line_number) {
-      absl::FPrintF(out_, "\033[97;1m%s:%d | \033[0m%s\n", mid, line_number,
-                    entry.line(line_number));
+      absl::FPrintF(out_, "    \u2502%*d\u2502%s%*s\u2502\n", number_width,
+                    line_number, entry.line(line_number),
+                    80 - entry.line(line_number).size(), "");
     }
+
+    absl::FPrintF(out_, "    \u2570%s\u2534%s\u256f\n", number_width_str,
+                  text_width_str);
   }
 
 #if 0
