@@ -6,6 +6,16 @@ filegroup(
 )
 
 ic_binary(
+    name = "c_file",
+    srcs = ["c_file.ic"],
+    deps = ["//toolchain/stdlib/c:stdio"],
+    data = [
+        ":example_file",
+        "//toolchain/stdlib:io",
+    ],
+)
+
+ic_binary(
     name = "date_time",
     srcs = ["date_time.ic"],
     deps = [

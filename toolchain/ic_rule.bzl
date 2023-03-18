@@ -124,9 +124,9 @@ def _ic_binary_impl(ctx):
     run_mod_file = ctx.actions.declare_file(ctx.label.name + ".run_icmod")
     _module_map_file(ctx, run_mod_file, True)
 
+    data_deps = depset(transitive = [f.files for f in getattr(ctx.attr, "data", [])] + [icm_deps])
     runfiles = ctx.runfiles(
-        files = ([ctx.executable._run_bytecode, icm_file, run_mod_file] +
-                 icm_deps.to_list())
+        files = ([ctx.executable._run_bytecode, icm_file, run_mod_file] + data_deps.to_list())
     )
     ctx.actions.write(
         output = ctx.outputs.executable,
@@ -153,6 +153,7 @@ ic_binary = rule(
     attrs = {
         "srcs": attr.label_list(allow_files = [".ic"]),
         "deps": attr.label_list(providers = [IcarusInfo]),
+        "data": attr.label_list(),
         "_compile": attr.label(
             default = Label("//toolchain:compile"),
             allow_single_file = True,

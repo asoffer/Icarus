@@ -46,7 +46,7 @@ TEST_P(ComparisonOperatorTest, LessThan) {
 
   bool result;
   data_types::IntegerTable table;
-  vm::ExecutionState state{table};
+  vm::ExecutionState state{table, repl.type_system()};
 
   vm::Execute(f, state, {Value(type, 3), Value(type, 4)}, result);
   EXPECT_TRUE(result);
@@ -69,7 +69,7 @@ TEST_P(ComparisonOperatorTest, LessThanOrEqual) {
 
   bool result;
   data_types::IntegerTable table;
-  vm::ExecutionState state{table};
+  vm::ExecutionState state{table, repl.type_system()};
 
   vm::Execute(f, state, {Value(type, 3), Value(type, 4)}, result);
   EXPECT_TRUE(result);
@@ -92,7 +92,7 @@ TEST_P(ComparisonOperatorTest, Equal) {
 
   bool result;
   data_types::IntegerTable table;
-  vm::ExecutionState state{table};
+  vm::ExecutionState state{table, repl.type_system()};
 
   vm::Execute(f, state, {Value(type, 3), Value(type, 4)}, result);
   EXPECT_FALSE(result);
@@ -115,7 +115,7 @@ TEST_P(ComparisonOperatorTest, GreaterThanOrEqual) {
 
   bool result;
   data_types::IntegerTable table;
-  vm::ExecutionState state{table};
+  vm::ExecutionState state{table, repl.type_system()};
 
   vm::Execute(f, state, {Value(type, 3), Value(type, 4)}, result);
   EXPECT_FALSE(result);
@@ -138,7 +138,7 @@ TEST_P(ComparisonOperatorTest, GreaterThan) {
 
   bool result;
   data_types::IntegerTable table;
-  vm::ExecutionState state{table};
+  vm::ExecutionState state{table, repl.type_system()};
 
   vm::Execute(f, state, {Value(type, 3), Value(type, 4)}, result);
   EXPECT_FALSE(result);
@@ -162,7 +162,7 @@ TEST(ComparisonOperatorTest, Chains) {
 
   bool result;
   data_types::IntegerTable table;
-  vm::ExecutionState state{table};
+  vm::ExecutionState state{table, repl.type_system()};
 
   vm::Execute(f, state, {int64_t{4}, int64_t{4}, int64_t{4}}, result);
   EXPECT_FALSE(result);
@@ -193,7 +193,7 @@ TEST(ComparisonOperatorTest, DISABLED_Casting) {
 
   bool result;
   data_types::IntegerTable table;
-  vm::ExecutionState state{table};
+  vm::ExecutionState state{table, repl.type_system()};
 
   vm::Execute(f, state, {int64_t{4}, int32_t{3}}, result);
   EXPECT_TRUE(result);

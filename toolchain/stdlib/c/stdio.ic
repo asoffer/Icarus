@@ -1,51 +1,51 @@
 // This module provides an interface to functions in the <stdio.h> C-header
 // file.
 
-c ::= import "c/types.ic"
+c ::= import "std.c.types"
 
 // TODO: Opaque is insufficient here because C allows for construction of values
 // of this type.
-#{export} FPos ::= builtin.opaque()
+#{export} fpos_t ::= builtin.opaque()
 
-#{export} File ::= builtin.opaque()
-#{export} eof  ::= 4294967295 as c.int
+#{export} FILE ::= builtin.opaque()
+#{export} EOF  ::= 4294967295 as c.int
 
-#{export} fopen    ::= builtin.foreign("fopen", ([*]char, [*]char) -> *File)
-#{export} freopen  ::= builtin.foreign("freopen", ([*]char, [*]char, *File) -> *File)
-#{export} fclose   ::= builtin.foreign("fclose", *File -> c.int)
-#{export} fflush   ::= builtin.foreign("fflush", *File -> c.int)
-#{export} setbuf   ::= builtin.foreign("setbuf", (*File, [*]char) -> ())
-#{export} setvbuf  ::= builtin.foreign("setvbuf", (*File, [*]char, c.int, c.size_t) -> c.int)
+#{export} fopen    ::= builtin.foreign("fopen", ([*]char, [*]char) -> *FILE)
+#{export} freopen  ::= builtin.foreign("freopen", ([*]char, [*]char, *FILE) -> *FILE)
+#{export} fclose   ::= builtin.foreign("fclose", *FILE -> c.int)
+#{export} fflush   ::= builtin.foreign("fflush", *FILE -> c.int)
+#{export} setbuf   ::= builtin.foreign("setbuf", (*FILE, [*]char) -> ())
+#{export} setvbuf  ::= builtin.foreign("setvbuf", (*FILE, [*]char, c.int, c.size_t) -> c.int)
 
-#{export} fread    ::= builtin.foreign("fread", ([*]byte, c.size_t, c.size_t, *File) -> c.size_t)
-#{export} fwrite   ::= builtin.foreign("fwrite", ([*]byte, c.size_t, c.size_t, *File) -> c.size_t)
+#{export} fread    ::= builtin.foreign("fread", ([*]byte, c.size_t, c.size_t, *FILE) -> c.size_t)
+#{export} fwrite   ::= builtin.foreign("fwrite", ([*]byte, c.size_t, c.size_t, *FILE) -> c.size_t)
 
-#{export} fgetc    ::= builtin.foreign("fgetc", *File -> c.int)
-#{export} getc     ::= builtin.foreign("getc", *File -> c.int)
-#{export} fgets    ::= builtin.foreign("fgets", ([*]char, c.int, *File) -> [*]char)
-#{export} fputc    ::= builtin.foreign("fputc", (c.int, *File) -> c.int)
-#{export} putc     ::= builtin.foreign("putc", (c.int, *File) -> c.int)
-#{export} fputs    ::= builtin.foreign("fputs", ([*]char, *File) -> c.int)
+#{export} fgetc    ::= builtin.foreign("fgetc", *FILE -> c.int)
+#{export} getc     ::= builtin.foreign("getc", *FILE -> c.int)
+#{export} fgets    ::= builtin.foreign("fgets", ([*]char, c.int, *FILE) -> [*]char)
+#{export} fputc    ::= builtin.foreign("fputc", (c.int, *FILE) -> c.int)
+#{export} putc     ::= builtin.foreign("putc", (c.int, *FILE) -> c.int)
+#{export} fputs    ::= builtin.foreign("fputs", ([*]char, *FILE) -> c.int)
 #{export} getchar  ::= builtin.foreign("getchar", () -> c.int)
 #{export} putchar  ::= builtin.foreign("putchar", c.int -> c.int)
 #{export} puts     ::= builtin.foreign("puts", [*]char -> c.int)
-#{export} ungetc   ::= builtin.foreign("ungetc", (c.int, *File) -> c.int)
+#{export} ungetc   ::= builtin.foreign("ungetc", (c.int, *FILE) -> c.int)
 
-#{export} ftell    ::= builtin.foreign("ftell", *File -> c.long)
-#{export} fgetpos  ::= builtin.foreign("fgetpos", (*File, *FPos) -> c.int)
-#{export} fseek    ::= builtin.foreign("fseek", (*File, c.long, c.int) -> c.int)
-#{export} fsetpos  ::= builtin.foreign("fsetpos", (*File, *FPos) -> c.int)
-#{export} rewind   ::= builtin.foreign("rewind", *File -> c.int)
+#{export} ftell    ::= builtin.foreign("ftell", *FILE -> c.long)
+#{export} fgetpos  ::= builtin.foreign("fgetpos", (*FILE, *fpos_t) -> c.int)
+#{export} fseek    ::= builtin.foreign("fseek", (*FILE, c.long, c.int) -> c.int)
+#{export} fsetpos  ::= builtin.foreign("fsetpos", (*FILE, *fpos_t) -> c.int)
+#{export} rewind   ::= builtin.foreign("rewind", *FILE -> c.int)
 
-#{export} clearerr ::= builtin.foreign("clearerr", *File -> ())
-#{export} feof     ::= builtin.foreign("feof", *File -> c.int)
-#{export} ferror   ::= builtin.foreign("ferror", *File -> ())
+#{export} clearerr ::= builtin.foreign("clearerr", *FILE -> ())
+#{export} feof     ::= builtin.foreign("feof", *FILE -> c.int)
+#{export} ferror   ::= builtin.foreign("ferror", *FILE -> ())
 #{export} perror   ::= builtin.foreign("perror", [*]char -> c.int)
 
 #{export} remove   ::= builtin.foreign("remove", ([*]char) -> c.int)
 #{export} rename   ::= builtin.foreign("rename", ([*]char, [*]char) -> c.int)
-#{export} tmpfile  ::= builtin.foreign("tmpfile", () -> *File)
+#{export} tmpfile  ::= builtin.foreign("tmpfile", () -> *FILE)
 #{export} tmpnam   ::= builtin.foreign("tmpnam", [*]char -> [*]char)
 
-#{export} getline  ::= builtin.foreign("getline", (*[*]char, *c.size_t, *File) -> c.ssize_t)
-#{export} getdelim ::= builtin.foreign("getdelim", (*[*]char, *u64, c.int, *File) -> i64)
+#{export} getline  ::= builtin.foreign("getline", (*[*]char, *c.size_t, *FILE) -> c.ssize_t)
+#{export} getdelim ::= builtin.foreign("getdelim", (*[*]char, *u64, c.int, *FILE) -> i64)

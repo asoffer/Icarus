@@ -124,7 +124,9 @@ bool Module::Serialize(std::ostream& output, GlobalModuleMap module_map,
             symbol.as<TypedFunction>().function,
             *exported_symbol.mutable_function());
       } else if (symbol_type.category() ==
-                 type_system().index<semantic_analysis::PrimitiveType>()) {
+                     type_system().index<semantic_analysis::PrimitiveType>() or
+                 symbol_type.category() ==
+                     type_system().index<core::SizedIntegerType>()) {
         exported_symbol.set_raw_value(
             symbol.as<TypedValue>().value.raw_value());
       } else {
@@ -170,8 +172,10 @@ bool Module::DeserializeInto(serialization::Module const& proto,
             .function = f,
         });
       } else if (symbol_type.category() ==
-                 module.type_system_
-                     .index<semantic_analysis::PrimitiveType>()) {
+                     module.type_system_
+                         .index<semantic_analysis::PrimitiveType>() or
+                 symbol_type.category() ==
+                     module.type_system_.index<core::SizedIntegerType>()) {
         jasmin::Value v = jasmin::Value::Uninitialized();
         v.set_raw_value(symbol.raw_value());
         module.exported_symbols_[name].push_back(TypedValue{

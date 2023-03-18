@@ -119,8 +119,10 @@ bool Execute(serialization::UniqueModuleId module_id,
   value_stack.push(arguments.data());
   value_stack.push(arguments.size());
   data_types::IntegerTable table;
-  vm::Execute(resources.primary_module().initializer(),
-              vm::ExecutionState{table}, value_stack);
+  vm::Execute(
+      resources.primary_module().initializer(),
+      vm::ExecutionState{table, resources.primary_module().type_system()},
+      value_stack);
   return true;
 }
 

@@ -67,8 +67,14 @@ void ByteCodeStatementEmitter::operator()(ast::Declaration const* node,
         module().Export(
             node->ids()[0].name(), qt.type(),
             jasmin::Value::Load(evaluation.data(), evaluation.size()));
+      } else if (auto s =
+                     qt.type().get_if<core::SizedIntegerType>(type_system())) {
+        ASSERT(s->bytes() <= core::Bytes(jasmin::ValueSize));
+        module().Export(
+            node->ids()[0].name(), *s,
+            jasmin::Value::Load(evaluation.data(), evaluation.size()));
       } else {
-        NOT_YET();
+        NOT_YET(node->DebugString());
       }
     }
 

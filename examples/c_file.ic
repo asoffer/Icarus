@@ -1,23 +1,23 @@
---    ::= import "core.ic"
-c     ::= import "c/stdio.ic"
-errno ::= import "errno.ic"
-io    ::= import "io.ic"
-mem   ::= import "memory.ic"
+c     ::= import "std.c.stdio"
+// errno ::= import "errno.ic"
+// io    ::= import "std.io"
+// mem   ::= import "memory.ic"
 
 // This example uses the C API to access a file. In particular, it opens
 // attempts to open a file, print the first line, and then close the file. If
 // the file cannot be opened, an error is printed instead.
 
 f := c.fopen("examples/example_file.txt".data, "r".data)
-if (errno.get() as u64 == 0) {
-  io.Print("First line of file is:\n")
-  p: [*]char
-  num: u64
-  c.getline(&p, &num, f)
-  io.Print(builtin.slice(p, num))
-  mem.deallocate(p)
-  c.fclose(f)
-} else {
-  io.Print("Error when loading file: errno = ", errno.get() as u64)
-}
-io.Print("\n")
+
+// if (errno.get() as u64 == 0) {
+// io.Print("First line of file is:\n")
+// p: [*]char
+//   num: u64
+//   c.getline(&p, &num, f)
+//   io.Print(builtin.slice(p, num))
+//   mem.deallocate(p)
+//   c.fclose(f)
+// } else {
+//   io.Print("Error when loading file: errno = ", errno.get() as u64)
+// }
+// io.Print("\n")

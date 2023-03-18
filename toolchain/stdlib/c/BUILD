@@ -30,6 +30,13 @@ ic_library(
 )
 
 ic_library(
+    name = "stdio",
+    srcs = ["stdio.ic"],
+    visibility = ["//visibility:public"],
+    deps= [":types"],
+)
+
+ic_library(
     name = "stdlib",
     srcs = ["stdlib.ic"],
     visibility = ["//visibility:public"],

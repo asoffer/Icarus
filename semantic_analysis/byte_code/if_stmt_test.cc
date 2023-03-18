@@ -20,7 +20,7 @@ TEST(IfStmt, DISABLED_Computation) {
   })");
   int64_t result;
   data_types::IntegerTable table;
-  vm::ExecutionState state{table};
+  vm::ExecutionState state{table, repl.type_system()};
 
   vm::Execute(f, state, {true}, result);
   EXPECT_EQ(result, 3);

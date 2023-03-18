@@ -5,7 +5,7 @@ package serialization;
 message IntegerTable {
   message Integer {
     bool negative = 1;
-    string words = 2;
+    bytes words = 2;
   };
   repeated Integer integers = 1;
 }

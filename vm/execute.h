@@ -3,12 +3,14 @@
 
 #include "data_types/integer.h"
 #include "jasmin/value_stack.h"
+#include "semantic_analysis/type_system.h"
 #include "vm/function.h"
 
 namespace vm {
 
 struct ExecutionState {
-  ExecutionState(data_types::IntegerTable& table);
+  ExecutionState(data_types::IntegerTable& table,
+                 semantic_analysis::TypeSystem& type_system);
 
   ExecutionState(ExecutionState const& state);
   ExecutionState(ExecutionState&& state);

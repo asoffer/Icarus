@@ -55,6 +55,8 @@ void DebugType(std::ostream& os, core::Type t, TypeSystem& ts) {
     }
   } else if (auto p = t.get_if<EnumType>(ts)) {
     os << "Enum(" << t.index() << ")";
+  } else if (auto p = t.get_if<OpaqueType>(ts)) {
+    os << "OpaqueType(" << t.index() << ")";
   } else {
     os << "Unknown(" << t.index() << ", " << t.category() << ")";
   }

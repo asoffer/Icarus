@@ -7,6 +7,7 @@ cc_library(
     deps = [
         ":function",
         "//data_types:integer",
+        "//semantic_analysis:type_system",
         "@asoffer_jasmin//jasmin:execute",
         "@asoffer_jasmin//jasmin:execution_state",
         "@asoffer_jasmin//jasmin:function",

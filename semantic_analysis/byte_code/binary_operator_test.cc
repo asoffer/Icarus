@@ -50,7 +50,7 @@ TYPED_TEST(ArithmeticOperatorTest, Add) {
 
   TypeParam result;
   data_types::IntegerTable table;
-  vm::ExecutionState state{table};
+  vm::ExecutionState state{table, repl.type_system()};
 
   vm::Execute(f, state, {TypeParam{3}, TypeParam{4}}, result);
   EXPECT_EQ(result, TypeParam{7});
@@ -82,7 +82,7 @@ TYPED_TEST(ArithmeticOperatorTest, Sub) {
 
   TypeParam result;
   data_types::IntegerTable table;
-  vm::ExecutionState state{table};
+  vm::ExecutionState state{table, repl.type_system()};
 
   vm::Execute(f, state, {TypeParam{4}, TypeParam{3}}, result);
   EXPECT_EQ(result, TypeParam{1});
@@ -106,7 +106,7 @@ TYPED_TEST(ArithmeticOperatorTest, Mul) {
 
   TypeParam result;
   data_types::IntegerTable table;
-  vm::ExecutionState state{table};
+  vm::ExecutionState state{table, repl.type_system()};
 
   vm::Execute(f, state, {TypeParam{4}, TypeParam{3}}, result);
   EXPECT_EQ(result, TypeParam{12});
@@ -130,7 +130,7 @@ TYPED_TEST(ArithmeticOperatorTest, Div) {
 
   TypeParam result;
   data_types::IntegerTable table;
-  vm::ExecutionState state{table};
+  vm::ExecutionState state{table, repl.type_system()};
 
   vm::Execute(f, state, {TypeParam{4}, TypeParam{3}}, result);
   EXPECT_EQ(result, TypeParam{1});
@@ -159,7 +159,7 @@ TYPED_TEST(ArithmeticOperatorTest, Mod) {
 
   TypeParam result;
   data_types::IntegerTable table;
-  vm::ExecutionState state{table};
+  vm::ExecutionState state{table, repl.type_system()};
 
   vm::Execute(f, state, {TypeParam{4}, TypeParam{3}}, result);
   EXPECT_EQ(result, TypeParam{1});
@@ -204,7 +204,7 @@ TEST(LogicalOperatorTest, DISABLED_ShortCircuitingAnd) {
   )");
 
   data_types::IntegerTable table;
-  vm::ExecutionState state{table};
+  vm::ExecutionState state{table, repl.type_system()};
 
   {
     int64_t n = 0;
@@ -251,7 +251,7 @@ TEST(LogicalOperatorTest, DISABLED_ShortCircuitingOr) {
   )");
 
   data_types::IntegerTable table;
-  vm::ExecutionState state{table};
+  vm::ExecutionState state{table, repl.type_system()};
   {
     int64_t n = 0;
     bool result;

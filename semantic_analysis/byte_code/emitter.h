@@ -229,7 +229,7 @@ T Emitter<E>::EvaluateAs(ast::Expression const *expression) {
 
   T result;
   data_types::IntegerTable table;
-  vm::Execute(f, vm::ExecutionState{table}, {}, result);
+  vm::Execute(f, vm::ExecutionState{table, type_system()}, {}, result);
   return result;
 }
 

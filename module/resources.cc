@@ -29,6 +29,7 @@ core::Type Resources::Translate(core::Type type,
                                 semantic_analysis::TypeSystem &to) const {
   namespace sa = semantic_analysis;
   switch (type.category()) {
+    case sa::TypeSystem::index<sa::OpaqueType>(): // TODO this is in general wrong.
     case sa::TypeSystem::index<sa::PrimitiveType>():
     case sa::TypeSystem::index<core::SizedIntegerType>(): return type;
     case sa::TypeSystem::index<core::ParameterType>(): {
@@ -63,7 +64,7 @@ core::Type Resources::Translate(core::Type type,
           std::move(return_types));
     }
   }
-  UNREACHABLE();
+  UNREACHABLE(DebugType(type, from));
 }
 
 Symbol Resources::TranslateToPrimary(serialization::ModuleIndex from,
