@@ -2,6 +2,7 @@
 #define ICARUS_VM_FUNCTION_H
 
 #include "core/type_system/type.h"
+#include "data_types/addr.h"
 #include "jasmin/function.h"
 #include "jasmin/value.h"
 #include "semantic_analysis/type_system.h"
@@ -178,6 +179,8 @@ extern template void Function::AppendConstruct<uint32_t>(uint32_t value);
 extern template void Function::AppendConstruct<uint64_t>(uint64_t value);
 extern template void Function::AppendConstruct<float>(float value);
 extern template void Function::AppendConstruct<double>(double value);
+extern template void Function::AppendConstruct<data_types::addr_t>(
+    data_types::addr_t value);
 
 extern template void Function::AppendLessThan<Function::Append, int8_t>();
 extern template void Function::AppendLessThan<Function::Append, int16_t>();

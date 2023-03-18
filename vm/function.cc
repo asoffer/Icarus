@@ -176,6 +176,8 @@ template void Function::AppendConstruct<uint32_t>(uint32_t value);
 template void Function::AppendConstruct<uint64_t>(uint64_t value);
 template void Function::AppendConstruct<float>(float value);
 template void Function::AppendConstruct<double>(double value);
+template void Function::AppendConstruct<data_types::addr_t>(
+    data_types::addr_t value);
 
 void Function::AppendLoad(uint8_t bytes) {
   internal::Impl(data_).append<jasmin::Load>(bytes);

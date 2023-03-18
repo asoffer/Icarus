@@ -8,10 +8,13 @@ filegroup(
 ic_binary(
     name = "c_file",
     srcs = ["c_file.ic"],
-    deps = ["//toolchain/stdlib/c:stdio"],
+    deps = [
+        "//toolchain/stdlib/c:errno",
+        "//toolchain/stdlib/c:stdio",
+        "//toolchain/stdlib:io",
+    ],
     data = [
         ":example_file",
-        "//toolchain/stdlib:io",
     ],
 )
 

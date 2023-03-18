@@ -1,7 +1,6 @@
 c     ::= import "std.c.stdio"
-// errno ::= import "errno.ic"
-// io    ::= import "std.io"
-// mem   ::= import "memory.ic"
+errno ::= import "std.c.errno"
+io    ::= import "std.io"
 
 // This example uses the C API to access a file. In particular, it opens
 // attempts to open a file, print the first line, and then close the file. If
@@ -9,15 +8,19 @@ c     ::= import "std.c.stdio"
 
 f := c.fopen("examples/example_file.txt".data, "r".data)
 
-// if (errno.get() as u64 == 0) {
-// io.Print("First line of file is:\n")
-// p: [*]char
-//   num: u64
-//   c.getline(&p, &num, f)
-//   io.Print(builtin.slice(p, num))
-//   mem.deallocate(p)
-//   c.fclose(f)
-// } else {
-//   io.Print("Error when loading file: errno = ", errno.get() as u64)
-// }
-// io.Print("\n")
+// TODO: Support freeing any pointer type generically?
+free ::= builtin.foreign("free", [*]char -> ())
+
+if (errno.get() == 0 as u64) {
+  io.Print("First line of file is:\n")
+  p: [*]char
+  num: u64
+  c.getline(&p, &num, f)
+  io.Print(builtin.slice(p, num))
+  free(p)
+  c.fclose(f)
+} else {
+  io.Print("Error when loading file: errno = ")
+  io.Print(errno.get())
+}
+io.Print("\n")

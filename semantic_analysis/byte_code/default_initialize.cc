@@ -37,8 +37,11 @@ void EmitterBase::EmitDefaultInitialize(core::Type t, FunctionData data) {
     data.function().AppendConstruct<bool>(false);
   } else if (t == Char) {
     data.function().AppendConstruct<data_types::Char>(data_types::Char('0'));
+  } else if (t.is<core::PointerType>(type_system()) or
+             t.is<BufferPointerType>(type_system())) {
+    data.function().AppendConstruct<data_types::addr_t>(nullptr);
   } else {
-    NOT_YET();
+    NOT_YET(DebugType(t, type_system()));
   }
 }
 
