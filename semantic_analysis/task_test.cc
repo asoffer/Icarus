@@ -9,18 +9,18 @@ namespace semantic_analysis {
 namespace {
 
 using ::testing::IsEmpty;
-enum Phase { Zero, One, Completed };
+enum PhaseId { Zero, One, Completed };
 
 struct Node : base::Extend<Node>::With<base::AbslHashExtension> {
   int *counter = 0;
   Node *next   = nullptr;
 };
 
-using TestScheduler = Scheduler<Task<Node, Phase>>;
+using TestScheduler = Scheduler<Task<Node, PhaseId>>;
 
-Task<Node, Phase> OneTaskWithNoAwaits(TestScheduler &, Node n) {
+Task<Node, PhaseId> OneTaskWithNoAwaits(TestScheduler &, Node n) {
   ++*n.counter;
-  co_return Task<Node, Phase>::YieldResult<Phase::Zero>(n);
+  co_return YieldResult<Task<Node, PhaseId>, PhaseId::Zero>(n);
 }
 
 TEST(Scheduler, OneTaskWithNoAwaits) {
@@ -33,12 +33,12 @@ TEST(Scheduler, OneTaskWithNoAwaits) {
   EXPECT_EQ(n_counter, 1);
 }
 
-Task<Node, Phase> OneTaskWithOneAwait(TestScheduler &, Node n) {
+Task<Node, PhaseId> OneTaskWithOneAwait(TestScheduler &, Node n) {
   ++*n.counter;
-  co_yield Task<Node, Phase>::YieldResult<Phase::Zero>(n);
-  if (n.next) { co_await Task<Node, Phase>::Phase<Phase::Zero>(*n.next); }
+  co_yield YieldResult<Task<Node, PhaseId>, PhaseId::Zero>(n);
+  if (n.next) { co_await Phase<Task<Node, PhaseId>, PhaseId::Zero>(*n.next); }
   ++*n.counter;
-  co_return Task<Node, Phase>::YieldResult<Phase::One>(n);
+  co_return YieldResult<Task<Node, PhaseId>, PhaseId::One>(n);
 }
 
 TEST(Scheduler, OneTaskWithOneAwait) {
@@ -56,15 +56,15 @@ TEST(Scheduler, OneTaskWithOneAwait) {
   EXPECT_EQ(n2_counter, 2);
 }
 
-Task<Node, Phase> SelfReferential(TestScheduler &, Node n) {
+Task<Node, PhaseId> SelfReferential(TestScheduler &, Node n) {
   ++*n.counter;
-  co_yield Task<Node, Phase>::YieldResult<Phase::Zero>(n);
-  co_await Task<Node, Phase>::Phase<Phase::Zero>(*n.next);
+  co_yield YieldResult<Task<Node, PhaseId>, PhaseId::Zero>(n);
+  co_await Phase<Task<Node, PhaseId>, PhaseId::Zero>(*n.next);
   ++*n.counter;
-  co_yield Task<Node, Phase>::YieldResult<Phase::One>(n);
-  co_await Task<Node, Phase>::Phase<Phase::One>(*n.next);
+  co_yield YieldResult<Task<Node, PhaseId>, PhaseId::One>(n);
+  co_await Phase<Task<Node, PhaseId>, PhaseId::One>(*n.next);
   ++*n.counter;
-  co_return Task<Node, Phase>::YieldResult<Phase::Completed>(n);
+  co_return YieldResult<Task<Node, PhaseId>, PhaseId::Completed>(n);
 }
 
 TEST(Scheduler, SelfReferential) {
@@ -82,22 +82,22 @@ TEST(Scheduler, SelfReferential) {
   EXPECT_EQ(n2_counter, 3);
 }
 
-template <Phase P>
+template <PhaseId P>
 using ReturnType = std::conditional_t<
-    P == Phase::Zero, int,
-    std::conditional_t<P == Phase::One, std::string_view, void>>;
-using ReturningTask       = Task<Node, Phase, ReturnType>;
+    P == PhaseId::Zero, int,
+    std::conditional_t<P == PhaseId::One, std::string_view, void>>;
+using ReturningTask       = Task<Node, PhaseId, ReturnType>;
 using ReturnTestScheduler = Scheduler<ReturningTask>;
 
 ReturningTask ReturningSelfReferential(ReturnTestScheduler &, Node n) {
   ++*n.counter;
-  co_yield ReturningTask::YieldResult<Phase::Zero>(n, 3);
-  *n.counter += co_await ReturningTask::Phase<Phase::Zero>(*n.next);
+  co_yield YieldResult<ReturningTask, PhaseId::Zero>(n, 3);
+  *n.counter += co_await Phase<ReturningTask, PhaseId::Zero>(*n.next);
   ++*n.counter;
-  co_yield ReturningTask::YieldResult<Phase::One>(n, "hello");
-  *n.counter += (co_await ReturningTask::Phase<Phase::One>(*n.next)).size();
+  co_yield YieldResult<ReturningTask, PhaseId::One>(n, "hello");
+  *n.counter += (co_await Phase<ReturningTask, PhaseId::One>(*n.next)).size();
   ++*n.counter;
-  co_return ReturningTask::YieldResult<Phase::Completed>(n);
+  co_return YieldResult<ReturningTask, PhaseId::Completed>(n);
 }
 
 TEST(Scheduler, ReturningSelfReferential) {
@@ -117,12 +117,12 @@ TEST(Scheduler, ReturningSelfReferential) {
 
 ReturningTask SkipPhaseZero(ReturnTestScheduler &, Node n) {
   ++*n.counter;
-  co_yield ReturningTask::YieldResult<Phase::One>(n, "hello");
+  co_yield YieldResult<ReturningTask, PhaseId::One>(n, "hello");
   // When a phase is skipped over, the returned value should be the
   // value-initialized value of the returned type.
-  *n.counter += co_await ReturningTask::Phase<Phase::Zero>(*n.next);
-  *n.counter += (co_await ReturningTask::Phase<Phase::One>(*n.next)).size();
-  co_return ReturningTask::YieldResult<Phase::Completed>(n);
+  *n.counter += co_await Phase<ReturningTask, PhaseId::Zero>(*n.next);
+  *n.counter += (co_await Phase<ReturningTask, PhaseId::One>(*n.next)).size();
+  co_return YieldResult<ReturningTask, PhaseId::Completed>(n);
 }
 
 TEST(Scheduler, SkipPhaseZero) {
