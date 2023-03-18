@@ -40,11 +40,11 @@ using VerificationTask =
 using VerificationScheduler = Scheduler<VerificationTask>;
 
 inline auto VerifyTypeOf(ast::Node const *node) {
-  return VerificationTask::Phase<TypeVerificationPhase::VerifyType>(node);
+  return Phase<VerificationTask, TypeVerificationPhase::VerifyType>(node);
 }
 
 inline auto VerifyParametersOf(ast::Node const *node) {
-  return VerificationTask::Phase<TypeVerificationPhase::VerifyParameters>(node);
+  return Phase<VerificationTask, TypeVerificationPhase::VerifyParameters>(node);
 }
 
 struct TypeVerifier : VerificationScheduler {
@@ -88,17 +88,17 @@ struct TypeVerifier : VerificationScheduler {
   VerificationTask operator()(auto const *node) { return VerifyType(node); }
 
   auto TypeOf(ast::Expression const *node, QualifiedType qualified_type) {
-    return VerificationTask::YieldResult<TypeVerificationPhase::VerifyType>(
+    return YieldResult<VerificationTask, TypeVerificationPhase::VerifyType>(
         node, context().set_qualified_type(node, qualified_type));
   }
   auto TypeOf(ast::Expression const *node,
               std::vector<QualifiedType> qualified_types) {
-    return VerificationTask::YieldResult<TypeVerificationPhase::VerifyType>(
+    return YieldResult<VerificationTask, TypeVerificationPhase::VerifyType>(
         node, context().set_qualified_types(node, std::move(qualified_types)));
   }
   auto TypeOf(ast::Expression const *node,
               std::span<QualifiedType const> qualified_types) {
-    return VerificationTask::YieldResult<TypeVerificationPhase::VerifyType>(
+    return YieldResult<VerificationTask, TypeVerificationPhase::VerifyType>(
         node,
         context().set_qualified_types(
             node, std::vector(qualified_types.begin(), qualified_types.end())));
@@ -109,7 +109,7 @@ struct TypeVerifier : VerificationScheduler {
       std::vector<
           absl::flat_hash_map<core::ParameterType, Context::CallableIdentifier>>
           parameter_ids) {
-    return VerificationTask::YieldResult<
+    return YieldResult<VerificationTask, 
         TypeVerificationPhase::VerifyParameters>(
         node, context().set_parameters(node, std::move(parameter_ids)));
   }
@@ -124,7 +124,7 @@ struct TypeVerifier : VerificationScheduler {
   }
 
   auto Completed(ast::Node const *node) {
-    return VerificationTask::YieldResult<TypeVerificationPhase::Completed>(
+    return YieldResult<VerificationTask, TypeVerificationPhase::Completed>(
         node);
   }
 

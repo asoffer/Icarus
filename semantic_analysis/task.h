@@ -14,29 +14,16 @@
 #include "base/extend.h"
 #include "base/extend/absl_hash.h"
 #include "nth/meta/concepts.h"
+#include "semantic_analysis/phase.h"
+#include "semantic_analysis/yield_result.h"
 
 namespace semantic_analysis {
-namespace internal_task {
-
-struct Empty {};
-
-}  // namespace internal_task
 
 template <typename TaskType>
 struct Scheduler;
 
 template <auto>
 using AlwaysVoid = void;
-
-// Represents a phase of a task (tasks consist of one or more sequential
-// phases). The enumerators must be sequentially valued, where the initial task
-// has an underlying value of zero. Each enum must also have an enumerater named
-// `E::Completed` indicating the task has been completed and whose underlying
-// value is largest in the enum.
-template <typename E>
-concept PhaseIdentifier = nth::enumeration<E> and requires {
-  { E::Completed } -> std::same_as<E>;
-};
 
 template <typename KeyType, PhaseIdentifier PhaseId,
           template <PhaseId> typename ReturnType = AlwaysVoid>
@@ -47,60 +34,7 @@ struct Task {
   template <phase_identifier_type p>
   using return_type = ReturnType<p>;
 
-  template <phase_identifier_type P,
-            bool ReturnsVoid = std::is_void_v<return_type<P>>>
-  struct Phase;
-  template <phase_identifier_type P,
-            bool ReturnsVoid = std::is_void_v<return_type<P>>>
-  struct YieldResult;
-
-  struct promise_type {
-    promise_type(scheduler_type& s, key_type const&) : scheduler_(s) {}
-
-    Task get_return_object() {
-      return Task(std::coroutine_handle<promise_type>::from_promise(*this));
-    }
-    std::suspend_never initial_suspend() { return {}; }
-    std::suspend_always final_suspend() noexcept { return {}; }
-    void unhandled_exception() {}
-
-    template <phase_identifier_type P>
-    auto return_value(YieldResult<P> y) {
-      return yield_value(y);
-    }
-
-    template <phase_identifier_type P>
-    auto yield_value(YieldResult<P> y) {
-      if constexpr (P != phase_identifier_type::Completed) {
-        if constexpr (std::is_void_v<return_type<P>>) {
-          scheduler().template set_completed<P>(y.key());
-        } else {
-          scheduler().template set_completed<P>(y.key(), y.value());
-        }
-      }
-
-      struct {
-        constexpr bool await_ready() const noexcept { return true; }
-        bool await_suspend(std::coroutine_handle<promise_type>) noexcept {
-          return false;
-        }
-        void await_resume() const noexcept {}
-      } result;
-      return result;
-    }
-
-    // Returns whether `phase` has already been completed.
-    template <typename PhaseType>
-    bool resume_after(PhaseType& phase) {
-      return scheduler().order_after(
-          std::coroutine_handle<promise_type>::from_promise(*this), phase);
-    }
-
-    scheduler_type& scheduler() const { return scheduler_; }
-
-   private:
-    scheduler_type& scheduler_;
-  };
+  struct promise_type;
 
   void resume() { handle_.resume(); }
 
@@ -114,120 +48,54 @@ struct Task {
   std::coroutine_handle<promise_type> handle_;
 };
 
-template <typename TaskType, typename TaskType::phase_identifier_type P>
-struct PhaseBase {
-  using task_type             = TaskType;
-  using key_type              = typename task_type::key_type;
-  using phase_identifier_type = typename task_type::phase_identifier_type;
-  using return_type           = typename task_type::template return_type<P>;
-
-  explicit PhaseBase(key_type const& key) : key_(key) {}
-  explicit PhaseBase(key_type&& key) : key_(std::move(key)) {}
-
-  PhaseBase(PhaseBase const&) = delete;
-  PhaseBase(PhaseBase&&)      = delete;
-
-  key_type const& key() { return key_; }
-  static constexpr phase_identifier_type phase_identifier() { return P; }
-
-  constexpr bool await_ready() const noexcept { return false; }
-
- protected:
-  key_type key_;
-};
-
 template <typename KeyType, PhaseIdentifier PhaseId,
           template <PhaseId> typename ReturnType>
-template <PhaseId P>
-struct Task<KeyType, PhaseId, ReturnType>::Phase<P, true>
-    : PhaseBase<Task<KeyType, PhaseId, ReturnType>, P> {
- private:
-  using Base = PhaseBase<Task<KeyType, PhaseId, ReturnType>, P>;
+struct Task<KeyType, PhaseId, ReturnType>::promise_type {
+  promise_type(scheduler_type& s, key_type const&) : scheduler_(s) {}
 
- public:
-  using key_type              = typename Base::key_type;
-  using phase_identifier_type = typename Base::phase_identifier_type;
-  using return_type           = typename Base::return_type;
-  using task_type             = typename Base::task_type;
+  Task get_return_object() {
+    return Task(std::coroutine_handle<promise_type>::from_promise(*this));
+  }
+  std::suspend_never initial_suspend() { return {}; }
+  std::suspend_always final_suspend() noexcept { return {}; }
+  void unhandled_exception() {}
 
-  explicit Phase(key_type const& key) : Base(key) {}
-  explicit Phase(key_type&& key) : Base(std::move(key)) {}
-
-  bool await_suspend(
-      std::coroutine_handle<typename task_type::promise_type> handle) noexcept {
-    bool ready_to_continue = handle.promise().resume_after(*this);
-    return not ready_to_continue;
+  template <phase_identifier_type P>
+  auto return_value(YieldResult<Task, P> y) {
+    return yield_value(y);
   }
 
-  return_type await_resume() const noexcept {}
-};
+  template <phase_identifier_type P>
+  auto yield_value(YieldResult<Task, P> y) {
+    if constexpr (P != phase_identifier_type::Completed) {
+      if constexpr (std::is_void_v<return_type<P>>) {
+        scheduler().template set_completed<P>(y.key());
+      } else {
+        scheduler().template set_completed<P>(y.key(), y.value());
+      }
+    }
 
-template <typename KeyType, PhaseIdentifier PhaseId,
-          template <PhaseId> typename ReturnType>
-template <PhaseId P>
-struct Task<KeyType, PhaseId, ReturnType>::Phase<P, false>
-    : PhaseBase<Task<KeyType, PhaseId, ReturnType>, P> {
- private:
-  using Base = PhaseBase<Task<KeyType, PhaseId, ReturnType>, P>;
-
- public:
-  using key_type              = typename Base::key_type;
-  using phase_identifier_type = typename Base::phase_identifier_type;
-  using return_type           = typename Base::return_type;
-  using task_type             = typename Base::task_type;
-
-  explicit Phase(key_type const& key) : Base(key), return_slot_{} {}
-  explicit Phase(key_type&& key) : Base(std::move(key)), return_slot_{} {}
-
-  bool await_suspend(
-      std::coroutine_handle<typename task_type::promise_type> handle) noexcept {
-    bool ready_to_continue = handle.promise().resume_after(*this);
-    return not ready_to_continue;
+    struct {
+      constexpr bool await_ready() const noexcept { return true; }
+      bool await_suspend(std::coroutine_handle<promise_type>) noexcept {
+        return false;
+      }
+      void await_resume() const noexcept {}
+    } result;
+    return result;
   }
 
-  return_type await_resume() const noexcept { return return_slot_; }
-
-  return_type& return_slot() { return return_slot_; }
-  return_type const& return_slot() const { return return_slot_; }
-
- private:
-  return_type return_slot_;
-};
-
-template <typename KeyType, PhaseIdentifier PhaseId,
-          template <PhaseId> typename ReturnType>
-template <PhaseId P, bool ReturnsVoid>
-struct Task<KeyType, PhaseId, ReturnType>::YieldResult {
- public:
-  using key_type              = KeyType;
-  using phase_identifier_type = PhaseId;
-  using task_type             = Task<KeyType, PhaseId, ReturnType>;
-  using return_type           = typename task_type::template return_type<P>;
-
-  template <std::convertible_to<key_type> K>
-  explicit YieldResult(K&& key) requires(ReturnsVoid)
-      : key_(std::forward<K>(key)) {}
-
-  template <std::convertible_to<key_type> K, typename... Arguments>
-  explicit YieldResult(K&& key, Arguments&&... arguments) requires(
-      std::constructible_from<return_type, Arguments...>)
-      : key_(std::forward<K>(key)),
-        value_(std::forward<Arguments>(arguments)...) {}
-
- private:
-  friend task_type::promise_type;
-
-  constexpr key_type const& key() const { return key_; }
-
-  template <typename R = return_type>
-  constexpr R const& value() const requires(not ReturnsVoid) {
-    return value_;
+  // Returns whether `phase` has already been completed.
+  template <typename PhaseType>
+  bool resume_after(PhaseType& phase) {
+    return scheduler().order_after(
+        std::coroutine_handle<promise_type>::from_promise(*this), phase);
   }
 
-  using return_storage_type =
-      std::conditional_t<ReturnsVoid, internal_task::Empty, return_type>;
-  key_type key_;
-  [[no_unique_address]] return_storage_type value_;
+  scheduler_type& scheduler() const { return scheduler_; }
+
+ private:
+  scheduler_type& scheduler_;
 };
 
 template <typename TaskType>
@@ -250,7 +118,7 @@ struct Scheduler {
   // `prerequisite` has already completed.
   template <int&..., phase_identifier_type P>
   bool order_after(std::coroutine_handle<promise_type> awaiting_handle,
-                   typename task_type::template Phase<P>& prerequisite) {
+                   Phase<task_type, P>& prerequisite) {
     schedule(prerequisite.key());
 
     auto key_iter = keys_.find(prerequisite.key());
@@ -261,7 +129,7 @@ struct Scheduler {
         phase_entries[static_cast<size_t>(prerequisite.phase_identifier())];
 
     bool already_completed = (current_phase > prerequisite.phase_identifier());
-    using return_type      = typename task_type::template Phase<P>::return_type;
+    using return_type      = typename Phase<task_type, P>::return_type;
     if (already_completed) {
       if constexpr (not std::is_void_v<return_type>) {
         if (auto* results_ptr = phase_entry.template results<return_type>()) {
@@ -364,7 +232,7 @@ struct Scheduler {
 
   template <phase_identifier_type P>
   void set_completed(key_type const& key) requires(
-      std::is_void_v<typename task_type::template Phase<P>::return_type>) {
+      std::is_void_v<typename Phase<task_type, P>::return_type>) {
     auto& [current_phase, phase_entries] = keys_.try_emplace(key).first->second;
     current_phase                        = NextAfter<P>();
     auto& phase_entry = phase_entries[static_cast<size_t>(P)];
@@ -380,8 +248,8 @@ struct Scheduler {
   template <phase_identifier_type P, typename ReturnType>
   void
   set_completed(key_type const& key, ReturnType&& phase_return_value) requires(
-      not std::is_void_v<typename task_type::template Phase<P>::return_type>) {
-    using return_type = typename task_type::template Phase<P>::return_type;
+      not std::is_void_v<typename Phase<task_type, P>::return_type>) {
+    using return_type = typename Phase<task_type, P>::return_type;
 
     auto* result_ptr = static_cast<return_type*>(
         results_

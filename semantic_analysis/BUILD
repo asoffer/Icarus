@@ -46,7 +46,11 @@ cc_test(
 
 cc_library(
     name = "task",
-    hdrs = ["task.h"],
+    hdrs = [
+        "phase.h",
+        "task.h",
+        "yield_result.h",
+    ],
     deps = [
         "//ast:node",
         "//base:extend",
