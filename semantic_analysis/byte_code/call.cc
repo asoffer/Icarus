@@ -21,6 +21,10 @@ void ByteCodeValueEmitter::operator()(ast::Call const* node,
       data.function().AppendBuiltinForeignPointer(t);
     }
     return;
+  } else if (ast::Access const* access = node->callee()->if_as<ast::Access>();
+             access and access->member_name() == "underlying") {
+    Emit(&node->arguments()[0].expr(), data);
+    return;
   }
 
   auto const& callable_identifier = context().callee(node);

@@ -32,7 +32,7 @@ void ByteCodeValueEmitter::operator()(ast::ComparisonOperator const* node,
     // We compute the logical negation of what we're interested in because if
     // that's true (i.e., the condition we actually care about is false) we want
     // to jump via `JumpIf`.
-    WithPrimitiveType(common_type, [&]<Numeric T> {
+    bool found = WithPrimitiveType(common_type, [&]<Numeric T> {
       switch (*op_iter) {
         case frontend::Operator::Gt:
           f.AppendDuplicateAt(0);
@@ -63,6 +63,21 @@ void ByteCodeValueEmitter::operator()(ast::ComparisonOperator const* node,
       }
       branches.push_back(f.AppendJumpIfWithPlaceholders());
     });
+    if (not found) {
+      if (common_type.is<EnumType>(type_system())) {
+        switch (*op_iter) {
+          case frontend::Operator::Eq:
+            f.AppendEqual<vm::Function::Append, uint64_t>();
+            f.AppendNot();
+            break;
+          case frontend::Operator::Ne:
+            f.AppendEqual<vm::Function::Append, uint64_t>();
+            break;
+          default: UNREACHABLE();
+        }
+        branches.push_back(f.AppendJumpIfWithPlaceholders());
+      }
+    }
   }
   auto true_branch = f.AppendJumpWithPlaceholders();
 

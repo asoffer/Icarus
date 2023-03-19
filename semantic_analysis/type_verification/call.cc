@@ -58,6 +58,15 @@ VerificationTask TypeVerifier::VerifyType(ast::Call const *node) {
     } else {
       NOT_YET(DebugType(t, type_system()));
     }
+  } else if (ast::Access const *access = node->callee()->if_as<ast::Access>();
+             access and access->member_name() == "underlying") {
+    ASSERT(node->arguments().size() == 1);
+    std::span enum_argument_qts =
+        co_await VerifyTypeOf(&node->arguments()[0].expr());
+    ASSERT(enum_argument_qts.size() == 1);
+    QualifiedType enum_qt = enum_argument_qts[0];
+    ASSERT(enum_qt.type().is<EnumType>(type_system()));
+    co_return TypeOf(node, QualifiedType(U(64)));
   }
 
   std::span<absl::flat_hash_map<core::ParameterType,
