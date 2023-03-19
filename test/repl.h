@@ -137,7 +137,7 @@ struct Repl {
     using type = nth::type_t<t>;
 
     if (std::optional f = ExecutionFunction(std::move(source))) {
-      vm::ExecutionState state{table_};
+      vm::ExecutionState state{table_, type_system()};
 
       if constexpr (FitsInRegister<type>()) {
         type result;
