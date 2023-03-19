@@ -119,11 +119,14 @@ serialization::Module BuiltinModule() {
     fn->AppendReturn();
   }
 
+  serialization::UniqueTypeTable unique_type_table;
+
   vm::SerializationState state(rodata, foreign_map,
                                serialization::ModuleIndex::Self(), mod_map,
                                fn_map);
   vm::Serialize(table, *module.mutable_function_table(), state);
-  module::SerializeTypeSystem(ts, *module.mutable_type_system());
+  module::SerializeTypeSystem(ts, unique_type_table,
+                              *module.mutable_type_system());
   return module;
 }
 

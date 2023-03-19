@@ -29,7 +29,8 @@ void SerializeType(core::Type t, serialization::Type& proto,
 void DeserializeTypeSystem(serialization::ModuleIndex index,
                            serialization::TypeSystem const& proto,
                            semantic_analysis::TypeSystem& type_system,
-                           GlobalIndexMap& enum_map,
+                           semantic_analysis::TypeSystem& current_type_system,
+                           serialization::UniqueTypeTable& unique_type_table,
                            GlobalIndexMap& opaque_map) {
   for (auto const& parameter_type : proto.parameters()) {
     core::Parameters<core::Type> parameters;
@@ -73,27 +74,26 @@ void DeserializeTypeSystem(serialization::ModuleIndex index,
                        std::move(returns));
   }
 
-  size_t serialized_index = 0;
+  unique_type_table.insert_enums(index, proto.enums());
+  size_t i = 0;
   for (auto const& e : proto.enums()) {
-    absl::Cleanup c = [&] { ++serialized_index; };
-    std::vector<std::pair<std::string, uint64_t>> enumerators;
-    for (auto const& [identifier, value] : e.enumerator()) {
-      enumerators.emplace_back(identifier, value);
-    }
-    core::Type t =
-        semantic_analysis::EnumType(type_system, std::move(enumerators));
-    enum_map.insert(serialized_index, index, t.index());
+    semantic_analysis::EnumType(type_system, index, i, &e);
+    semantic_analysis::EnumType(current_type_system, index, i, &e);
+    ++i;
   }
 }
 
 }  // namespace
 
-bool Module::Serialize(std::ostream& output, GlobalModuleMap module_map,
+bool Module::Serialize(std::ostream& output,
+                       serialization::UniqueTypeTable const& unique_type_table,
+                       GlobalModuleMap module_map,
                        GlobalFunctionMap& function_map) const {
   serialization::Module proto;
 
   *proto.mutable_identifier() = id_.value();
-  SerializeTypeSystem(type_system(), *proto.mutable_type_system());
+  SerializeTypeSystem(type_system(), unique_type_table,
+                      *proto.mutable_type_system());
 
   // TODO: Fix const-correctness in Jasmin.
   vm::SerializationState state(const_cast<Module&>(*this).read_only_data(),
@@ -149,9 +149,11 @@ bool Module::Serialize(std::ostream& output, GlobalModuleMap module_map,
 bool Module::DeserializeInto(serialization::Module const& proto,
                              base::PtrSpan<Module const> dependencies,
                              serialization::ModuleIndex module_index,
-                             Module& module, GlobalModuleMap& module_map,
+                             Module& module,
+                             semantic_analysis::TypeSystem& current_type_system,
+                             serialization::UniqueTypeTable& unique_type_table,
+                             GlobalModuleMap& module_map,
                              GlobalFunctionMap& function_map,
-                             GlobalIndexMap& enum_map,
                              GlobalIndexMap& opaque_map) {
   data_types::Deserialize(proto.integers(), module.integer_table_);
 
@@ -163,7 +165,7 @@ bool Module::DeserializeInto(serialization::Module const& proto,
   }
 
   DeserializeTypeSystem(module_index, proto.type_system(), module.type_system_,
-                        enum_map, opaque_map);
+                        current_type_system, unique_type_table, opaque_map);
 
   for (auto const& [name, symbols] : proto.exported()) {
     for (auto const& symbol : symbols.symbols()) {

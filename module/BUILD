@@ -16,6 +16,7 @@ cc_library(
         "//serialization:foreign_symbol_map",
         "//serialization:module",
         "//serialization:read_only_data",
+        "//serialization:unique_type_table",
         "//vm:function",
         "//vm:serialization",
         "@asoffer_jasmin//jasmin:serialization",
@@ -44,6 +45,7 @@ cc_library(
         "//diagnostic/consumer",
         "//serialization:foreign_symbol_map",
         "//serialization:read_only_data",
+        "//serialization:unique_type_table",
         "@com_google_absl//absl/functional:any_invocable",
     ]
 )
@@ -81,6 +83,7 @@ cc_library(
     hdrs = ["global_index_map.h"],
     srcs = ["global_index_map.cc"],
     deps = [
+        "//base:debug",
         "//serialization:function_index",
         "//serialization:module_index",
         "@com_google_absl//absl/container:flat_hash_map"
@@ -110,5 +113,6 @@ cc_library(
     deps = [
         "//semantic_analysis:type_system",
         "//serialization:type_system",
+        "//serialization:unique_type_table",
     ],
 )

@@ -32,6 +32,8 @@ cc_library(
         "//data_types:integer",
         "//data_types:addr",
         "//data_types:char",
+        "//serialization:module_index",
+        "//serialization:type_system",
     ]
 )
 

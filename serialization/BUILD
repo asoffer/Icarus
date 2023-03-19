@@ -138,3 +138,16 @@ cc_library(
         "//base:debug",
     ],
 )
+
+cc_library(
+    name = "unique_type_table",
+    hdrs = ["unique_type_table.h"],
+    srcs = ["unique_type_table.cc"],
+    visibility = ["//visibility:public"],
+    deps = [
+        ":module_index",
+        ":type_system",
+        "//base:debug",
+        "@com_google_absl//absl/container:flat_hash_map",
+    ],
+)

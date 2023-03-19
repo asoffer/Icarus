@@ -10,6 +10,7 @@
 #include "module/module.h"
 #include "module/module_name.h"
 #include "serialization/read_only_data.h"
+#include "serialization/unique_type_table.h"
 
 namespace module {
 
@@ -30,14 +31,18 @@ struct Resources {
   GlobalFunctionMap& function_map() { return function_map_; }
   GlobalFunctionMap const& function_map() const { return function_map_; }
 
-  GlobalIndexMap& enum_map() { return enum_map_; }
-  GlobalIndexMap const& enum_map() const { return enum_map_; }
-
   GlobalIndexMap& opaque_map() { return opaque_map_; }
   GlobalIndexMap const& opaque_map() const { return opaque_map_; }
 
   GlobalModuleMap& module_map() { return module_map_; }
   GlobalModuleMap const& module_map() const { return module_map_; }
+
+  serialization::UniqueTypeTable const& unique_type_table() const {
+    return unique_type_table_;
+  }
+  serialization::UniqueTypeTable& unique_type_table() {
+    return unique_type_table_;
+  }
 
   base::PtrSpan<Module> modules() { return modules_; }
 
@@ -71,10 +76,10 @@ struct Resources {
   std::vector<std::unique_ptr<Module>> modules_;
   serialization::ReadOnlyData read_only_data_;
 
-  GlobalIndexMap enum_map_;
   GlobalIndexMap opaque_map_;
   GlobalFunctionMap function_map_;
   GlobalModuleMap module_map_;
+  serialization::UniqueTypeTable unique_type_table_;
   absl::AnyInvocable<serialization::UniqueModuleId(ModuleName const&) const>
       name_resolver_;
   std::unique_ptr<diagnostic::DiagnosticConsumer> diagnostic_consumer_;

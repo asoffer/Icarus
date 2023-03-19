@@ -17,6 +17,8 @@
 #include "data_types/char.h"
 #include "data_types/integer.h"
 #include "nth/numeric/integer.h"
+#include "serialization/module_index.h"
+#include "serialization/type_system.pb.h"
 
 namespace semantic_analysis {
 
@@ -199,75 +201,31 @@ struct SliceType : core::TypeCategory<SliceType, core::Type> {
   core::Type pointee() const { return std::get<0>(decompose()); }
 };
 
-namespace internal_type_system {
-
-struct EnumTypeState {
-  EnumTypeState(std::vector<std::pair<std::string, uint64_t>> values)
-      : values_(std::move(values)) {
-    std::sort(values_.begin(), values_.end());
-  }
-
-  std::span<std::pair<std::string, uint64_t> const> values() const {
-    return values_;
-  }
-
-  bool has_member(std::string_view name) const {
-    auto iter = std::lower_bound(values_.begin(), values_.end(), name,
-                                 [](auto const& pair, std::string_view name) {
-                                   return pair.first < name;
-                                 });
-    return iter != values_.end() and iter->first == name;
-  }
-
-  std::optional<uint64_t> value(std::string_view name) const {
-    auto iter = std::lower_bound(values_.begin(), values_.end(), name,
-                                 [](auto const& pair, std::string_view name) {
-                                   return pair.first < name;
-                                 });
-    if (iter == values_.end() or iter->first != name) { return std::nullopt; }
-    return iter->second;
-  }
-
-  bool operator==(EnumTypeState const&) const = default;
-  template <typename H>
-  friend H AbslHashValue(H h, EnumTypeState const& state) {
-    return H::combine_contiguous(std::move(h), state.values_.data(),
-                                 state.values_.size());
-  }
-
- private:
-  std::vector<std::pair<std::string, uint64_t>> values_;
-};
-
-}  // namespace internal_type_system
-
 // The `EnumType` category represents a types that have a fixed set of
 // enumerated values defined by the user.
 struct EnumType
-    : core::TypeCategory<EnumType, internal_type_system::EnumTypeState> {
+    : core::TypeCategory<EnumType, serialization::ModuleIndex, size_t,
+                         serialization::TypeSystem::EnumType const*> {
   explicit EnumType(core::TypeSystemSupporting<EnumType> auto& s,
-                    std::vector<std::pair<std::string, uint64_t>> v)
-      : EnumType(s, internal_type_system::EnumTypeState(std::move(v))) {}
+                    serialization::ModuleIndex module_index, size_t index,
+                    serialization::TypeSystem::EnumType const* ptr)
+      : TypeCategory(s, module_index, index, ptr) {}
 
-  std::span<std::pair<std::string, uint64_t> const> enumerators() const {
-    return std::get<0>(decompose()).values();
+  auto const& enumerators() const {
+    return std::get<2>(decompose())->enumerator();
   }
-
   bool has_member(std::string_view name) {
-    return std::get<0>(decompose()).has_member(name);
+    return enumerators().contains(name);
   }
-
   std::optional<uint64_t> value(std::string_view name) {
-    return std::get<0>(decompose()).value(name);
+    auto const& e = enumerators();
+    auto iter     = e.find(name);
+    if (iter == e.end()) { return std::nullopt; }
+    return iter->second;
   }
 
  private:
   friend TypeCategory;
-
-  explicit EnumType(core::TypeSystemSupporting<EnumType> auto& s,
-                    internal_type_system::EnumTypeState state)
-      : core::TypeCategory<EnumType, internal_type_system::EnumTypeState>(
-            s, std::move(state)) {}
 };
 
 struct OpaqueType : core::TypeCategory<OpaqueType, size_t> {

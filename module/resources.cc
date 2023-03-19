@@ -67,9 +67,10 @@ core::Type Resources::Translate(core::Type type,
           std::move(return_types));
     }
     case sa::TypeSystem::index<sa::EnumType>(): {
-      return 
-        core::Type(sa::TypeSystem::index<sa::EnumType>(),
-                        enum_map_.find(module_index, type.index()));
+      auto [from_index, enum_index, ptr] =
+          type.get<sa::EnumType>(from).decompose();
+      // TODO: I think this module index is wrong.
+      return sa::EnumType(to, module_index, enum_index, ptr);
     }
     case sa::TypeSystem::index<sa::OpaqueType>(): {
       return core::Type(sa::TypeSystem::index<sa::OpaqueType>(),

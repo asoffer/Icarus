@@ -71,7 +71,10 @@ struct TypeCategory {
 
     using base_type = nth::flyweight_set<state_type_tuple>;
 
-    using base_type::from_index;
+    auto const& from_index(size_t index) {
+      ASSERT(index < this->size());
+      return base_type::from_index(index);
+    }
     using base_type::index;
     using base_type::insert;
   };

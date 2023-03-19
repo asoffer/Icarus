@@ -132,8 +132,9 @@ bool Compile(serialization::UniqueModuleId module_id,
     serialization::ModuleIndex index(i);
     if (not module::Module::DeserializeInto(
             proto, resources.modules(), index, resources.module(index),
-            resources.module_map(), resources.function_map(),
-            resources.enum_map(), resources.opaque_map())) {
+            resources.primary_module().type_system(),
+            resources.unique_type_table(), resources.module_map(),
+            resources.function_map(), resources.opaque_map())) {
       // TODO Log an error.
       std::cerr << "failed to load module.";
       return false;
@@ -151,8 +152,9 @@ bool Compile(serialization::UniqueModuleId module_id,
 
   semantic_analysis::EmitByteCodeForModule(ast_module, context, resources);
 
-  return resources.primary_module().Serialize(output, resources.module_map(),
-                                              resources.function_map());
+  return resources.primary_module().Serialize(
+      output, resources.unique_type_table(), resources.module_map(),
+      resources.function_map());
 }
 
 }  // namespace toolchain

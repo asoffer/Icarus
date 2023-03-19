@@ -3,11 +3,14 @@
 
 #include "semantic_analysis/type_system.h"
 #include "serialization/type_system.pb.h"
+#include "serialization/unique_type_table.h"
 
 namespace module {
 
-void SerializeTypeSystem(semantic_analysis::TypeSystem& type_system,
-                         serialization::TypeSystem& proto);
+void SerializeTypeSystem(
+    semantic_analysis::TypeSystem& type_system,
+    serialization::UniqueTypeTable const& unique_type_table,
+    serialization::TypeSystem& proto);
 
 }  // namespace module
 

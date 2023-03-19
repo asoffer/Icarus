@@ -17,6 +17,7 @@
 #include "serialization/module.pb.h"
 #include "serialization/module_index.h"
 #include "serialization/read_only_data.h"
+#include "serialization/unique_type_table.h"
 #include "vm/function.h"
 #include "vm/function_table.h"
 
@@ -27,15 +28,18 @@ struct Module {
                   GlobalFunctionMap &function_map)
       : id_(std::move(id)), function_table_(function_map) {}
 
-  bool Serialize(std::ostream &output, GlobalModuleMap module_map,
+  bool Serialize(std::ostream &output,
+                 serialization::UniqueTypeTable const &unique_type_table,
+                 GlobalModuleMap module_map,
                  GlobalFunctionMap &function_map) const;
-  static bool DeserializeInto(serialization::Module const &proto,
-                              base::PtrSpan<Module const> dependencies,
-                              serialization::ModuleIndex module_index,
-                              Module &module, GlobalModuleMap &module_map,
-                              GlobalFunctionMap &function_map,
-                              GlobalIndexMap &enum_map,
-                              GlobalIndexMap &opaque_map);
+  static bool DeserializeInto(
+      serialization::Module const &proto,
+      base::PtrSpan<Module const> dependencies,
+      serialization::ModuleIndex module_index, Module &module,
+      semantic_analysis::TypeSystem &current_type_system,
+      serialization::UniqueTypeTable &unique_type_table,
+      GlobalModuleMap &module_map, GlobalFunctionMap &function_map,
+      GlobalIndexMap &opaque_map);
 
   vm::Function &initializer() { return initializer_; }
   vm::Function const &initializer() const { return initializer_; }

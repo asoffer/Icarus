@@ -5,7 +5,8 @@ namespace semantic_analysis {
 void ByteCodeValueEmitter::operator()(ast::EnumLiteral const* node,
                                       FunctionData data) {
   absl::flat_hash_set<uint64_t> used_values;
-  std::vector<std::pair<std::string, uint64_t>> enumerators;
+  serialization::TypeSystem::EnumType enum_type;
+  auto& enumerators = *enum_type.mutable_enumerator();
   for (auto const& [name, value_expr] : node->specified_values()) {
     core::Type t = context().qualified_type(value_expr.get()).type();
 
@@ -22,7 +23,7 @@ void ByteCodeValueEmitter::operator()(ast::EnumLiteral const* node,
           });
       ASSERT(found);
     }
-    enumerators.emplace_back(name, value);
+    enumerators[name] = value;
     used_values.insert(value);
   }
 
@@ -31,10 +32,13 @@ void ByteCodeValueEmitter::operator()(ast::EnumLiteral const* node,
     while (used_values.contains(i)) { ++i; }
     // Because we're counting up there's no need to insert `i`. We can just
     // move past it.
-    enumerators.emplace_back(name, i++);
+    enumerators[name] = i++;
   }
 
-  core::Type type = EnumType(type_system(), std::move(enumerators));
+  auto [index, ptr] =
+      resources().unique_type_table().insert_enum(std::move(enum_type));
+  core::Type type =
+      EnumType(type_system(), serialization::ModuleIndex::Self(), index, ptr);
   data.function().AppendPush(type);
 }
 

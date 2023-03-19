@@ -15,8 +15,10 @@ void SerializeType(core::Type t, serialization::Type& proto,
 
 }  // namespace
 
-void SerializeTypeSystem(semantic_analysis::TypeSystem& type_system,
-                         serialization::TypeSystem& proto) {
+void SerializeTypeSystem(
+    semantic_analysis::TypeSystem& type_system,
+    serialization::UniqueTypeTable const& unique_type_table,
+    serialization::TypeSystem& proto) {
   type_system.visit_all_stored([&](auto t) {
     using type_category_type     = std::decay_t<decltype(t)>;
     constexpr auto type_category = nth::type<type_category_type>;
@@ -59,10 +61,7 @@ void SerializeTypeSystem(semantic_analysis::TypeSystem& type_system,
       }
     } else if constexpr (type_category ==
                          nth::type<semantic_analysis::EnumType>) {
-      auto& enumerators = *proto.add_enums()->mutable_enumerator();
-      for (auto const& [identifier, value] : t.enumerators()) {
-        enumerators[identifier] = value;
-      }
+      *proto.mutable_enums() = unique_type_table.local_enums();
     } else if constexpr (type_category ==
                          nth::type<semantic_analysis::OpaqueType>) {
       // TODO: Verify that we need to do anything here to make this work.
