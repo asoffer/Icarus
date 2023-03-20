@@ -11,6 +11,7 @@
 #include "module/resources.h"
 #include "semantic_analysis/byte_code/byte_code.h"
 #include "semantic_analysis/context.h"
+#include "semantic_analysis/function_data.h"
 #include "semantic_analysis/task.h"
 #include "semantic_analysis/type_system.h"
 #include "semantic_analysis/type_verification/diagnostics.h"

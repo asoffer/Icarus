@@ -13,6 +13,16 @@ cc_library(
 )
 
 cc_library(
+    name = "function_data",
+    hdrs = ["function_data.h"],
+    deps = [
+        "//ast:declaration",
+        "//vm:function",
+        "@asoffer_nth//nth/container:flyweight_map",
+    ],
+)
+
+cc_library(
     name = "type_system",
     hdrs = ["type_system.h"],
     srcs = ["type_system.cc"],

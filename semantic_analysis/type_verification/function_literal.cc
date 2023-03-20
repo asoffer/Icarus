@@ -71,8 +71,6 @@ VerificationTask TypeVerifier::VerifyType(ast::FunctionLiteral const* node) {
       }
     }
 
-    co_return Completed(node);
-
   } else {
     for (auto const* stmt : node->stmts()) { co_await VerifyTypeOf(stmt); }
 
@@ -85,7 +83,7 @@ VerificationTask TypeVerifier::VerifyType(ast::FunctionLiteral const* node) {
       case 0:
         co_yield TypeOf(node, Constant(core::FunctionType(type_system(),
                                                           parameter_type, {})));
-        co_return Completed(node);
+        break;
       case 1: {
         std::vector<core::Type> return_types;
         return_types.reserve(returns[0].size());
@@ -95,11 +93,13 @@ VerificationTask TypeVerifier::VerifyType(ast::FunctionLiteral const* node) {
         co_yield TypeOf(
             node, Constant(core::FunctionType(type_system(), parameter_type,
                                               return_types)));
-        co_return Completed(node);
+        break;
       }
       default: NOT_YET();
     }
   }
+
+  co_return Completed(node);
 }
 
 }  // namespace semantic_analysis

@@ -48,6 +48,7 @@ cc_library(
         "//module",
         "//module:resources",
         "//semantic_analysis:context",
+        "//semantic_analysis:function_data",
         "//semantic_analysis:type_system",
         "//semantic_analysis/type_verification:casting",
         "//vm:function",
