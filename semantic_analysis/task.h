@@ -22,17 +22,16 @@ namespace semantic_analysis {
 template <typename TaskType>
 struct Scheduler;
 
-template <auto>
-using AlwaysVoid = void;
-
-template <typename KeyType, PhaseIdentifier PhaseId,
-          template <PhaseId> typename ReturnType = AlwaysVoid>
+template <typename KeyType, PhaseIdentifier PhaseId, auto Sequence>
 struct Task {
   using key_type              = KeyType;
   using phase_identifier_type = PhaseId;
   using scheduler_type        = Scheduler<Task>;
+
   template <phase_identifier_type p>
-  using return_type = ReturnType<p>;
+  static constexpr auto signature() {
+    return Sequence.template select<static_cast<size_t>(p)>().head();
+  }
 
   struct promise_type;
 
@@ -48,9 +47,8 @@ struct Task {
   std::coroutine_handle<promise_type> handle_;
 };
 
-template <typename KeyType, PhaseIdentifier PhaseId,
-          template <PhaseId> typename ReturnType>
-struct Task<KeyType, PhaseId, ReturnType>::promise_type {
+template <typename KeyType, PhaseIdentifier PhaseId, auto SignatureSequence>
+struct Task<KeyType, PhaseId, SignatureSequence>::promise_type {
   promise_type(scheduler_type& s, key_type const&) : scheduler_(s) {}
 
   Task get_return_object() {
@@ -68,7 +66,7 @@ struct Task<KeyType, PhaseId, ReturnType>::promise_type {
   template <phase_identifier_type P>
   auto yield_value(YieldResult<Task, P> y) {
     if constexpr (P != phase_identifier_type::Completed) {
-      if constexpr (std::is_void_v<return_type<P>>) {
+      if constexpr (signature<P>().return_type() == nth::type<void>) {
         scheduler().template set_completed<P>(y.key());
       } else {
         scheduler().template set_completed<P>(y.key(), y.value());

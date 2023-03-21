@@ -16,7 +16,8 @@ struct YieldResult {
  private:
   using task_type   = TaskType;
   using key_type    = typename task_type::key_type;
-  using return_type = typename task_type::template return_type<P>;
+  using return_type =
+      nth::type_t<task_type::template signature<P>().return_type()>;
 
  public:
   template <std::convertible_to<key_type> K>

@@ -4,6 +4,7 @@
 
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
+#include "nth/meta/type.h"
 
 namespace semantic_analysis {
 namespace {
@@ -16,11 +17,13 @@ struct Node : base::Extend<Node>::With<base::AbslHashExtension> {
   Node *next   = nullptr;
 };
 
-using TestScheduler = Scheduler<Task<Node, PhaseId>>;
+using NonReturningTask =
+    Task<Node, PhaseId, nth::type_sequence<void(), void(), void()>>;
+using TestScheduler = Scheduler<NonReturningTask>;
 
-Task<Node, PhaseId> OneTaskWithNoAwaits(TestScheduler &, Node n) {
+NonReturningTask OneTaskWithNoAwaits(TestScheduler &, Node n) {
   ++*n.counter;
-  co_return YieldResult<Task<Node, PhaseId>, PhaseId::Zero>(n);
+  co_return YieldResult<NonReturningTask, PhaseId::Zero>(n);
 }
 
 TEST(Scheduler, OneTaskWithNoAwaits) {
@@ -33,12 +36,12 @@ TEST(Scheduler, OneTaskWithNoAwaits) {
   EXPECT_EQ(n_counter, 1);
 }
 
-Task<Node, PhaseId> OneTaskWithOneAwait(TestScheduler &, Node n) {
+NonReturningTask OneTaskWithOneAwait(TestScheduler &, Node n) {
   ++*n.counter;
-  co_yield YieldResult<Task<Node, PhaseId>, PhaseId::Zero>(n);
-  if (n.next) { co_await Phase<Task<Node, PhaseId>, PhaseId::Zero>(*n.next); }
+  co_yield YieldResult<NonReturningTask, PhaseId::Zero>(n);
+  if (n.next) { co_await Phase<NonReturningTask, PhaseId::Zero>(*n.next); }
   ++*n.counter;
-  co_return YieldResult<Task<Node, PhaseId>, PhaseId::One>(n);
+  co_return YieldResult<NonReturningTask, PhaseId::One>(n);
 }
 
 TEST(Scheduler, OneTaskWithOneAwait) {
@@ -56,15 +59,15 @@ TEST(Scheduler, OneTaskWithOneAwait) {
   EXPECT_EQ(n2_counter, 2);
 }
 
-Task<Node, PhaseId> SelfReferential(TestScheduler &, Node n) {
+NonReturningTask SelfReferential(TestScheduler &, Node n) {
   ++*n.counter;
-  co_yield YieldResult<Task<Node, PhaseId>, PhaseId::Zero>(n);
-  co_await Phase<Task<Node, PhaseId>, PhaseId::Zero>(*n.next);
+  co_yield YieldResult<NonReturningTask, PhaseId::Zero>(n);
+  co_await Phase<NonReturningTask, PhaseId::Zero>(*n.next);
   ++*n.counter;
-  co_yield YieldResult<Task<Node, PhaseId>, PhaseId::One>(n);
-  co_await Phase<Task<Node, PhaseId>, PhaseId::One>(*n.next);
+  co_yield YieldResult<NonReturningTask, PhaseId::One>(n);
+  co_await Phase<NonReturningTask, PhaseId::One>(*n.next);
   ++*n.counter;
-  co_return YieldResult<Task<Node, PhaseId>, PhaseId::Completed>(n);
+  co_return YieldResult<NonReturningTask, PhaseId::Completed>(n);
 }
 
 TEST(Scheduler, SelfReferential) {
@@ -82,11 +85,8 @@ TEST(Scheduler, SelfReferential) {
   EXPECT_EQ(n2_counter, 3);
 }
 
-template <PhaseId P>
-using ReturnType = std::conditional_t<
-    P == PhaseId::Zero, int,
-    std::conditional_t<P == PhaseId::One, std::string_view, void>>;
-using ReturningTask       = Task<Node, PhaseId, ReturnType>;
+using ReturningTask =
+    Task<Node, PhaseId, nth::type_sequence<int(), std::string_view(), void()>>;
 using ReturnTestScheduler = Scheduler<ReturningTask>;
 
 ReturningTask ReturningSelfReferential(ReturnTestScheduler &, Node n) {

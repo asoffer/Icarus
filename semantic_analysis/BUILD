@@ -80,6 +80,7 @@ cc_test(
     srcs = ["task_test.cc"],
     deps = [
         ":task",
+        "@asoffer_nth//nth/meta:type",
         "@com_google_googletest//:gtest_main",
     ],
 )

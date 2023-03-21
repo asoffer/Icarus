@@ -49,7 +49,7 @@ void ByteCodeValueEmitter::operator()(ast::Access const* node,
     core::Type t = EvaluateAs<core::Type>(node->operand());
     if (auto e = t.get_if<EnumType>(type_system())) {
       auto o = e->value(node->member_name());
-      ASSERT(o.has_value())
+      ASSERT(o.has_value());
       data.function().AppendPush(*o);
     } else {
       NOT_YET();

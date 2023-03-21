@@ -18,13 +18,19 @@ concept PhaseIdentifier = nth::enumeration<E> and requires {
 
 template <typename TaskType, typename TaskType::phase_identifier_type P>
 struct PhaseBase {
-  using task_type             = TaskType;
-  using key_type              = typename task_type::key_type;
-  using phase_identifier_type = typename task_type::phase_identifier_type;
-  using return_type           = typename task_type::template return_type<P>;
+  using task_type                 = TaskType;
+  using key_type                  = typename task_type::key_type;
+  using phase_identifier_type     = typename task_type::phase_identifier_type;
+  static constexpr auto signature = task_type::template signature<P>();
+  using return_type               = nth::type_t<signature.return_type()>;
 
-  explicit PhaseBase(key_type const& key) : key_(key) {}
-  explicit PhaseBase(key_type&& key) : key_(std::move(key)) {}
+  template <typename... Args>
+  explicit PhaseBase(key_type const& key, Args&&... args)
+      : key_(key), arguments_(std::forward<Args>(args)...) {}
+
+  template <typename... Args>
+  explicit PhaseBase(key_type&& key, Args&&... args)
+      : key_(std::move(key)), arguments_(std::forward<Args>(args)...) {}
 
   PhaseBase(PhaseBase const&) = delete;
   PhaseBase(PhaseBase&&)      = delete;
@@ -32,15 +38,20 @@ struct PhaseBase {
   key_type const& key() { return key_; }
   static constexpr phase_identifier_type phase_identifier() { return P; }
 
+  auto const& arguments() const { return arguments_; }
+
   constexpr bool await_ready() const noexcept { return false; }
 
  protected:
   key_type key_;
+  using tuple_type = nth::type_t<signature.parameters().reduce(
+      [](auto... ts) { return nth::type<std::tuple<nth::type_t<ts>...>>; })>;
+  tuple_type arguments_;
 };
 
 template <typename TaskType, typename TaskType::phase_identifier_type P,
-          bool ReturnsVoid =
-              std::is_void_v<typename TaskType::template return_type<P>>>
+          bool ReturnsVoid = (TaskType::template signature<P>().return_type() ==
+                              nth::type<void>)>
 struct Phase;
 
 template <typename TaskType, typename TaskType::phase_identifier_type P>
@@ -54,8 +65,7 @@ struct Phase<TaskType, P, true> : PhaseBase<TaskType, P> {
   using return_type           = typename Base::return_type;
   using task_type             = typename Base::task_type;
 
-  explicit Phase(key_type const& key) : Base(key) {}
-  explicit Phase(key_type&& key) : Base(std::move(key)) {}
+  using PhaseBase<TaskType, P>::PhaseBase;
 
   bool await_suspend(
       std::coroutine_handle<typename task_type::promise_type> handle) noexcept {
@@ -77,8 +87,7 @@ struct Phase<TaskType, P, false> : PhaseBase<TaskType, P> {
   using return_type           = typename Base::return_type;
   using task_type             = typename Base::task_type;
 
-  explicit Phase(key_type const& key) : Base(key), return_slot_{} {}
-  explicit Phase(key_type&& key) : Base(std::move(key)), return_slot_{} {}
+  using PhaseBase<TaskType, P>::PhaseBase;
 
   bool await_suspend(
       std::coroutine_handle<typename task_type::promise_type> handle) noexcept {

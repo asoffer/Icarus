@@ -27,17 +27,15 @@ enum class TypeVerificationPhase {
 
 namespace internal_verify {
 
-using Types =
-    std::tuple<std::span<absl::flat_hash_map<
-                   core::ParameterType, Context::CallableIdentifier> const>,
-               std::span<QualifiedType const>, void, void>;
-template <TypeVerificationPhase P>
-using ReturnType = std::tuple_element_t<static_cast<int>(P), Types>;
+inline constexpr auto Signatures = nth::type_sequence<
+    std::span<absl::flat_hash_map<core::ParameterType,
+                                  Context::CallableIdentifier> const>(),
+    std::span<QualifiedType const>(), void(), void()>;
 
 }  // namespace internal_verify
 
 using VerificationTask =
-    Task<ast::Node const *, TypeVerificationPhase, internal_verify::ReturnType>;
+    Task<ast::Node const *, TypeVerificationPhase, internal_verify::Signatures>;
 using VerificationScheduler = Scheduler<VerificationTask>;
 
 inline auto VerifyTypeOf(ast::Node const *node) {
