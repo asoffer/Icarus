@@ -101,8 +101,8 @@ struct ByteCodeValueEmitter : Emitter<ByteCodeValueEmitter> {
   void operator()(ast::Terminal const *node, FunctionData data);
   // TODO: ArgumentType, BinaryAssignmentOperator, BlockNode,
   //       DesignatedInitializer, Index, InterfaceLiteral, Label,
-  //       ParameterizedStructLiteral, PatternMatch, ProgramArguments,
-  //       ScopeLiteral, ScopeNode, StructLiteral, YieldStmt, WhileStmt,
+  //       ParameterizedStructLiteral, PatternMatch, ScopeLiteral, ScopeNode,
+  //       StructLiteral, YieldStmt, WhileStmt,
 };
 
 struct ByteCodeStatementEmitter : Emitter<ByteCodeStatementEmitter> {
@@ -136,8 +136,8 @@ struct ByteCodeStatementEmitter : Emitter<ByteCodeStatementEmitter> {
   void operator()(ast::Terminal const *node, FunctionData data);
   // TODO: ArgumentType, BinaryAssignmentOperator, BlockNode,
   //       DesignatedInitializer, Index, InterfaceLiteral, Label,
-  //       ParameterizedStructLiteral, PatternMatch, ProgramArguments,
-  //       ScopeLiteral, ScopeNode, StructLiteral, YieldStmt, WhileStmt
+  //       ParameterizedStructLiteral, PatternMatch, ScopeLiteral, ScopeNode,
+  //       StructLiteral, YieldStmt, WhileStmt
 };
 
 struct ByteCodeReferenceEmitter : Emitter<ByteCodeReferenceEmitter> {
@@ -170,9 +170,6 @@ struct ByteCodeReferenceEmitter : Emitter<ByteCodeReferenceEmitter> {
     UNREACHABLE();
   }
   void operator()(ast::PatternMatch const *, FunctionData) { UNREACHABLE(); }
-  void operator()(ast::ProgramArguments const *, FunctionData) {
-    UNREACHABLE();
-  }
   void operator()(ast::ScopeLiteral const *, FunctionData) { UNREACHABLE(); }
   void operator()(ast::SliceType const *, FunctionData) { UNREACHABLE(); }
   void operator()(ast::ShortFunctionLiteral const *, FunctionData) {

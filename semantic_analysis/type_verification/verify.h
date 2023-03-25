@@ -152,7 +152,6 @@ struct TypeVerifier : VerificationScheduler {
   VerificationTask VerifyType(ast::Module const *);
   VerificationTask VerifyType(ast::ShortFunctionLiteral const *);
   VerificationTask VerifyType(ast::SliceType const *);
-  VerificationTask VerifyType(ast::ProgramArguments const *);
   VerificationTask VerifyType(ast::ReturnStmt const *);
   VerificationTask VerifyType(ast::UnaryOperator const *);
   VerificationTask VerifyType(ast::Terminal const *);

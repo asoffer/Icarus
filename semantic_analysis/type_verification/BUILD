@@ -63,7 +63,6 @@ cc_library(
         "import.cc",
         "short_function_literal.cc",
         "module.cc",
-        "program_arguments.cc",
         "return_stmt.cc",
         "slice_type.cc",
         "unary_operator.cc",

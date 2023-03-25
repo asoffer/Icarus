@@ -357,8 +357,6 @@ Lexeme ConsumeWord(std::string_view &cursor) {
         std::make_unique<ast::Terminal>(word, semantic_analysis::Byte));
   } else if (word == "null") {
     return Lexeme(std::make_unique<ast::Terminal>(word, data_types::Null()));
-  } else if (word == "arguments") {
-    return Lexeme(std::make_unique<ast::ProgramArguments>(word));
   }
 
   if (auto iter = ReservedTypes().find(word); iter != ReservedTypes().end()) {
