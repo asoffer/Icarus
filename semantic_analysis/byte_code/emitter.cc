@@ -1,5 +1,7 @@
 #include "semantic_analysis/byte_code/emitter.h"
 
+#include "vm/argument_slice.h"
+
 namespace semantic_analysis {
 
 std::span<std::byte const> EmitterBase::EvaluateConstant(
@@ -23,9 +25,11 @@ std::span<std::byte const> EmitterBase::EvaluateConstant(
       as<ByteCodeValueEmitter>().Emit(expr, FunctionData(f, variable_offsets));
       f.AppendReturn();
 
+      vm::ArgumentSlice argument_slice(nullptr, 0);
       data_types::IntegerTable table;
       jasmin::ValueStack value_stack;
-      vm::Execute(f, vm::ExecutionState{table, type_system()}, value_stack);
+      vm::Execute(f, vm::ExecutionState{table, type_system(), argument_slice},
+                  value_stack);
       result_ptr->resize(contour.bytes().value());
       std::byte *data = result_ptr->data();
       for (std::byte *ptr = data + result_ptr->size() - jasmin::ValueSize;

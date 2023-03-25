@@ -13,6 +13,7 @@
 #include "module/resources.h"
 #include "toolchain/bazel.h"
 #include "toolchain/flags.h"
+#include "vm/argument_slice.h"
 #include "vm/execute.h"
 
 ABSL_FLAG(std::string, diagnostics, "console",
@@ -118,6 +119,9 @@ bool Execute(serialization::UniqueModuleId module_id,
     return false;
   }
 
+  vm::ArgumentSlice argument_slice(
+      const_cast<std::string_view *>(arguments.data()), arguments.size());
+
   for (auto const *module : resources.modules()) {
     jasmin::ValueStack value_stack;
     value_stack.push(arguments.data());
@@ -125,17 +129,19 @@ bool Execute(serialization::UniqueModuleId module_id,
     data_types::IntegerTable table;
     vm::Execute(
         module->initializer(),
-        vm::ExecutionState{table, resources.primary_module().type_system()},
+        vm::ExecutionState{table, resources.primary_module().type_system(),
+                           argument_slice},
         value_stack);
   }
-  
+
   jasmin::ValueStack value_stack;
   value_stack.push(arguments.data());
   value_stack.push(arguments.size());
   data_types::IntegerTable table;
   vm::Execute(
       resources.primary_module().initializer(),
-      vm::ExecutionState{table, resources.primary_module().type_system()},
+      vm::ExecutionState{table, resources.primary_module().type_system(),
+                         argument_slice},
       value_stack);
   return true;
 }

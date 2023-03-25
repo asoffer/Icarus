@@ -1,10 +1,17 @@
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
+    name = "argument_slice",
+    hdrs = ["argument_slice.h"],
+    deps = [],
+)
+
+cc_library(
     name = "execute",
     hdrs = ["execute.h"],
     srcs = ["execute.cc"],
     deps = [
+        ":argument_slice",
         ":function",
         "//data_types:integer",
         "//semantic_analysis:type_system",
@@ -29,6 +36,7 @@ cc_library(
         "instructions.cc",
     ],
     deps = [
+        ":argument_slice",
         ":immediate_values",
         "//base:debug",
         "//core/type_system",

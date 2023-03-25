@@ -39,7 +39,9 @@ T EvaluateAs(Context& context, module::Resources& resources,
   vm::Function f = EmitByteCode(qt, *expr, context, resources);
 
   data_types::IntegerTable table;
-  vm::ExecutionState state{table, resources.primary_module().type_system()};
+  vm::ArgumentSlice argument_slice(nullptr, 0);
+  vm::ExecutionState state{table, resources.primary_module().type_system(),
+                           argument_slice};
   T result;
   if (PassInRegister(qt, resources.primary_module().type_system())) {
     vm::Execute(f, state, {}, result);

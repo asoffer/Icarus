@@ -346,4 +346,8 @@ void Function::AppendBuiltinOpaque() {
   internal::Impl(data_).append<BuiltinOpaque>();
 }
 
+void Function::AppendBuiltinArguments() {
+  internal::Impl(data_).append<BuiltinArguments>();
+}
+
 }  // namespace vm

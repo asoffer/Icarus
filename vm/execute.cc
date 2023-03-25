@@ -11,8 +11,9 @@ namespace vm {
 static_assert(sizeof(internal::ExecutionState) == sizeof(ExecutionState));
 
 ExecutionState::ExecutionState(data_types::IntegerTable& table,
-                               semantic_analysis::TypeSystem& type_system) {
-  new (data_) internal::ExecutionState(table, type_system);
+                               semantic_analysis::TypeSystem& type_system,
+                               ArgumentSlice& slice) {
+  new (data_) internal::ExecutionState(table, type_system, slice);
 }
 
 ExecutionState::ExecutionState(ExecutionState const& state) {

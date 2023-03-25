@@ -24,6 +24,7 @@
 #include "vm/function_table.h"
 #include "vm/immediate_values.h"
 #include "vm/instructions.h"
+#include "vm/argument_slice.h"
 
 namespace vm {
 
@@ -214,14 +215,24 @@ struct BuiltinAsciiDecode
     : jasmin::StackMachineInstruction<BuiltinAsciiDecode> {
   static uint8_t execute(data_types::Char c) { return c.as_type<uint8_t>(); }
 
-  static std::string debug() { return "builtin.ascii-decode "; }
+  static std::string debug() { return "builtin.ascii-decode"; }
 };
 
 struct BuiltinAsciiEncode
     : jasmin::StackMachineInstruction<BuiltinAsciiEncode> {
   static data_types::Char execute(uint8_t n) { return data_types::Char(n); }
 
-  static std::string debug() { return "builtin.ascii-encode "; }
+  static std::string debug() { return "builtin.ascii-encode"; }
+};
+
+struct BuiltinArguments : jasmin::StackMachineInstruction<BuiltinArguments> {
+  using execution_state = ArgumentSlice;
+  static void execute(jasmin::ValueStack& value_stack, execution_state& state) {
+    value_stack.push(state.data());
+    value_stack.push(static_cast<uint64_t>(state.length()));
+  }
+
+  static std::string debug() { return "builtin.arguments"; }
 };
 
 struct BuiltinOpaque : jasmin::StackMachineInstruction<BuiltinOpaque> {
@@ -231,12 +242,12 @@ struct BuiltinOpaque : jasmin::StackMachineInstruction<BuiltinOpaque> {
     value_stack.push(t);
   }
 
-  static std::string debug() { return "builtin.ascii-encode "; }
+  static std::string debug() { return "builtin.ascii-encode"; }
 };
 
 using BuiltinInstructionSet =
     jasmin::MakeInstructionSet<BuiltinAsciiDecode, BuiltinAsciiEncode,
-                               BuiltinOpaque>;
+                               BuiltinOpaque, BuiltinArguments>;
 
 // TODO: core::*Type instructions should be registerable and not required to
 // be explicitly added here.

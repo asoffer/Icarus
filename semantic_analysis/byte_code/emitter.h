@@ -205,9 +205,11 @@ T Emitter<E>::EvaluateAs(ast::Expression const *expression) {
                                         FunctionData(f, variable_offsets));
   f.AppendReturn();
 
+  vm::ArgumentSlice argument_slice(nullptr, 0);
   T result;
   data_types::IntegerTable table;
-  vm::Execute(f, vm::ExecutionState{table, type_system()}, {}, result);
+  vm::Execute(f, vm::ExecutionState{table, type_system(), argument_slice}, {},
+              result);
   return result;
 }
 

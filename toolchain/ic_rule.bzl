@@ -132,7 +132,7 @@ def _ic_binary_impl(ctx):
         output = ctx.outputs.executable,
         is_executable = True,
        content = """
-        {executable} --input={icm} --module_map_file={mod}
+        {executable} --input={icm} --module_map_file={mod} $@
         """.format(
             executable = ctx.executable._run_bytecode.short_path,
             icm = icm_file.short_path,

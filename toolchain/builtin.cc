@@ -87,6 +87,21 @@ serialization::Module BuiltinModule() {
   }
 
   {
+    auto &symbol = *exported["arguments"].add_symbols();
+    core::FunctionType t(
+        ts, core::ParameterType(ts, {}),
+        {semantic_analysis::SliceType(
+            ts, semantic_analysis::SliceType(ts, semantic_analysis::Char))});
+
+    SerializeType(t, *symbol.mutable_symbol_type(), false);
+
+    auto [index, fn] = table.emplace(0, 2);
+    symbol.mutable_function()->set_index(index.value());
+    fn->AppendBuiltinArguments();
+    fn->AppendReturn();
+  }
+
+  {
     auto &symbol = *exported["opaque"].add_symbols();
     core::FunctionType t(
         ts, core::ParameterType(ts, core::Parameters<core::Type>{}),

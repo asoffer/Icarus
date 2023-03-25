@@ -4,13 +4,15 @@
 #include "data_types/integer.h"
 #include "jasmin/value_stack.h"
 #include "semantic_analysis/type_system.h"
+#include "vm/argument_slice.h"
 #include "vm/function.h"
 
 namespace vm {
 
 struct ExecutionState {
   ExecutionState(data_types::IntegerTable& table,
-                 semantic_analysis::TypeSystem& type_system);
+                 semantic_analysis::TypeSystem& type_system,
+                 ArgumentSlice& slice);
 
   ExecutionState(ExecutionState const& state);
   ExecutionState(ExecutionState&& state);
@@ -22,7 +24,7 @@ struct ExecutionState {
                       jasmin::ValueStack& value_stack);
 
  private:
-  alignas(void*) char data_[3 * sizeof(void*)];
+  alignas(void*) char data_[4 * sizeof(void*)];
 };
 
 void Execute(Function const& f, ExecutionState state,
