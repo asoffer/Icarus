@@ -127,6 +127,11 @@ serialization::Module BuiltinModule() {
   vm::Serialize(table, *module.mutable_function_table(), state);
   module::SerializeTypeSystem(ts, unique_type_table,
                               *module.mutable_type_system());
+
+  vm::Function initializer(2, 0);
+  initializer.AppendReturn();
+  vm::Serialize(initializer, *module.mutable_initializer(), state);
+
   return module;
 }
 

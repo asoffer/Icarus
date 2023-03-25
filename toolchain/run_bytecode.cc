@@ -118,6 +118,17 @@ bool Execute(serialization::UniqueModuleId module_id,
     return false;
   }
 
+  for (auto const *module : resources.modules()) {
+    jasmin::ValueStack value_stack;
+    value_stack.push(arguments.data());
+    value_stack.push(arguments.size());
+    data_types::IntegerTable table;
+    vm::Execute(
+        module->initializer(),
+        vm::ExecutionState{table, resources.primary_module().type_system()},
+        value_stack);
+  }
+  
   jasmin::ValueStack value_stack;
   value_stack.push(arguments.data());
   value_stack.push(arguments.size());
