@@ -124,8 +124,6 @@ bool Execute(serialization::UniqueModuleId module_id,
 
   for (auto const *module : resources.modules()) {
     jasmin::ValueStack value_stack;
-    value_stack.push(arguments.data());
-    value_stack.push(arguments.size());
     data_types::IntegerTable table;
     vm::Execute(
         module->initializer(),
@@ -135,8 +133,6 @@ bool Execute(serialization::UniqueModuleId module_id,
   }
 
   jasmin::ValueStack value_stack;
-  value_stack.push(arguments.data());
-  value_stack.push(arguments.size());
   data_types::IntegerTable table;
   vm::Execute(
       resources.primary_module().initializer(),

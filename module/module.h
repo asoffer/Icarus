@@ -90,8 +90,7 @@ struct Module {
  private:
   serialization::UniqueModuleId id_;
 
-  // Accepts two arguments (a slice represented as data followed by length).
-  vm::Function initializer_{2, 0};
+  vm::Function initializer_{0, 0};
 
   absl::flat_hash_map<std::string, std::vector<Symbol>> exported_symbols_;
 
