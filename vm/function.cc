@@ -1,5 +1,6 @@
 #include "vm/function.h"
 
+#include "jasmin/debug.h"
 #include "vm/implementation.h"
 
 namespace vm {
@@ -233,6 +234,10 @@ void Function::AppendIncrementPointer(size_t amount) {
   internal::Impl(data_).append<IncrementPointer>(amount);
 }
 
+void Function::AppendIncrementPointer() {
+  internal::Impl(data_).append<IncrementPointerDynamic>();
+}
+
 void Function::AppendBuiltinForeignFunction(
     core::Type t, void *raw_table,
     serialization::ForeignSymbolMap *foreign_symbol_map,
@@ -348,6 +353,14 @@ void Function::AppendBuiltinOpaque() {
 
 void Function::AppendBuiltinArguments() {
   internal::Impl(data_).append<BuiltinArguments>();
+}
+
+void Function::AppendDumpValueStack() {
+  internal::Impl(data_).append<jasmin::DumpValueStack>();
+}
+
+std::string Function::Dump() const {
+  return jasmin::DumpFunction(internal::Impl(data_));
 }
 
 }  // namespace vm

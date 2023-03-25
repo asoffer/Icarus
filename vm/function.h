@@ -82,6 +82,7 @@ struct Function {
   void AppendConstruct(std::type_identity_t<T> value);
 
   void AppendIncrementPointer(size_t amount);
+  void AppendIncrementPointer();
   void AppendInvokeForeignFunction();
 
   void AppendMakeSliceType();
@@ -98,8 +99,12 @@ struct Function {
   void AppendBuiltinOpaque();
   void AppendBuiltinArguments();
 
+  void AppendDumpValueStack();
+
   jasmin::OpCodeRange AppendJumpWithPlaceholders();
   jasmin::OpCodeRange AppendJumpIfWithPlaceholders();
+
+  std::string Dump() const;
 
   // TODO: Should this be made more private?
   char const *raw() const { return data_; }

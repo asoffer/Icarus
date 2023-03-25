@@ -95,12 +95,13 @@ struct ByteCodeValueEmitter : Emitter<ByteCodeValueEmitter> {
   void operator()(ast::Identifier const *node, FunctionData data);
   void operator()(ast::IfStmt const *node, FunctionData data);
   void operator()(ast::Import const *node, FunctionData data);
+  void operator()(ast::Index const *node, FunctionData data);
   void operator()(ast::ShortFunctionLiteral const *node, FunctionData data);
   void operator()(ast::SliceType const *node, FunctionData data);
   void operator()(ast::UnaryOperator const *node, FunctionData data);
   void operator()(ast::Terminal const *node, FunctionData data);
   // TODO: ArgumentType, BinaryAssignmentOperator, BlockNode,
-  //       DesignatedInitializer, Index, InterfaceLiteral, Label,
+  //       DesignatedInitializer, InterfaceLiteral, Label,
   //       ParameterizedStructLiteral, PatternMatch, ScopeLiteral, ScopeNode,
   //       StructLiteral, YieldStmt, WhileStmt,
 };
@@ -128,6 +129,7 @@ struct ByteCodeStatementEmitter : Emitter<ByteCodeStatementEmitter> {
   void operator()(ast::Identifier const *node, FunctionData data);
   void operator()(ast::IfStmt const *node, FunctionData data);
   void operator()(ast::Import const *node, FunctionData data);
+  void operator()(ast::Index const *node, FunctionData data);
   void operator()(ast::Module const *node, FunctionData data);
   void operator()(ast::ReturnStmt const *node, FunctionData data);
   void operator()(ast::ShortFunctionLiteral const *node, FunctionData data);
@@ -135,7 +137,7 @@ struct ByteCodeStatementEmitter : Emitter<ByteCodeStatementEmitter> {
   void operator()(ast::UnaryOperator const *node, FunctionData data);
   void operator()(ast::Terminal const *node, FunctionData data);
   // TODO: ArgumentType, BinaryAssignmentOperator, BlockNode,
-  //       DesignatedInitializer, Index, InterfaceLiteral, Label,
+  //       DesignatedInitializer, InterfaceLiteral, Label,
   //       ParameterizedStructLiteral, PatternMatch, ScopeLiteral, ScopeNode,
   //       StructLiteral, YieldStmt, WhileStmt
 };
@@ -150,6 +152,7 @@ struct ByteCodeReferenceEmitter : Emitter<ByteCodeReferenceEmitter> {
   }
 
   void operator()(ast::Identifier const *node, FunctionData data);
+  void operator()(ast::Index const *node, FunctionData data);
 
   // Unreachable operators.
   void operator()(ast::ArgumentType const *, FunctionData) { UNREACHABLE(); }
@@ -178,7 +181,7 @@ struct ByteCodeReferenceEmitter : Emitter<ByteCodeReferenceEmitter> {
   void operator()(ast::StructLiteral const *, FunctionData) { UNREACHABLE(); }
   void operator()(ast::YieldStmt const *, FunctionData) { UNREACHABLE(); }
   // TODO: Access, BinaryAssignmentOperator, BinaryOperator, Call, Cast,
-  //       ComparisonOperator, Index, ScopeNode, IfStmt, WhileStmt,
+  //       ComparisonOperator, ScopeNode, IfStmt, WhileStmt,
   //       UnaryOperator
 };
 

@@ -1,7 +1,10 @@
--- ::= import "core.ic"
-io ::= import "io.ic"
+io ::= import "std.io"
 
-io.Print("There are ", arguments.length, " program argument(s):\n")
-for (0, arguments.length as i64) do [i: i64] {
-  io.Print("  ", arguments[i], "\n")
-}
+// Program arguments are accessible by invoking `builtin.arguments`, which
+// returns a slice of character slices. That is, a value of type `[/][/]char`.
+
+io.Print("There are ")
+io.Print(builtin.arguments().length)
+io.Print(" program argument(s). The first one is:\n")
+io.Print(builtin.arguments()[0])
+io.Print("\n")

@@ -6,6 +6,12 @@ filegroup(
 )
 
 ic_binary(
+    name = "arguments",
+    srcs = ["arguments.ic"],
+    deps = ["//toolchain/stdlib:io"],
+)
+
+ic_binary(
     name = "c_file",
     srcs = ["c_file.ic"],
     deps = [

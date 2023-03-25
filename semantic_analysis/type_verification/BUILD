@@ -60,6 +60,7 @@ cc_library(
         "function_type.cc",
         "identifier.cc",
         "if_stmt.cc",
+        "index.cc",
         "import.cc",
         "short_function_literal.cc",
         "module.cc",

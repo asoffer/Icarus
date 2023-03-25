@@ -197,6 +197,15 @@ struct DeallocateAllTemporaries
   static void execute(function_state& space) { space.free_all(); }
 };
 
+
+struct IncrementPointerDynamic : jasmin::StackMachineInstruction<IncrementPointerDynamic> {
+  static void* execute(void* ptr, uint64_t amount) {
+    return static_cast<char*>(ptr) + amount;
+  }
+
+  static std::string debug() { return "increment-pointer-dynamic"; }
+};
+
 struct IncrementPointer : jasmin::StackMachineInstruction<IncrementPointer> {
   static void execute(jasmin::ValueStack& value_stack, size_t amount) {
     value_stack.push(value_stack.pop<char*>() + amount);
@@ -263,9 +272,9 @@ struct InstructionSet
           jasmin::StackAllocate, jasmin::StackOffset, jasmin::Load,
           AllocateTemporary, DeallocateAllTemporaries, BuiltinForeignFunction,
           BuiltinForeignPointer, InvokeForeignFunction, PushStringLiteral,
-          PushFunction, IncrementPointer, TranslateFunctionArguments,
-          vm::ZeroExtend<true, true>, vm::ZeroExtend<false, true>,
-          vm::ZeroExtend<false, false>,
+          PushFunction, IncrementPointer, IncrementPointerDynamic,
+          TranslateFunctionArguments, vm::ZeroExtend<true, true>,
+          vm::ZeroExtend<false, true>, vm::ZeroExtend<false, false>,
           ApplyInstruction<jasmin::Equal, int8_t, int16_t, int32_t, int64_t,
                            uint8_t, uint16_t, uint32_t, uint64_t, float,
                            double>,
