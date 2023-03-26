@@ -66,8 +66,9 @@ cc_library(
         "module.cc",
         "return_stmt.cc",
         "slice_type.cc",
-        "unary_operator.cc",
         "terminal.cc",
+        "unary_operator.cc",
+        "while_stmt.cc",
     ],
     deps = [
         ":casting",
@@ -261,6 +262,16 @@ cc_test(
 )
 
 cc_test(
+    name = "terminal_test",
+    srcs = ["terminal_test.cc"],
+    deps = [
+        ":verify",
+        "//test:repl",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_test(
     name = "unary_operator_test",
     srcs = ["unary_operator_test.cc"],
     deps = [
@@ -271,8 +282,8 @@ cc_test(
 )
 
 cc_test(
-    name = "terminal_test",
-    srcs = ["terminal_test.cc"],
+    name = "while_stmt_test",
+    srcs = ["while_stmt_test.cc"],
     deps = [
         ":verify",
         "//test:repl",

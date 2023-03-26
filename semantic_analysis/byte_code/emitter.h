@@ -98,12 +98,13 @@ struct ByteCodeValueEmitter : Emitter<ByteCodeValueEmitter> {
   void operator()(ast::Index const *node, FunctionData data);
   void operator()(ast::ShortFunctionLiteral const *node, FunctionData data);
   void operator()(ast::SliceType const *node, FunctionData data);
-  void operator()(ast::UnaryOperator const *node, FunctionData data);
   void operator()(ast::Terminal const *node, FunctionData data);
+  void operator()(ast::UnaryOperator const *node, FunctionData data);
+  void operator()(ast::WhileStmt const *node, FunctionData data);
   // TODO: ArgumentType, BinaryAssignmentOperator, BlockNode,
   //       DesignatedInitializer, InterfaceLiteral, Label,
   //       ParameterizedStructLiteral, PatternMatch, ScopeLiteral, ScopeNode,
-  //       StructLiteral, YieldStmt, WhileStmt,
+  //       StructLiteral, YieldStmt,
 };
 
 struct ByteCodeStatementEmitter : Emitter<ByteCodeStatementEmitter> {
@@ -134,12 +135,13 @@ struct ByteCodeStatementEmitter : Emitter<ByteCodeStatementEmitter> {
   void operator()(ast::ReturnStmt const *node, FunctionData data);
   void operator()(ast::ShortFunctionLiteral const *node, FunctionData data);
   void operator()(ast::SliceType const *node, FunctionData data);
-  void operator()(ast::UnaryOperator const *node, FunctionData data);
   void operator()(ast::Terminal const *node, FunctionData data);
+  void operator()(ast::UnaryOperator const *node, FunctionData data);
+  void operator()(ast::WhileStmt const *node, FunctionData data);
   // TODO: ArgumentType, BinaryAssignmentOperator, BlockNode,
   //       DesignatedInitializer, InterfaceLiteral, Label,
   //       ParameterizedStructLiteral, PatternMatch, ScopeLiteral, ScopeNode,
-  //       StructLiteral, YieldStmt, WhileStmt
+  //       StructLiteral, YieldStmt
 };
 
 struct ByteCodeReferenceEmitter : Emitter<ByteCodeReferenceEmitter> {
@@ -181,8 +183,7 @@ struct ByteCodeReferenceEmitter : Emitter<ByteCodeReferenceEmitter> {
   void operator()(ast::StructLiteral const *, FunctionData) { UNREACHABLE(); }
   void operator()(ast::YieldStmt const *, FunctionData) { UNREACHABLE(); }
   // TODO: Access, BinaryAssignmentOperator, BinaryOperator, Call, Cast,
-  //       ComparisonOperator, ScopeNode, IfStmt, WhileStmt,
-  //       UnaryOperator
+  //       ComparisonOperator, ScopeNode, IfStmt, WhileStmt, UnaryOperator
 };
 
 template <typename E>

@@ -156,10 +156,11 @@ struct TypeVerifier : VerificationScheduler {
   VerificationTask VerifyType(ast::ReturnStmt const *);
   VerificationTask VerifyType(ast::UnaryOperator const *);
   VerificationTask VerifyType(ast::Terminal const *);
+  VerificationTask VerifyType(ast::WhileStmt const *);
 
   // TODO: ArgumentType, BinaryAssignmentOperator, BlockNode,
   //       DesignatedInitializer, InterfaceLiteral, Label, ScopeLiteral,
-  //       ScopeNode, StructLiteral, YieldStmt, WhileStmt.
+  //       ScopeNode, StructLiteral, YieldStmt
 
   std::string TypeForDiagnostic(ast::Expression const &expression) const {
     return ::semantic_analysis::TypeForDiagnostic(expression, context(),

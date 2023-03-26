@@ -5,6 +5,14 @@ io ::= import "std.io"
 
 io.Print("There are ")
 io.Print(builtin.arguments().length)
-io.Print(" program argument(s). The first one is:\n")
-io.Print(builtin.arguments()[0])
+io.Print(" program argument(s):")
+
+i: u64
+while (i < builtin.arguments().length) {
+  io.Print("\n  ")
+  io.Print(i)
+  io.Print(": ")
+  io.Print(builtin.arguments()[i])
+  i = i + 1
+}
 io.Print("\n")
