@@ -5,16 +5,16 @@
 namespace semantic_analysis {
 namespace {
 
-TEST(IfStmt, DISABLED_Computation) {
+TEST(IfStmt, Computation) {
   test::Repl repl;
 
   vm::Function const& f = *repl.execute<vm::Function const*>(R"(
   (b: bool) -> i64 {
     n: i64
     if (b) {
-      n = 3
+      n = 3 as i64
     } else {
-      n = 4
+      n = 4 as i64
     }
     return n
   })");

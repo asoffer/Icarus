@@ -10,8 +10,11 @@ void ByteCodeValueEmitter::operator()(ast::Assignment const* node,
 void ByteCodeStatementEmitter::operator()(ast::Assignment const* node,
                                           FunctionData data) {
   base::PtrSpan rhs_span = node->rhs();
-  for (auto iter = rhs_span.rbegin(); iter != rhs_span.rend(); ++iter) {
-    as<ByteCodeValueEmitter>().Emit(*iter, data);
+  auto l_iter = node->lhs().rbegin();
+  for (auto iter = rhs_span.rbegin(); iter != rhs_span.rend();
+       ++iter, ++l_iter) {
+    QualifiedType l_qt = context().qualified_type(*l_iter);
+    as<ByteCodeValueEmitter>().CastTo(*iter, l_qt, data);
   }
 
   auto& f = data.function();
