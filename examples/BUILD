@@ -11,18 +11,19 @@ ic_binary(
     deps = ["//toolchain/stdlib:io"],
 )
 
-ic_binary(
-    name = "c_file",
-    srcs = ["c_file.ic"],
-    deps = [
-        "//toolchain/stdlib/c:errno",
-        "//toolchain/stdlib/c:stdio",
-        "//toolchain/stdlib:io",
-    ],
-    data = [
-        ":example_file",
-    ],
-)
+# TODO: Fix this target.
+# ic_binary(
+#     name = "c_file",
+#     srcs = ["c_file.ic"],
+#     deps = [
+#         "//toolchain/stdlib/c:errno",
+#         "//toolchain/stdlib/c:stdio",
+#         "//toolchain/stdlib:io",
+#     ],
+#     data = [
+#         ":example_file",
+#     ],
+# )
 
 ic_binary(
     name = "date_time",

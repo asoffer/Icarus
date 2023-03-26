@@ -19,13 +19,10 @@ TEST(IfStmt, DISABLED_Computation) {
     return n
   })");
   int64_t result;
-  data_types::IntegerTable table;
-  vm::ExecutionState state{table, repl.type_system()};
-
-  vm::Execute(f, state, {true}, result);
+  vm::Execute(f, repl.state(), {true}, result);
   EXPECT_EQ(result, 3);
 
-  vm::Execute(f, state, {false}, result);
+  vm::Execute(f, repl.state(), {false}, result);
   EXPECT_EQ(result, 4);
 }
 

@@ -45,16 +45,13 @@ TEST_P(ComparisonOperatorTest, LessThan) {
                       StringOf(type), StringOf(type)));
 
   bool result;
-  data_types::IntegerTable table;
-  vm::ExecutionState state{table, repl.type_system()};
-
-  vm::Execute(f, state, {Value(type, 3), Value(type, 4)}, result);
+  vm::Execute(f, repl.state(), {Value(type, 3), Value(type, 4)}, result);
   EXPECT_TRUE(result);
 
-  vm::Execute(f, state, {Value(type, 3), Value(type, 3)}, result);
+  vm::Execute(f, repl.state(), {Value(type, 3), Value(type, 3)}, result);
   EXPECT_FALSE(result);
 
-  vm::Execute(f, state, {Value(type, 4), Value(type, 3)}, result);
+  vm::Execute(f, repl.state(), {Value(type, 4), Value(type, 3)}, result);
   EXPECT_FALSE(result);
 }
 
@@ -68,16 +65,13 @@ TEST_P(ComparisonOperatorTest, LessThanOrEqual) {
                       StringOf(type), StringOf(type)));
 
   bool result;
-  data_types::IntegerTable table;
-  vm::ExecutionState state{table, repl.type_system()};
-
-  vm::Execute(f, state, {Value(type, 3), Value(type, 4)}, result);
+  vm::Execute(f, repl.state(), {Value(type, 3), Value(type, 4)}, result);
   EXPECT_TRUE(result);
 
-  vm::Execute(f, state, {Value(type, 3), Value(type, 3)}, result);
+  vm::Execute(f, repl.state(), {Value(type, 3), Value(type, 3)}, result);
   EXPECT_TRUE(result);
 
-  vm::Execute(f, state, {Value(type, 4), Value(type, 3)}, result);
+  vm::Execute(f, repl.state(), {Value(type, 4), Value(type, 3)}, result);
   EXPECT_FALSE(result);
 }
 
@@ -91,16 +85,13 @@ TEST_P(ComparisonOperatorTest, Equal) {
                       StringOf(type), StringOf(type)));
 
   bool result;
-  data_types::IntegerTable table;
-  vm::ExecutionState state{table, repl.type_system()};
-
-  vm::Execute(f, state, {Value(type, 3), Value(type, 4)}, result);
+  vm::Execute(f, repl.state(), {Value(type, 3), Value(type, 4)}, result);
   EXPECT_FALSE(result);
 
-  vm::Execute(f, state, {Value(type, 3), Value(type, 3)}, result);
+  vm::Execute(f, repl.state(), {Value(type, 3), Value(type, 3)}, result);
   EXPECT_TRUE(result);
 
-  vm::Execute(f, state, {Value(type, 4), Value(type, 3)}, result);
+  vm::Execute(f, repl.state(), {Value(type, 4), Value(type, 3)}, result);
   EXPECT_FALSE(result);
 }
 
@@ -114,16 +105,13 @@ TEST_P(ComparisonOperatorTest, GreaterThanOrEqual) {
                       StringOf(type), StringOf(type)));
 
   bool result;
-  data_types::IntegerTable table;
-  vm::ExecutionState state{table, repl.type_system()};
-
-  vm::Execute(f, state, {Value(type, 3), Value(type, 4)}, result);
+  vm::Execute(f, repl.state(), {Value(type, 3), Value(type, 4)}, result);
   EXPECT_FALSE(result);
 
-  vm::Execute(f, state, {Value(type, 3), Value(type, 3)}, result);
+  vm::Execute(f, repl.state(), {Value(type, 3), Value(type, 3)}, result);
   EXPECT_TRUE(result);
 
-  vm::Execute(f, state, {Value(type, 4), Value(type, 3)}, result);
+  vm::Execute(f, repl.state(), {Value(type, 4), Value(type, 3)}, result);
   EXPECT_TRUE(result);
 }
 
@@ -137,16 +125,13 @@ TEST_P(ComparisonOperatorTest, GreaterThan) {
                       StringOf(type), StringOf(type)));
 
   bool result;
-  data_types::IntegerTable table;
-  vm::ExecutionState state{table, repl.type_system()};
-
-  vm::Execute(f, state, {Value(type, 3), Value(type, 4)}, result);
+  vm::Execute(f, repl.state(), {Value(type, 3), Value(type, 4)}, result);
   EXPECT_FALSE(result);
 
-  vm::Execute(f, state, {Value(type, 3), Value(type, 3)}, result);
+  vm::Execute(f, repl.state(), {Value(type, 3), Value(type, 3)}, result);
   EXPECT_FALSE(result);
 
-  vm::Execute(f, state, {Value(type, 4), Value(type, 3)}, result);
+  vm::Execute(f, repl.state(), {Value(type, 4), Value(type, 3)}, result);
   EXPECT_TRUE(result);
 }
 
@@ -161,27 +146,24 @@ TEST(ComparisonOperatorTest, Chains) {
       R"((x: i64, y: i64, z: i64) -> bool { return x > y == z })");
 
   bool result;
-  data_types::IntegerTable table;
-  vm::ExecutionState state{table, repl.type_system()};
-
-  vm::Execute(f, state, {int64_t{4}, int64_t{4}, int64_t{4}}, result);
+  vm::Execute(f, repl.state(), {int64_t{4}, int64_t{4}, int64_t{4}}, result);
   EXPECT_FALSE(result);
-  vm::Execute(f, state, {int64_t{3}, int64_t{4}, int64_t{4}}, result);
+  vm::Execute(f, repl.state(), {int64_t{3}, int64_t{4}, int64_t{4}}, result);
   EXPECT_FALSE(result);
 
-  vm::Execute(f, state, {int64_t{4}, int64_t{3}, int64_t{4}}, result);
+  vm::Execute(f, repl.state(), {int64_t{4}, int64_t{3}, int64_t{4}}, result);
   EXPECT_FALSE(result);
-  vm::Execute(f, state, {int64_t{3}, int64_t{3}, int64_t{4}}, result);
-  EXPECT_FALSE(result);
-
-  vm::Execute(f, state, {int64_t{4}, int64_t{4}, int64_t{3}}, result);
-  EXPECT_FALSE(result);
-  vm::Execute(f, state, {int64_t{3}, int64_t{4}, int64_t{3}}, result);
+  vm::Execute(f, repl.state(), {int64_t{3}, int64_t{3}, int64_t{4}}, result);
   EXPECT_FALSE(result);
 
-  vm::Execute(f, state, {int64_t{4}, int64_t{3}, int64_t{3}}, result);
+  vm::Execute(f, repl.state(), {int64_t{4}, int64_t{4}, int64_t{3}}, result);
+  EXPECT_FALSE(result);
+  vm::Execute(f, repl.state(), {int64_t{3}, int64_t{4}, int64_t{3}}, result);
+  EXPECT_FALSE(result);
+
+  vm::Execute(f, repl.state(), {int64_t{4}, int64_t{3}, int64_t{3}}, result);
   EXPECT_TRUE(result);
-  vm::Execute(f, state, {int64_t{3}, int64_t{3}, int64_t{3}}, result);
+  vm::Execute(f, repl.state(), {int64_t{3}, int64_t{3}, int64_t{3}}, result);
   EXPECT_FALSE(result);
 }
 
@@ -192,14 +174,11 @@ TEST(ComparisonOperatorTest, DISABLED_Casting) {
       R"((x: i64, y: i64, z: i32) -> bool { return x > y })");
 
   bool result;
-  data_types::IntegerTable table;
-  vm::ExecutionState state{table, repl.type_system()};
-
-  vm::Execute(f, state, {int64_t{4}, int32_t{3}}, result);
+  vm::Execute(f, repl.state(), {int64_t{4}, int32_t{3}}, result);
   EXPECT_TRUE(result);
-  vm::Execute(f, state, {int64_t{4}, int32_t{4}}, result);
+  vm::Execute(f, repl.state(), {int64_t{4}, int32_t{4}}, result);
   EXPECT_FALSE(result);
-  vm::Execute(f, state, {int64_t{4}, int32_t{5}}, result);
+  vm::Execute(f, repl.state(), {int64_t{4}, int32_t{5}}, result);
   EXPECT_FALSE(result);
 }
 

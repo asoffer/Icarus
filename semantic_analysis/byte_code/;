@@ -30,10 +30,13 @@ TEST(Assignment, DISABLED_MultipleValues) {
     return n
   })");
   int64_t result;
-  vm::Execute(f, repl.state(), {int64_t{4}, int64_t{5}}, result);
+  data_types::IntegerTable table;
+  vm::ExecutionState state{table, repl.type_system()};
+
+  vm::Execute(f, state, {int64_t{4}, int64_t{5}}, result);
   EXPECT_EQ(result, 45);
 
-  vm::Execute(f, repl.state(), {int64_t{5}, int64_t{4}}, result);
+  vm::Execute(f, state, {int64_t{5}, int64_t{4}}, result);
   EXPECT_EQ(result, 54);
 }
 
@@ -48,7 +51,10 @@ TEST(Assignment, DISABLED_Intertwined) {
     return n
   })");
   int64_t result;
-  vm::Execute(f, repl.state(), {int64_t{4}, int64_t{5}}, result);
+  data_types::IntegerTable table;
+  vm::ExecutionState state{table, repl.type_system()};
+
+  vm::Execute(f, state, {int64_t{4}, int64_t{5}}, result);
   EXPECT_EQ(result, 45);
 }
 

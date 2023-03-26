@@ -32,7 +32,8 @@ inline module::Resources TestResources(
 
 struct Repl {
   explicit Repl(module::Resources resources = TestResources())
-      : resources_(std::move(resources)) {
+      : resources_(std::move(resources)),
+        state_(table_, type_system(), arguments_) {
     consumer_ = &static_cast<diagnostic::TrackingConsumer&>(
         resources_.diagnostic_consumer());
   }
@@ -137,11 +138,9 @@ struct Repl {
     using type = nth::type_t<t>;
 
     if (std::optional f = ExecutionFunction(std::move(source))) {
-      vm::ExecutionState state{table_, type_system()};
-
       if constexpr (FitsInRegister<type>()) {
         type result;
-        vm::Execute(*f, state, {}, result);
+        vm::Execute(*f, state(), {}, result);
         if constexpr (t == nth::type<T>) {
           return result;
         } else {
@@ -167,6 +166,8 @@ struct Repl {
   semantic_analysis::TypeSystem& type_system() {
     return module().type_system();
   }
+
+  vm::ExecutionState& state() { return state_; }
   semantic_analysis::Context const& context() const { return context_; }
   ast::Module const& ast_module() const { return ast_module_; }
   module::Module& module() { return resources().primary_module(); }
@@ -199,6 +200,8 @@ struct Repl {
   ast::Module ast_module_;
   semantic_analysis::Context context_;
   diagnostic::TrackingConsumer* consumer_;
+  vm::ArgumentSlice arguments_{nullptr, 0};
+  vm::ExecutionState state_;
 };
 
 struct HasDiagnostics {

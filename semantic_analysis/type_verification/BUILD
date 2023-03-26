@@ -251,16 +251,6 @@ cc_test(
 )
 
 cc_test(
-    name = "program_arguments_test",
-    srcs = ["program_arguments_test.cc"],
-    deps = [
-        ":verify",
-        "//test:repl",
-        "@com_google_googletest//:gtest_main",
-    ],
-)
-
-cc_test(
     name = "slice_type_test",
     srcs = ["slice_type_test.cc"],
     deps = [

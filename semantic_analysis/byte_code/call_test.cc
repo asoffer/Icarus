@@ -26,11 +26,8 @@ TEST(Call, BuiltinForeign) {
   // void (*fn)() = repl.foreign_symbol_map().function(0);
   // EXPECT_EQ(result, fn);
   //
-  // data_types::IntegerTable table;
-  // vm::ExecutionState state{table};
-  //
   // int32_t value;
-  // vm::Execute(*fn, state, {int32_t{7}}, value);
+  // vm::Execute(*fn, repl.state(), {int32_t{7}}, value);
   // EXPECT_EQ(value, MyFunction(7));
 }
 

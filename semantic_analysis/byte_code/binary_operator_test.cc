@@ -49,23 +49,20 @@ TYPED_TEST(ArithmeticOperatorTest, Add) {
                       StringOf(type), StringOf(type), StringOf(type)));
 
   TypeParam result;
-  data_types::IntegerTable table;
-  vm::ExecutionState state{table, repl.type_system()};
-
-  vm::Execute(f, state, {TypeParam{3}, TypeParam{4}}, result);
+  vm::Execute(f, repl.state(), {TypeParam{3}, TypeParam{4}}, result);
   EXPECT_EQ(result, TypeParam{7});
 
-  vm::Execute(f, state, {TypeParam{0}, TypeParam{3}}, result);
+  vm::Execute(f, repl.state(), {TypeParam{0}, TypeParam{3}}, result);
   EXPECT_EQ(result, TypeParam{3});
 
-  vm::Execute(f, state, {TypeParam{3}, TypeParam{0}}, result);
+  vm::Execute(f, repl.state(), {TypeParam{3}, TypeParam{0}}, result);
   EXPECT_EQ(result, TypeParam{3});
 
   if constexpr (std::is_signed_v<TypeParam>) {
-    vm::Execute(f, state, {TypeParam{3}, TypeParam{-3}}, result);
+    vm::Execute(f, repl.state(), {TypeParam{3}, TypeParam{-3}}, result);
     EXPECT_EQ(result, TypeParam{0});
 
-    vm::Execute(f, state,
+    vm::Execute(f, repl.state(),
                 {std::numeric_limits<TypeParam>::max(),
                  -std::numeric_limits<TypeParam>::max()},
                 result);
@@ -81,16 +78,13 @@ TYPED_TEST(ArithmeticOperatorTest, Sub) {
                       StringOf(type), StringOf(type), StringOf(type)));
 
   TypeParam result;
-  data_types::IntegerTable table;
-  vm::ExecutionState state{table, repl.type_system()};
-
-  vm::Execute(f, state, {TypeParam{4}, TypeParam{3}}, result);
+  vm::Execute(f, repl.state(), {TypeParam{4}, TypeParam{3}}, result);
   EXPECT_EQ(result, TypeParam{1});
 
-  vm::Execute(f, state, {TypeParam{3}, TypeParam{0}}, result);
+  vm::Execute(f, repl.state(), {TypeParam{3}, TypeParam{0}}, result);
   EXPECT_EQ(result, TypeParam{3});
 
-  vm::Execute(f, state,
+  vm::Execute(f, repl.state(),
               {std::numeric_limits<TypeParam>::max(),
                std::numeric_limits<TypeParam>::max()},
               result);
@@ -105,19 +99,16 @@ TYPED_TEST(ArithmeticOperatorTest, Mul) {
                       StringOf(type), StringOf(type), StringOf(type)));
 
   TypeParam result;
-  data_types::IntegerTable table;
-  vm::ExecutionState state{table, repl.type_system()};
-
-  vm::Execute(f, state, {TypeParam{4}, TypeParam{3}}, result);
+  vm::Execute(f, repl.state(), {TypeParam{4}, TypeParam{3}}, result);
   EXPECT_EQ(result, TypeParam{12});
 
-  vm::Execute(f, state, {TypeParam{0}, TypeParam{3}}, result);
+  vm::Execute(f, repl.state(), {TypeParam{0}, TypeParam{3}}, result);
   EXPECT_EQ(result, TypeParam{0});
 
-  vm::Execute(f, state, {TypeParam{3}, TypeParam{1}}, result);
+  vm::Execute(f, repl.state(), {TypeParam{3}, TypeParam{1}}, result);
   EXPECT_EQ(result, TypeParam{3});
 
-  vm::Execute(f, state, {TypeParam{1}, TypeParam{3}}, result);
+  vm::Execute(f, repl.state(), {TypeParam{1}, TypeParam{3}}, result);
   EXPECT_EQ(result, TypeParam{3});
 }
 
@@ -129,23 +120,20 @@ TYPED_TEST(ArithmeticOperatorTest, Div) {
                       StringOf(type), StringOf(type), StringOf(type)));
 
   TypeParam result;
-  data_types::IntegerTable table;
-  vm::ExecutionState state{table, repl.type_system()};
-
-  vm::Execute(f, state, {TypeParam{4}, TypeParam{3}}, result);
+  vm::Execute(f, repl.state(), {TypeParam{4}, TypeParam{3}}, result);
   EXPECT_EQ(result, TypeParam{1});
 
-  vm::Execute(f, state, {TypeParam{3}, TypeParam{4}}, result);
+  vm::Execute(f, repl.state(), {TypeParam{3}, TypeParam{4}}, result);
   EXPECT_EQ(result, TypeParam{0});
 
-  vm::Execute(f, state, {TypeParam{6}, TypeParam{3}}, result);
+  vm::Execute(f, repl.state(), {TypeParam{6}, TypeParam{3}}, result);
   EXPECT_EQ(result, TypeParam{2});
 
-  vm::Execute(f, state, {TypeParam{6}, TypeParam{1}}, result);
+  vm::Execute(f, repl.state(), {TypeParam{6}, TypeParam{1}}, result);
   EXPECT_EQ(result, TypeParam{6});
 
   if constexpr (std::is_signed_v<TypeParam>) {
-    vm::Execute(f, state, {TypeParam{6}, TypeParam{-1}}, result);
+    vm::Execute(f, repl.state(), {TypeParam{6}, TypeParam{-1}}, result);
     EXPECT_EQ(result, TypeParam{-6});
   }
 }
@@ -158,19 +146,16 @@ TYPED_TEST(ArithmeticOperatorTest, Mod) {
                       StringOf(type), StringOf(type), StringOf(type)));
 
   TypeParam result;
-  data_types::IntegerTable table;
-  vm::ExecutionState state{table, repl.type_system()};
-
-  vm::Execute(f, state, {TypeParam{4}, TypeParam{3}}, result);
+  vm::Execute(f, repl.state(), {TypeParam{4}, TypeParam{3}}, result);
   EXPECT_EQ(result, TypeParam{1});
 
-  vm::Execute(f, state, {TypeParam{3}, TypeParam{4}}, result);
+  vm::Execute(f, repl.state(), {TypeParam{3}, TypeParam{4}}, result);
   EXPECT_EQ(result, TypeParam{3});
 
-  vm::Execute(f, state, {TypeParam{6}, TypeParam{3}}, result);
+  vm::Execute(f, repl.state(), {TypeParam{6}, TypeParam{3}}, result);
   EXPECT_EQ(result, TypeParam{0});
 
-  vm::Execute(f, state, {TypeParam{6}, TypeParam{1}}, result);
+  vm::Execute(f, repl.state(), {TypeParam{6}, TypeParam{1}}, result);
   EXPECT_EQ(result, TypeParam{0});
 }
 
@@ -203,13 +188,10 @@ TEST(LogicalOperatorTest, DISABLED_ShortCircuitingAnd) {
   (x: bool, y: bool, n: *i64) -> bool { return x and increment_and_return(y, n) }
   )");
 
-  data_types::IntegerTable table;
-  vm::ExecutionState state{table, repl.type_system()};
-
   {
     int64_t n = 0;
     bool result;
-    vm::Execute(f, state, {true, true, &n}, result);
+    vm::Execute(f, repl.state(), {true, true, &n}, result);
     EXPECT_TRUE(result);
     EXPECT_EQ(n, 1);
   }
@@ -217,7 +199,7 @@ TEST(LogicalOperatorTest, DISABLED_ShortCircuitingAnd) {
   {
     int64_t n = 0;
     bool result;
-    vm::Execute(f, state, {true, false, &n}, result);
+    vm::Execute(f, repl.state(), {true, false, &n}, result);
     EXPECT_FALSE(result);
     EXPECT_EQ(n, 1);
   }
@@ -225,7 +207,7 @@ TEST(LogicalOperatorTest, DISABLED_ShortCircuitingAnd) {
   {
     int64_t n = 0;
     bool result;
-    vm::Execute(f, state, {false, true, &n}, result);
+    vm::Execute(f, repl.state(), {false, true, &n}, result);
     EXPECT_FALSE(result);
     EXPECT_EQ(n, 1);
   }
@@ -233,7 +215,7 @@ TEST(LogicalOperatorTest, DISABLED_ShortCircuitingAnd) {
   {
     int64_t n = 0;
     bool result;
-    vm::Execute(f, state, {false, false, &n}, result);
+    vm::Execute(f, repl.state(), {false, false, &n}, result);
     EXPECT_FALSE(result);
     EXPECT_EQ(n, 1);
   }
@@ -250,12 +232,10 @@ TEST(LogicalOperatorTest, DISABLED_ShortCircuitingOr) {
   (x: bool, y: bool, n: *i64) -> bool { return x or increment_and_return(y, n) }
   )");
 
-  data_types::IntegerTable table;
-  vm::ExecutionState state{table, repl.type_system()};
   {
     int64_t n = 0;
     bool result;
-    vm::Execute(f, state, {true, true, &n}, result);
+    vm::Execute(f, repl.state(), {true, true, &n}, result);
     EXPECT_TRUE(result);
     EXPECT_EQ(n, 1);
   }
@@ -263,7 +243,7 @@ TEST(LogicalOperatorTest, DISABLED_ShortCircuitingOr) {
   {
     int64_t n = 0;
     bool result;
-    vm::Execute(f, state, {true, false, &n}, result);
+    vm::Execute(f, repl.state(), {true, false, &n}, result);
     EXPECT_FALSE(result);
     EXPECT_EQ(n, 1);
   }
@@ -271,7 +251,7 @@ TEST(LogicalOperatorTest, DISABLED_ShortCircuitingOr) {
   {
     int64_t n = 0;
     bool result;
-    vm::Execute(f, state, {false, true, &n}, result);
+    vm::Execute(f, repl.state(), {false, true, &n}, result);
     EXPECT_FALSE(result);
     EXPECT_EQ(n, 1);
   }
@@ -279,7 +259,7 @@ TEST(LogicalOperatorTest, DISABLED_ShortCircuitingOr) {
   {
     int64_t n = 0;
     bool result;
-    vm::Execute(f, state, {false, false, &n}, result);
+    vm::Execute(f, repl.state(), {false, false, &n}, result);
     EXPECT_FALSE(result);
     EXPECT_EQ(n, 1);
   }
