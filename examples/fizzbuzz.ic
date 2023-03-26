@@ -1,7 +1,7 @@
--- ::= import "core.ic"
-io ::= import "io.ic"
+io ::= import "std.io"
 
-for (0, 100) do [i: i64] {
+i: i64
+while (i < 100) {
   if (i % 15 == 0) {
     io.Print("FizzBuzz\n")
   } else if (i % 3 == 0) {
@@ -9,6 +9,8 @@ for (0, 100) do [i: i64] {
   } else if (i % 5 == 0) {
     io.Print("Buzz\n")
   } else {
-    io.Print(i, "\n")
+    io.Print(i)
+    io.Print("\n")
   }
+  i = i + 1
 }

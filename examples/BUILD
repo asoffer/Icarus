@@ -42,6 +42,12 @@ ic_binary(
 )
 
 ic_binary(
+    name = "fizzbuzz",
+    srcs = ["fizzbuzz.ic"],
+    deps = ["//toolchain/stdlib:io"],
+)
+
+ic_binary(
     name = "foreign_function",
     srcs = ["foreign_function.ic"],
 )

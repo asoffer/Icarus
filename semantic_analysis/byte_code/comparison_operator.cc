@@ -19,16 +19,23 @@ void ByteCodeValueEmitter::operator()(ast::ComparisonOperator const* node,
   std::vector<jasmin::OpCodeRange> branches;
   branches.reserve(ops.size());
 
-  core::Type prev_type = context().qualified_type(exprs.front()).type();
+  QualifiedType prev_qt = context().qualified_type(exprs.front());
+  core::Type prev_type  = prev_qt.type();
   for (auto expr_iter = exprs.begin() + 1; expr_iter != exprs.end();
        ++expr_iter, ++op_iter) {
     f.AppendSwap();
     f.AppendDrop(1);
 
-    core::Type curr_type   = context().qualified_type(*expr_iter).type();
+    QualifiedType curr_qt  = context().qualified_type(*expr_iter);
+    core::Type curr_type   = curr_qt.type();
     core::Type common_type = CommonType(prev_type, curr_type, type_system());
 
-    Emit(*expr_iter, data);
+    // TODO: This is a hack until we figure out how we actually want to handle
+    // casting. It's incorrect in general because the necessary cast might be
+    // different on either side of a chained comparison. We're also only
+    // applying it to the right-hand side, making it extra wrong.
+    CastTo(*expr_iter, QualifiedType(common_type), data);
+
     // We compute the logical negation of what we're interested in because if
     // that's true (i.e., the condition we actually care about is false) we want
     // to jump via `JumpIf`.
