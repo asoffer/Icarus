@@ -11,7 +11,7 @@ struct NonBooleanCondition {
 
   diagnostic::DiagnosticMessage ToMessage() const {
     return diagnostic::DiagnosticMessage(
-        diagnostic::Text("Whilestatements require the condition to be of type "
+        diagnostic::Text("While statements require the condition to be of type "
                          "`bool`, but you provided a value of type `%s`.",
                          type),
         diagnostic::SourceQuote().Highlighted(view, diagnostic::Style{}));
