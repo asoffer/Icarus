@@ -50,7 +50,15 @@ VerificationTask TypeVerifier::VerifyType(ast::FunctionLiteral const* node) {
     co_yield TypeOf(node, Constant(core::FunctionType(
                               type_system(), parameter_type, return_types)));
 
-    for (auto const* stmt : node->stmts()) { co_await VerifyTypeOf(stmt); }
+    bool last_was_noreturn = false;
+    for (auto const* stmt : node->stmts()) {
+      if (last_was_noreturn) {
+        last_was_noreturn = false;
+        ConsumeDiagnostic(UnreachableStatement{.view = stmt->range()});
+      }
+      std::span qts     = co_await VerifyTypeOf(stmt);
+      last_was_noreturn = (qts.size() == 1 and qts[0].type() == NoReturn);
+    }
 
     for (auto const* return_stmt : node->returns()) {
       std::span returned_types = context().return_types(return_stmt);

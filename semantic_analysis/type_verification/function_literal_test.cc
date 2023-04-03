@@ -96,5 +96,19 @@ TEST(FunctionLiteralElidedReturnType, Correct) {
                     HasDiagnostics()));
 }
 
+TEST(FunctionLiteral, StatementAfterReturn) {
+  test::Repl repl;
+
+  EXPECT_THAT(
+      repl.type_check(R"(() -> bool {
+    return true
+    1234
+  })"),
+      AllOf(HasQualTypes(Constant(core::FunctionType(
+                repl.type_system(), core::ParameterType(repl.type_system(), {}),
+                {Bool}))),
+            HasDiagnostics(Pair("type-error", "unreachable-statement"))));
+}
+
 }  // namespace
 }  // namespace semantic_analysis

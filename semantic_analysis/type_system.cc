@@ -9,8 +9,8 @@ namespace {
 void DebugType(std::ostream& os, core::Type t, TypeSystem& ts) {
   if (auto p = t.get_if<PrimitiveType>(ts)) {
     static constexpr std::array kPrimitiveTypes{
-        "bool",    "char",   "byte",        "f32",     "f64",  "type",
-        "integer", "module", "empty-array", "nullptr", "error"};
+        "bool",    "char",   "byte",      "f32",         "f64",     "type",
+        "integer", "module", "no-return", "empty-array", "nullptr", "error"};
     size_t value =
         static_cast<std::underlying_type_t<decltype(p->value())>>(p->value());
     ASSERT(value < kPrimitiveTypes.size());

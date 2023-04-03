@@ -58,6 +58,7 @@ VerificationTask TypeVerifier::VerifyType(ast::IfStmt const *node) {
 
       bool marked_const = node->hashtags.contains(data_types::Hashtag::Const);
 
+      bool no_return = false;
       if (marked_const) {
         // If the condition has an error, and it is a `#{const}` if-statement,
         // we can't know which side is supposed to be type-checked, but we know
@@ -68,15 +69,26 @@ VerificationTask TypeVerifier::VerifyType(ast::IfStmt const *node) {
         // fixing the bug in the conditional statement.
         if (not condition_has_error) {
           if (qt.qualifiers() >= Qualifiers::Constant()) {
-            if (EvaluateAs<bool>(&node->condition())) {
-              for (auto const *stmt : node->true_block()) {
-                co_await VerifyTypeOf(stmt);
+            bool saw_noreturn      = false;
+            bool last_was_noreturn = false;
+
+            auto nodes = EvaluateAs<bool>(&node->condition())
+                             ? node->true_block()
+                             : node->false_block();
+
+            for (auto const *stmt : nodes) {
+              if (last_was_noreturn) {
+                last_was_noreturn = false;
+                ConsumeDiagnostic(UnreachableStatement{.view = stmt->range()});
               }
-            } else if (node->has_false_block()) {
-              for (auto const *stmt : node->false_block()) {
-                co_await VerifyTypeOf(stmt);
-              }
+              std::span qts = co_await VerifyTypeOf(stmt);
+              last_was_noreturn =
+                  (qts.size() == 1 and qts[0].type() == NoReturn);
+              saw_noreturn |= last_was_noreturn;
             }
+
+            if (saw_noreturn) { no_return = true; }
+
           } else {
             ConsumeDiagnostic(NonConstantConditionError{
                 .view = node->condition().range(),
@@ -85,15 +97,36 @@ VerificationTask TypeVerifier::VerifyType(ast::IfStmt const *node) {
         }
       } else {
         // TODO: Write yielded_qts correctly.
+        bool true_noreturn = false, false_noreturn = false;
+        bool last_was_noreturn = false;
         for (auto const *stmt : node->true_block()) {
-          co_await VerifyTypeOf(stmt);
+          if (last_was_noreturn) {
+            last_was_noreturn = false;
+            ConsumeDiagnostic(UnreachableStatement{.view = stmt->range()});
+          }
+          std::span qts     = co_await VerifyTypeOf(stmt);
+          last_was_noreturn = (qts.size() == 1 and qts[0].type() == NoReturn);
+          true_noreturn |= last_was_noreturn;
         }
+
+        last_was_noreturn = false;
         for (auto const *stmt : node->false_block()) {
-          co_await VerifyTypeOf(stmt);
+          if (last_was_noreturn) {
+            last_was_noreturn = false;
+            ConsumeDiagnostic(UnreachableStatement{.view = stmt->range()});
+          }
+          std::span qts     = co_await VerifyTypeOf(stmt);
+          last_was_noreturn = (qts.size() == 1 and qts[0].type() == NoReturn);
+          false_noreturn |= last_was_noreturn;
         }
+        no_return = true_noreturn and false_noreturn;
       }
 
-      co_return TypeOf(node, std::move(yielded_qts));
+      if (no_return) {
+        co_return TypeOf(node, QualifiedType(NoReturn));
+      } else {
+        co_return TypeOf(node, std::move(yielded_qts));
+      }
     } break;
     default: NOT_YET("Log an error");
   }

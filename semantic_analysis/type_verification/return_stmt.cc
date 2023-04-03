@@ -16,7 +16,7 @@ VerificationTask TypeVerifier::VerifyType(ast::ReturnStmt const* node) {
     }
   }
   context().set_return_types(node, std::move(return_types));
-  co_return Completed(node);
+  co_return TypeOf(node, QualifiedType(NoReturn));
 }
 
 }  // namespace semantic_analysis

@@ -18,6 +18,19 @@
 
 namespace semantic_analysis {
 
+struct UnreachableStatement {
+  static constexpr std::string_view kCategory = "type-error";
+  static constexpr std::string_view kName     = "unreachable-statement";
+
+  diagnostic::DiagnosticMessage ToMessage() const {
+    return diagnostic::DiagnosticMessage(
+        diagnostic::Text(
+            "The statement is unreachable due to a previous return or yield."),
+        diagnostic::SourceQuote().Highlighted(view, diagnostic::Style{}));
+  }
+  std::string_view view;
+};
+
 enum class TypeVerificationPhase {
   VerifyParameters,
   VerifyType,
@@ -86,9 +99,12 @@ struct TypeVerifier : VerificationScheduler {
 
   VerificationTask operator()(auto const *node) { return VerifyType(node); }
 
-  auto TypeOf(ast::Expression const *node, QualifiedType qualified_type) {
+  auto TypeOf(ast::Node const *node, QualifiedType qualified_type) {
+    static QualifiedType const no_return(NoReturn);
+    auto *e = node->if_as<ast::Expression>();
     return YieldResult<VerificationTask, TypeVerificationPhase::VerifyType>(
-        node, context().set_qualified_type(node, qualified_type));
+        node, e ? context().set_qualified_type(e, qualified_type)
+                : std::span(&no_return, 1));
   }
   auto TypeOf(ast::Expression const *node,
               std::vector<QualifiedType> qualified_types) {

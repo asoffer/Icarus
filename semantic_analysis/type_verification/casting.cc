@@ -83,6 +83,7 @@ CastKind CanCast(QualifiedType from, core::Type to, TypeSystem& type_system) {
         case Primitive::EmptyArray: NOT_YET();
         case Primitive::Type:
         case Primitive::Module:
+        case Primitive::NoReturn:
         case Primitive::Error: return CastKind::None;
       }
     } else if constexpr (category_type == nth::type<BufferPointerType>) {

@@ -141,5 +141,47 @@ TEST(IfStmt, ErrorsInBody) {
   }
 }
 
+TEST(IfStmt, UnreachableConst) {
+  {
+    test::Repl repl;
+    EXPECT_THAT(repl.type_check(R"(() -> bool {
+      #{const} if (true) {
+       return true
+      }
+      1234
+      return true
+    })"),
+                HasDiagnostics(Pair("type-error", "unreachable-statement")));
+  }
+  {
+    test::Repl repl;
+    EXPECT_THAT(repl.type_check(R"(() -> bool {
+      #{const} if (false) {
+      } else {
+       return true
+      }
+      1234
+      return true
+    })"),
+                HasDiagnostics(Pair("type-error", "unreachable-statement")));
+  }
+}
+
+TEST(IfStmt, Unreachable) {
+  {
+    test::Repl repl;
+    EXPECT_THAT(repl.type_check(R"(() -> bool {
+      if (false) {
+       return true
+      } else {
+       return true
+      }
+      1234
+      return true
+    })"),
+                HasDiagnostics(Pair("type-error", "unreachable-statement")));
+  }
+}
+
 }  // namespace
 }  // namespace semantic_analysis
