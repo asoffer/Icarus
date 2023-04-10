@@ -58,7 +58,8 @@ void ByteCodeValueEmitter::CastTo(ast::Expression const* node,
       uintptr_t value = i->span()[0];
       data.function().AppendPush(static_cast<uint64_t>(value));
     } else {
-      NOT_YET();
+      NOT_YET(DebugType(to_qt.type(), type_system()), " ",
+              DebugType(from_qt.type(), type_system()));
     }
   } else if (auto from =
                  from_qt.type().get_if<core::SizedIntegerType>(type_system())) {
