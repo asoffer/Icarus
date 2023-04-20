@@ -3,9 +3,12 @@
 #include <optional>
 #include <ostream>
 #include <string_view>
+#include <vector>
 
 #include "absl/strings/str_split.h"
 #include "ast/module.h"
+#include "base/universal_print.h"
+#include "compiler/compiler.h"
 #include "diagnostic/consumer/tracking.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
@@ -15,8 +18,8 @@
 #include "semantic_analysis/context.h"
 #include "semantic_analysis/type_system.h"
 #include "serialization/foreign_symbol_map.h"
-#include "vm/function.h"
 #include "vm/execute.h"
+#include "vm/function.h"
 
 namespace test {
 
@@ -204,6 +207,72 @@ struct Repl {
   vm::ExecutionState state_;
 };
 
+struct Snippet {
+  explicit Snippet(std::string content,
+                   module::Resources resources = TestResources());
+
+  semantic_analysis::Context const& context() const { return context_; }
+  ast::Module const& ast_module() const { return ast_module_; }
+  module::Module& module() const { return resources().primary_module(); }
+  module::Resources& resources() const { return resources_; }
+
+  semantic_analysis::TypeSystem& type_system() const {
+    return module().type_system();
+  }
+
+  friend std::ostream& operator<<(std::ostream& os, Snippet const& snippet) {
+    os << "A code snippet\n";
+    std::vector<std::string_view> lines =
+        absl::StrSplit(snippet.content_, absl::ByChar('\n'));
+    size_t indentation = std::numeric_limits<size_t>::max();
+    for (std::string_view line : lines) {
+      indentation = std::min(indentation, line.find_first_not_of(" \t"));
+    }
+    size_t length =
+        std::max_element(lines.begin(), lines.end(),
+                         [](std::string_view l, std::string_view r) {
+                           return l.size() < r.size();
+                         })
+            ->size() -
+        indentation;
+
+    os << "    \u256d";
+    std::fill_n(std::ostream_iterator<std::string_view>(os), length + 2,
+                "\u2500");
+    os << "\u256e\n";
+    for (std::string_view line : lines) {
+      if (line.size() > indentation) { line.remove_prefix(indentation); }
+      ASSERT(length >= line.size());
+      os << "    \u2502 " << line << std::string(length - line.size(), ' ')
+         << " \u2502\n";
+    }
+    os << "    \u2570";
+    std::fill_n(std::ostream_iterator<std::string_view>(os), length + 2,
+                "\u2500");
+
+    return os << "\u256f\n";
+  }
+
+ private:
+  friend struct HasDiagnostics;
+  friend struct HasQualTypes;
+  template <typename>
+  friend struct EvaluatesTo;
+
+  vm::Function ExecutionFunction() const;
+
+  // TODO: Doesn't need to be mutable?
+  mutable module::Resources resources_;
+  std::string content_;
+  mutable data_types::IntegerTable table_;
+  ast::Module ast_module_;
+  mutable semantic_analysis::Context context_;
+  diagnostic::TrackingConsumer& consumer_;
+  mutable vm::ArgumentSlice arguments_{nullptr, 0};
+
+  std::vector<semantic_analysis::QualifiedType> qualified_types_;
+};
+
 struct HasDiagnostics {
  private:
   using inner_matcher_type =
@@ -215,6 +284,12 @@ struct HasDiagnostics {
   explicit HasDiagnostics(Ms&&... ms)
       : ms_(testing::UnorderedElementsAreArray(
             inner_matcher_type{std::forward<Ms>(ms)...})) {}
+
+  bool MatchAndExplain(Snippet const& value,
+                       testing::MatchResultListener* listener) const {
+    return testing::ExplainMatchResult(ms_, value.consumer_.diagnostics(),
+                                       listener);
+  }
 
   bool MatchAndExplain(Repl::TypeCheckResult const& value,
                        testing::MatchResultListener* listener) const {
@@ -261,6 +336,11 @@ struct HasQualTypes {
     return testing::ExplainMatchResult(ms_, value.qualified_types(), listener);
   }
 
+  bool MatchAndExplain(Snippet const& snippet,
+                       testing::MatchResultListener* listener) const {
+    return testing::ExplainMatchResult(ms_, snippet.qualified_types_, listener);
+  }
+
   void DescribeTo(std::ostream* os) const {
     *os << "has qualified types that ";
     static_cast<
@@ -281,5 +361,63 @@ struct HasQualTypes {
 
   matcher_type ms_;
 };
+
+template <typename T>
+struct EvaluatesTo {
+  private:
+   template <typename>
+   static constexpr bool FitsInRegister() {
+     return true;  // TODO
+   }
+
+ public:
+  using is_gtest_matcher = void;
+
+  explicit EvaluatesTo(T t) : value_(std::move(t)) {}
+
+  bool MatchAndExplain(Snippet const& snippet,
+                       testing::MatchResultListener* listener) const {
+    constexpr auto t = [] {
+      if constexpr (nth::type<T> == nth::type<nth::Integer>) {
+        return nth::type<nth::Integer*>;
+      } else {
+        return nth::type<T>;
+      }
+    }();
+    using type = nth::type_t<t>;
+
+    auto f = snippet.ExecutionFunction();
+    if constexpr (FitsInRegister<type>()) {
+      type result;
+
+      vm::ExecutionState state_(snippet.table_, snippet.type_system(),
+                                snippet.arguments_);
+      vm::Execute(f, state_, {}, result);
+      if constexpr (t == nth::type<T>) {
+        return testing::ExplainMatchResult(testing::Eq(value_), result,
+                                           listener);
+      } else {
+        return testing::ExplainMatchResult(testing::Eq(value_), *result,
+                                           listener);
+      }
+    } else {
+      static_assert(t.dependent(false));
+    }
+  }
+
+  void DescribeTo(std::ostream* os) const {
+    *os << "evaluates to " << base::UniversalPrintToString(value_);
+  }
+
+  void DescribeNegationTo(std::ostream* os) const {
+    *os << "does not evaluate to " << base::UniversalPrintToString(value_);
+  }
+
+ private:
+  T value_;
+};
+
+template <typename T>
+EvaluatesTo(T const&) -> EvaluatesTo<T>;
 
 }  // namespace test

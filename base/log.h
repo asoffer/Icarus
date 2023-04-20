@@ -48,7 +48,7 @@ void DisableLogging(std::string_view key);
 
 #define LOG(k, fmt, ...)                                                       \
   do {                                                                         \
-    constexpr auto kFunc = __func__;                                           \
+    static constexpr auto kFunc = __func__;                                    \
     if ([](std::string_view key) -> bool {                                     \
           static std::atomic<bool> is_on([key] {                               \
             if (std::string_view(key).empty()) { return true; }                \

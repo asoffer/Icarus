@@ -51,4 +51,54 @@ Repl::TypeCheckResult Repl::type_check(std::string content) {
                          consumer_->diagnostics(), *this);
 }
 
+Snippet::Snippet(std::string content, module::Resources resources)
+    : resources_(std::move(resources)),
+      content_(std::move(content)),
+      consumer_(static_cast<diagnostic::TrackingConsumer&>(
+          resources_.diagnostic_consumer())) {
+  size_t previously_consumed = consumer_.num_consumed();
+  auto nodes                 = frontend::Parse(content_, consumer_);
+  base::PtrSpan node_span    = ast_module_.insert(nodes.begin(), nodes.end());
+
+  if (consumer_.num_consumed() != previously_consumed) {
+    qualified_types_ = {semantic_analysis::Error()};
+    return;
+  }
+
+  compiler::Compiler compiler(this->resources(), context_);
+
+  for (auto const* node : node_span) {
+    auto task = compiler(node);
+    qualified_types_ =
+        task.get<std::vector<semantic_analysis::QualifiedType>>();
+  }
+}
+
+vm::Function Snippet::ExecutionFunction() const {
+  compiler::Compiler compiler(this->resources(), context_);
+
+  core::TypeContour contour =
+      semantic_analysis::ContourOf(qualified_types_[0].type(), type_system());
+  size_t values_needed = contour.bytes().value() / jasmin::ValueSize +
+                         (((contour.bytes().value() % jasmin::ValueSize) != 0));
+  vm::Function f(0, values_needed);
+
+  // This `variable_offsets` map is intentionally empty. There will never be
+  // declarations from which data needs to be loaded. Because `EvaluateConstant`
+  // is only to be called on constant expressions, any identifier will refer to
+  // a declaration that is constant, and so lookup will happen by loading the
+  // value directly rather than adding instructions which load at runtime.
+  nth::flyweight_map<ast::Declaration::Id const*, size_t> variable_offsets;
+
+  semantic_analysis::FunctionData data(f, variable_offsets);
+  for (auto const* node : ast_module_.stmts()) {
+    auto task = compiler(node);
+    task.get<std::vector<semantic_analysis::QualifiedType>>();
+    task.send<semantic_analysis::FunctionData>(data);
+    task.complete();
+  }
+  f.AppendReturn();
+  return f;
+}
+
 }  // namespace test
