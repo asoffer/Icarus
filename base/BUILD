@@ -54,12 +54,6 @@ cc_library(
 )
 
 cc_library(
-    name = "interval",
-    hdrs = ["interval.h"],
-    deps = [":debug"],
-)
-
-cc_library(
     name = "iterator",
     hdrs = ["iterator.h"],
 )
