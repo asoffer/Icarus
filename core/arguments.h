@@ -10,7 +10,8 @@
 
 #include "absl/container/flat_hash_map.h"
 #include "base/debug.h"
-#include "base/universal_print.h"
+#include "nth/io/string_printer.h"
+#include "nth/io/universal_print.h"
 #include "nth/meta/sequence.h"
 #include "nth/meta/type.h"
 
@@ -81,12 +82,16 @@ struct Arguments {
     std::string result = "fnargs[";
     char const *sep    = "";
     for (auto const &val : pos_) {
-      absl::StrAppend(&result, std::exchange(sep, ", "),
-                      base::UniversalPrintToString(val));
+      std::string s;
+      nth::StringPrinter p(s);
+      nth::UniversalPrint(p, val);
+      absl::StrAppend(&result, std::exchange(sep, ", "), s);
     }
     for (auto &&[key, val] : named_) {
-      absl::StrAppend(&result, std::exchange(sep, ", "), key, ": ",
-                      base::UniversalPrintToString(val));
+      std::string s;
+      nth::StringPrinter p(s);
+      nth::UniversalPrint(p, val);
+      absl::StrAppend(&result, std::exchange(sep, ", "), key, ": ", s);
     }
     absl::StrAppend(&result, "]");
     return result;

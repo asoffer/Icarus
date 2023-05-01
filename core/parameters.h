@@ -11,7 +11,8 @@
 #include "base/extend.h"
 #include "base/extend/absl_hash.h"
 #include "base/extend/equality.h"
-#include "base/universal_print.h"
+#include "nth/io/string_printer.h"
+#include "nth/io/universal_print.h"
 
 namespace core {
 
@@ -99,8 +100,10 @@ struct Parameter
   using value_type = T;
 
   friend std::ostream& operator<<(std::ostream& os, Parameter const& param) {
-    return os << param.name << ": " << base::UniversalPrintToString(param.value)
-              << " " << param.flags;
+    std::string s;
+    nth::StringPrinter p(s);
+    nth::UniversalPrint(p, param.value);
+    return os << param.name << ": " << s << " " << param.flags;
   }
 
   std::string name = "";

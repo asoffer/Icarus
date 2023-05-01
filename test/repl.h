@@ -7,7 +7,6 @@
 
 #include "absl/strings/str_split.h"
 #include "ast/module.h"
-#include "base/universal_print.h"
 #include "compiler/compiler.h"
 #include "diagnostic/consumer/tracking.h"
 #include "gmock/gmock.h"
@@ -15,6 +14,8 @@
 #include "jasmin/execute.h"
 #include "module/module.h"
 #include "module/resources.h"
+#include "nth/io/string_printer.h"
+#include "nth/io/universal_print.h"
 #include "semantic_analysis/context.h"
 #include "semantic_analysis/type_system.h"
 #include "serialization/foreign_symbol_map.h"
@@ -364,11 +365,11 @@ struct HasQualTypes {
 
 template <typename T>
 struct EvaluatesTo {
-  private:
-   template <typename>
-   static constexpr bool FitsInRegister() {
-     return true;  // TODO
-   }
+ private:
+  template <typename>
+  static constexpr bool FitsInRegister() {
+    return true;  // TODO
+  }
 
  public:
   using is_gtest_matcher = void;
@@ -406,11 +407,17 @@ struct EvaluatesTo {
   }
 
   void DescribeTo(std::ostream* os) const {
-    *os << "evaluates to " << base::UniversalPrintToString(value_);
+    std::string s;
+    nth::StringPrinter p(s);
+    nth::UniversalPrint(p, value_);
+    *os << "evaluates to " << s;
   }
 
   void DescribeNegationTo(std::ostream* os) const {
-    *os << "does not evaluate to " << base::UniversalPrintToString(value_);
+    std::string s;
+    nth::StringPrinter p(s);
+    nth::UniversalPrint(p, value_);
+    *os << "does not evaluate to " << s;
   }
 
  private:

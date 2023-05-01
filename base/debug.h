@@ -6,7 +6,8 @@
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_format.h"
 #include "base/log.h"
-#include "base/universal_print.h"
+#include "nth/io/string_printer.h"
+#include "nth/io/universal_print.h"
 #include "nth/meta/type.h"
 
 #if defined(ICARUS_DEBUG)
@@ -109,7 +110,10 @@ auto wrap(auto const & arg) -> decltype(auto) {
   } else if constexpr (requires { absl::StrCat(arg); }) {
     return arg;
   } else {
-    return ::base::UniversalPrintToString(arg);
+    std::string s;
+    nth::StringPrinter p(s);
+    nth::UniversalPrint(p, arg);
+    return s;
   }
 }
 

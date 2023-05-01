@@ -11,8 +11,9 @@ cc_library(
     hdrs = ["debug.h"],
     deps = [
         ":log",
-        ":universal_print",
         "@asoffer_nth//nth/meta:type",
+        "@asoffer_nth//nth/io:string_printer",
+        "@asoffer_nth//nth/io:universal_print",
         "@com_google_absl//absl/strings",
     ],
 )
@@ -72,7 +73,8 @@ cc_library(
     srcs = ["log.cc"],
     hdrs = ["log.h"],
     deps = [
-        ":universal_print",
+        "@asoffer_nth//nth/io:string_printer",
+        "@asoffer_nth//nth/io:universal_print",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/container:flat_hash_set",
         "@com_google_absl//absl/strings",
@@ -86,25 +88,6 @@ cc_library(
     hdrs = ["ptr_span.h"],
     deps = [
         "@asoffer_nth//nth/meta:type",
-    ],
-)
-
-cc_library(
-    name = "universal_print",
-    hdrs = ["universal_print.h"],
-    deps = [
-        "@asoffer_nth//nth/meta:concepts",
-        "@asoffer_nth//nth/meta:type",
-        "@com_google_absl//absl/status:statusor",
-    ],
-)
-
-cc_test(
-    name = "universal_print_test",
-    srcs = ["universal_print_test.cc"],
-    deps = [
-        ":universal_print",
-        "@com_google_googletest//:gtest_main",
     ],
 )
 

@@ -1,4 +1,4 @@
-#include "diganostic/console_renderer.h"
+#include "diagnostic/console_renderer.h"
 
 #include <cstdio>
 #include <optional>
