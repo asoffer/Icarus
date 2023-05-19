@@ -42,7 +42,9 @@ vm::Function EmitByteCode(QualifiedType qualified_type,
   // a declaration that is constant, and so lookup will happen by loading the
   // value directly rather than adding instructions which load at runtime.
   nth::flyweight_map<ast::Declaration::Id const *, size_t> variable_offsets;
-  e.Emit(&expression, FunctionData(f, variable_offsets));
+  FunctionData data(f, variable_offsets);
+  TemporarilySet temp(data.kind(), EmitKind::Value);
+  e.Emit(&expression, data);
   f.AppendReturn();
   return f;
 }

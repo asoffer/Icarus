@@ -398,8 +398,7 @@ struct EvaluatesTo {
         return testing::ExplainMatchResult(testing::Eq(value_), result,
                                            listener);
       } else {
-        return testing::ExplainMatchResult(testing::Eq(value_), *result,
-                                           listener);
+        return testing::ExplainMatchResult(value_, *result, listener);
       }
     } else {
       static_assert(t.dependent(false));

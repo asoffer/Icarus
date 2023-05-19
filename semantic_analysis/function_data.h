@@ -7,6 +7,18 @@
 
 namespace semantic_analysis {
 
+enum class EmitKind { Reference, Value, Statement };
+
+struct TemporarilySet {
+  explicit constexpr TemporarilySet(EmitKind &kind, EmitKind k)
+      : kind_(kind), value_(std::exchange(kind_, k)) {}
+  ~TemporarilySet() { kind_ = value_; }
+
+ private:
+  EmitKind &kind_;
+  EmitKind value_;
+};
+
 struct FunctionData {
   FunctionData(vm::Function &function,
                nth::flyweight_map<ast::Declaration::Id const *, size_t>
@@ -14,6 +26,8 @@ struct FunctionData {
       : function_(function), variable_offsets_(variable_offsets) {}
 
   vm::Function &function() { return function_; }
+
+  EmitKind &kind() { return kind_; }
 
   size_t OffsetFor(ast::Declaration::Id const *id) const {
     auto iter = variable_offsets_.find(id);
@@ -27,6 +41,7 @@ struct FunctionData {
 
  private:
   vm::Function &function_;
+  EmitKind kind_ = EmitKind::Statement;
   nth::flyweight_map<ast::Declaration::Id const *, size_t> &variable_offsets_;
 };
 

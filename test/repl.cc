@@ -91,6 +91,8 @@ vm::Function Snippet::ExecutionFunction() const {
   nth::flyweight_map<ast::Declaration::Id const*, size_t> variable_offsets;
 
   semantic_analysis::FunctionData data(f, variable_offsets);
+  semantic_analysis::TemporarilySet temp(data.kind(),
+                                         semantic_analysis::EmitKind::Value);
   for (auto const* node : ast_module_.stmts()) {
     auto task = compiler(node);
     task.get<std::vector<semantic_analysis::QualifiedType>>();

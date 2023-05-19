@@ -51,11 +51,17 @@ struct Compiler  {
     NOT_YET(nth::type<NodeType>);
   }
 
+  Task TaskFor(ast::Node const *node) { return operator()(node); }
+  Task TaskFor(ast::Expression const *node) {
+    return operator()(static_cast<ast::Node const *>(node));
+  }
+
+  Task TaskFor(ast::SliceType const *);
   Task TaskFor(ast::Terminal const *);
   // Access, Assignment, ArrayLiteral, ArrayType, BinaryOperator,
   // BindingDeclaration, Call, Cast, ComparisonOperator, Declaration,
   // Declaration::Id, EnumLiteral, FunctionLiteral, FunctionType, Identifier,
-  // IfStmt, Import, Index, Module, ShortFunctionLiteral, SliceType, ReturnStmt,
+  // IfStmt, Import, Index, Module, ShortFunctionLiteral, ReturnStmt,
   // UnaryOperator, WhileStmt, ArgumentType, BinaryAssignmentOperator,
   // BlockNode, DesignatedInitializer, InterfaceLiteral, Label, ScopeLiteral,
   // ScopeNode, StructLiteral, YieldStmt

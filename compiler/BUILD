@@ -13,6 +13,7 @@ cc_library(
     name = "compiler",
     hdrs = ["compiler.h"],
     srcs = [
+        "slice_type.cc",
         "terminal.cc",
     ],
     deps = [
@@ -30,6 +31,15 @@ cc_library(
     ],
 )
 
+cc_test(
+    name = "slice_type_test",
+    srcs = ["slice_type_test.cc"],
+    deps = [
+        ":compiler",
+        "//test:repl",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
 
 cc_test(
     name = "terminal_test",
