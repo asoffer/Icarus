@@ -11,8 +11,8 @@
 #include "ast/declaration.h"
 #include "base/cast.h"
 #include "base/debug.h"
-#include "base/iterator.h"
 #include "base/log.h"
+#include "nth/utility/iterator_range.h"
 #include "nth/utility/ptr_union.h"
 
 namespace module {
@@ -131,7 +131,7 @@ struct Scope : base::Cast<Scope> {
   }
 
   auto ancestors() const {
-    return base::iterator_range(ancestor_iterator(this),
+    return nth::iterator_range(ancestor_iterator(this),
                                 ancestor_iterator(nullptr));
   }
 
@@ -139,7 +139,7 @@ struct Scope : base::Cast<Scope> {
   // accessible `ast::Declaration::Id`s in this or ancestor scopes which are
   // visible and have name `name`
   auto visible_ancestor_declaration_id_named(std::string_view name) const {
-    return base::iterator_range(declaration_ancestor_iterator(this, name, true),
+    return nth::iterator_range(declaration_ancestor_iterator(this, name, true),
                                 declaration_ancestor_iterator());
   }
 
@@ -147,7 +147,7 @@ struct Scope : base::Cast<Scope> {
   // accessible `ast::Declaration::Id`s in this or ancestor scopes which have
   // name `name` regardless of whether they are visible.
   auto ancestor_declaration_id_named(std::string_view name) const {
-    return base::iterator_range(
+    return nth::iterator_range(
         declaration_ancestor_iterator(this, name, false),
         declaration_ancestor_iterator());
   }

@@ -55,20 +55,6 @@ cc_library(
 )
 
 cc_library(
-    name = "iterator",
-    hdrs = ["iterator.h"],
-)
-
-cc_test(
-    name = "iterator_test",
-    srcs = ["iterator_test.cc"],
-    deps = [
-        ":iterator",
-        "@com_google_googletest//:gtest_main",
-    ],
-)
-
-cc_library(
     name = "log",
     srcs = ["log.cc"],
     hdrs = ["log.h"],
