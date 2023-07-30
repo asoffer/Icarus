@@ -4,7 +4,7 @@
 #include <string_view>
 #include <variant>
 
-#include "nth/numeric/integer.h"
+#include "absl/numeric/int128.h"
 
 namespace frontend {
 
@@ -19,7 +19,7 @@ enum class NumberParsingError {
   kTooLarge,
 };
 
-std::variant<nth::Integer, double, NumberParsingError> ParseNumber(
+std::variant<absl::int128, double, NumberParsingError> ParseNumber(
     std::string_view sv);
 
 }  // namespace frontend

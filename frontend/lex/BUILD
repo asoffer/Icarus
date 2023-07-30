@@ -11,9 +11,9 @@ cc_library(
         "//data_types:hashtag",
         "//diagnostic/consumer",
         "//serialization:module_index",
-        "@asoffer_nth//nth/numeric:integer",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/container:node_hash_set",
+        "@com_google_absl//absl/numeric:int128",
         "@com_google_absl//absl/status:statusor",
     ],
 )
@@ -49,7 +49,7 @@ cc_library(
     hdrs = ["numbers.h"],
     srcs = ["numbers.cc"],
     deps = [
-        "@asoffer_nth//nth/numeric:integer",
+        "@com_google_absl//absl/numeric:int128",
     ], 
 )
 

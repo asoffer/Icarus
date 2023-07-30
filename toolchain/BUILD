@@ -63,7 +63,6 @@ cc_library(
     srcs = ["flags.cc"],
     deps = [
         "//diagnostic/consumer",
-        "//diagnostic/consumer:json",
         "//diagnostic/consumer:streaming",
         "//frontend:source_indexer",
         "@com_google_absl//absl/flags:flag",

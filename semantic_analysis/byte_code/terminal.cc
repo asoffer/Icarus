@@ -11,7 +11,7 @@ void ByteCodeValueEmitter::operator()(ast::Terminal const* node,
     data.function().AppendPushStringLiteral(node->value<std::string>());
   } else if (qt.type() == Integer) {
     data.function().AppendPush(
-        module().integer_table().insert(node->value<nth::Integer>()));
+        module().integer_table().insert(node->value<absl::int128>()));
   } else if (qt.type() == F64) {
     // TODO: Long-term these won't be doubles, but rather a "rational" type that
     // is arbitrary-precision.

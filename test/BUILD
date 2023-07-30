@@ -38,7 +38,7 @@ cc_library(
         "//vm:function",
         "@asoffer_jasmin//jasmin:execute",
         "@asoffer_nth//nth/io:string_printer",
-        "@asoffer_nth//nth/io:universal_print",
+        "@asoffer_nth//nth/strings/format:universal",
         "@com_google_absl//absl/strings",
         "@com_google_googletest//:gtest",
     ],

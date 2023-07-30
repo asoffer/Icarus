@@ -39,9 +39,9 @@ cc_library(
     deps = [
         "//serialization:constants",
         "//base:debug",
-        "@asoffer_nth//nth/numeric:integer",
         "@asoffer_nth//nth/container:flyweight_set",
         "@asoffer_jasmin//jasmin:instruction",
+        "@com_google_absl//absl/numeric:int128",
     ],
 )
 

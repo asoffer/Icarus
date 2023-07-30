@@ -6,7 +6,7 @@
 
 namespace data_types {
 
-IntegerHandle IntegerTable::insert(nth::Integer const& n) {
+IntegerHandle IntegerTable::insert(absl::int128 const& n) {
   auto [iter, inserted] = set_.insert(n);
   return IntegerHandle(&*iter);
 }
@@ -15,19 +15,16 @@ void Serialize(IntegerTable const& table, serialization::IntegerTable& proto) {
   for (auto const& n : table) {
     auto& proto_integer = *proto.add_integers();
     if (n < 0) { proto_integer.set_negative(true); }
-    std::span span = n.span();
-    if (span.size() == 2 and span[1] == 0) { span.subspan(0, 1); }
     std::string& s = *proto_integer.mutable_words();
-    // TODO: `resize_and_overwrite` when available.
-    s.resize(sizeof(uintptr_t) * span.size());
-    std::memcpy(s.data(), n.span().data(), sizeof(uintptr_t) * span.size());
+    s.resize(sizeof(n));
+    std::memcpy(s.data(), &n, sizeof(n));
   }
 }
 
 void Deserialize(serialization::IntegerTable const& proto,
                  IntegerTable& table) {
   for (auto const& proto_integer : proto.integers()) {
-    nth::Integer n;
+    absl::int128 n;
     std::string_view data = proto_integer.words();
     // TODO: We need to make a faster implementation possible here.
     ASSERT(data.size() % sizeof(uintptr_t) == 0);
@@ -38,7 +35,7 @@ void Deserialize(serialization::IntegerTable const& proto,
                   sizeof(uintptr_t));
       n += word;
     }
-    if (proto_integer.negative()) { n.negate(); }
+    if (proto_integer.negative()) { n = -n; }
     table.insert(n);
   }
 }
@@ -47,8 +44,7 @@ void PrintTo(IntegerTable const& table, std::ostream* os) {
   *os << "[";
   std::string_view separator = "";
   for (auto const& n : table) {
-    *os << std::exchange(separator, ", ");
-    PrintTo(n, os);
+    *os << std::exchange(separator, ", ") << n;
   }
   *os << "]";
 }

@@ -25,37 +25,37 @@ void ByteCodeValueEmitter::CastTo(ast::Expression const* node,
 
   if (from_qt.type() == Integer) {
     std::span<std::byte const> evaluation = EvaluateConstant(node, from_qt);
-    ASSERT(sizeof(nth::Integer const*) == evaluation.size());
-    nth::Integer const* i;
+    ASSERT(sizeof(absl::int128 const*) == evaluation.size());
+    absl::int128 const* i;
     std::memcpy(&i, evaluation.data(), sizeof(i));
     // TODO: Actually validate that the number is properly bounded.
     if (to_qt.type() == I(8)) {
-      intptr_t value = i->span()[0];
+      intptr_t value = absl::Int128Low64(*i);
       if (*i < 0) { value = -value; }
       data.function().AppendPush(static_cast<int8_t>(value));
     } else if (to_qt.type() == I(16)) {
-      intptr_t value = i->span()[0];
+      intptr_t value = absl::Int128Low64(*i);
       if (*i < 0) { value = -value; }
       data.function().AppendPush(static_cast<int16_t>(value));
     } else if (to_qt.type() == I(32)) {
-      intptr_t value = i->span()[0];
+      intptr_t value = absl::Int128Low64(*i);
       if (*i < 0) { value = -value; }
       data.function().AppendPush(static_cast<int32_t>(value));
     } else if (to_qt.type() == I(64)) {
-      intptr_t value = i->span()[0];
+      intptr_t value = absl::Int128Low64(*i);
       if (*i < 0) { value = -value; }
       data.function().AppendPush(static_cast<int64_t>(value));
     } else if (to_qt.type() == U(8)) {
-      uintptr_t value = i->span()[0];
+      uintptr_t value = absl::Int128Low64(*i);
       data.function().AppendPush(static_cast<uint8_t>(value));
     } else if (to_qt.type() == U(16)) {
-      uintptr_t value = i->span()[0];
+      uintptr_t value = absl::Int128Low64(*i);
       data.function().AppendPush(static_cast<uint16_t>(value));
     } else if (to_qt.type() == U(32)) {
-      uintptr_t value = i->span()[0];
+      uintptr_t value = absl::Int128Low64(*i);
       data.function().AppendPush(static_cast<uint32_t>(value));
     } else if (to_qt.type() == U(64)) {
-      uintptr_t value = i->span()[0];
+      uintptr_t value = absl::Int128Low64(*i);
       data.function().AppendPush(static_cast<uint64_t>(value));
     } else {
       NOT_YET(DebugType(to_qt.type(), type_system()), " ",

@@ -3,7 +3,6 @@
 #include "absl/flags/flag.h"
 #include "absl/flags/usage.h"
 #include "absl/flags/usage_config.h"
-#include "diagnostic/consumer/json.h"
 #include "diagnostic/consumer/streaming.h"
 
 namespace toolchain {
@@ -24,12 +23,10 @@ DiagnosticConsumerFromFlag(absl::Flag<std::string> const& f,
   if (diagnostics == "console") {
     return std::make_unique<diagnostic::StreamingConsumer>(stderr,
                                                            &source_indexer);
-  } else if (diagnostics == "json") {
-    return std::make_unique<diagnostic::JsonConsumer>(stderr, source_indexer);
   } else {
     return absl::InvalidArgumentError(absl::StrFormat(
         "Invalid value for --diagnostics flag '%s'. Valid values "
-        "are 'console' or 'json'\n",
+        "are 'console'\n",
         diagnostics));
   }
 }

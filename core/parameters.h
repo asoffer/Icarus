@@ -12,7 +12,8 @@
 #include "base/extend/absl_hash.h"
 #include "base/extend/equality.h"
 #include "nth/io/string_printer.h"
-#include "nth/io/universal_print.h"
+#include "nth/strings/format/universal.h"
+#include "nth/strings/interpolate.h"
 
 namespace core {
 
@@ -101,9 +102,10 @@ struct Parameter
 
   friend std::ostream& operator<<(std::ostream& os, Parameter const& param) {
     std::string s;
-    nth::StringPrinter p(s);
-    nth::UniversalPrint(p, param.value);
-    return os << param.name << ": " << s << " " << param.flags;
+    nth::string_printer p(s);
+    nth::universal_formatter f({.depth = 4, .fallback = "..."});
+    nth::Interpolate<"{}:{} {}">(p, f, param.name, param.value, param.flags);
+    return os << s;
   }
 
   std::string name = "";

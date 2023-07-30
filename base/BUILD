@@ -13,7 +13,7 @@ cc_library(
         ":log",
         "@asoffer_nth//nth/meta:type",
         "@asoffer_nth//nth/io:string_printer",
-        "@asoffer_nth//nth/io:universal_print",
+        "@asoffer_nth//nth/strings/format:universal",
         "@com_google_absl//absl/strings",
     ],
 )
@@ -60,7 +60,7 @@ cc_library(
     hdrs = ["log.h"],
     deps = [
         "@asoffer_nth//nth/io:string_printer",
-        "@asoffer_nth//nth/io:universal_print",
+        "@asoffer_nth//nth/strings/format:universal",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/container:flat_hash_set",
         "@com_google_absl//absl/strings",

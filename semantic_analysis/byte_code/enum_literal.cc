@@ -13,9 +13,8 @@ void ByteCodeValueEmitter::operator()(ast::EnumLiteral const* node,
     uint64_t value;
     // TODO: Handle casts correctly.
     if (t == Integer) {
-      value = EvaluateAs<data_types::IntegerHandle>(value_expr.get())
-                  .value()
-                  .span()[0];
+      value = absl::Int128Low64(
+          EvaluateAs<data_types::IntegerHandle>(value_expr.get()).value());
     } else {
       [[maybe_unused]] bool found =
           WithPrimitiveType(t, [&, v = value_expr.get()]<std::integral T> {

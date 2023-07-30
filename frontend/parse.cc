@@ -2085,9 +2085,7 @@ void Shift(ParseState *ps) {
 template <auto &RuleSet>
 bool Reduce(ParseState *ps) {
   LOG("parse", "reducing");
-  size_t i = 0;
   for (auto const &rule : RuleSet) {
-    ++i;
     if (rule.match(ps->tag_stack_)) {
       auto * p = std::addressof(*(ps->node_stack_.end() - rule.match.size()));
       auto nodes_to_reduce = std::span(p, p + rule.match.size());

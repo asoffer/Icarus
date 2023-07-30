@@ -15,7 +15,7 @@
 #include "module/module.h"
 #include "module/resources.h"
 #include "nth/io/string_printer.h"
-#include "nth/io/universal_print.h"
+#include "nth/strings/format/universal.h"
 #include "semantic_analysis/context.h"
 #include "semantic_analysis/type_system.h"
 #include "serialization/foreign_symbol_map.h"
@@ -133,8 +133,8 @@ struct Repl {
   template <typename T>
   T execute(std::string source) {
     constexpr auto t = [] {
-      if constexpr (nth::type<T> == nth::type<nth::Integer>) {
-        return nth::type<nth::Integer*>;
+      if constexpr (nth::type<T> == nth::type<absl::int128>) {
+        return nth::type<absl::int128*>;
       } else {
         return nth::type<T>;
       }
@@ -379,8 +379,8 @@ struct EvaluatesTo {
   bool MatchAndExplain(Snippet const& snippet,
                        testing::MatchResultListener* listener) const {
     constexpr auto t = [] {
-      if constexpr (nth::type<T> == nth::type<nth::Integer>) {
-        return nth::type<nth::Integer*>;
+      if constexpr (nth::type<T> == nth::type<absl::int128>) {
+        return nth::type<absl::int128*>;
       } else {
         return nth::type<T>;
       }
@@ -407,15 +407,17 @@ struct EvaluatesTo {
 
   void DescribeTo(std::ostream* os) const {
     std::string s;
-    nth::StringPrinter p(s);
-    nth::UniversalPrint(p, value_);
+    nth::string_printer p(s);
+    nth::universal_formatter f({.depth = 3, .fallback = "..."});
+    nth::Interpolate<"{}">(p, f, value_);
     *os << "evaluates to " << s;
   }
 
   void DescribeNegationTo(std::ostream* os) const {
     std::string s;
-    nth::StringPrinter p(s);
-    nth::UniversalPrint(p, value_);
+    nth::string_printer p(s);
+    nth::universal_formatter f({.depth = 3, .fallback = "..."});
+    nth::Interpolate<"{}">(p, f, value_);
     *os << "does not evaluate to " << s;
   }
 

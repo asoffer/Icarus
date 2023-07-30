@@ -11,9 +11,10 @@
 #include "absl/container/flat_hash_map.h"
 #include "base/debug.h"
 #include "nth/io/string_printer.h"
-#include "nth/io/universal_print.h"
 #include "nth/meta/sequence.h"
 #include "nth/meta/type.h"
+#include "nth/strings/format/universal.h"
+#include "nth/strings/interpolate.h"
 
 namespace core {
 template <typename T>
@@ -81,17 +82,18 @@ struct Arguments {
   std::string to_string() const {
     std::string result = "fnargs[";
     char const *sep    = "";
+    nth::universal_formatter f({.depth = 4, .fallback = "..."});
     for (auto const &val : pos_) {
       std::string s;
-      nth::StringPrinter p(s);
-      nth::UniversalPrint(p, val);
+      nth::string_printer p(s);
+      nth::Interpolate<"{}">(p, f, val);
       absl::StrAppend(&result, std::exchange(sep, ", "), s);
     }
     for (auto &&[key, val] : named_) {
       std::string s;
-      nth::StringPrinter p(s);
-      nth::UniversalPrint(p, val);
-      absl::StrAppend(&result, std::exchange(sep, ", "), key, ": ", s);
+      nth::string_printer p(s);
+      nth::Interpolate<"{}: {}">(p, f, key, val);
+      absl::StrAppend(&result, std::exchange(sep, ", "), s);
     }
     absl::StrAppend(&result, "]");
     return result;

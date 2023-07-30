@@ -16,7 +16,7 @@
 #include "core/type_system/type_system.h"
 #include "data_types/char.h"
 #include "data_types/integer.h"
-#include "nth/numeric/integer.h"
+#include "absl/numeric/int128.h"
 #include "serialization/module_index.h"
 #include "serialization/type_system.pb.h"
 

@@ -13,7 +13,7 @@
 #include "frontend/lex/syntax.h"
 #include "nth/meta/sequence.h"
 #include "nth/meta/type.h"
-#include "nth/numeric/integer.h"
+#include "absl/numeric/int128.h"
 #include "semantic_analysis/type_system.h"
 #include "serialization/module_index.h"
 
@@ -482,7 +482,7 @@ Lexeme ConsumeNumber(std::string_view &cursor,
   return std::visit(
       [&diag, number_str](auto num) {
         constexpr auto type = nth::type<decltype(num)>;
-        if constexpr (type == nth::type<nth::Integer>) {
+        if constexpr (type == nth::type<absl::int128>) {
           return Lexeme(std::make_unique<ast::Terminal>(number_str, num));
         } else if constexpr (type == nth::type<double>) {
           return Lexeme(std::make_unique<ast::Terminal>(number_str, num));
@@ -493,7 +493,7 @@ Lexeme ConsumeNumber(std::string_view &cursor,
           // further if we can't lex the input is likely not going to be useful.
           diag.Consume(NumberParsingFailure{.error = num, .range = number_str});
           return Lexeme(
-              std::make_unique<ast::Terminal>(number_str, nth::Integer(0)));
+              std::make_unique<ast::Terminal>(number_str, absl::int128(0)));
         } else {
           static_assert(type.dependent(false));
         }

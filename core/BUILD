@@ -95,9 +95,10 @@ cc_library(
     deps = [
         "//base:debug",
         "@asoffer_nth//nth/io:string_printer",
-        "@asoffer_nth//nth/io:universal_print",
         "@asoffer_nth//nth/meta:sequence",
         "@asoffer_nth//nth/meta:type",
+        "@asoffer_nth//nth/strings/format:universal",
+        "@asoffer_nth//nth/strings:interpolate",
         "@com_google_absl//absl/container:flat_hash_map",
     ],
 )
@@ -119,7 +120,8 @@ cc_library(
         "//base:extend",
         "//base/extend:absl_hash",
         "@asoffer_nth//nth/io:string_printer",
-        "@asoffer_nth//nth/io:universal_print",
+        "@asoffer_nth//nth/strings/format:universal",
+        "@asoffer_nth//nth/strings:interpolate",
     ],
 )
 

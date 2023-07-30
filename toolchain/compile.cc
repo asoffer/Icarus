@@ -24,7 +24,7 @@ ABSL_FLAG(std::vector<std::string>, log, {},
           "Comma-separated list of log keys");
 ABSL_FLAG(std::string, diagnostics, "console",
           "Indicates how diagnostics should be emitted. Options: console "
-          "(default), or json.");
+          "(default).");
 ABSL_FLAG(std::string, module_identifier, "",
           "Identifier to be used to uniquely identify this module amongst all "
           "modules being linked together, and must not begin with a tilde (~) "

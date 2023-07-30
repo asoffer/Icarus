@@ -8,6 +8,7 @@
 #include <variant>
 #include <vector>
 
+#include "absl/numeric/int128.h"
 #include "ast/build_param_dependency_graph.h"
 #include "ast/declaration.h"
 #include "ast/expression.h"
@@ -22,7 +23,6 @@
 #include "frontend/lex/operators.h"
 #include "nth/meta/sequence.h"
 #include "nth/meta/type.h"
-#include "nth/numeric/integer.h"
 #include "semantic_analysis/type_system.h"
 
 namespace ast {
@@ -1007,7 +1007,7 @@ struct ReturnStmt : Node {
 struct Terminal : Expression {
  private:
   static constexpr auto types =
-      nth::type_sequence<bool, data_types::Char, nth::Integer, double,
+      nth::type_sequence<bool, data_types::Char, absl::int128, double,
                          data_types::addr_t, core::Type, std::string>;
 
   using variant_type = nth::type_t<types.reduce(

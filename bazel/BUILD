@@ -54,7 +54,7 @@ cc_toolchain(
 
 cc_toolchain_config(
     name = 'clang_toolchain_config',
-    compiler_path = '/usr/bin/clang-14',
+    compiler_path = "/usr/bin/clang-16",
     warnings = [
         "-Wall",
         "-Werror",
@@ -64,6 +64,7 @@ cc_toolchain_config(
         "-Wno-unused-variable",
         "-Wno-overloaded-shift-op-parentheses", # because of ASSERT macro.
         "-Wno-unused-command-line-argument",
+        "-Wno-deprecated-non-prototype",
         "-Wuninitialized",
     ]
 )

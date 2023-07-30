@@ -1,7 +1,7 @@
 #include "ast/ast.h"
 #include "compiler/compiler.h"
 #include "core/type_system/type.h"
-#include "nth/numeric/integer.h"
+#include "absl/numeric/int128.h"
 
 namespace compiler {
 
@@ -25,8 +25,8 @@ Compiler::Task Compiler::TaskFor(ast::Terminal const* node) {
   ICARUS_HANDLE_TERMINAL_CASE(data_types::Char, Char);
   ICARUS_HANDLE_TERMINAL_CASE(core::Type, Type);
   ICARUS_HANDLE_TERMINAL_CASE_WITH_ACTION(
-      nth::Integer, Integer,
-      AppendPush(module().integer_table().insert(node->value<nth::Integer>())));
+      absl::int128, Integer,
+      AppendPush(module().integer_table().insert(node->value<absl::int128>())));
   ICARUS_HANDLE_TERMINAL_CASE(double, F64);
   ICARUS_HANDLE_TERMINAL_CASE(data_types::addr_t, NullPtr);
   ICARUS_HANDLE_TERMINAL_CASE_WITH_ACTION(

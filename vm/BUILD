@@ -52,7 +52,6 @@ cc_library(
         "//serialization:function_table_proto",
         "//serialization:module_index",
         "//serialization:read_only_data",
-        "@asoffer_nth//nth/numeric:integer",
         "@asoffer_jasmin//jasmin:debug",
         "@asoffer_jasmin//jasmin:function",
         "@asoffer_jasmin//jasmin:instruction",
@@ -66,6 +65,7 @@ cc_library(
         "@asoffer_jasmin//jasmin:value_stack",
         "@com_google_absl//absl/container:btree",
         "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/numeric:int128",
     ]
 )
 

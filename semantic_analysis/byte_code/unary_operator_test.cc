@@ -38,9 +38,9 @@ TEST(UnaryOperator, Negation) {
   test::Repl repl;
   EXPECT_EQ(repl.execute<double>("-3.14"), -3.14);
   EXPECT_EQ(repl.execute<data_types::IntegerHandle>("-1234").value(),
-            -nth::Integer(1234));
+            -absl::int128(1234));
   EXPECT_EQ(repl.execute<data_types::IntegerHandle>("-(-1234)").value(),
-            nth::Integer(1234));
+            absl::int128(1234));
 }
 
 TEST(UnaryOperator, Not) {

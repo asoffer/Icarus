@@ -60,15 +60,3 @@ cc_library(
         "//diagnostic:message",
     ],
 )
-
-cc_library(
-    name = "json",
-    hdrs = ["json.h"],
-    srcs = ["json.cc"],
-    deps = [
-        ":consumer",
-        "//diagnostic:message",
-        "//frontend:source_indexer",
-        "@github_nlohmann_json//:json",
-    ],
-)

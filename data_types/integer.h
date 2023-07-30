@@ -6,16 +6,16 @@
 #include "serialization/constants.pb.h"
 #include "jasmin/instruction.h"
 #include "nth/container/flyweight_set.h"
-#include "nth/numeric/integer.h"
+#include "absl/numeric/int128.h"
 
 namespace data_types {
 
 struct IntegerHandle;
 
 struct IntegerTable {
-  using value_type = nth::Integer;
+  using value_type = absl::int128;
 
-  IntegerHandle insert(nth::Integer const& n);
+  IntegerHandle insert(absl::int128 const& n);
 
   auto begin() const { return set_.begin(); }
   auto end() const { return set_.end(); }
@@ -23,13 +23,13 @@ struct IntegerTable {
   void friend PrintTo(IntegerTable const& table, std::ostream* os);
 
  private:
-  nth::flyweight_set<nth::Integer> set_;
+  nth::flyweight_set<absl::int128> set_;
 };
 
 struct IntegerHandle {
   explicit IntegerHandle() = default;
 
-  nth::Integer const& value() const { return *ptr_; }
+  absl::int128 const& value() const { return *ptr_; }
 
   struct Negate : jasmin::StackMachineInstruction<Negate> {
     using execution_state = IntegerTable;
@@ -39,9 +39,9 @@ struct IntegerHandle {
   };
 
  private:
-  explicit IntegerHandle(nth::Integer const* ptr) : ptr_(ptr) {}
+  explicit IntegerHandle(absl::int128 const* ptr) : ptr_(ptr) {}
   friend IntegerTable;
-  nth::Integer const* ptr_;
+  absl::int128 const* ptr_;
 };
 
 void Serialize(IntegerTable const& table, serialization::IntegerTable& proto);

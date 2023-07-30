@@ -8,18 +8,18 @@ namespace {
 using ::testing::VariantWith;
 
 TEST(ParseNumber, Base2Integer) {
-  EXPECT_THAT(ParseNumber("0b0"), VariantWith<nth::Integer>(nth::Integer(0)));
-  EXPECT_THAT(ParseNumber("0b1"), VariantWith<nth::Integer>(nth::Integer(1)));
-  EXPECT_THAT(ParseNumber("0b01"), VariantWith<nth::Integer>(nth::Integer(1)));
+  EXPECT_THAT(ParseNumber("0b0"), VariantWith<absl::int128>(absl::int128(0)));
+  EXPECT_THAT(ParseNumber("0b1"), VariantWith<absl::int128>(absl::int128(1)));
+  EXPECT_THAT(ParseNumber("0b01"), VariantWith<absl::int128>(absl::int128(1)));
   EXPECT_THAT(ParseNumber("0b0__1"),
-              VariantWith<nth::Integer>(nth::Integer(1)));
-  EXPECT_THAT(ParseNumber("0b10"), VariantWith<nth::Integer>(nth::Integer(2)));
-  EXPECT_THAT(ParseNumber("0b10_"), VariantWith<nth::Integer>(nth::Integer(2)));
+              VariantWith<absl::int128>(absl::int128(1)));
+  EXPECT_THAT(ParseNumber("0b10"), VariantWith<absl::int128>(absl::int128(2)));
+  EXPECT_THAT(ParseNumber("0b10_"), VariantWith<absl::int128>(absl::int128(2)));
   EXPECT_THAT(ParseNumber("0b__10"),
-              VariantWith<nth::Integer>(nth::Integer(2)));
-  EXPECT_THAT(ParseNumber("0b010"), VariantWith<nth::Integer>(nth::Integer(2)));
+              VariantWith<absl::int128>(absl::int128(2)));
+  EXPECT_THAT(ParseNumber("0b010"), VariantWith<absl::int128>(absl::int128(2)));
   EXPECT_THAT(ParseNumber("0b01____________________________________0"),
-              VariantWith<nth::Integer>(nth::Integer(2)));
+              VariantWith<absl::int128>(absl::int128(2)));
   EXPECT_THAT(
       ParseNumber(
           "0b0000000000000000000000000000000000000000000000000000000000000000"),
@@ -27,12 +27,12 @@ TEST(ParseNumber, Base2Integer) {
   EXPECT_THAT(
       ParseNumber(
           "0b111111111111111111111111111111111111111111111111111111111111111"),
-      VariantWith<nth::Integer>(
-          nth::Integer(std::numeric_limits<int64_t>::max())));
+      VariantWith<absl::int128>(
+          absl::int128(std::numeric_limits<int64_t>::max())));
   EXPECT_THAT(ParseNumber("0b111_1111_1111_1111_1111_1111_1111_1111_1111_1111_"
                           "1111_1111_1111_1111_1111_1111"),
-              VariantWith<nth::Integer>(
-                  nth::Integer(std::numeric_limits<int64_t>::max())));
+              VariantWith<absl::int128>(
+                  absl::int128(std::numeric_limits<int64_t>::max())));
   EXPECT_THAT(
       ParseNumber(
           "0b1000000000000000000000000000000000000000000000000000000000000000"),
@@ -44,21 +44,21 @@ TEST(ParseNumber, Base2Integer) {
 }
 
 TEST(ParseNumber, Base8Integer) {
-  EXPECT_THAT(ParseNumber("0o0"), VariantWith<nth::Integer>(nth::Integer(0)));
-  EXPECT_THAT(ParseNumber("0o1"), VariantWith<nth::Integer>(nth::Integer(1)));
-  EXPECT_THAT(ParseNumber("0o07"), VariantWith<nth::Integer>(nth::Integer(7)));
-  EXPECT_THAT(ParseNumber("0o0_7"), VariantWith<nth::Integer>(nth::Integer(7)));
-  EXPECT_THAT(ParseNumber("0o01"), VariantWith<nth::Integer>(nth::Integer(1)));
-  EXPECT_THAT(ParseNumber("0o11"), VariantWith<nth::Integer>(nth::Integer(9)));
-  EXPECT_THAT(ParseNumber("0o_11"), VariantWith<nth::Integer>(nth::Integer(9)));
+  EXPECT_THAT(ParseNumber("0o0"), VariantWith<absl::int128>(absl::int128(0)));
+  EXPECT_THAT(ParseNumber("0o1"), VariantWith<absl::int128>(absl::int128(1)));
+  EXPECT_THAT(ParseNumber("0o07"), VariantWith<absl::int128>(absl::int128(7)));
+  EXPECT_THAT(ParseNumber("0o0_7"), VariantWith<absl::int128>(absl::int128(7)));
+  EXPECT_THAT(ParseNumber("0o01"), VariantWith<absl::int128>(absl::int128(1)));
+  EXPECT_THAT(ParseNumber("0o11"), VariantWith<absl::int128>(absl::int128(9)));
+  EXPECT_THAT(ParseNumber("0o_11"), VariantWith<absl::int128>(absl::int128(9)));
   EXPECT_THAT(ParseNumber("0o11__"),
-              VariantWith<nth::Integer>(nth::Integer(9)));
+              VariantWith<absl::int128>(absl::int128(9)));
   EXPECT_THAT(ParseNumber("0o17777777777"),
-              VariantWith<nth::Integer>(
-                  nth::Integer(std::numeric_limits<int32_t>::max())));
+              VariantWith<absl::int128>(
+                  absl::int128(std::numeric_limits<int32_t>::max())));
   EXPECT_THAT(ParseNumber("0o177______________77777_____________777"),
-              VariantWith<nth::Integer>(
-                  nth::Integer(std::numeric_limits<int32_t>::max())));
+              VariantWith<absl::int128>(
+                  absl::int128(std::numeric_limits<int32_t>::max())));
   EXPECT_THAT(ParseNumber("0o2000000000000000000000"),
               VariantWith<NumberParsingError>(NumberParsingError::kTooLarge));
   EXPECT_THAT(ParseNumber("0o37777777777777777777777777777777"),
@@ -72,24 +72,24 @@ TEST(ParseNumber, Base8Integer) {
 }
 
 TEST(ParseNumber, Base10Integer) {
-  EXPECT_THAT(ParseNumber("0d0"), VariantWith<nth::Integer>(nth::Integer(0)));
-  EXPECT_THAT(ParseNumber("0d07"), VariantWith<nth::Integer>(nth::Integer(7)));
-  EXPECT_THAT(ParseNumber("0d01"), VariantWith<nth::Integer>(nth::Integer(1)));
-  EXPECT_THAT(ParseNumber("0d11"), VariantWith<nth::Integer>(nth::Integer(11)));
+  EXPECT_THAT(ParseNumber("0d0"), VariantWith<absl::int128>(absl::int128(0)));
+  EXPECT_THAT(ParseNumber("0d07"), VariantWith<absl::int128>(absl::int128(7)));
+  EXPECT_THAT(ParseNumber("0d01"), VariantWith<absl::int128>(absl::int128(1)));
+  EXPECT_THAT(ParseNumber("0d11"), VariantWith<absl::int128>(absl::int128(11)));
   EXPECT_THAT(ParseNumber("0d9223372036854775807"),
-              VariantWith<nth::Integer>(
-                  nth::Integer(std::numeric_limits<int64_t>::max())));
+              VariantWith<absl::int128>(
+                  absl::int128(std::numeric_limits<int64_t>::max())));
   EXPECT_THAT(ParseNumber("0d9223372036854775808"),
               VariantWith<NumberParsingError>(NumberParsingError::kTooLarge));
   EXPECT_THAT(ParseNumber("0d9999999999999999999"),
               VariantWith<NumberParsingError>(NumberParsingError::kTooLarge));
-  EXPECT_THAT(ParseNumber("0"), VariantWith<nth::Integer>(nth::Integer(0)));
-  EXPECT_THAT(ParseNumber("7"), VariantWith<nth::Integer>(nth::Integer(7)));
-  EXPECT_THAT(ParseNumber("1"), VariantWith<nth::Integer>(nth::Integer(1)));
-  EXPECT_THAT(ParseNumber("11"), VariantWith<nth::Integer>(nth::Integer(11)));
+  EXPECT_THAT(ParseNumber("0"), VariantWith<absl::int128>(absl::int128(0)));
+  EXPECT_THAT(ParseNumber("7"), VariantWith<absl::int128>(absl::int128(7)));
+  EXPECT_THAT(ParseNumber("1"), VariantWith<absl::int128>(absl::int128(1)));
+  EXPECT_THAT(ParseNumber("11"), VariantWith<absl::int128>(absl::int128(11)));
   EXPECT_THAT(ParseNumber("9223372036854775807"),
-              VariantWith<nth::Integer>(
-                  nth::Integer(std::numeric_limits<int64_t>::max())));
+              VariantWith<absl::int128>(
+                  absl::int128(std::numeric_limits<int64_t>::max())));
   EXPECT_THAT(ParseNumber("9223372036854775808"),
               VariantWith<NumberParsingError>(NumberParsingError::kTooLarge));
   EXPECT_THAT(ParseNumber("9999999999999999999"),
@@ -101,13 +101,13 @@ TEST(ParseNumber, Base10Integer) {
 }
 
 TEST(ParseNumber, Base16Integer) {
-  EXPECT_THAT(ParseNumber("0x0"), VariantWith<nth::Integer>(nth::Integer(0)));
-  EXPECT_THAT(ParseNumber("0x07"), VariantWith<nth::Integer>(nth::Integer(7)));
-  EXPECT_THAT(ParseNumber("0x01"), VariantWith<nth::Integer>(nth::Integer(1)));
-  EXPECT_THAT(ParseNumber("0x11"), VariantWith<nth::Integer>(nth::Integer(17)));
+  EXPECT_THAT(ParseNumber("0x0"), VariantWith<absl::int128>(absl::int128(0)));
+  EXPECT_THAT(ParseNumber("0x07"), VariantWith<absl::int128>(absl::int128(7)));
+  EXPECT_THAT(ParseNumber("0x01"), VariantWith<absl::int128>(absl::int128(1)));
+  EXPECT_THAT(ParseNumber("0x11"), VariantWith<absl::int128>(absl::int128(17)));
   EXPECT_THAT(ParseNumber("0x7fffffff"),
-              VariantWith<nth::Integer>(
-                  nth::Integer(std::numeric_limits<int32_t>::max())));
+              VariantWith<absl::int128>(
+                  absl::int128(std::numeric_limits<int32_t>::max())));
   EXPECT_THAT(ParseNumber("0x80000000"),
               VariantWith<NumberParsingError>(NumberParsingError::kTooLarge));
   EXPECT_THAT(ParseNumber("0xffffffff"),

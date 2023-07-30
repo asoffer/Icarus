@@ -146,7 +146,7 @@ TEST(Terminal, Types) {
 TEST(Terminal, Numbers) {
   test::Snippet n(R"(1234)");
   ASSERT_THAT(n, AllOf(HasQualTypes(Constant(Integer)), HasDiagnostics()));
-  EXPECT_THAT(n, EvaluatesTo(nth::Integer(1234)));
+  EXPECT_THAT(n, EvaluatesTo(absl::int128(1234)));
 
   test::Snippet r(R"(12.34)");
   ASSERT_THAT(r, AllOf(HasQualTypes(Constant(F64)), HasDiagnostics()));
