@@ -5,7 +5,7 @@
 
 #include "ast/expression.h"
 #include "ast/module.h"
-#include "base/debug.h"
+#include "nth/debug/debug.h"
 #include "jasmin/execute.h"
 #include "module/module.h"
 #include "module/resources.h"
@@ -34,7 +34,7 @@ T EvaluateAs(Context& context, module::Resources& resources,
              ast::Expression const* expr) {
   auto qt        = context.qualified_type(expr);
   bool has_error = (qt.qualifiers() >= Qualifiers::Error());
-  ASSERT(not has_error);
+  NTH_ASSERT(not has_error);
 
   vm::Function f = EmitByteCode(qt, *expr, context, resources);
 

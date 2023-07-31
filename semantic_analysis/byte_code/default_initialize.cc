@@ -31,7 +31,7 @@ void EmitterBase::EmitDefaultInitialize(core::Type t, FunctionData data) {
         data.function().AppendConstruct<uint8_t>(0);
       }
     } else {
-      NOT_YET();
+      NTH_UNIMPLEMENTED();
     }
   } else if (t == Bool) {
     data.function().AppendConstruct<bool>(false);
@@ -41,7 +41,7 @@ void EmitterBase::EmitDefaultInitialize(core::Type t, FunctionData data) {
              t.is<BufferPointerType>(type_system())) {
     data.function().AppendConstruct<data_types::addr_t>(nullptr);
   } else {
-    NOT_YET(DebugType(t, type_system()));
+    NTH_UNIMPLEMENTED("{}") <<= {DebugType(t, type_system())};
   }
 }
 

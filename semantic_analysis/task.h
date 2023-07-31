@@ -10,7 +10,7 @@
 #include "absl/container/flat_hash_map.h"
 #include "absl/container/flat_hash_set.h"
 #include "absl/functional/any_invocable.h"
-#include "base/debug.h"
+#include "nth/debug/debug.h"
 #include "base/extend.h"
 #include "base/extend/absl_hash.h"
 #include "nth/meta/concepts.h"
@@ -120,7 +120,7 @@ struct Scheduler {
     schedule(prerequisite.key());
 
     auto key_iter = keys_.find(prerequisite.key());
-    ASSERT(key_iter != keys_.end());
+    NTH_ASSERT(key_iter != keys_.end());
     auto& [current_phase, phase_entries] = key_iter->second;
 
     auto& phase_entry =

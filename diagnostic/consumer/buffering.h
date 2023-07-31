@@ -3,7 +3,7 @@
 
 #include <cstdio>
 
-#include "base/debug.h"
+#include "nth/debug/debug.h"
 #include "diagnostic/console_renderer.h"
 #include "diagnostic/consumer/consumer.h"
 #include "diagnostic/message.h"
@@ -26,7 +26,7 @@ struct BufferingConsumer : DiagnosticConsumer {
 
   void flush() {
     for (auto& [category, name, diag] : buffer_) {
-      ASSERT_NOT_NULL(consumer_)->ConsumeImpl(category, name, std::move(diag));
+      NTH_ASSERT_NOT_NULL(consumer_)->ConsumeImpl(category, name, std::move(diag));
     }
     drop();
   }

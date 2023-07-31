@@ -3,7 +3,7 @@
 #include <string>
 
 #include "absl/strings/str_split.h"
-#include "base/debug.h"
+#include "nth/debug/debug.h"
 
 namespace toolchain {
 
@@ -31,7 +31,7 @@ std::optional<BazelSpecification> BazelModuleMap(std::string const& file_name) {
         } break;
       }
     }
-    ASSERT(index == 0);
+    NTH_ASSERT(index == 0);
   }
   return specification;
 }
@@ -43,7 +43,7 @@ BazelNameResolver(
         map) {
   return [specification = std::move(map)](module::ModuleName const& name) {
     auto iter = specification.find(name);
-    ASSERT(iter != specification.end());
+    NTH_ASSERT(iter != specification.end());
     return iter->second;
   };
 }

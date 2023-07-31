@@ -1,6 +1,6 @@
 #include "unique_type_table.h"
 
-#include "base/debug.h"
+#include "nth/debug/debug.h"
 
 namespace serialization {
 
@@ -15,11 +15,11 @@ void UniqueTypeTable::insert_enums(
 UniqueTypeTable::EnumEntry UniqueTypeTable::find_enum(ModuleIndex index,
                                                       size_t enum_index) {
   if (index == ModuleIndex::Self()) {
-    ASSERT(local_enums_.size() > enum_index);
+    NTH_ASSERT(local_enums_.size() > enum_index);
     return EnumEntry(&local_enums_[enum_index]);
   } else {
     auto iter = enums_.find(std::pair(index, enum_index));
-    ASSERT(iter != enums_.end());
+    NTH_ASSERT(iter != enums_.end());
     return EnumEntry(iter->second);
   }
 }

@@ -4,7 +4,7 @@
 #include <string>
 
 #include "ast/node.h"
-#include "base/debug.h"
+#include "nth/debug/debug.h"
 #include "frontend/lex/operators.h"
 
 struct JumpExprs;

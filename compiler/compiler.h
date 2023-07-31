@@ -48,7 +48,7 @@ struct Compiler  {
 
   template <typename NodeType>
   Task TaskFor(NodeType const *) {
-    NOT_YET(nth::type<NodeType>);
+    NTH_UNIMPLEMENTED("{}") <<= {nth::type<NodeType>};
   }
 
   Task TaskFor(ast::Node const *node) { return operator()(node); }

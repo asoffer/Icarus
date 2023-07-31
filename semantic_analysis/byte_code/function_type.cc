@@ -9,14 +9,14 @@ void ByteCodeValueEmitter::operator()(ast::FunctionType const* node,
   for (auto const* parameter : node->parameters()) {
     if (auto const* p = parameter->if_as<ast::Declaration>()) {
       if (auto const* type_expression = p->type_expr()) {
-        if (p->ids().size() != 1) { NOT_YET(); }
+        if (p->ids().size() != 1) { NTH_UNIMPLEMENTED(); }
         std::string_view name = p->ids()[0].name();
         data.function().AppendPush(name.data());
         data.function().AppendPush(name.size());
         Emit(type_expression, data);
         data.function().AppendNamedParameter();
       } else {
-        NOT_YET();
+        NTH_UNIMPLEMENTED();
       }
     } else {
       Emit(parameter, data);

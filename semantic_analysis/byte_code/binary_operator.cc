@@ -69,7 +69,7 @@ void ByteCodeValueEmitter::operator()(ast::BinaryOperator const *node,
       Emit(&node->rhs(), data);
       f.AppendXor();
     } break;
-    default: NOT_YET();
+    default: NTH_UNIMPLEMENTED();
   }
 }
 

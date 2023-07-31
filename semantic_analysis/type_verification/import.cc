@@ -51,7 +51,7 @@ struct NoSuchModule {
 
 VerificationTask TypeVerifier::VerifyType(ast::Import const *node) {
   std::span arguments = co_await VerifyTypeOf(node->operand());
-  ASSERT(arguments.size() == 1);
+  NTH_ASSERT(arguments.size() == 1);
 
   auto qt = Constant(Module);
   if (arguments[0].type() != SliceType(type_system(), Char)) {
@@ -80,7 +80,7 @@ VerificationTask TypeVerifier::VerifyType(ast::Import const *node) {
       qt = Error(qt);
     } else {
       auto [ptr, inserted] = context().insert_constant(node);
-      ASSERT(inserted);
+      NTH_ASSERT(inserted);
       ptr->resize(sizeof(index));
       std::memcpy(ptr->data(), &index, sizeof(index));
     }

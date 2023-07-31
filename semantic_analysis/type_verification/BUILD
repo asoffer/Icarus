@@ -24,9 +24,9 @@ cc_library(
     srcs = ["diagnostics.cc"],
     deps = [
         "//ast",
-        "//base:debug",
         "//semantic_analysis:context",
         "//semantic_analysis:type_system",
+        "@asoffer_nth//nth/debug",
         "@com_google_absl//absl/cleanup",
         "@com_google_absl//absl/strings",
     ]

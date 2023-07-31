@@ -10,7 +10,7 @@ VerificationTask TypeVerifier::VerifyType(
   for (auto const& parameter : node->parameters()) {
     std::span parameter_qts = co_await VerifyTypeOf(&parameter.value);
     if (parameter_qts.size() != 1) {
-      NOT_YET("Log an error.", parameter_qts.size());
+      NTH_UNIMPLEMENTED("Log an error: {}") <<= {parameter_qts.size()};
       has_error = true;
     } else if (parameter_qts[0].qualifiers() >= Qualifiers::Error()) {
       has_error = true;

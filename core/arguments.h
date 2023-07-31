@@ -9,7 +9,7 @@
 #include <vector>
 
 #include "absl/container/flat_hash_map.h"
-#include "base/debug.h"
+#include "nth/debug/debug.h"
 #include "nth/io/string_printer.h"
 #include "nth/meta/sequence.h"
 #include "nth/meta/type.h"
@@ -59,12 +59,12 @@ struct Arguments {
 
   T &operator[](std::string_view s) {
     auto iter = named_.find(s);
-    ASSERT(iter != named_.end());
+    NTH_ASSERT(iter != named_.end());
     return iter->second;
   }
   T const &operator[](std::string_view s) const {
     auto iter = named_.find(s);
-    ASSERT(iter != named_.end());
+    NTH_ASSERT(iter != named_.end());
     return iter->second;
   }
 

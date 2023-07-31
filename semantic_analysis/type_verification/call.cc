@@ -32,19 +32,19 @@ VerificationTask TypeVerifier::VerifyType(ast::Call const *node) {
   // even checking for it robustly.
   if (ast::Access const *access = node->callee()->if_as<ast::Access>();
       access and access->member_name() == "foreign") {
-    ASSERT(node->arguments().size() == 2);
+    NTH_ASSERT(node->arguments().size() == 2);
     std::span name_argument_qts =
         co_await VerifyTypeOf(&node->arguments()[0].expr());
     std::span type_argument_qts =
         co_await VerifyTypeOf(&node->arguments()[1].expr());
-    ASSERT(name_argument_qts.size() == 1);
-    ASSERT(type_argument_qts.size() == 1);
+    NTH_ASSERT(name_argument_qts.size() == 1);
+    NTH_ASSERT(type_argument_qts.size() == 1);
     QualifiedType name_qt = name_argument_qts[0];
     QualifiedType type_qt = type_argument_qts[0];
-    ASSERT(name_qt.type() == SliceType(type_system(), Char));
-    ASSERT(name_qt.qualifiers() >= Qualifiers::Constant());
-    ASSERT(type_qt.type() == Type);
-    ASSERT(type_qt.qualifiers() >= Qualifiers::Constant());
+    NTH_ASSERT(name_qt.type() == SliceType(type_system(), Char));
+    NTH_ASSERT(name_qt.qualifiers() >= Qualifiers::Constant());
+    NTH_ASSERT(type_qt.type() == Type);
+    NTH_ASSERT(type_qt.qualifiers() >= Qualifiers::Constant());
     core::Type t = EvaluateAs<core::Type>(&node->arguments()[1].expr());
     if (auto fn_type = t.get_if<core::FunctionType>(type_system())) {
       absl::flat_hash_map<core::ParameterType, Context::CallableIdentifier>
@@ -56,23 +56,23 @@ VerificationTask TypeVerifier::VerifyType(ast::Call const *node) {
                t.is<BufferPointerType>(type_system())) {
       co_return TypeOf(node, QualifiedType(t));
     } else {
-      NOT_YET(DebugType(t, type_system()));
+      NTH_UNIMPLEMENTED("{}") <<= {DebugType(t, type_system())};
     }
   } else if (ast::Access const *access = node->callee()->if_as<ast::Access>();
              access and access->member_name() == "underlying") {
-    ASSERT(node->arguments().size() == 1);
+    NTH_ASSERT(node->arguments().size() == 1);
     std::span enum_argument_qts =
         co_await VerifyTypeOf(&node->arguments()[0].expr());
-    ASSERT(enum_argument_qts.size() == 1);
+    NTH_ASSERT(enum_argument_qts.size() == 1);
     QualifiedType enum_qt = enum_argument_qts[0];
-    ASSERT(enum_qt.type().is<EnumType>(type_system()));
+    NTH_ASSERT(enum_qt.type().is<EnumType>(type_system()));
     co_return TypeOf(node, QualifiedType(U(64)));
   }
 
   std::span<absl::flat_hash_map<core::ParameterType,
                                 Context::CallableIdentifier> const>
       callee_parameter_types = co_await VerifyParametersOf(node->callee());
-  ASSERT(callee_parameter_types.size() == 1);
+  NTH_ASSERT(callee_parameter_types.size() == 1);
 
   core::Arguments<QualifiedType> arguments;
   bool has_error   = false;
@@ -80,7 +80,7 @@ VerificationTask TypeVerifier::VerifyType(ast::Call const *node) {
   for (auto const &argument : node->arguments()) {
     std::span argument_qts = co_await VerifyTypeOf(&argument.expr());
     if (argument_qts.size() != 1) {
-      NOT_YET("Log an error");
+      NTH_UNIMPLEMENTED("Log an error");
       has_error = true;
     } else if (argument_qts[0].qualifiers() >= Qualifiers::Error()) {
       has_error = true;
@@ -128,7 +128,7 @@ VerificationTask TypeVerifier::VerifyType(ast::Call const *node) {
       std::span<core::Type const> return_types;
       if (auto const *expr = callable_identifier.expression()) {
         std::span callee_qts = co_await VerifyTypeOf(expr);
-        if (callee_qts.size() != 1) { NOT_YET(); }
+        if (callee_qts.size() != 1) { NTH_UNIMPLEMENTED(); }
         return_types = callee_qts[0]
                            .type()
                            .get<core::FunctionType>(type_system())
@@ -148,7 +148,7 @@ VerificationTask TypeVerifier::VerifyType(ast::Call const *node) {
       }
       co_return TypeOf(node, std::move(qts));
     }
-    default: NOT_YET("Log an error");
+    default: NTH_UNIMPLEMENTED("Log an error");
   }
 }
 

@@ -3,7 +3,7 @@
 
 #include <string>
 
-#include "base/debug.h"
+#include "nth/debug/debug.h"
 #include "frontend/lex/tag.h"
 
 namespace frontend {
@@ -27,7 +27,7 @@ inline Tag TagFrom(Syntax s) {
 #include "frontend/lex/syntax.xmacro.h"
 #undef SYNTAX_MACRO
   }
-  UNREACHABLE();
+  NTH_UNREACHABLE();
 }
 
 inline std::ostream& operator<<(std::ostream& os, Syntax s) {

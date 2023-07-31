@@ -5,6 +5,7 @@
 #include <type_traits>
 #include <variant>
 
+#include "absl/container/flat_hash_map.h"
 #include "core/type_system/type.h"
 #include "nth/container/flyweight_map.h"
 #include "serialization/function_index.h"

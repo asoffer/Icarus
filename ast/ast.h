@@ -291,7 +291,7 @@ struct ParameterizedExpression : Expression {
       // both the declaration and this will live for the length of the syntax
       // tree.
       //
-      ASSERT(param.ids().size() == 1u);
+      NTH_ASSERT(param.ids().size() == 1u);
       parameters_.append(std::string(param.ids()[0].name()), std::move(param));
     }
   }
@@ -351,11 +351,11 @@ struct PatternMatch : Expression {
   }
 
   Expression const &expr() const {
-    return *ASSERT_NOT_NULL(
+    return *NTH_ASSERT_NOT_NULL(
         reinterpret_cast<Expression const *>(expr_to_match_ & ~uintptr_t{1}));
   }
 
-  Expression const &pattern() const { return *ASSERT_NOT_NULL(pattern_.get()); }
+  Expression const &pattern() const { return *NTH_ASSERT_NOT_NULL(pattern_.get()); }
 
   bool is_binary() const { return expr_to_match_ & uintptr_t{1}; }
 
@@ -364,7 +364,7 @@ struct PatternMatch : Expression {
 
  private:
   Expression &expr() {
-    return *ASSERT_NOT_NULL(
+    return *NTH_ASSERT_NOT_NULL(
         reinterpret_cast<Expression *>(expr_to_match_ & ~uintptr_t{1}));
   }
 
@@ -391,7 +391,7 @@ struct BindingDeclaration : Declaration {
     which_ = IndexOf<BindingDeclaration>();
   }
 
-  PatternMatch const &pattern() const { return *ASSERT_NOT_NULL(pattern_); }
+  PatternMatch const &pattern() const { return *NTH_ASSERT_NOT_NULL(pattern_); }
   Expression const *constraint() const { return constraint_.get(); }
 
   void DebugStrAppend(std::string *out, size_t indent) const override;
@@ -438,7 +438,7 @@ struct DesignatedInitializer : Expression {
         assignments_(std::move(assignments)) {
     for (auto const *assignment : this->assignments()) {
       for (auto const *expr : assignment->lhs()) {
-        ASSERT(expr->is<Identifier>());
+        NTH_ASSERT(expr->is<Identifier>());
       }
     }
   }
@@ -984,7 +984,7 @@ struct ReturnStmt : Node {
       : Node(IndexOf<ReturnStmt>(), range), exprs_(std::move(exprs)) {}
 
   ast::FunctionLiteral const &function_literal() const {
-    return *ASSERT_NOT_NULL(function_literal_);
+    return *NTH_ASSERT_NOT_NULL(function_literal_);
   }
 
   base::PtrSpan<Expression const> exprs() const { return exprs_; }
@@ -1070,7 +1070,7 @@ struct ScopeLiteral : ParameterizedExpression, WithScope {
   static std::unique_ptr<Declaration> ContextDeclaration(
       Declaration::Id context_identifier) {
     auto range = context_identifier.range();
-    NOT_YET();
+    NTH_UNIMPLEMENTED();
     // return std::make_unique<Declaration>(
     //     range, std::vector<Declaration::Id>{std::move(context_identifier)},
     //     std::make_unique<Terminal>(range, type::ScopeContext), nullptr,
@@ -1314,7 +1314,7 @@ struct IfStmt : Expression {
         last_if_(this) {}
 
   void SetFalseBlock(std::vector<std::unique_ptr<Node>> false_block) {
-    ASSERT(not last_if_->has_false_block_);
+    NTH_ASSERT(not last_if_->has_false_block_);
     last_if_->false_block_     = std::move(false_block);
     last_if_->has_false_block_ = true;
     last_if_                   = nullptr;
@@ -1325,7 +1325,7 @@ struct IfStmt : Expression {
   // the inner `if` ScopeNode checking `condition2` would be appended to.
   void AppendElseBlock(std::unique_ptr<ast::IfStmt> node) {
     auto *ptr = node.get();
-    ASSERT(not last_if_->has_false_block_);
+    NTH_ASSERT(not last_if_->has_false_block_);
     last_if_->false_block_.push_back(std::move(node));
     last_if_->has_false_block_ = true;
     last_if_                   = ptr;
@@ -1387,7 +1387,7 @@ struct WhileStmt : Expression, WithScope {
 };
 
 inline void Declaration::set_initial_value(std::unique_ptr<Expression> expr) {
-  ASSERT(init_val_ == nullptr);
+  NTH_ASSERT(init_val_ == nullptr);
   if (auto const *id = expr->if_as<Identifier>()) {
     if (id->name().empty()) { flags_ |= f_InitIsHole; }
   }

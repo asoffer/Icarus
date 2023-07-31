@@ -1,6 +1,6 @@
 #include "frontend/source_indexer.h"
 
-#include "base/debug.h"
+#include "nth/debug/debug.h"
 
 namespace frontend {
 
@@ -47,7 +47,7 @@ SourceIndexer::Entry &SourceIndexer::EntryFor(std::string_view subcontent) {
       return *entry;
     }
   }
-  UNREACHABLE();
+  NTH_UNREACHABLE();
 }
 
 std::span<size_t const> SourceIndexer::Entry::line_starts() {
@@ -66,7 +66,7 @@ std::span<size_t const> SourceIndexer::Entry::line_starts() {
 }
 
 std::string_view SourceIndexer::Entry::line(size_t n) {
-  ASSERT(n > 0);
+  NTH_ASSERT(n > 0);
   std::span line_start_indices = line_starts();
   size_t start_index           = line_start_indices[n - 1];
   size_t end_index             = line_start_indices[n];

@@ -60,7 +60,7 @@ VerificationTask TypeVerifier::VerifyType(ast::ArrayType const *node) {
   bool constant = true;
   for (auto const *length : node->lengths()) {
     std::span result = co_await VerifyTypeOf(length);
-    if (result.size() != 1) { NOT_YET(); }
+    if (result.size() != 1) { NTH_UNIMPLEMENTED(); }
     if (not(result[0].qualifiers() >= Qualifiers::Constant())) {
       constant = false;
     }
@@ -74,7 +74,7 @@ VerificationTask TypeVerifier::VerifyType(ast::ArrayType const *node) {
 
   std::span data_qts = co_await VerifyTypeOf(&node->data_type());
 
-  if (data_qts.size() != 1) { NOT_YET(); }
+  if (data_qts.size() != 1) { NTH_UNIMPLEMENTED(); }
   if (data_qts[0].type() != Type) {
     ConsumeDiagnostic(ArrayDataTypeNotAType{
         .view = node->data_type().range(),

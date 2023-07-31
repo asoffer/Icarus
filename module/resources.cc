@@ -21,7 +21,7 @@ serialization::ModuleIndex Resources::TryLoadModuleByName(
 }
 
 diagnostic::DiagnosticConsumer &Resources::diagnostic_consumer() {
-  return *ASSERT_NOT_NULL(diagnostic_consumer_);
+  return *NTH_ASSERT_NOT_NULL(diagnostic_consumer_);
 }
 
 core::Type Resources::Translate(core::Type type,
@@ -48,7 +48,7 @@ core::Type Resources::Translate(core::Type type,
       return sa::BufferPointerType(
           to, Translate(type.get<sa::BufferPointerType>(from).pointee(),
                         module_index, from, to));
-    case sa::TypeSystem::index<sa::ArrayType>(): NOT_YET(); break;
+    case sa::TypeSystem::index<sa::ArrayType>(): NTH_UNIMPLEMENTED(); break;
     case sa::TypeSystem::index<sa::SliceType>():
       return sa::SliceType(
           to, Translate(type.get<sa::SliceType>(from).pointee(), module_index,
@@ -77,7 +77,7 @@ core::Type Resources::Translate(core::Type type,
                         opaque_map_.find(module_index, type.index()));
     }
   }
-  UNREACHABLE(DebugType(type, from));
+  NTH_UNREACHABLE("{}") <<= {DebugType(type, from)};
 }
 
 Symbol Resources::TranslateToPrimary(serialization::ModuleIndex from,
@@ -102,7 +102,7 @@ Symbol Resources::TranslateToPrimary(serialization::ModuleIndex from,
              m.type_system().index<semantic_analysis::PrimitiveType>()) {
     return symbol;
   } else {
-    NOT_YET(semantic_analysis::DebugType(type, primary_module().type_system()));
+    NTH_UNIMPLEMENTED("{}") <<= {semantic_analysis::DebugType(type, primary_module().type_system())};
   }
 }
 

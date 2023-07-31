@@ -26,7 +26,7 @@ struct NonBooleanCondition {
 VerificationTask TypeVerifier::VerifyType(ast::WhileStmt const *node) {
   std::span condition_qts = co_await VerifyTypeOf(&node->condition());
   switch (condition_qts.size()) {
-    case 0: NOT_YET("Log an error");
+    case 0: NTH_UNIMPLEMENTED("Log an error");
     case 1: {
       QualifiedType qt = condition_qts[0];
       if (qt.type() != Bool) {
@@ -41,7 +41,7 @@ VerificationTask TypeVerifier::VerifyType(ast::WhileStmt const *node) {
       for (auto const *stmt : node->body()) { co_await VerifyTypeOf(stmt); }
       co_return TypeOf(node, std::move(yielded_qts));
     } break;
-    default: NOT_YET("Log an error");
+    default: NTH_UNIMPLEMENTED("Log an error");
   }
 }
 

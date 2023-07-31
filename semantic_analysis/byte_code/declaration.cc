@@ -21,7 +21,7 @@ void EmitNonconstantDeclaration(EmitterBase& emitter,
       // TODO: Improve this EmitInitialize should be it's own derived CRTP.
       emitter.EmitInitialize(node->init_val(), data);
     } break;
-    default: NOT_YET(node->DebugString());
+    default: NTH_UNIMPLEMENTED("{}") <<= {node->DebugString()};
   }
 }
 std::span<std::byte const> EmitConstantDeclaration(
@@ -29,13 +29,13 @@ std::span<std::byte const> EmitConstantDeclaration(
     EmitterBase::FunctionData data) {
   switch (node->kind()) {
     case ast::Declaration::kDefaultInit: {
-      NOT_YET();
+      NTH_UNIMPLEMENTED();
     } break;
     case ast::Declaration::kInferred: {
-      if (node->ids().size() != 1) { NOT_YET(); }
+      if (node->ids().size() != 1) { NTH_UNIMPLEMENTED(); }
       return emitter.EvaluateConstant(node->init_val(), qt);
     } break;
-    default: NOT_YET(node->DebugString());
+    default: NTH_UNIMPLEMENTED("{}") <<= {node->DebugString()};
   }
 }
 
@@ -69,12 +69,12 @@ void ByteCodeStatementEmitter::operator()(ast::Declaration const* node,
             jasmin::Value::Load(evaluation.data(), evaluation.size()));
       } else if (auto s =
                      qt.type().get_if<core::SizedIntegerType>(type_system())) {
-        ASSERT(s->bytes() <= core::Bytes(jasmin::ValueSize));
+        NTH_ASSERT(s->bytes() <= core::Bytes(jasmin::ValueSize));
         module().Export(
             node->ids()[0].name(), *s,
             jasmin::Value::Load(evaluation.data(), evaluation.size()));
       } else {
-        NOT_YET(node->DebugString());
+        NTH_UNIMPLEMENTED("{}") <<= {node->DebugString()};
       }
     }
 
@@ -86,7 +86,7 @@ void ByteCodeStatementEmitter::operator()(ast::Declaration const* node,
 void ByteCodeValueEmitter::operator()(ast::Declaration::Id const* node,
                                       FunctionData data) {
   auto const& declaration = node->declaration();
-  if (declaration.ids().size() != 1) { NOT_YET(); }
+  if (declaration.ids().size() != 1) { NTH_UNIMPLEMENTED(); }
   if (declaration.flags() & ast::Declaration::f_IsConst) {
     // TODO do we want to be checking the initial value?
     auto qt = context().qualified_type(declaration.init_val());
@@ -107,10 +107,10 @@ void ByteCodeValueEmitter::operator()(ast::Declaration::Id const* node,
               *reinterpret_cast<std::string_view const*>(evaluation.data());
           data.function().AppendPushStringLiteral(view);
         } else {
-          NOT_YET(node->DebugString());
+          NTH_UNIMPLEMENTED("{}") <<= {node->DebugString()};
         }
       } else {
-        NOT_YET(node->DebugString());
+        NTH_UNIMPLEMENTED("{}") <<= {node->DebugString()};
       }
     }
   } else {
@@ -122,7 +122,7 @@ void ByteCodeValueEmitter::operator()(ast::Declaration::Id const* node,
 
 void ByteCodeStatementEmitter::operator()(ast::Declaration::Id const* node,
                                           FunctionData data) {
-  UNREACHABLE();
+  NTH_UNREACHABLE();
 }
 
 }  // namespace semantic_analysis

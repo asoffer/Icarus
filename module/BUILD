@@ -56,10 +56,10 @@ cc_library(
     hdrs = ["symbol.h"],
     srcs = ["symbol.cc"],
     deps = [
-        "//base:debug",
         "//data_types:fn",
         "//core/type_system:type",
         "//semantic_analysis:type_system",
+        "@asoffer_nth//nth/debug",
     ],
 )
 
@@ -83,9 +83,9 @@ cc_library(
     hdrs = ["global_index_map.h"],
     srcs = ["global_index_map.cc"],
     deps = [
-        "//base:debug",
         "//serialization:function_index",
         "//serialization:module_index",
+        "@asoffer_nth//nth/debug",
         "@com_google_absl//absl/container:flat_hash_map"
     ],
 )

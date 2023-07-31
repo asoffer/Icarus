@@ -23,6 +23,7 @@ cc_library(
         "//frontend/lex:lex",
         "//frontend/lex:tagged_node",
         "//frontend/lex:token",
+        "@asoffer_nth//nth/debug:source_location",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/flags:flag",
         "@com_google_absl//absl/flags:parse",
@@ -49,8 +50,8 @@ cc_library(
     hdrs = ["source_indexer.h"],
     srcs = ["source_indexer.cc"],
     deps = [
-        "//base:debug",
         "//serialization:module_index",
+        "@asoffer_nth//nth/debug",
         "@com_google_absl//absl/container:flat_hash_map",
     ],
 )

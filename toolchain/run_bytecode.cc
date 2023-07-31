@@ -41,7 +41,7 @@ bool Execute(serialization::UniqueModuleId module_id,
     return false;
   }
   auto name_resolver = BazelNameResolver(std::move(specification->names));
-  ASSERT(name_resolver != nullptr);
+  NTH_ASSERT(name_resolver != nullptr);
 
   frontend::SourceIndexer source_indexer;
   auto diagnostic_consumer =

@@ -39,6 +39,7 @@ cc_library(
         ":parameters",
         "//base:extend",
         "//base/extend:equality",
+        "@com_google_absl//absl/container:flat_hash_set",
     ],
 )
 
@@ -55,7 +56,7 @@ cc_library(
     name = "cycle_tracker",
     hdrs = ["cycle_tracker.h"],
     deps = [
-        "//base:debug",
+        "@asoffer_nth//nth/debug",
         "@com_google_absl//absl/container:flat_hash_set",
         "@com_google_absl//absl/functional:function_ref",
     ],
@@ -93,7 +94,7 @@ cc_library(
     name = "arguments",
     hdrs = ["arguments.h"],
     deps = [
-        "//base:debug",
+        "@asoffer_nth//nth/debug",
         "@asoffer_nth//nth/io:string_printer",
         "@asoffer_nth//nth/meta:sequence",
         "@asoffer_nth//nth/meta:type",
@@ -116,12 +117,13 @@ cc_library(
     name = "parameters",
     hdrs = ["parameters.h"],
     deps = [
-        "//base:debug",
         "//base:extend",
         "//base/extend:absl_hash",
+        "@asoffer_nth//nth/debug",
         "@asoffer_nth//nth/io:string_printer",
         "@asoffer_nth//nth/strings/format:universal",
         "@asoffer_nth//nth/strings:interpolate",
+        "@com_google_absl//absl/container:flat_hash_map",
     ],
 )
 

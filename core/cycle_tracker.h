@@ -9,7 +9,7 @@
 
 #include "absl/container/flat_hash_set.h"
 #include "absl/functional/function_ref.h"
-#include "base/debug.h"
+#include "nth/debug/debug.h"
 
 namespace core {
 
@@ -37,7 +37,7 @@ struct CycleTracker {
 
   // Remove the most recently pushed item as a dependency.
   void pop() {
-    ASSERT(dependencies_.size() != 0);
+    NTH_ASSERT(dependencies_.size() != 0);
     dependencies_.pop_back();
   }
 

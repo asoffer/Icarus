@@ -50,21 +50,21 @@ core::Type VerifyArithmeticOperatorImpl(TypeVerifier &tv,
     if (lhs == rhs) { return lhs; }
     if (lhs == Integer) { return rhs; }
     if (rhs == Integer) { return lhs; }
-    NOT_YET();
+    NTH_UNIMPLEMENTED();
   } else if (lhs == F64) {
     if (rhs == F64 or rhs == Integer) { return F64; }
-    NOT_YET();
+    NTH_UNIMPLEMENTED();
   } else if (rhs == F64) {
     if (lhs == Integer) { return F64; }
-    NOT_YET();
+    NTH_UNIMPLEMENTED();
   } else if (lhs == F32) {
     if (rhs == F32 or rhs == Integer) { return F32; }
-    NOT_YET();
+    NTH_UNIMPLEMENTED();
   } else if (rhs == F32) {
     if (lhs == Integer) { return F32; }
-    NOT_YET();
+    NTH_UNIMPLEMENTED();
   } else {
-    NOT_YET();
+    NTH_UNIMPLEMENTED();
   }
 }
 
@@ -140,7 +140,7 @@ VerificationTask TypeVerifier::VerifyType(ast::BinaryOperator const *node) {
     case ast::BinaryOperator::Kind::SymbolAnd:
     case ast::BinaryOperator::Kind::SymbolOr:
     case ast::BinaryOperator::Kind::SymbolXor:
-    case ast::BinaryOperator::Kind::BlockJump: NOT_YET();
+    case ast::BinaryOperator::Kind::BlockJump: NTH_UNIMPLEMENTED();
   }
 
   co_return TypeOf(node, qt);

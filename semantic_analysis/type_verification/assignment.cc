@@ -46,7 +46,7 @@ VerificationTask TypeVerifier::VerifyType(ast::Assignment const *node) {
   std::vector<core::Type> lhs_types;
   for (auto const *l : node->lhs()) {
     std::span qts = co_await VerifyTypeOf(l);
-    if (qts.size() != 1) { NOT_YET(); }
+    if (qts.size() != 1) { NTH_UNIMPLEMENTED(); }
     if (not(qts[0].qualifiers() >= Qualifiers::Reference())) {
       ConsumeDiagnostic(AssigningToNonReference{.lhs = l->range()});
     }
@@ -55,11 +55,11 @@ VerificationTask TypeVerifier::VerifyType(ast::Assignment const *node) {
 
   for (auto const *r : node->rhs()) {
     std::span qts = co_await VerifyTypeOf(r);
-    if (qts.size() != 1) { NOT_YET(); }
+    if (qts.size() != 1) { NTH_UNIMPLEMENTED(); }
     rhs_qts.push_back(qts[0]);
   }
 
-  if (lhs_types.size() != rhs_qts.size()) { NOT_YET(); }
+  if (lhs_types.size() != rhs_qts.size()) { NTH_UNIMPLEMENTED(); }
 
   for (size_t i = 0; i < lhs_types.size(); ++i) {
     auto kind = CanCast(rhs_qts[i], lhs_types[i], type_system());

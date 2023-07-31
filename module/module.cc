@@ -138,7 +138,7 @@ bool Module::Serialize(std::ostream& output,
         exported_symbol.set_raw_value(
             symbol.as<TypedValue>().value.raw_value());
       } else {
-        NOT_YET();
+        NTH_UNIMPLEMENTED();
       }
     }
   }
@@ -196,7 +196,7 @@ bool Module::DeserializeInto(serialization::Module const& proto,
             .value = v,
         });
       } else {
-        NOT_YET(semantic_analysis::DebugType(symbol_type, module.type_system_));
+        NTH_UNIMPLEMENTED("{}") <<= {semantic_analysis::DebugType(symbol_type, module.type_system_)};
       }
     }
   }

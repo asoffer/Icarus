@@ -53,7 +53,7 @@ void ByteCodeValueEmitter::operator()(ast::FunctionLiteral const* node,
               fn_ptr->AppendSwap();
               fn_ptr->AppendStore(jasmin::ValueSize);
             } else {
-              NOT_YET();
+              NTH_UNIMPLEMENTED();
             }
             ++parameter_index;
           }

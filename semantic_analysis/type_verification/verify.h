@@ -145,7 +145,7 @@ struct TypeVerifier : VerificationScheduler {
 
   template <typename NodeType>
   VerificationTask VerifyType(NodeType const *) {
-    NOT_YET(nth::type<NodeType>);
+    NTH_UNIMPLEMENTED("{}") <<= {nth::type<NodeType>};
   }
 
   VerificationTask VerifyType(ast::Access const *);

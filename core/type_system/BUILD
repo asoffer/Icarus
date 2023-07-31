@@ -104,7 +104,7 @@ cc_library(
     name = "type",
     hdrs = ["type.h"],
     deps = [
-        "//base:debug",
+        "@asoffer_nth//nth/debug",
     ]
 )
 

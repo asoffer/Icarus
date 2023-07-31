@@ -8,10 +8,10 @@ VerificationTask TypeVerifier::VerifyType(ast::FunctionLiteral const* node) {
   core::Parameters<core::Type> parameters;
   bool has_error = false;
   for (auto const& parameter : node->parameters()) {
-    ASSERT(parameter.value.ids().size() == 1);
+    NTH_ASSERT(parameter.value.ids().size() == 1);
     std::span parameter_qts = co_await VerifyTypeOf(&parameter.value.ids()[0]);
     if (parameter_qts.size() != 1) {
-      NOT_YET("Log an error.", parameter_qts.size());
+      NTH_UNIMPLEMENTED("Log an error: {}") <<= {parameter_qts.size()};
       has_error = true;
     } else if (parameter_qts[0].qualifiers() >= Qualifiers::Error()) {
       has_error = true;
@@ -33,10 +33,10 @@ VerificationTask TypeVerifier::VerifyType(ast::FunctionLiteral const* node) {
       std::span qualified_types = co_await VerifyTypeOf(output);
       for (QualifiedType qt : qualified_types) {
         if (not(qt.qualifiers() >= Qualifiers::Constant())) {
-          NOT_YET("Log an error.");
+          NTH_UNIMPLEMENTED("Log an error.");
           has_error = true;
         } else if (qt.type() != Type) {
-          NOT_YET("Log an error.");
+          NTH_UNIMPLEMENTED("Log an error.");
           has_error = true;
         }
       }
@@ -63,15 +63,16 @@ VerificationTask TypeVerifier::VerifyType(ast::FunctionLiteral const* node) {
     for (auto const* return_stmt : node->returns()) {
       std::span returned_types = context().return_types(return_stmt);
 
-      if (specified_return_types.size() != returned_types.size()) { NOT_YET(); }
+      if (specified_return_types.size() != returned_types.size()) { NTH_UNIMPLEMENTED(); }
       for (size_t i = 0; i < specified_return_types.size(); ++i) {
         switch (CanCast(returned_types[i], specified_return_types[i],
                         type_system())) {
           case CastKind::None:
           case CastKind::Explicit:
-            NOT_YET(DebugType(specified_return_types[i], type_system()), " ",
-                    DebugQualifiedType(returned_types[i], type_system()), " ",
-                    node->DebugString());
+            NTH_UNIMPLEMENTED("type = {}, qt = {}, node = {}") <<=
+                {DebugType(specified_return_types[i], type_system()),
+                 DebugQualifiedType(returned_types[i], type_system()),
+                 node->DebugString()};
 
           case CastKind::Implicit:
           case CastKind::InPlace: continue;
@@ -103,7 +104,7 @@ VerificationTask TypeVerifier::VerifyType(ast::FunctionLiteral const* node) {
                                               return_types)));
         break;
       }
-      default: NOT_YET();
+      default: NTH_UNIMPLEMENTED();
     }
   }
 

@@ -2,7 +2,7 @@
 
 #include <iostream>
 
-#include "base/debug.h"
+#include "nth/debug/debug.h"
 
 namespace data_types {
 
@@ -27,7 +27,7 @@ void Deserialize(serialization::IntegerTable const& proto,
     absl::int128 n;
     std::string_view data = proto_integer.words();
     // TODO: We need to make a faster implementation possible here.
-    ASSERT(data.size() % sizeof(uintptr_t) == 0);
+    NTH_ASSERT(data.size() % sizeof(uintptr_t) == 0);
     uintptr_t word;
     for (size_t i = data.size(); i != 0; i -= sizeof(uintptr_t)) {
       n <<= sizeof(uintptr_t) * CHAR_BIT;

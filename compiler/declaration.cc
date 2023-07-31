@@ -35,7 +35,7 @@ void EmitDefaultInitialization(core::Type t, FunctionData data, Compiler &c) {
         data.function().AppendConstruct<uint8_t>(0);
       }
     } else {
-      NOT_YET();
+      NTH_UNIMPLEMENTED();
     }
   } else if (t == Bool) {
     data.function().AppendConstruct<bool>(false);
@@ -44,7 +44,7 @@ void EmitDefaultInitialization(core::Type t, FunctionData data, Compiler &c) {
   } else if (t.is<core::PointerType>(ts) or t.is<BufferPointerType>(ts)) {
     data.function().AppendConstruct<data_types::addr_t>(nullptr);
   } else {
-    NOT_YET(DebugType(t, ts));
+    NTH_UNIMPLEMENTED("{}") <<= {DebugType(t, ts)};
   }
 }
 
@@ -144,7 +144,7 @@ Compiler::Task TaskForDefaultInitialization(ast::Declaration const *node,
   // Syntactically: `var: T`, or `var :: T`
   auto type_expr_task       = c.TaskFor(node->type_expr());
   std::vector type_expr_qts = type_expr_task.get<std::vector<QualifiedType>>();
-  if (type_expr_qts.size() != 1) { NOT_YET("Log an error"); }
+  if (type_expr_qts.size() != 1) { NTH_UNIMPLEMENTED("Log an error"); }
   auto type_expr_qt = type_expr_qts[0];
   if (type_expr_qt != Constant(Type)) {
     c.ConsumeDiagnostic(NonConstantTypeInDeclaration{
@@ -162,9 +162,9 @@ Compiler::Task TaskForDefaultInitialization(ast::Declaration const *node,
   auto data = co_await nth::type<FunctionData>;
 
   if (node->flags() & ast::Declaration::f_IsConst) {
-    NOT_YET();
+    NTH_UNIMPLEMENTED();
   } else {
-    ASSERT(node->ids().size() == 1);  // TODO: Multiple identifiers.
+    NTH_ASSERT(node->ids().size() == 1);  // TODO: Multiple identifiers.
     auto const &id = node->ids()[0];
     for (auto const &id : node->ids()) {
       data.function().AppendStackOffset(data.OffsetFor(&id));
@@ -193,13 +193,13 @@ Compiler::Task Compiler::TaskFor(ast::Declaration const *node) {
     } break;
     case ast::Declaration::kInferred: {
       // Syntactically: `var := value`, or `var ::= value`
-      NOT_YET();
+      NTH_UNIMPLEMENTED();
     } break;
     case ast::Declaration::kCustomInit: {
       // Syntactically: `var: T = value`, or `var :: T = value`
-      NOT_YET();
+      NTH_UNIMPLEMENTED();
     } break;
-    default: NOT_YET(node->DebugString());
+    default: NTH_UNIMPLEMENTED("{}") <<= {node->DebugString()};
   }
 }
 

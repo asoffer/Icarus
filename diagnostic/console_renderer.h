@@ -4,7 +4,7 @@
 #include <cstdio>
 #include <type_traits>
 
-#include "base/debug.h"
+#include "nth/debug/debug.h"
 #include "diagnostic/message.h"
 #include "frontend/source_indexer.h"
 
@@ -14,7 +14,7 @@ struct ConsoleRenderer {
   // Assumes the file is already open.
   constexpr explicit ConsoleRenderer(std::FILE* out,
                                      frontend::SourceIndexer* source_indexer)
-      : source_indexer_(*ASSERT_NOT_NULL(source_indexer)), out_(out) {}
+      : source_indexer_(*NTH_ASSERT_NOT_NULL(source_indexer)), out_(out) {}
 
   void AddError(DiagnosticMessage const& diag) { Add(Category::Error, diag); }
 

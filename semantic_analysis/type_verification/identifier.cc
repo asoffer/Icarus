@@ -41,19 +41,19 @@ VerificationTask TypeVerifier::VerifyType(ast::Identifier const *node) {
     std::span parameters = co_await VerifyParametersOf(&id);
     if (parameters.data() == nullptr) { continue; }
 
-    ASSERT(parameters.size() == 1);
+    NTH_ASSERT(parameters.size() == 1);
     for (auto [p, callable_identifier] : parameters[0]) {
       auto [iter, inserted] = parameters_options.emplace(p, &id);
       // TODO: Error: ambiguity? There are other forms of ambiguity too
       // though.
-      ASSERT(inserted);
+      NTH_ASSERT(inserted);
     }
   }
   co_yield ParametersOf(node, std::move(parameters_options));
 
   for (auto const &id : scope.visible_ancestor_declaration_id_named(name)) {
     std::span qts = co_await VerifyTypeOf(&id);
-    ASSERT(qts.size() == 1);
+    NTH_ASSERT(qts.size() == 1);
 
     if (qts[0].qualifiers() >= Qualifiers::Error()) {
       co_return TypeOf(node, Error());

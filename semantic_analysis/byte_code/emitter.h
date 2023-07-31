@@ -76,9 +76,9 @@ struct ByteCodeValueEmitter : Emitter<ByteCodeValueEmitter> {
   template <typename NodeType>
   void operator()(NodeType const *node, FunctionData) {
     if (ast::ExpressionType<NodeType>) {
-      NOT_YET(nth::type<NodeType>, node->DebugString());
+      NTH_UNIMPLEMENTED("{} {}") <<= {nth::type<NodeType>, node->DebugString()};
     } else {
-      UNREACHABLE(nth::type<NodeType>);
+      NTH_UNREACHABLE("{}") <<= {nth::type<NodeType>};
     }
   }
 
@@ -113,7 +113,7 @@ struct ByteCodeStatementEmitter : Emitter<ByteCodeStatementEmitter> {
 
   template <typename NodeType>
   void operator()(NodeType const *node, FunctionData) {
-    NOT_YET(nth::type<NodeType>, node->DebugString());
+    NTH_UNIMPLEMENTED("{} {}") <<= {nth::type<NodeType>, node->DebugString()};
   }
 
   void operator()(ast::Access const *node, FunctionData data);
@@ -150,38 +150,50 @@ struct ByteCodeReferenceEmitter : Emitter<ByteCodeReferenceEmitter> {
 
   template <typename NodeType>
   void operator()(NodeType const *node, FunctionData) {
-    NOT_YET(nth::type<NodeType>, node->DebugString());
+    NTH_UNIMPLEMENTED("{} {}") <<= {nth::type<NodeType>, node->DebugString()};
   }
 
   void operator()(ast::Identifier const *node, FunctionData data);
   void operator()(ast::Index const *node, FunctionData data);
 
   // Unreachable operators.
-  void operator()(ast::ArgumentType const *, FunctionData) { UNREACHABLE(); }
-  void operator()(ast::BlockNode const *, FunctionData) { UNREACHABLE(); }
-  void operator()(ast::Declaration const *, FunctionData) { UNREACHABLE(); }
-  void operator()(ast::Declaration::Id const *, FunctionData) { UNREACHABLE(); }
+  void operator()(ast::ArgumentType const *, FunctionData) {
+    NTH_UNREACHABLE();
+  }
+  void operator()(ast::BlockNode const *, FunctionData) { NTH_UNREACHABLE(); }
+  void operator()(ast::Declaration const *, FunctionData) { NTH_UNREACHABLE(); }
+  void operator()(ast::Declaration::Id const *, FunctionData) {
+    NTH_UNREACHABLE();
+  }
   void operator()(ast::DesignatedInitializer const *, FunctionData) {
-    UNREACHABLE();
+    NTH_UNREACHABLE();
   }
-  void operator()(ast::EnumLiteral const *, FunctionData) { UNREACHABLE(); }
-  void operator()(ast::FunctionLiteral const *, FunctionData) { UNREACHABLE(); }
-  void operator()(ast::Import const *, FunctionData) { UNREACHABLE(); }
+  void operator()(ast::EnumLiteral const *, FunctionData) { NTH_UNREACHABLE(); }
+  void operator()(ast::FunctionLiteral const *, FunctionData) {
+    NTH_UNREACHABLE();
+  }
+  void operator()(ast::Import const *, FunctionData) { NTH_UNREACHABLE(); }
   void operator()(ast::InterfaceLiteral const *, FunctionData) {
-    UNREACHABLE();
+    NTH_UNREACHABLE();
   }
-  void operator()(ast::Label const *, FunctionData) { UNREACHABLE(); }
+  void operator()(ast::Label const *, FunctionData) { NTH_UNREACHABLE(); }
   void operator()(ast::ParameterizedStructLiteral const *, FunctionData) {
-    UNREACHABLE();
+    NTH_UNREACHABLE();
   }
-  void operator()(ast::PatternMatch const *, FunctionData) { UNREACHABLE(); }
-  void operator()(ast::ScopeLiteral const *, FunctionData) { UNREACHABLE(); }
-  void operator()(ast::SliceType const *, FunctionData) { UNREACHABLE(); }
+  void operator()(ast::PatternMatch const *, FunctionData) {
+    NTH_UNREACHABLE();
+  }
+  void operator()(ast::ScopeLiteral const *, FunctionData) {
+    NTH_UNREACHABLE();
+  }
+  void operator()(ast::SliceType const *, FunctionData) { NTH_UNREACHABLE(); }
   void operator()(ast::ShortFunctionLiteral const *, FunctionData) {
-    UNREACHABLE();
+    NTH_UNREACHABLE();
   }
-  void operator()(ast::StructLiteral const *, FunctionData) { UNREACHABLE(); }
-  void operator()(ast::YieldStmt const *, FunctionData) { UNREACHABLE(); }
+  void operator()(ast::StructLiteral const *, FunctionData) {
+    NTH_UNREACHABLE();
+  }
+  void operator()(ast::YieldStmt const *, FunctionData) { NTH_UNREACHABLE(); }
   // TODO: Access, BinaryAssignmentOperator, BinaryOperator, Call, Cast,
   //       ComparisonOperator, ScopeNode, IfStmt, WhileStmt, UnaryOperator
 };
@@ -191,7 +203,7 @@ template <typename T>
 T Emitter<E>::EvaluateAs(ast::Expression const *expression) {
   auto qt        = context().qualified_type(expression);
   bool has_error = (qt.qualifiers() >= Qualifiers::Error());
-  ASSERT(not has_error);
+  NTH_ASSERT(not has_error);
 
   vm::Function f(0, 1);
 

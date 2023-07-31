@@ -38,8 +38,8 @@ cc_library(
     srcs = ["integer.cc"],
     deps = [
         "//serialization:constants",
-        "//base:debug",
         "@asoffer_nth//nth/container:flyweight_set",
+        "@asoffer_nth//nth/debug",
         "@asoffer_jasmin//jasmin:instruction",
         "@com_google_absl//absl/numeric:int128",
     ],

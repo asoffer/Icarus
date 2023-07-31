@@ -53,7 +53,7 @@ VerificationTask TypeVerifier::VerifyType(ast::Index const *node) {
   if (auto slice_type = lhs_qts[0].type().get_if<SliceType>(type_system())) {
     qt = QualifiedType(slice_type->pointee(), Qualifiers::Reference());
   } else {
-    NOT_YET();
+    NTH_UNIMPLEMENTED();
   }
 
   co_return TypeOf(node, qt);

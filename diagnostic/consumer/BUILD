@@ -16,8 +16,8 @@ cc_library(
     hdrs = ["consumer.h"],
     deps = [
         "//base:cast",
-        "//base:debug",
         "//diagnostic:message",
+        "@asoffer_nth//nth/debug",
     ],
 )
 
@@ -26,10 +26,10 @@ cc_library(
     hdrs = ["streaming.h"],
     deps = [
         ":consumer",
-        "//base:debug",
         "//diagnostic:console_renderer",
         "//diagnostic:message",
         "//frontend:source_indexer",
+        "@asoffer_nth//nth/debug",
     ],
 )
 

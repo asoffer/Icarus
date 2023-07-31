@@ -3,18 +3,8 @@ package(default_visibility = ["//visibility:public"])
 cc_library(
     name = "cast",
     hdrs = ["cast.h"],
-    deps = [":debug"],
-)
-
-cc_library(
-    name = "debug",
-    hdrs = ["debug.h"],
     deps = [
-        ":log",
-        "@asoffer_nth//nth/meta:type",
-        "@asoffer_nth//nth/io:string_printer",
-        "@asoffer_nth//nth/strings/format:universal",
-        "@com_google_absl//absl/strings",
+        "@asoffer_nth//nth/debug",
     ],
 )
 
@@ -51,21 +41,6 @@ cc_library(
     deps = [
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/container:flat_hash_set",
-    ],
-)
-
-cc_library(
-    name = "log",
-    srcs = ["log.cc"],
-    hdrs = ["log.h"],
-    deps = [
-        "@asoffer_nth//nth/io:string_printer",
-        "@asoffer_nth//nth/strings/format:universal",
-        "@com_google_absl//absl/container:flat_hash_map",
-        "@com_google_absl//absl/container:flat_hash_set",
-        "@com_google_absl//absl/strings",
-        "@com_google_absl//absl/strings:str_format",
-        "@com_google_absl//absl/synchronization",
     ],
 )
 

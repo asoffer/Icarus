@@ -10,8 +10,7 @@
 #include "ast/ast_fwd.h"
 #include "ast/declaration.h"
 #include "base/cast.h"
-#include "base/debug.h"
-#include "base/log.h"
+#include "nth/debug/debug.h"
 #include "nth/utility/iterator_range.h"
 #include "nth/utility/ptr_union.h"
 
@@ -108,24 +107,24 @@ struct Scope : base::Cast<Scope> {
   void set_parent(Scope *p);
 
   Scope *parent() {
-    ASSERT(parent_ != 0u);
+    NTH_ASSERT(parent_ != 0u);
     return parent_ & 1 ? nullptr : reinterpret_cast<Scope *>(parent_);
   }
   Scope const *parent() const {
-    ASSERT(parent_ != 0u);
+    NTH_ASSERT(parent_ != 0u);
     return parent_ & 1 ? nullptr : reinterpret_cast<Scope *>(parent_);
   }
 
   module::Module &module() {
-    ASSERT(parent_ != 0u);
-    return parent_ & 1 ? *ASSERT_NOT_NULL(
+    NTH_ASSERT(parent_ != 0u);
+    return parent_ & 1 ? *NTH_ASSERT_NOT_NULL(
                              reinterpret_cast<module::Module *>(parent_ - 1))
                        : parent()->module();
   }
 
   module::Module const &module() const {
-    ASSERT(parent_ != 0u);
-    return parent_ & 1 ? *ASSERT_NOT_NULL(
+    NTH_ASSERT(parent_ != 0u);
+    return parent_ & 1 ? *NTH_ASSERT_NOT_NULL(
                              reinterpret_cast<module::Module *>(parent_ - 1))
                        : parent()->module();
   }
@@ -206,7 +205,7 @@ struct Scope : base::Cast<Scope> {
   // Returns all scopes that are part of the executable scope. Requires that
   // this scope be a root of execution (i.e., have Kind BoundaryExecutable).
   std::span<Scope *const> executable_descendants() const {
-    ASSERT(kind_ == Kind::BoundaryExecutable);
+    NTH_ASSERT(kind_ == Kind::BoundaryExecutable);
     return executable_descendants_;
   }
 

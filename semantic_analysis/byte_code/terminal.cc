@@ -23,7 +23,7 @@ void ByteCodeValueEmitter::operator()(ast::Terminal const* node,
   } else if (qt.type() == NullPtr) {
     data.function().AppendPush(data_types::Null());
   } else {
-    NOT_YET(node->DebugString());
+    NTH_UNIMPLEMENTED("{}") <<= {node->DebugString()};
   }
 }
 

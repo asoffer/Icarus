@@ -247,7 +247,7 @@ VerificationTask TypeVerifier::VerifyType(ast::UnaryOperator const *node) {
           qt = Error(operand_qualifiers & Qualifiers::Constant());
         }
       } break;
-      default: UNREACHABLE(node->DebugString());
+      default: NTH_UNREACHABLE("{}") <<= {node->DebugString()};
     }
   }
   co_return TypeOf(node, qt);

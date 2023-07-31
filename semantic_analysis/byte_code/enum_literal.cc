@@ -20,7 +20,7 @@ void ByteCodeValueEmitter::operator()(ast::EnumLiteral const* node,
           WithPrimitiveType(t, [&, v = value_expr.get()]<std::integral T> {
             value = EvaluateAs<T>(v);
           });
-      ASSERT(found);
+      NTH_ASSERT(found);
     }
     enumerators[name] = value;
     used_values.insert(value);

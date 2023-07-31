@@ -7,8 +7,8 @@ cc_library(
     deps = [
         ":type_system",
         "//ast",
-        "//base:debug",
         "//module:symbol",
+        "@asoffer_nth//nth/debug",
     ]
 )
 
@@ -67,7 +67,7 @@ cc_library(
         "//ast:node",
         "//base:extend",
         "//base/extend:absl_hash",
-        "//base:debug",
+        "@asoffer_nth//nth/debug",
         "@asoffer_nth//nth/meta:type",
         "@com_google_absl//absl/functional:any_invocable",
         "@com_google_absl//absl/container:flat_hash_map",

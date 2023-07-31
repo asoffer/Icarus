@@ -27,7 +27,7 @@ std::string_view StringOf(core::Type t) {
   if (t == U(64)) { return "u64"; }
   if (t == F32) { return "f32"; }
   if (t == F64) { return "f64"; }
-  UNREACHABLE();
+  NTH_UNREACHABLE();
 }
 
 TEST_P(BinaryOperatorSameTypeTest, ConstantSuccess) {

@@ -22,23 +22,23 @@ void ByteCodeValueEmitter::operator()(ast::Index const *node,
       // TODO:This swap is specific to it being a slice.
       data.function().AppendSwap();
     } else {
-      UNREACHABLE();
+      NTH_UNREACHABLE();
     }
   } else {
-    NOT_YET();
+    NTH_UNIMPLEMENTED();
   }
 }
 
 void ByteCodeStatementEmitter::operator()(ast::Index const *node,
                                           FunctionData data) {
-  NOT_YET();
+  NTH_UNIMPLEMENTED();
 }
 
 void ByteCodeReferenceEmitter::operator()(ast::Index const *node,
                                           FunctionData data) {
   if (context().qualified_type(node->lhs()).qualifiers() >=
       Qualifiers::Reference()) {
-    NOT_YET();
+    NTH_UNIMPLEMENTED();
   } else {
     auto &f = data.function();
     as<ByteCodeValueEmitter>().Emit(node->lhs(), data);

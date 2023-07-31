@@ -32,7 +32,7 @@ inline Tag TagFrom(Operator op) {
 #include "frontend/lex/operators.xmacro.h"
 #undef OPERATOR_MACRO
   }
-  UNREACHABLE();
+  NTH_UNREACHABLE();
 }
 
 }  // namespace frontend

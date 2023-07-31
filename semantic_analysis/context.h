@@ -75,7 +75,7 @@ struct Context {
   // constant expression `expr` in the given context.
   std::span<std::byte const> constant(ast::Expression const *expr) const {
     auto iter = constants_.find(expr);
-    ASSERT(iter != constants_.end());
+    NTH_ASSERT(iter != constants_.end());
     return iter->second;
   }
 
@@ -86,7 +86,7 @@ struct Context {
       requires(std::is_trivially_copyable_v<T>) {
     T result;
     std::span span = constant(expr);
-    ASSERT(sizeof(result) == span.size());
+    NTH_ASSERT(sizeof(result) == span.size());
     std::memcpy(&result, span.data(), sizeof(result));
     return result;
   }
@@ -140,7 +140,7 @@ struct Context {
     }
 
     module::TypedFunction function() const {
-      ASSERT(std::holds_alternative<module::TypedFunction>(entry_));
+      NTH_ASSERT(std::holds_alternative<module::TypedFunction>(entry_));
       return std::get<module::TypedFunction>(entry_);
     }
 

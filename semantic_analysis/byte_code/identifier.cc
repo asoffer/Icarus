@@ -24,10 +24,10 @@ void ByteCodeValueEmitter::operator()(ast::Identifier const* node,
                 *reinterpret_cast<std::string_view const*>(evaluation.data());
             data.function().AppendPushStringLiteral(view);
           } else {
-            NOT_YET(node->DebugString());
+            NTH_UNIMPLEMENTED("{}") <<= {node->DebugString()};
           }
         } else {
-          NOT_YET(node->DebugString());
+          NTH_UNIMPLEMENTED("{}") <<= {node->DebugString()};
         }
       }
     } else {
@@ -55,7 +55,7 @@ void ByteCodeReferenceEmitter::operator()(ast::Identifier const* node,
   if (auto const* id = symbol.get_if<ast::Declaration::Id const>()) {
     auto qt = context().qualified_type(id);
     if (qt.qualifiers() >= Qualifiers::Constant()) {
-      NOT_YET();
+      NTH_UNIMPLEMENTED();
     } else {
       data.function().AppendStackOffset(data.OffsetFor(id));
     }

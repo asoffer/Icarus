@@ -4,7 +4,7 @@
 
 #include <utility>
 
-#include "base/debug.h"
+#include "nth/debug/debug.h"
 
 namespace serialization {
 
@@ -50,24 +50,24 @@ bool ForeignSymbolMap::Deserialize(proto::ForeignSymbolMap const& from,
 
 uint32_t ForeignSymbolMap::index(core::Type t, void* ptr) const {
   auto iter = index_.find(std::pair(t, ptr));
-  ASSERT(iter != index_.end());
+  NTH_ASSERT(iter != index_.end());
   return iter->second;
 }
 
 uint32_t ForeignSymbolMap::index(core::Type t, void (*fn_ptr)()) const {
   auto iter = index_.find(std::pair(t, reinterpret_cast<void*>(fn_ptr)));
-  ASSERT(iter != index_.end());
+  NTH_ASSERT(iter != index_.end());
   return iter->second;
 }
 
 uint32_t ForeignSymbolMap::index(ForeignSymbol const& s) const {
   auto iter = data_.find(s);
-  ASSERT(iter != data_.end());
+  NTH_ASSERT(iter != data_.end());
   return data_.index(iter);
 }
 
 ForeignSymbol const& ForeignSymbolMap::symbol(uint32_t index) const {
-  ASSERT(index < data_.size());
+  NTH_ASSERT(index < data_.size());
   return data_.from_index(index).first;
 }
 
@@ -91,7 +91,7 @@ void ForeignSymbolMap::Populate(
       std::pair(iter->first.type, iter->second), data_.index(iter));
 
   // TODO: Handle errors.
-  if (error != nullptr) { NOT_YET(iter->first.name); }
+  if (error != nullptr) { NTH_UNIMPLEMENTED("{}") <<= {iter->first.name}; }
 }
 
 }  // namespace serialization

@@ -5,6 +5,7 @@
 #include <span>
 #include <vector>
 
+#include "absl/container/flat_hash_set.h"
 #include "base/extend.h"
 #include "base/extend/equality.h"
 #include "core/arguments.h"

@@ -129,7 +129,7 @@ VerificationTask TypeVerifier::VerifyType(ast::Declaration const *node) {
     case ast::Declaration::kDefaultInit: {
       // Syntactically: `var: T`, or `var :: T`
       type_expr_qts = co_await VerifyTypeOf(node->type_expr());
-      if (type_expr_qts.size() != 1) { NOT_YET("Log an error"); }
+      if (type_expr_qts.size() != 1) { NTH_UNIMPLEMENTED("Log an error"); }
       auto type_expr_qt = type_expr_qts[0];
       if (type_expr_qt != Constant(Type)) {
         ConsumeDiagnostic(NonConstantTypeInDeclaration{
@@ -158,12 +158,12 @@ VerificationTask TypeVerifier::VerifyType(ast::Declaration const *node) {
       // Syntactically: `var := value`, or `var ::= value`
       std::span parameters = co_await VerifyParametersOf(node->init_val());
       if (parameters.data() != nullptr) {
-        ASSERT(parameters.size() == 1);
+        NTH_ASSERT(parameters.size() == 1);
         co_yield ParametersOf(node, parameters[0]);
       }
 
       initial_value_qts = co_await VerifyTypeOf(node->init_val());
-      if (initial_value_qts.size() != 1) { NOT_YET("Log an error"); }
+      if (initial_value_qts.size() != 1) { NTH_UNIMPLEMENTED("Log an error"); }
       QualifiedType qt(initial_value_qts[0].type());
       if (node->flags() & ast::Declaration::f_IsConst) {
         if (not(initial_value_qts[0].qualifiers() >= Qualifiers::Constant())) {
@@ -179,7 +179,7 @@ VerificationTask TypeVerifier::VerifyType(ast::Declaration const *node) {
     case ast::Declaration::kCustomInit: {
       // Syntactically: `var: T = value`, or `var :: T = value`
       type_expr_qts = co_await VerifyTypeOf(node->type_expr());
-      if (type_expr_qts.size() != 1) { NOT_YET("Log an error"); }
+      if (type_expr_qts.size() != 1) { NTH_UNIMPLEMENTED("Log an error"); }
       auto type_expr_qt = type_expr_qts[0];
       if (type_expr_qt != Constant(Type)) {
         ConsumeDiagnostic(NonConstantTypeInDeclaration{
@@ -197,12 +197,12 @@ VerificationTask TypeVerifier::VerifyType(ast::Declaration const *node) {
 
       std::span parameters = co_await VerifyParametersOf(node->init_val());
       if (parameters.data() != nullptr) {
-        ASSERT(parameters.size() == 1);
+        NTH_ASSERT(parameters.size() == 1);
         co_yield ParametersOf(node, parameters[0]);
       }
 
       initial_value_qts = co_await VerifyTypeOf(node->init_val());
-      if (initial_value_qts.size() != 1) { NOT_YET("Log an error"); }
+      if (initial_value_qts.size() != 1) { NTH_UNIMPLEMENTED("Log an error"); }
       QualifiedType init_qt(initial_value_qts[0].type());
       if (node->flags() & ast::Declaration::f_IsConst) {
         if (not(initial_value_qts[0].qualifiers() >= Qualifiers::Constant())) {
@@ -223,14 +223,14 @@ VerificationTask TypeVerifier::VerifyType(ast::Declaration const *node) {
 
       co_return TypeOf(node, qt);
     } break;
-    default: NOT_YET(node->DebugString());
+    default: NTH_UNIMPLEMENTED("{}") <<= {node->DebugString()};
   }
 }
 
 VerificationTask TypeVerifier::VerifyType(ast::Declaration::Id const *node) {
   std::span parameters = co_await VerifyParametersOf(&node->declaration());
   if (parameters.data() != nullptr) {
-    ASSERT(parameters.size() == node->declaration().ids().size());
+    NTH_ASSERT(parameters.size() == node->declaration().ids().size());
     co_yield ParametersOf(node, parameters[node->index()]);
   }
   std::span qts = co_await VerifyTypeOf(&node->declaration());
@@ -238,7 +238,7 @@ VerificationTask TypeVerifier::VerifyType(ast::Declaration::Id const *node) {
 }
 
 VerificationTask TypeVerifier::VerifyType(ast::BindingDeclaration const *node) {
-  UNREACHABLE();
+  NTH_UNREACHABLE();
 }
 
 }  // namespace semantic_analysis

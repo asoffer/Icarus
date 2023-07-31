@@ -53,7 +53,7 @@ std::span<std::byte const> EvaluateConstant(Context &context,
                                             module::Resources &resources,
                                             ast::Expression const *expr,
                                             QualifiedType qt) {
-  ASSERT(qt == context.qualified_type(expr));
+  NTH_ASSERT(qt == context.qualified_type(expr));
   auto [result_ptr, inserted] = context.insert_constant(expr);
   if (inserted) {
     // TODO: Integers are an annoying special case at the moment.
@@ -77,7 +77,7 @@ std::span<std::byte const> EvaluateConstant(Context &context,
       }
       return *result_ptr;
     } else {
-      NOT_YET(DebugQualifiedType(qt, resources.primary_module().type_system()));
+      NTH_UNIMPLEMENTED("{}") <<= {DebugQualifiedType(qt, resources.primary_module().type_system())};
     }
   } else {
     return *result_ptr;

@@ -18,14 +18,14 @@ void ByteCodeValueEmitter::operator()(ast::Access const* node,
     std::span symbols = m.LoadSymbols(node->member_name());
     switch (symbols.size()) {
       case 0: {
-        NOT_YET();
+        NTH_UNIMPLEMENTED();
       } break;
       case 1: {
         core::Type symbol_type = resources().Translate(
             symbols[0].type(), module_index, m.type_system(), type_system());
         if (auto fn_type =
                 symbol_type.get_if<core::FunctionType>(type_system())) {
-          NOT_YET();
+          NTH_UNIMPLEMENTED();
         } else if (symbol_type == Type) {
           core::Type t =
               resources().Translate(symbols[0].as<core::Type>(), module_index,
@@ -37,25 +37,26 @@ void ByteCodeValueEmitter::operator()(ast::Access const* node,
           // a translation for consistency?
           data.function().AppendPush(symbols[0].as<module::TypedValue>().value);
         } else {
-          NOT_YET();
+          NTH_UNIMPLEMENTED();
         }
       } break;
       default: {
-        NOT_YET();
+        NTH_UNIMPLEMENTED();
       } break;
     }
   } else if (operand_qt.type() == Type) {
-    ASSERT(operand_qt.qualifiers() >= Qualifiers::Constant());
+    NTH_ASSERT(operand_qt.qualifiers() >= Qualifiers::Constant());
     core::Type t = EvaluateAs<core::Type>(node->operand());
     if (auto e = t.get_if<EnumType>(type_system())) {
       auto o = e->value(node->member_name());
-      ASSERT(o.has_value());
+      NTH_ASSERT(o.has_value());
       data.function().AppendPush(*o);
     } else {
-      NOT_YET();
+      NTH_UNIMPLEMENTED();
     }
   } else {
-    NOT_YET(node->DebugString(), DebugType(operand_qt.type(), type_system()));
+    NTH_UNIMPLEMENTED("{}: {}") <<=
+        {node->DebugString(), DebugType(operand_qt.type(), type_system())};
   }
 }
 

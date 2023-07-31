@@ -27,10 +27,10 @@ struct MissingConstantMember {
 
 VerificationTask TypeVerifier::VerifyType(ast::Access const *node) {
   std::span operand_qts = co_await VerifyTypeOf(node->operand());
-  if (operand_qts.size() != 1) { NOT_YET("log an error"); }
+  if (operand_qts.size() != 1) { NTH_UNIMPLEMENTED("log an error"); }
   QualifiedType qt = operand_qts[0];
   if (qt.type() == Module) {
-    if (not(qt.qualifiers() >= Qualifiers::Constant())) { NOT_YET(); }
+    if (not(qt.qualifiers() >= Qualifiers::Constant())) { NTH_UNIMPLEMENTED(); }
     auto index        = EvaluateAs<serialization::ModuleIndex>(node->operand());
     auto &m           = resources().module(index);
     std::span symbols = m.LoadSymbols(node->member_name());
@@ -75,10 +75,10 @@ VerificationTask TypeVerifier::VerifyType(ast::Access const *node) {
     } else if (node->member_name() == "length") {
       co_return TypeOf(node, QualifiedType(U(64), qt.qualifiers()));
     } else {
-      NOT_YET("Log an error: ", node->member_name());
+      NTH_UNIMPLEMENTED("Log an error: {}") <<= {node->member_name()};
     }
   } else if (qt.type() == Type) {
-    if (not(qt.qualifiers() >= Qualifiers::Constant())) { NOT_YET(); }
+    if (not(qt.qualifiers() >= Qualifiers::Constant())) { NTH_UNIMPLEMENTED(); }
     core::Type t = EvaluateAs<core::Type>(node->operand());
     if (auto e = t.get_if<EnumType>(type_system())) {
       if (e->has_member(node->member_name())) {
@@ -93,10 +93,10 @@ VerificationTask TypeVerifier::VerifyType(ast::Access const *node) {
         co_return TypeOf(node, Error(Constant(t)));
       }
     } else {
-      NOT_YET(DebugType(t, type_system()));
+      NTH_UNIMPLEMENTED("{}") <<= {DebugType(t, type_system())};
     }
   } else {
-    NOT_YET(DebugQualifiedType(qt, type_system()));
+    NTH_UNIMPLEMENTED("{}") <<= {DebugQualifiedType(qt, type_system())};
   }
 }
 

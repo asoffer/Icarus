@@ -14,7 +14,7 @@ struct ParamDependencyGraphBuilder {
     to_process_.reserve(parameters.size());
     for (auto const &parameter : parameters) {
       // Parameters must not be multiple-declarations.
-      ASSERT(parameter.value.ids().size() == 1u);
+      NTH_ASSERT(parameter.value.ids().size() == 1u);
       to_process_.push_back(&parameter.value);
       relevant_decls_.emplace(parameter.value.ids()[0].name(),
                               &parameter.value);
@@ -251,7 +251,7 @@ struct ParamDependencyGraphBuilder {
 
   void operator()(PatternMatch const *node,
                   core::DependencyNode<Declaration const *> d) {
-    ASSERT(not node->is_binary());
+    NTH_ASSERT(not node->is_binary());
     (*this)(&node->pattern(), d);
   }
 

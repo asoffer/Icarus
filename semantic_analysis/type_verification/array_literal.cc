@@ -46,7 +46,7 @@ VerificationTask TypeVerifier::VerifyType(ast::ArrayLiteral const *node) {
   bool error = false;
   for (auto const *elem : node->elements()) {
     std::span qts = co_await VerifyTypeOf(elem);
-    if (qts.size() != 1) { NOT_YET(); }
+    if (qts.size() != 1) { NTH_UNIMPLEMENTED(); }
     if (qts[0].qualifiers() >= Qualifiers::Error()) {
       error = true;
     } else {

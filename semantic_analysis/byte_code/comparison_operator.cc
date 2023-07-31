@@ -66,7 +66,7 @@ void ByteCodeValueEmitter::operator()(ast::ComparisonOperator const* node,
         case frontend::Operator::Ne:
           f.AppendEqual<vm::Function::Append, T>();
           break;
-        default: UNREACHABLE();
+        default: NTH_UNREACHABLE();
       }
       branches.push_back(f.AppendJumpIfWithPlaceholders());
     });
@@ -80,7 +80,7 @@ void ByteCodeValueEmitter::operator()(ast::ComparisonOperator const* node,
           case frontend::Operator::Ne:
             f.AppendEqual<vm::Function::Append, uint64_t>();
             break;
-          default: UNREACHABLE();
+          default: NTH_UNREACHABLE();
         }
         branches.push_back(f.AppendJumpIfWithPlaceholders());
       }

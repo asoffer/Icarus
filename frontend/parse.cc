@@ -8,7 +8,7 @@
 #include "absl/strings/str_format.h"
 #include "absl/strings/str_join.h"
 #include "ast/ast.h"
-#include "base/debug.h"
+#include "nth/debug/debug.h"
 #include "diagnostic/consumer/consumer.h"
 #include "diagnostic/message.h"
 #include "frontend/lex/lex.h"
@@ -16,6 +16,7 @@
 #include "frontend/lex/tagged_node.h"
 #include "frontend/lex/token.h"
 #include "frontend/parse_rule.h"
+#include "nth/debug/source_location.h"
 
 ABSL_FLAG(bool, debug_parser, false,
           "Step through the parser step-by-step for debugging.");
@@ -34,8 +35,7 @@ struct TodoDiagnostic {
         diagnostic::SourceQuote().Highlighted(range, diagnostic::Style{}));
   }
 
-  std::experimental::source_location loc =
-      std::experimental::source_location::current();
+  nth::source_location loc = nth::source_location::current();
   std::string_view range;
 };
 
@@ -461,9 +461,9 @@ constexpr size_t precedence(Operator op) {
 #undef OPERATOR_MACRO
   }
 
-  // Use the builtin directly rather than `UNREACHABLE()` because
-  // `UNREACHABLE()` cannot be used in constexpr.
-  __builtin_unreachable();
+  // Use the builtin directly rather than `NTH_UNREACHABLE()` because
+  // `NTH_UNREACHABLE()` cannot be used in constexpr.
+  nth::unreachable();
 }
 
 std::unique_ptr<ast::Node> AddHashtag(
@@ -501,7 +501,7 @@ std::unique_ptr<ast::Node> BuildControlHandler(
   if (tk == "return") {
     return std::make_unique<ast::ReturnStmt>(node->range());
   }
-  UNREACHABLE();
+  NTH_UNREACHABLE();
 }
 
 std::unique_ptr<ast::Node> BuildWhileStmt(
@@ -547,9 +547,9 @@ std::unique_ptr<ast::Node> ExtendIfElseStmt(
   auto extension_if_stmt = move_as<ast::IfStmt>(nodes[2]);
 
   if (auto *id = nodes[1]->if_as<ast::Identifier>()) {
-    if (id->name() != "else") { NOT_YET(); }
+    if (id->name() != "else") { NTH_UNIMPLEMENTED(); }
   } else {
-    NOT_YET();
+    NTH_UNIMPLEMENTED();
   }
   // TODO: Make robust.
   if_stmt->AppendElseBlock(std::move(extension_if_stmt));
@@ -564,7 +564,7 @@ std::unique_ptr<ast::Node> BuildIfElseStmt(
   auto if_stmt = move_as<ast::IfStmt>(nodes[0]);
 
   auto block_node = move_as<ast::BlockNode>(nodes[1]);
-  if (block_node->name() != "else") { NOT_YET(); }
+  if (block_node->name() != "else") { NTH_UNIMPLEMENTED(); }
 
   // TODO: Make robust.
   if_stmt->SetFalseBlock(std::move(*block_node).extract());
@@ -589,7 +589,7 @@ std::unique_ptr<ast::Node> BuildRightUnop(
 
     return unop;
   } else {
-    UNREACHABLE();
+    NTH_UNREACHABLE();
   }
 }
 
@@ -643,7 +643,7 @@ std::unique_ptr<ast::Node> BuildFullCall(
     std::span<std::unique_ptr<ast::Node>> nodes,
     diagnostic::DiagnosticConsumer &diag) {
   // Due to constraints of predecence, The token must be a `'`.
-  ASSERT(nodes[1]->as<Token>().token == "'");
+  NTH_ASSERT(nodes[1]->as<Token>().token == "'");
   std::string_view range(nodes.front()->range().begin(),
                          nodes.back()->range().end());
 
@@ -785,7 +785,7 @@ std::unique_ptr<ast::Node> BuildLabeledYield(
 
   std::vector<std::unique_ptr<ast::Expression>> exprs;
   if (nodes.size() > 2) {
-    ASSERT(nodes.size() == 3);
+    NTH_ASSERT(nodes.size() == 3);
     exprs = ExtractIfCommaList<ast::Expression>(std::move(nodes[2]));
   }
   // TODO: Go directly to arguments.
@@ -951,7 +951,7 @@ std::unique_ptr<ast::Node> BuildDeclaration(
   if (auto *id = nodes[0]->if_as<ast::Identifier>()) {
     ids.emplace_back(id->range());
   } else if (auto *cl = nodes[0]->if_as<CommaList>()) {
-    ASSERT(cl->num_parentheses() != 0u);
+    NTH_ASSERT(cl->num_parentheses() != 0u);
     for (auto &&i : std::move(*cl).extract()) {
       if (auto *id = i->if_as<ast::Identifier>()) {
         ids.emplace_back(id->range());
@@ -1112,7 +1112,7 @@ std::unique_ptr<ast::Node> BuildShortFunctionLiteral(
       ExtractIfCommaList<ast::Expression>(std::move(body));
 
   if (ret_vals.size() != 1u) {
-    NOT_YET("Haven't handled multiple returns yet.");
+    NTH_UNIMPLEMENTED("Haven't handled multiple returns yet.");
   }
   return std::make_unique<ast::ShortFunctionLiteral>(range, std::move(inputs),
                                                      std::move(ret_vals[0]));
@@ -1126,7 +1126,7 @@ std::unique_ptr<ast::Node> BuildStatementLeftUnop(
   auto stmts = std::make_unique<Statements>(range);
 
   std::string_view tk = nodes[0]->as<Token>().token;
-  ASSERT(tk == "return");
+  NTH_ASSERT(tk == "return");
   std::vector<std::unique_ptr<ast::Expression>> exprs =
       ExtractIfCommaList<ast::Expression>(std::move(nodes[1]));
   stmts->append(std::make_unique<ast::ReturnStmt>(range, std::move(exprs)));
@@ -1396,7 +1396,6 @@ std::unique_ptr<ast::Node> BuildEnumOrFlagLiteral(
         values.emplace(enumerators.back(), std::move(init_val));
       }
     } else {
-      LOG("", "%s", stmt->DebugString());
       diag.Consume(TodoDiagnostic{.range = range});
     }
   }
@@ -1411,7 +1410,7 @@ std::unique_ptr<ast::Node> BuildInterfaceLiteral(
   std::string_view range(nodes.front()->range().begin(),
                          nodes.back()->range().end());
   auto elements = std::move(nodes[1]->as<ast::ArrayLiteral>()).extract();
-  ASSERT(elements.size() == 1u);
+  NTH_ASSERT(elements.size() == 1u);
   auto &id      = elements[0]->as<ast::Identifier>();
   auto id_range = id.range();
 
@@ -1421,8 +1420,8 @@ std::unique_ptr<ast::Node> BuildInterfaceLiteral(
   for (auto &statement : statements) {
     auto [ids, type, expr] =
         std::move(statement->as<ast::Declaration>()).extract();
-    ASSERT(ids.size() == 1);
-    ASSERT(expr == nullptr);
+    NTH_ASSERT(ids.size() == 1);
+    NTH_ASSERT(expr == nullptr);
     members.emplace(ids[0].name(), std::move(type));
   }
 
@@ -1443,7 +1442,7 @@ std::unique_ptr<ast::Node> BuildScopeLiteral(
   }
 
   auto elements = std::move(nodes[1]->as<ast::ArrayLiteral>()).extract();
-  ASSERT(elements.size() == 1u);
+  NTH_ASSERT(elements.size() == 1u);
   auto &id      = elements[0]->as<ast::Identifier>();
   auto id_range = id.range();
 
@@ -1516,7 +1515,7 @@ std::unique_ptr<ast::Node> BuildParameterizedKeywordScope(
     return std::make_unique<ast::ParameterizedStructLiteral>(
         range, std::move(params), std::move(fields));
   } else {
-    UNREACHABLE();
+    NTH_UNREACHABLE();
   }
 }
 
@@ -1543,7 +1542,7 @@ std::unique_ptr<ast::Node> BuildKWBlock(
     return BuildStructLiteral(std::move(stmts), range, diag);
 
   } else {
-    UNREACHABLE(tk);
+    NTH_UNREACHABLE("{}") <<= {tk};
   }
 }
 
@@ -2072,8 +2071,6 @@ void Shift(ParseState *ps) {
   ps->tag_stack_.push_back(ahead.tag_);
   ps->node_stack_.push_back(std::move(ahead.node_));
 
-  LOG("parse", "shifting %s onto the stack.",
-      ps->node_stack_.back()->DebugString());
   auto tag_ahead = ps->Next().tag_;
   if (tag_ahead & (l_paren | l_bracket | l_brace)) {
     ++ps->brace_count;
@@ -2084,7 +2081,6 @@ void Shift(ParseState *ps) {
 
 template <auto &RuleSet>
 bool Reduce(ParseState *ps) {
-  LOG("parse", "reducing");
   for (auto const &rule : RuleSet) {
     if (rule.match(ps->tag_stack_)) {
       auto * p = std::addressof(*(ps->node_stack_.end() - rule.match.size()));
@@ -2148,7 +2144,7 @@ std::vector<std::unique_ptr<ast::Node>> Parse(
   ParseState state(std::move(nodes), diag);
 
   while (state.Next().tag_ != eof) {
-    ASSERT(state.tag_stack_.size() == state.node_stack_.size());
+    NTH_ASSERT(state.tag_stack_.size() == state.node_stack_.size());
     // Shift if you are supposed to, or if you are unable to reduce.
     switch (state.shift_state()) {
       case ShiftState::ReduceHarder:
@@ -2171,7 +2167,7 @@ std::vector<std::unique_ptr<ast::Node>> Parse(
   // end()
   num_consumed = diag.num_consumed();
   switch (state.node_stack_.size()) {
-    case 0: UNREACHABLE();
+    case 0: NTH_UNREACHABLE();
     case 1:
       // TODO: log an error
       if (diag.num_consumed() > num_consumed) { return {}; }

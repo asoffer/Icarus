@@ -2,8 +2,7 @@
 
 #include <type_traits>
 
-#include "base/debug.h"
-#include "base/log.h"
+#include "nth/debug/debug.h"
 
 namespace semantic_analysis {
 
@@ -80,7 +79,7 @@ CastKind CanCast(QualifiedType from, core::Type to, TypeSystem& type_system) {
                   to.is<BufferPointerType>(type_system))
                      ? CastKind::Implicit
                      : CastKind::None;
-        case Primitive::EmptyArray: NOT_YET();
+        case Primitive::EmptyArray: NTH_UNIMPLEMENTED();
         case Primitive::Type:
         case Primitive::Module:
         case Primitive::NoReturn:
@@ -130,8 +129,8 @@ CastKind CanCast(QualifiedType from, core::Type to, TypeSystem& type_system) {
         return CastKind::None;
       }
     } else {
-      NOT_YET(DebugQualifiedType(from, type_system), " -> ",
-              DebugType(to, type_system));
+      NTH_UNIMPLEMENTED("{} -> {}") <<=
+          {DebugQualifiedType(from, type_system), DebugType(to, type_system)};
     }
     return CastKind::None;
   });
@@ -141,7 +140,8 @@ core::Type CommonType(core::Type lhs, core::Type rhs, TypeSystem& type_system) {
   if (lhs == rhs) { return lhs; }
   if (lhs == Integer) { return rhs; }
   if (rhs == Integer) { return lhs; }
-  NOT_YET(DebugType(lhs, type_system), " ~ ", DebugType(rhs, type_system));
+  NTH_UNIMPLEMENTED("{} ~ {}") <<=
+      {DebugType(lhs, type_system), DebugType(rhs, type_system)};
 }
 
 }  // namespace semantic_analysis

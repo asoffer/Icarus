@@ -28,7 +28,9 @@ inline module::Resources TestResources(
     absl::AnyInvocable<serialization::UniqueModuleId(module::ModuleName const&)
                            const>
         name_resolver = [](module::ModuleName const& name)
-        -> serialization::UniqueModuleId { UNREACHABLE(name.name()); }) {
+        -> serialization::UniqueModuleId {
+      NTH_UNREACHABLE("{}") <<= {name.name()};
+    }) {
   return module::Resources(serialization::UniqueModuleId("~test-module~"),
                            std::move(name_resolver),
                            std::make_unique<diagnostic::TrackingConsumer>());
@@ -69,7 +71,7 @@ struct Repl {
       os << "\u256e\n";
       for (std::string_view line : lines) {
         if (line.size() > indentation) { line.remove_prefix(indentation); }
-        ASSERT(length >= line.size());
+        NTH_ASSERT(length >= line.size());
         os << "    \u2502 " << line << std::string(length - line.size(), ' ')
            << " \u2502\n";
       }
@@ -179,7 +181,7 @@ struct Repl {
 
   ast::Expression const& last_expression() const {
     base::PtrSpan stmts = ast_module().stmts();
-    ASSERT(stmts.size() != 0);
+    NTH_ASSERT(stmts.size() != 0);
     return stmts.back()->as<ast::Expression>();
   }
 
@@ -243,7 +245,7 @@ struct Snippet {
     os << "\u256e\n";
     for (std::string_view line : lines) {
       if (line.size() > indentation) { line.remove_prefix(indentation); }
-      ASSERT(length >= line.size());
+      NTH_ASSERT(length >= line.size());
       os << "    \u2502 " << line << std::string(length - line.size(), ' ')
          << " \u2502\n";
     }

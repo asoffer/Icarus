@@ -30,7 +30,7 @@ VerificationTask TypeVerifier::VerifyType(ast::SliceType const *node) {
   bool error    = false;
   bool constant = true;
 
-  if (data_qts.size() != 1) { NOT_YET(); }
+  if (data_qts.size() != 1) { NTH_UNIMPLEMENTED(); }
   if (data_qts[0].type() != Type) {
     ConsumeDiagnostic(SliceDataTypeNotAType{
         .view = node->data_type().range(),

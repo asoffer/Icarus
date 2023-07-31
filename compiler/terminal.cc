@@ -12,11 +12,10 @@ namespace compiler {
   if (node->type() == nth::type<t>) {                                          \
     co_yield std::vector{Constant(T)};                                         \
     auto data = co_await nth::type<FunctionData>;                              \
-    LOG("", "%v", data.kind());                                                \
     switch (data.kind()) {                                                     \
       case EmitKind::Value: data.function().action; [[fallthrough]];           \
       case EmitKind::Statement: co_return;                                     \
-      default: UNREACHABLE();                                                  \
+      default: NTH_UNREACHABLE();                                              \
     }                                                                          \
   }
 
@@ -32,9 +31,10 @@ Compiler::Task Compiler::TaskFor(ast::Terminal const* node) {
   ICARUS_HANDLE_TERMINAL_CASE_WITH_ACTION(
       std::string, SliceType(type_system(), Char),
       AppendPushStringLiteral(node->value<std::string>()));
-  NOT_YET(node->DebugString());
+  NTH_UNIMPLEMENTED("{}") <<= {node->DebugString()};
 }
 
+#undef ICARUS_HANDLE_TERMINAL_CASE_WITH_ACTION
 #undef ICARUS_HANDLE_TERMINAL_CASE
 
 }  // namespace compiler

@@ -10,7 +10,7 @@ namespace data_types {
 
 struct Label : base::Extend<Label, 1>::With<base::AbslHashExtension> {
   explicit constexpr Label() : label_(nullptr) {}
-  explicit Label(std::string const *label) : label_(ASSERT_NOT_NULL(label)) {}
+  explicit Label(std::string const *label) : label_(NTH_ASSERT_NOT_NULL(label)) {}
 
   constexpr std::string const *get() const { return label_; }
   constexpr std::string const &operator*() const { return *label_; }

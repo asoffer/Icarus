@@ -2,7 +2,7 @@
 
 #include <utility>
 
-#include "base/debug.h"
+#include "nth/debug/debug.h"
 
 namespace serialization {
 
@@ -32,12 +32,12 @@ bool ReadOnlyData::Deserialize(proto::ReadOnlyData const& from,
 
 size_t ReadOnlyData::index(std::string const& s) const {
   auto iter = data_.find(s);
-  ASSERT(iter != data_.end());
+  NTH_ASSERT(iter != data_.end());
   return data_.index(data_.find(s));
 }
 
 std::string const& ReadOnlyData::string(size_t n) const {
-  ASSERT(n < data_.size());
+  NTH_ASSERT(n < data_.size());
   return data_.from_index(n);
 }
 

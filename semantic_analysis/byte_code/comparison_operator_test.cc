@@ -19,7 +19,7 @@ std::string_view StringOf(core::Type t) {
   if (t == U(64)) { return "u64"; }
   if (t == F32) { return "f32"; }
   if (t == F64) { return "f64"; }
-  UNREACHABLE();
+  NTH_UNREACHABLE();
 }
 
 jasmin::Value Value(core::Type t, int n) {
@@ -33,7 +33,7 @@ jasmin::Value Value(core::Type t, int n) {
   if (t == U(64)) { return jasmin::Value(static_cast<uint64_t>(n)); }
   if (t == F32) { return jasmin::Value(static_cast<float>(n)); }
   if (t == F64) { return jasmin::Value(static_cast<double>(n)); }
-  UNREACHABLE();
+  NTH_UNREACHABLE();
 }
 
 TEST_P(ComparisonOperatorTest, LessThan) {

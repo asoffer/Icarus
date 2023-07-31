@@ -3,7 +3,7 @@
 
 #include <type_traits>
 
-#include "base/debug.h"
+#include "nth/debug/debug.h"
 
 #define BASE_INTERNAL_STATIC_ASSERT_RELATED(base, derived)                     \
   static_assert(                                                               \
@@ -45,7 +45,7 @@ struct Cast {
     BASE_INTERNAL_STATIC_ASSERT_RELATED(Base, T);
 
 #if defined(ICARUS_DEBUG)
-    return std::move(*ASSERT_NOT_NULL(dynamic_cast<T *>(base())));
+    return std::move(*NTH_ASSERT_NOT_NULL(dynamic_cast<T *>(base())));
 #else   // defined(ICARUS_DEBUG)
     return std::move(*reinterpret_cast<T *>(this));
 #endif  // defined(ICARUS_DEBUG)
@@ -56,7 +56,7 @@ struct Cast {
     BASE_INTERNAL_STATIC_ASSERT_RELATED(Base, T);
 
 #if defined(ICARUS_DEBUG)
-    return *ASSERT_NOT_NULL(dynamic_cast<T const *>(base()));
+    return *NTH_ASSERT_NOT_NULL(dynamic_cast<T const *>(base()));
 #else   // defined(ICARUS_DEBUG)
     return *reinterpret_cast<T const *>(this);
 #endif  // defined(ICARUS_DEBUG)

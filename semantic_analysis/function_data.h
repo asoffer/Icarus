@@ -31,7 +31,7 @@ struct FunctionData {
 
   size_t OffsetFor(ast::Declaration::Id const *id) const {
     auto iter = variable_offsets_.find(id);
-    ASSERT(iter != variable_offsets_.end());
+    NTH_ASSERT(iter != variable_offsets_.end());
     return iter->second;
   }
 

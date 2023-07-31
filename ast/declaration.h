@@ -23,7 +23,7 @@ struct Declaration_Id : Expression {
 
   std::string_view name() const { return range(); }
   ast::Declaration const &declaration() const {
-    return *ASSERT_NOT_NULL(decl_);
+    return *NTH_ASSERT_NOT_NULL(decl_);
   }
 
   // The index of this `Id` amongst all identifiers in its declaration.

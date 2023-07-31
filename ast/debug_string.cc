@@ -21,7 +21,7 @@ char const *OpStr(UnaryOperator::Kind op) {
     case UnaryOperator::Kind::At: return "@";
     case UnaryOperator::Kind::Address: return "&";
     case UnaryOperator::Kind::BlockJump: return ">> ";
-    case UnaryOperator::Kind::TypeOf: UNREACHABLE();
+    case UnaryOperator::Kind::TypeOf: NTH_UNREACHABLE();
   }
 }
 
@@ -63,7 +63,7 @@ char const *OpStr(frontend::Operator op) {
     case frontend::Operator::Destroy: return "destroy ";
     case frontend::Operator::Move: return "move ";
     case frontend::Operator::Tilde: return "~";
-    default: UNREACHABLE();
+    default: NTH_UNREACHABLE();
   }
 }
 

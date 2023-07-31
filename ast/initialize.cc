@@ -36,11 +36,6 @@ OrderedDependencyNodes(ast::ParameterizedExpression const* node) {
   BuildParamDependencyGraph(node->parameters())
       .topologically([&](auto dep_node) {
         if (not deps.contains(dep_node)) { return; }
-        LOG("OrderedDependencyNodes", "adding %v`%v`", dep_node,
-            absl::StrJoin(dep_node.node()->ids(), ", ",
-                          [](std::string* out, ast::Declaration::Id const& id) {
-                            absl::StrAppend(out, id.name());
-                          }));
         ordered_nodes.emplace_back(0, dep_node);
       });
 
@@ -186,7 +181,7 @@ void ComparisonOperator::Initialize(Initializer& initializer) {
 }
 
 void Declaration::Initialize(Initializer& initializer) {
-  scope_ = ASSERT_NOT_NULL(initializer.scope);
+  scope_ = NTH_ASSERT_NOT_NULL(initializer.scope);
   scope_->InsertDeclaration(this);
   if (type_expr_) {
     auto* m         = std::exchange(initializer.match_against, this);
@@ -300,7 +295,7 @@ void YieldStmt::Initialize(Initializer& initializer) {
         scope_node->yields_.insert(this);
       }
     }
-    NOT_YET("Log an error due to an unknown label.");
+    NTH_UNIMPLEMENTED("Log an error due to an unknown label.");
   } else {
     initializer.scope_nodes.back()->yields_.insert(this);
   }

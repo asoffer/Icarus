@@ -6,7 +6,7 @@ namespace semantic_analysis {
 
 std::span<std::byte const> EmitterBase::EvaluateConstant(
     ast::Expression const *expr, QualifiedType qt) {
-  ASSERT(qt == context().qualified_type(expr));
+  NTH_ASSERT(qt == context().qualified_type(expr));
   auto [result_ptr, inserted] = context().insert_constant(expr);
   if (inserted) {
     // TODO: Integers are an annoying special case at the moment.
@@ -38,7 +38,7 @@ std::span<std::byte const> EmitterBase::EvaluateConstant(
       }
       return *result_ptr;
     } else {
-      NOT_YET(DebugQualifiedType(qt, type_system()));
+      NTH_UNIMPLEMENTED("{}") <<= {DebugQualifiedType(qt, type_system())};
     }
   } else {
     return *result_ptr;

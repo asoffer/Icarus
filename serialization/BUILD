@@ -24,7 +24,7 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = [
         ":function_index_proto",
-        "//base:debug",
+        "@asoffer_nth//nth/debug",
     ],
 )
 
@@ -53,9 +53,10 @@ cc_library(
     deps = [
         ":foreign_symbol_map_proto",
         ":function_index",
-        "//base:debug",
         "//core/type_system:type",
         "@asoffer_nth//nth/container:flyweight_map",
+        "@asoffer_nth//nth/debug",
+        "@com_google_absl//absl/container:flat_hash_map",
     ],
 )
 
@@ -110,9 +111,9 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = [
         ":module_index",
-        "//base:debug",
         "//serialization:read_only_data_proto",
         "@asoffer_nth//nth/container:flyweight_set",
+        "@asoffer_nth//nth/debug",
         "@com_google_absl//absl/container:flat_hash_map",
     ],
 )
@@ -135,7 +136,7 @@ cc_library(
     hdrs = ["unique_module_id.h"],
     visibility = ["//visibility:public"],
     deps = [
-        "//base:debug",
+        "@asoffer_nth//nth/debug",
     ],
 )
 
@@ -147,7 +148,7 @@ cc_library(
     deps = [
         ":module_index",
         ":type_system",
-        "//base:debug",
+        "@asoffer_nth//nth/debug",
         "@com_google_absl//absl/container:flat_hash_map",
     ],
 )

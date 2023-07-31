@@ -30,7 +30,7 @@ Compiler::Task Compiler::TaskFor(ast::SliceType const *node) {
   bool error    = false;
   bool constant = true;
 
-  if (data_qts.size() != 1) { NOT_YET(); }
+  if (data_qts.size() != 1) { NTH_UNIMPLEMENTED(); }
   if (data_qts[0].type() != Type) {
     ConsumeDiagnostic(SliceDataTypeNotAType{
         .view = node->data_type().range(),
@@ -47,20 +47,16 @@ Compiler::Task Compiler::TaskFor(ast::SliceType const *node) {
 
   auto data = co_await nth::type<FunctionData>;
   data_type_task.complete();
-  LOG("", "Here");
   switch (data.kind()) {
     case EmitKind::Value:
       data.function().AppendPush(&type_system());
       data.function().AppendMakeSliceType();
-  LOG("", "Here");
       break;
     case EmitKind::Statement: 
 
-  LOG("", "Here");
       break;
-    default: UNREACHABLE();
+    default: NTH_UNREACHABLE();
   }
-  LOG("", "Here");
   co_return;
 }
 

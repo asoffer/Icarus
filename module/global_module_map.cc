@@ -1,6 +1,6 @@
 #include "module/global_module_map.h"
 
-#include "base/debug.h"
+#include "nth/debug/debug.h"
 
 namespace module {
 
@@ -18,7 +18,7 @@ serialization::ModuleIndex GlobalModuleMap::read(
   if (dep_index == serialization::ModuleIndex::Self()) { return module_index; }
   if (dep_index == serialization::ModuleIndex::Builtin()) { return dep_index; }
   auto iter = mapping_.find(std::pair(module_index, dep_index));
-  ASSERT(iter != mapping_.end());
+  NTH_ASSERT(iter != mapping_.end());
   return iter->second;
 }
 

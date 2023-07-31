@@ -13,7 +13,7 @@ void DebugType(std::ostream& os, core::Type t, TypeSystem& ts) {
         "integer", "module", "no-return", "empty-array", "nullptr", "error"};
     size_t value =
         static_cast<std::underlying_type_t<decltype(p->value())>>(p->value());
-    ASSERT(value < kPrimitiveTypes.size());
+    NTH_ASSERT(value < kPrimitiveTypes.size());
     os << kPrimitiveTypes[value];
   } else if (auto p = t.get_if<core::PointerType>(ts)) {
     os << "*(";
@@ -152,7 +152,7 @@ core::TypeContour ContourOf(core::Type t, TypeSystem& ts) {
     };
     size_t value =
         static_cast<std::underlying_type_t<decltype(p->value())>>(p->value());
-    ASSERT(value < kPrimitiveTypes.size());
+    NTH_ASSERT(value < kPrimitiveTypes.size());
     return kPrimitiveTypes[value];
   } else if (t.is<core::PointerType>(ts) or t.is<BufferPointerType>(ts)) {
     return core::TypeContour::Get<void*>();
@@ -163,7 +163,7 @@ core::TypeContour ContourOf(core::Type t, TypeSystem& ts) {
       return core::TypeContour(core::Bytes{static_cast<int64_t>(result)},
                                core::Alignment{result});
     } else {
-      NOT_YET(DebugType(t, ts));
+      NTH_UNIMPLEMENTED("{}") <<= {DebugType(t, ts)};
     }
   } else if (auto s = t.get_if<SliceType>(ts)) {
     // TODO: Take architecture into account.
@@ -180,7 +180,7 @@ core::TypeContour ContourOf(core::Type t, TypeSystem& ts) {
     // TODO: Are all enums going to be 64-bits?
     return core::TypeContour::Get<uint64_t>();
   } else {
-    NOT_YET(DebugType(t, ts));
+    NTH_UNIMPLEMENTED("{}") <<= {DebugType(t, ts)};
   }
 }
 

@@ -4,7 +4,7 @@
 #include <cstdint>
 #include <ostream>
 
-#include "base/debug.h"
+#include "nth/debug/debug.h"
 #include "serialization/proto/function_index.pb.h"
 
 namespace serialization {

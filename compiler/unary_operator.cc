@@ -305,7 +305,7 @@ Compiler::Task TaskForNegate(ast::UnaryOperator const *node,
         operand_type, [&]<jasmin::Negatable T>() requires(std::is_signed_v<T>) {
           data.function().AppendNegate<T>();
         });
-    if (not found) { NOT_YET(DebugType(operand_type, c.type_system())); }
+    if (not found) { NTH_UNIMPLEMENTED("{}") <<= {DebugType(operand_type, c.type_system())}; }
   }
 }
 
@@ -377,7 +377,7 @@ Compiler::Task Compiler::TaskFor(ast::UnaryOperator const *node) {
     case ast::UnaryOperator::Kind::Not:
       co_await TaskForNot(node, operand_task, operand_qt, *this);
       break;
-    default: UNREACHABLE(node->DebugString());
+    default: NTH_UNREACHABLE("{}") <<= {node->DebugString()};
   }
 }
 

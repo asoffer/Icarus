@@ -55,7 +55,7 @@ void BuiltinForeignFunction::execute(
   auto const& parameters = fn_type.parameters();
   std::span returns      = fn_type.returns();
   auto [fn_index, f]     = table->emplace(parameters.size(), returns.size());
-  ASSERT(returns.size() <= 1);
+  NTH_ASSERT(returns.size() <= 1);
   f->AppendInvokeForeignFunction(foreign_symbol_map->function(index), fn_type);
   f->AppendReturn();
   value_stack.push(f);
@@ -98,7 +98,7 @@ void InvokeForeignFunction::execute(
   ffi_status status =
       ffi_prep_cif(&call_interface, FFI_DEFAULT_ABI, argument_types.size(),
                    return_type, argument_types.data());
-  ASSERT(status == FFI_OK);
+  NTH_ASSERT(status == FFI_OK);
 
   ffi_arg return_value;
   ffi_call(&call_interface, fn_ptr, &return_value, argument_values.data());
@@ -160,14 +160,14 @@ void InvokeForeignFunction::serialize(jasmin::Serializer& serializer,
   }
   core::Type t = core::FunctionType(
       ts, core::ParameterType(ts, std::move(params)), std::move(rets));
-  ASSERT(values.size() == 4);
+  NTH_ASSERT(values.size() == 4);
   serializer(jasmin::Value(state.index(t, values[0].as<void (*)()>())));
 }
 
 bool InvokeForeignFunction::deserialize(jasmin::Deserializer& deserializer,
                                         std::span<jasmin::Value> values,
                                         serialization_state& state) {
-  ASSERT(values.size() == 4);
+  NTH_ASSERT(values.size() == 4);
   jasmin::Value index = jasmin::Value::Uninitialized();
   if (not deserializer(index)) { return false; }
 
@@ -186,7 +186,7 @@ bool InvokeForeignFunction::deserialize(jasmin::Deserializer& deserializer,
 void PushStringLiteral::serialize(jasmin::Serializer& serializer,
                                   std::span<jasmin::Value const> values,
                                   serialization_state& state) {
-  ASSERT(values.size() == 2);
+  NTH_ASSERT(values.size() == 2);
   // TODO: Change this to string_view once nth::flyweight_set supports
   // heterogeneous lookup.
   auto [index, inserted] = state.insert(
@@ -197,7 +197,7 @@ void PushStringLiteral::serialize(jasmin::Serializer& serializer,
 bool PushStringLiteral::deserialize(jasmin::Deserializer& deserializer,
                                     std::span<jasmin::Value> values,
                                     serialization_state& state) {
-  ASSERT(values.size() == 2);
+  NTH_ASSERT(values.size() == 2);
   size_t index;
   if (not deserializer(index)) { return false; }
   std::string_view s = state.string(index);
@@ -224,11 +224,11 @@ void PushFunction::serialize(jasmin::Serializer& serializer,
                              std::span<jasmin::Value const> values,
                              serialization_state& state) {
   auto& fn_map = std::get<2>(state);
-  ASSERT(values.size() == 1);
+  NTH_ASSERT(values.size() == 1);
   auto* ir_fn                   = values[0].as<Function*>();
   auto [module_index, fn_index] = fn_map.find(ir_fn);
-  ASSERT(module_index != serialization::ModuleIndex::Invalid());
-  ASSERT(fn_index != serialization::FunctionIndex::Invalid());
+  NTH_ASSERT(module_index != serialization::ModuleIndex::Invalid());
+  NTH_ASSERT(fn_index != serialization::FunctionIndex::Invalid());
   serializer(module_index.value());
   serializer(fn_index.value());
 }
@@ -237,14 +237,14 @@ bool PushFunction::deserialize(jasmin::Deserializer& deserializer,
                                std::span<jasmin::Value> values,
                                serialization_state& state) {
   auto& [current_index, module_map, fn_map] = state;
-  ASSERT(values.size() == 1);
+  NTH_ASSERT(values.size() == 1);
   serialization::ModuleIndex::underlying_type module_index;
   serialization::FunctionIndex::underlying_type function_index;
   if (not deserializer(module_index)) { return false; }
   if (not deserializer(function_index)) { return false; }
   auto index =
       module_map.read(current_index, serialization::ModuleIndex(module_index));
-  auto* f = ASSERT_NOT_NULL(
+  auto* f = NTH_ASSERT_NOT_NULL(
       fn_map.find(index, serialization::FunctionIndex(function_index)));
   values[0] = f;
   return true;
@@ -263,7 +263,7 @@ void TranslateFunctionArguments::execute(
   values.reserve(parameters->size());
   for (auto iter = parameters->rbegin(); iter != parameters->rend(); ++iter) {
     values.push_back(value_stack.pop_value());
-    if (iter->value == semantic_analysis::Type) { NOT_YET(); }
+    if (iter->value == semantic_analysis::Type) { NTH_UNIMPLEMENTED(); }
   }
 
   for (auto iter = values.rbegin(); iter != values.rend(); ++iter) {

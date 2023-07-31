@@ -6,8 +6,7 @@
 #include <vector>
 
 #include "ast/node.h"
-#include "base/debug.h"
-#include "base/log.h"
+#include "nth/debug/debug.h"
 #include "diagnostic/consumer/consumer.h"
 #include "frontend/lex/tag.h"
 

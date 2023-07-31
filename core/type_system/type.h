@@ -7,7 +7,7 @@
 #include <cstring>
 #include <optional>
 
-#include "base/debug.h"
+#include "nth/debug/debug.h"
 
 namespace core {
 namespace internal_type {
@@ -95,7 +95,7 @@ struct Type {
   // `t == static_cast<Type>(t.get<Category>(sys))`
   template <typename Category>
   Category get(TypeSystemSupporting<Category> auto& sys) const {
-    ASSERT(this->is<Category>(sys));
+    NTH_ASSERT(this->is<Category>(sys));
     return Category::Construct(*this, sys);
   }
 

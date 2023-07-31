@@ -49,7 +49,7 @@ void ByteCodeValueEmitter::operator()(ast::Call const* node,
         goto next_expr;
       }
       
-      NOT_YET("Default arguments not yet supported.");
+      NTH_UNIMPLEMENTED("Default arguments not yet supported.");
     next_expr:;
     }
 
@@ -72,7 +72,7 @@ void ByteCodeValueEmitter::operator()(ast::Call const* node,
         CastTo(&argument.expr(), QualifiedType(iter->value), data);
         goto next_typed_fn;
       }
-      NOT_YET("Default arguments not yet supported.");
+      NTH_UNIMPLEMENTED("Default arguments not yet supported.");
     next_typed_fn:;
     }
 

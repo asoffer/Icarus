@@ -62,7 +62,7 @@ cc_toolchain_config(
         "-Wno-sign-compare",
         "-Wno-unused-parameter",
         "-Wno-unused-variable",
-        "-Wno-overloaded-shift-op-parentheses", # because of ASSERT macro.
+        "-Wno-overloaded-shift-op-parentheses", # because of NTH_ASSERT macro.
         "-Wno-unused-command-line-argument",
         "-Wno-deprecated-non-prototype",
         "-Wuninitialized",

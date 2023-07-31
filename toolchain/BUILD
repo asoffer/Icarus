@@ -8,9 +8,9 @@ cc_library(
     srcs = ["bazel.cc"],
     deps = [
         "//module:module_name",
-        "//base:debug",
         "//base:file",
         "//serialization:unique_module_id",
+        "@asoffer_nth//nth/debug",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/functional:any_invocable",
         "@com_google_absl//absl/container:flat_hash_map",
@@ -43,7 +43,6 @@ cc_binary(
         ":bazel",
         ":flags",
         "//base:file",
-        "//base:log",
         "//frontend:parse",
         "//module",
         "//module:resources",

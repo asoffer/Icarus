@@ -3,7 +3,7 @@
 
 #include <cstdio>
 
-#include "base/debug.h"
+#include "nth/debug/debug.h"
 #include "diagnostic/console_renderer.h"
 #include "diagnostic/consumer/consumer.h"
 #include "diagnostic/message.h"

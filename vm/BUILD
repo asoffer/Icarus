@@ -38,7 +38,6 @@ cc_library(
     deps = [
         ":argument_slice",
         ":immediate_values",
-        "//base:debug",
         "//core/type_system",
         "//core/type_system:type",
         "//data_types:addr",
@@ -63,6 +62,7 @@ cc_library(
         "@asoffer_jasmin//jasmin:serialization",
         "@asoffer_jasmin//jasmin:value",
         "@asoffer_jasmin//jasmin:value_stack",
+        "@asoffer_nth//nth/debug",
         "@com_google_absl//absl/container:btree",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/numeric:int128",

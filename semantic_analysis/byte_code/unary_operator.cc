@@ -31,7 +31,7 @@ void ByteCodeValueEmitter::operator()(ast::UnaryOperator const *node,
             type, [&]<jasmin::Negatable T>() requires(std::is_signed_v<T>) {
               data.function().AppendNegate<T>();
             });
-        if (not found) { NOT_YET(DebugType(type, type_system())); }
+        if (not found) { NTH_UNIMPLEMENTED("{}") <<= {DebugType(type, type_system())}; }
       }
     } break;
     case ast::UnaryOperator::Kind::At: {
@@ -43,7 +43,7 @@ void ByteCodeValueEmitter::operator()(ast::UnaryOperator const *node,
     case ast::UnaryOperator::Kind::Address: {
       as<ByteCodeReferenceEmitter>().Emit(node->operand(), data);
     } break;
-    default: NOT_YET(node->DebugString());
+    default: NTH_UNIMPLEMENTED("{}") <<= {node->DebugString()};
   }
 }
 
@@ -60,10 +60,10 @@ void ByteCodeStatementEmitter::operator()(ast::UnaryOperator const *node,
       Emit(node->operand(), data);
       if (type != Integer) {
         bool found = WithPrimitiveType(type, [&]<jasmin::Negatable T> {});
-        if (not found) { NOT_YET(DebugType(type, type_system())); }
+        if (not found) { NTH_UNIMPLEMENTED("{}") <<= {DebugType(type, type_system())}; }
       }
     } break;
-    default: NOT_YET();
+    default: NTH_UNIMPLEMENTED();
   }
 }
 

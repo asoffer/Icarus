@@ -9,7 +9,7 @@ VerificationTask TypeVerifier::VerifyType(ast::ReturnStmt const* node) {
     std::span qts = co_await VerifyTypeOf(expr);
     for (QualifiedType qt : qts) {
       if (qt.qualifiers() >= Qualifiers::Error()) {
-        NOT_YET();
+        NTH_UNIMPLEMENTED();
       } else {
         return_types.push_back(qt);
       }

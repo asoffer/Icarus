@@ -66,14 +66,20 @@ cc_library(
     name = "operators",
     hdrs = ["operators.h"],
     textual_hdrs = ["operators.xmacro.h"],
-    deps = [":tag", "//base:debug"],
+    deps = [
+        ":tag",
+        "@asoffer_nth//nth/debug",
+    ],
 )
 
 cc_library(
     name = "syntax",
     hdrs = ["syntax.h"],
     textual_hdrs = ["syntax.xmacro.h"],
-    deps = [":tag", "//base:debug"],
+    deps = [
+        ":tag",
+        "@asoffer_nth//nth/debug",
+    ],
 )
 
 cc_library(
@@ -98,6 +104,6 @@ cc_library(
     deps = [
         ":operators",
         "//ast:node",
-        "//base:debug",
+        "@asoffer_nth//nth/debug",
     ],
 )

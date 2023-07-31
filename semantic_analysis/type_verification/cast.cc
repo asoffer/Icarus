@@ -53,7 +53,7 @@ struct NoViableCast {
 
 VerificationTask TypeVerifier::VerifyType(ast::Cast const* node) {
   std::span type_qts = co_await VerifyTypeOf(node->type());
-  if (type_qts.size() != 1) { NOT_YET("Log an error"); }
+  if (type_qts.size() != 1) { NTH_UNIMPLEMENTED("Log an error"); }
 
   if (type_qts[0].type() != Type) {
     ConsumeDiagnostic(NonTypeInDeclaration{
@@ -69,7 +69,7 @@ VerificationTask TypeVerifier::VerifyType(ast::Cast const* node) {
   }
 
   std::span expr_qts = co_await VerifyTypeOf(node->expr());
-  if (expr_qts.size() != 1) { NOT_YET("Log an error"); }
+  if (expr_qts.size() != 1) { NTH_UNIMPLEMENTED("Log an error"); }
   QualifiedType qt = expr_qts[0];
 
   core::Type t = EvaluateAs<core::Type>(node->type());

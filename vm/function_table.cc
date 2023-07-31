@@ -1,12 +1,12 @@
 #include "function_table.h"
 
-#include "base/debug.h"
+#include "nth/debug/debug.h"
 
 namespace vm {
 
 Function const& FunctionTable::function(
     serialization::FunctionIndex index) const {
-  ASSERT(index.value() < functions_.size());
+  NTH_ASSERT(index.value() < functions_.size());
   return functions_[index.value()];
 }
 

@@ -72,7 +72,7 @@ struct TypeCategory {
     using base_type = nth::flyweight_set<state_type_tuple>;
 
     auto const& from_index(size_t index) {
-      ASSERT(index < this->size());
+      NTH_ASSERT(index < this->size());
       return base_type::from_index(index);
     }
     using base_type::index;
@@ -127,12 +127,12 @@ struct TypeCategory {
   }
 
   friend bool operator==(TypeCategory const& lhs, TypeCategory const& rhs) {
-    ASSERT(lhs.manager_ == rhs.manager_);
+    NTH_ASSERT(lhs.manager_ == rhs.manager_);
     return lhs.type_ == rhs.type_;
   }
 
   friend bool operator!=(TypeCategory const& lhs, TypeCategory const& rhs) {
-    ASSERT([&] {
+    NTH_ASSERT([&] {
       return lhs.manager_ == rhs.manager_ or lhs.manager_ == nullptr or
              rhs.manager_ == nullptr;
     }());
@@ -148,7 +148,7 @@ struct TypeCategory {
 
   static CrtpDerived Construct(Type t,
                                TypeSystemSupporting<CrtpDerived> auto& sys) {
-    ASSERT(t.template is<CrtpDerived>(sys));
+    NTH_ASSERT(t.template is<CrtpDerived>(sys));
     static_assert(std::is_standard_layout_v<CrtpDerived>);
     static_assert(sizeof(CrtpDerived) == sizeof(TypeCategory));
     // TODO: These requirements *should* make it safe to type-pun the object

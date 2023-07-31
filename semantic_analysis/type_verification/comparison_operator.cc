@@ -62,7 +62,7 @@ Relation Comparison(core::Type lhs, core::Type rhs, TypeSystem &ts) {
     return le == rhs ? Relation::Comparable : Relation::Unordered;
   }
 
-  NOT_YET(DebugType(lhs, ts), DebugType(rhs, ts));
+  NTH_UNIMPLEMENTED("{} {}") <<= {DebugType(lhs, ts), DebugType(rhs, ts)};
 }
 
 }  // namespace

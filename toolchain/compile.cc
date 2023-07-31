@@ -11,7 +11,6 @@
 #include "absl/flags/parse.h"
 #include "absl/strings/str_format.h"
 #include "base/file.h"
-#include "base/log.h"
 #include "frontend/parse.h"
 #include "module/module.h"
 #include "module/resources.h"
@@ -20,8 +19,6 @@
 #include "toolchain/bazel.h"
 #include "toolchain/flags.h"
 
-ABSL_FLAG(std::vector<std::string>, log, {},
-          "Comma-separated list of log keys");
 ABSL_FLAG(std::string, diagnostics, "console",
           "Indicates how diagnostics should be emitted. Options: console "
           "(default).");
@@ -92,7 +89,7 @@ bool Compile(serialization::UniqueModuleId module_id,
     return false;
   }
   auto name_resolver = BazelNameResolver(std::move(specification->names));
-  ASSERT(name_resolver != nullptr);
+  NTH_ASSERT(name_resolver != nullptr);
   auto &diagnostic_consumer_ref = **diagnostic_consumer;
   module::Resources resources(std::move(module_id), std::move(name_resolver),
                               std::move(*diagnostic_consumer));
@@ -169,9 +166,6 @@ int main(int argc, char *argv[]) {
 
   std::string module_id = absl::GetFlag(FLAGS_module_identifier);
   toolchain::ValidateModuleIdentifier(module_id);
-
-  std::vector<std::string> log_keys = absl::GetFlag(FLAGS_log);
-  for (std::string_view key : log_keys) { base::EnableLogging(key); }
 
   std::string output = absl::GetFlag(FLAGS_output);
   toolchain::ValidateOutputPath(output);

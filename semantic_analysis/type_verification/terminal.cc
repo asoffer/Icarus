@@ -16,7 +16,7 @@ core::Type TypeOfNode(ast::Terminal const& node, TypeSystem& type_system) {
   if (node.type() == nth::type<std::string>) {
     return SliceType(type_system, Char);
   }
-  NOT_YET(node.DebugString());
+  NTH_UNIMPLEMENTED("{}") <<= {node.DebugString()};
 }
 
 }  // namespace

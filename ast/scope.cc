@@ -10,7 +10,6 @@ void Scope::InsertDeclaration(ast::Declaration const *decl) {
     if (id.name() == "move" or id.name() == "copy" or id.name() == "destroy") {
       continue;
     }
-    LOG("Scope", "Inserting a declaration of `%s` into %p", id.name(), this);
     decls_[id.name()].push_back(&id);
     for (auto *scope_ptr = parent(); scope_ptr;
          scope_ptr       = scope_ptr->parent()) {
@@ -29,7 +28,7 @@ Scope::Scope() : parent_(1), kind_(Kind::BoundaryExecutable) {
 }
 
 void Scope::set_parent(Scope *p) {
-  ASSERT(parent_ == 0u);
+  NTH_ASSERT(parent_ == 0u);
   parent_  = reinterpret_cast<uintptr_t>(p);
   Scope *s = this;
   if (s->kind() != Kind::BoundaryExecutable) {
@@ -41,7 +40,7 @@ void Scope::set_parent(Scope *p) {
 
 Scope::declaration_ancestor_iterator::declaration_ancestor_iterator(
     Scope const *p, std::string_view name, bool only_visible)
-    : p_(ASSERT_NOT_NULL(p)), only_visible_(only_visible) {
+    : p_(NTH_ASSERT_NOT_NULL(p)), only_visible_(only_visible) {
   GetDeclsAndFindNext(name);
 }
 
@@ -63,14 +62,14 @@ void Scope::declaration_ancestor_iterator::GetDeclsAndFindNext(
     IncrementScope(name);
   } else {
     ids_ = iter->second;
-    ASSERT(ids_.size() != 0);
+    NTH_ASSERT(ids_.size() != 0);
     FindNext(name);
   }
 }
 
 void Scope::declaration_ancestor_iterator::IncrementScope(
     std::string_view name) {
-  switch (ASSERT_NOT_NULL(p_)->kind()) {
+  switch (NTH_ASSERT_NOT_NULL(p_)->kind()) {
     case Kind::Declarative:
     case Kind::BoundaryExecutable:
       if (only_visible_) { only_constants_ = true; }

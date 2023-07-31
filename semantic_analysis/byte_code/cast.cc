@@ -25,7 +25,7 @@ void ByteCodeValueEmitter::CastTo(ast::Expression const* node,
 
   if (from_qt.type() == Integer) {
     std::span<std::byte const> evaluation = EvaluateConstant(node, from_qt);
-    ASSERT(sizeof(absl::int128 const*) == evaluation.size());
+    NTH_ASSERT(sizeof(absl::int128 const*) == evaluation.size());
     absl::int128 const* i;
     std::memcpy(&i, evaluation.data(), sizeof(i));
     // TODO: Actually validate that the number is properly bounded.
@@ -58,8 +58,8 @@ void ByteCodeValueEmitter::CastTo(ast::Expression const* node,
       uintptr_t value = absl::Int128Low64(*i);
       data.function().AppendPush(static_cast<uint64_t>(value));
     } else {
-      NOT_YET(DebugType(to_qt.type(), type_system()), " ",
-              DebugType(from_qt.type(), type_system()));
+      NTH_UNIMPLEMENTED("{} {}") <<= {DebugType(to_qt.type(), type_system()),
+                                      DebugType(from_qt.type(), type_system())};
     }
   } else if (auto from =
                  from_qt.type().get_if<core::SizedIntegerType>(type_system())) {
@@ -78,19 +78,20 @@ void ByteCodeValueEmitter::CastTo(ast::Expression const* node,
               .to_bits   = static_cast<uint32_t>(to->bits())});
         }
       } else {
-        ASSERT(from->is_signed() == false);
+        NTH_ASSERT(from->is_signed() == false);
         data.function().AppendZeroExtendUnsignedUnsigned(vm::ZeroExtendOptions{
             .from_bits = static_cast<uint32_t>(from->bits()),
             .to_bits   = static_cast<uint32_t>(to->bits())});
       }
     } else {
-      NOT_YET();
+      NTH_UNIMPLEMENTED();
     }
   } else if (auto from = from_qt.type() == NullPtr) {
     Emit(node, data);
   } else {
-    NOT_YET(DebugQualifiedType(from_qt, type_system()), " -> ",
-            DebugQualifiedType(to_qt, type_system()));
+    NTH_UNIMPLEMENTED("{} -> {}") <<=
+        {DebugQualifiedType(from_qt, type_system()),
+         DebugQualifiedType(to_qt, type_system())};
   }
 }
 

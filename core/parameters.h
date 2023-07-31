@@ -7,7 +7,7 @@
 #include <vector>
 
 #include "absl/container/flat_hash_map.h"
-#include "base/debug.h"
+#include "nth/debug/debug.h"
 #include "base/extend.h"
 #include "base/extend/absl_hash.h"
 #include "base/extend/equality.h"
@@ -221,14 +221,14 @@ struct Parameters
   // Returns a reference to the element at index `i`. Behavior is undefined if
   // `i` is greater than `this->size()`.
   parameter_type const& operator[](size_t i) const& {
-    ASSERT(i < params_.size());
+    NTH_ASSERT(i < params_.size());
     return params_[i];
   }
 
   // Returns a reference to the element at index `i`. Behavior is undefined if
   // `i` is greater than `this->size()`.
   parameter_type& operator[](size_t i) & {
-    ASSERT(i < params_.size());
+    NTH_ASSERT(i < params_.size());
     return params_[i];
   }
 
@@ -238,7 +238,7 @@ struct Parameters
     for (auto const& param : params_) {
       if (param.name == s) { return param; }
     }
-    UNREACHABLE();
+    NTH_UNREACHABLE();
   }
 
   // Returns a reference to the element named `s`. Behavior is undefined if no
@@ -247,7 +247,7 @@ struct Parameters
     for (auto& param : params_) {
       if (param.name == s) { return param; }
     }
-    UNREACHABLE();
+    NTH_UNREACHABLE();
   }
 
   void append(parameter_type const& p) { params_.push_back(p); }

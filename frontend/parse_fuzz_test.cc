@@ -2,7 +2,6 @@
 #include <string>
 #include <string_view>
 
-#include "base/log.h"
 #include "diagnostic/consumer/trivial.h"
 #include "frontend/parse.h"
 

@@ -13,43 +13,51 @@ enum class VisitationKind { Type, ReturnType };
 struct StringifyExpression {
   using signature = std::string();
   explicit StringifyExpression(Context const *c, TypeSystem *ts)
-      : context_(*ASSERT_NOT_NULL(c)), type_system_(*ASSERT_NOT_NULL(ts)) {}
+      : context_(*NTH_ASSERT_NOT_NULL(c)), type_system_(*NTH_ASSERT_NOT_NULL(ts)) {}
 
   std::string operator()(ast::Node const *node) {
-    return ASSERT_NOT_NULL(node)->visit<StringifyExpression>(*this);
+    return NTH_ASSERT_NOT_NULL(node)->visit<StringifyExpression>(*this);
   }
 
   std::string operator()(ast::Access const *node) {
     return absl::StrCat(operator()(node->operand()), ".", node->member_name());
   }
 
-  std::string operator()(ast::ArrayLiteral const *node) { NOT_YET(); }
+  std::string operator()(ast::ArrayLiteral const *node) { NTH_UNIMPLEMENTED(); }
 
-  std::string operator()(ast::ArrayType const *node) { NOT_YET(); }
+  std::string operator()(ast::ArrayType const *node) { NTH_UNIMPLEMENTED(); }
 
-  std::string operator()(ast::BinaryOperator const *node) { NOT_YET(); }
+  std::string operator()(ast::BinaryOperator const *node) {
+    NTH_UNIMPLEMENTED();
+  }
 
-  std::string operator()(ast::Cast const *node) { NOT_YET(); }
+  std::string operator()(ast::Cast const *node) { NTH_UNIMPLEMENTED(); }
 
-  std::string operator()(ast::Call const *node) { NOT_YET(); }
+  std::string operator()(ast::Call const *node) { NTH_UNIMPLEMENTED(); }
 
-  std::string operator()(ast::Declaration::Id const *node) { NOT_YET(); }
+  std::string operator()(ast::Declaration::Id const *node) {
+    NTH_UNIMPLEMENTED();
+  }
 
-  std::string operator()(ast::DesignatedInitializer const *node) { NOT_YET(); }
+  std::string operator()(ast::DesignatedInitializer const *node) {
+    NTH_UNIMPLEMENTED();
+  }
 
-  std::string operator()(ast::FunctionLiteral const *node) { NOT_YET(); }
+  std::string operator()(ast::FunctionLiteral const *node) {
+    NTH_UNIMPLEMENTED();
+  }
 
   std::string operator()(ast::Identifier const *node) {
     return std::string(node->name());
   }
 
-  std::string operator()(ast::Import const *node) { NOT_YET(); }
+  std::string operator()(ast::Import const *node) { NTH_UNIMPLEMENTED(); }
 
-  std::string operator()(ast::Index const *node) { NOT_YET(); }
+  std::string operator()(ast::Index const *node) { NTH_UNIMPLEMENTED(); }
 
-  std::string operator()(ast::Module const *node) { NOT_YET(); }
+  std::string operator()(ast::Module const *node) { NTH_UNIMPLEMENTED(); }
 
-  std::string operator()(ast::PatternMatch const *node) { NOT_YET(); }
+  std::string operator()(ast::PatternMatch const *node) { NTH_UNIMPLEMENTED(); }
 
   std::string operator()(ast::Terminal const *node) {
     return std::string(node->range());
@@ -68,16 +76,16 @@ struct StringifyExpression {
 struct StringifyType {
   using signature = std::string();
   explicit StringifyType(Context const *c, TypeSystem *ts, VisitationKind kind)
-      : context_(*ASSERT_NOT_NULL(c)),
-        type_system_(*ASSERT_NOT_NULL(ts)),
+      : context_(*NTH_ASSERT_NOT_NULL(c)),
+        type_system_(*NTH_ASSERT_NOT_NULL(ts)),
         kind_(kind) {}
 
   std::string operator()(ast::Node const *node) {
-    return ASSERT_NOT_NULL(node)->visit<StringifyType>(*this);
+    return NTH_ASSERT_NOT_NULL(node)->visit<StringifyType>(*this);
   }
 
   std::string operator()(ast::Access const *node) {
-    NOT_YET(node->DebugString());
+    NTH_UNIMPLEMENTED("{}") <<= {node->DebugString()};
   }
 
   std::string operator()(ast::ArrayLiteral const *node) {
@@ -93,7 +101,9 @@ struct StringifyType {
 
   std::string operator()(ast::ArrayType const *node) { return "type"; }
 
-  std::string operator()(ast::BinaryOperator const *node) { NOT_YET(); }
+  std::string operator()(ast::BinaryOperator const *node) {
+    NTH_UNIMPLEMENTED();
+  }
 
   std::string operator()(ast::Cast const *node) {
     return ExpressionForDiagnostic(*node->type(), context_, type_system_);
@@ -108,15 +118,15 @@ struct StringifyType {
       if (auto const *id = symbol.get_if<ast::Declaration::Id>()) {
         return operator()(id);
       } else {
-        NOT_YET();
+        NTH_UNIMPLEMENTED();
       }
     } else {
-      NOT_YET(node->DebugString());
+      NTH_UNIMPLEMENTED("{}") <<= {node->DebugString()};
     }
   }
 
   std::string operator()(ast::Declaration::Id const *node) {
-    if (node->declaration().ids().size() != 1) { NOT_YET(); }
+    if (node->declaration().ids().size() != 1) { NTH_UNIMPLEMENTED(); }
     if (auto *type_expr = node->declaration().type_expr()) {
       return ExpressionForDiagnostic(*type_expr, context_, type_system_);
     } else {
@@ -124,7 +134,9 @@ struct StringifyType {
     }
   }
 
-  std::string operator()(ast::DesignatedInitializer const *node) { NOT_YET(); }
+  std::string operator()(ast::DesignatedInitializer const *node) {
+    NTH_UNIMPLEMENTED();
+  }
 
   std::string operator()(ast::FunctionLiteral const *node) {
     switch (kind_) {
@@ -145,11 +157,11 @@ struct StringifyType {
             return absl::StrCat("(", comma_separated_types, ")");
           }
         } else {
-          NOT_YET();
+          NTH_UNIMPLEMENTED();
         }
       } break;
       case VisitationKind::Type: {
-        NOT_YET();
+        NTH_UNIMPLEMENTED();
       } break;
     }
   }
@@ -161,11 +173,11 @@ struct StringifyType {
 
   std::string operator()(ast::Import const *node) { return "module"; }
 
-  std::string operator()(ast::Index const *node) { NOT_YET(); }
+  std::string operator()(ast::Index const *node) { NTH_UNIMPLEMENTED(); }
 
-  std::string operator()(ast::Module const *node) { NOT_YET(); }
+  std::string operator()(ast::Module const *node) { NTH_UNIMPLEMENTED(); }
 
-  std::string operator()(ast::PatternMatch const *node) { NOT_YET(); }
+  std::string operator()(ast::PatternMatch const *node) { NTH_UNIMPLEMENTED(); }
 
   std::string operator()(ast::Terminal const *node) {
     core::Type t = context_.qualified_type(node).type();
@@ -175,20 +187,20 @@ struct StringifyType {
           "type", "integer", "module", "empty-array", "error"};
       size_t value =
           static_cast<std::underlying_type_t<decltype(p->value())>>(p->value());
-      ASSERT(value < kPrimitiveTypes.size());
+      NTH_ASSERT(value < kPrimitiveTypes.size());
       return kPrimitiveTypes[value];
     } else if (auto i = t.get_if<core::SizedIntegerType>(type_system_)) {
       std::string result =
           absl::StrCat((i->is_signed() ? "i" : "u"), i->bits());
       if (i->alignment() !=
           core::SizedIntegerType::DefaultAlignment(i->bits())) {
-        NOT_YET();
+        NTH_UNIMPLEMENTED();
       }
       return result;
     } else if (auto i = t.get_if<SliceType>(type_system_)) {
       return "[/]char";
     } else {
-      NOT_YET(node->DebugString());
+      NTH_UNIMPLEMENTED("{}") <<= {node->DebugString()};
     }
   }
 
@@ -198,7 +210,7 @@ struct StringifyType {
       case ast::UnaryOperator::Kind::Init:
       case ast::UnaryOperator::Kind::Copy:
       case ast::UnaryOperator::Kind::Move: return (*this)(node->operand());
-      case ast::UnaryOperator::Kind::Destroy: UNREACHABLE();
+      case ast::UnaryOperator::Kind::Destroy: NTH_UNREACHABLE();
       case ast::UnaryOperator::Kind::BufferPointer: return "type";
       case ast::UnaryOperator::Kind::TypeOf: return "type";
       case ast::UnaryOperator::Kind::At:
@@ -215,7 +227,8 @@ struct StringifyType {
             t.is<core::SizedIntegerType>(type_system_)) {
           return (*this)(node->operand());
         } else {
-          NOT_YET(node->DebugString(), DebugType(t, type_system_));
+          NTH_UNIMPLEMENTED("{}: {}") <<=
+              {node->DebugString(), DebugType(t, type_system_)};
         }
       } break;
     }

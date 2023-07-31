@@ -189,10 +189,10 @@ auto const &Keywords() {
 // * A backslash and then any character in the set [abfnrtv0!\]
 Lexeme ConsumeCharLiteral(char const *&cursor) {
   char const *start_loc = cursor;
-  ASSERT(*cursor == '!');
+  NTH_ASSERT(*cursor == '!');
   // TODO: This shouldn't be an assert. it should be a genuine error we can
   // check for.
-  ASSERT(cursor[1] == '\'');
+  NTH_ASSERT(cursor[1] == '\'');
   cursor += 2;
   // TODO: Ensure the character is printable.
   char c;
@@ -208,7 +208,7 @@ Lexeme ConsumeCharLiteral(char const *&cursor) {
       case 't': c = '\t'; break;
       case 'v': c = '\v'; break;
       case '0': c = '\0'; break;
-      default: NOT_YET(); break;
+      default: NTH_UNIMPLEMENTED(); break;
     }
     cursor += 1;
   } else {
@@ -217,7 +217,7 @@ Lexeme ConsumeCharLiteral(char const *&cursor) {
   }
   // TODO: This shouldn't be an assert. it should be a genuine error we can
   // check for.
-  ASSERT(*cursor == '\'');
+  NTH_ASSERT(*cursor == '\'');
   cursor += 1;
   return Lexeme(std::make_unique<ast::Terminal>(
       std::string_view(start_loc, cursor), data_types::Char(c)));
@@ -341,7 +341,7 @@ const auto &ReservedTypes() {
 // Lexeme representing either an identifier or the builtin keyword or value for
 // this word.
 Lexeme ConsumeWord(std::string_view &cursor) {
-  ASSERT(IsAlphaOrUnderscore(cursor[0]));
+  NTH_ASSERT(IsAlphaOrUnderscore(cursor[0]));
 
   // Because we have already verified that the character locateted at `cursor`
   // is not numeric, it is safe to consume alhpanumeric and underscore
@@ -617,7 +617,7 @@ restart:
     } break;
     default: return NextOperator(state->cursor_); break;
   }
-  UNREACHABLE();
+  NTH_UNREACHABLE();
 }
 
 }  // namespace frontend

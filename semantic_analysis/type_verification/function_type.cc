@@ -37,7 +37,7 @@ VerificationTask TypeVerifier::VerifyType(ast::FunctionType const *node) {
 
   for (auto const *p : node->parameters()) {
     std::span parameter_qts = co_await VerifyTypeOf(p);
-    if (parameter_qts.size() != 1) { NOT_YET("log an error"); }
+    if (parameter_qts.size() != 1) { NTH_UNIMPLEMENTED("log an error"); }
     QualifiedType qt = parameter_qts[0];
     if (qt.qualifiers() >= Qualifiers::Error()) {
       qualifiers |= Qualifiers::Error();
@@ -57,7 +57,7 @@ VerificationTask TypeVerifier::VerifyType(ast::FunctionType const *node) {
 
   for (auto const *out : node->outputs()) {
     std::span out_qts = co_await VerifyTypeOf(out);
-    if (out_qts.size() != 1) { NOT_YET("log an error"); }
+    if (out_qts.size() != 1) { NTH_UNIMPLEMENTED("log an error"); }
     QualifiedType qt = out_qts[0];
     if (qt.qualifiers() >= Qualifiers::Error()) {
       qualifiers |= Qualifiers::Error();
