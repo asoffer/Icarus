@@ -15,13 +15,13 @@ test::Repl MakeRepl(std::optional<std::string> name = std::nullopt) {
   auto resources = test::TestResources(
       [name = std::move(name)](module::ModuleName const &module_name) {
         if (name and module_name.name() == *name) {
-          return serialization::UniqueModuleId("module");
+          return module::UniqueId("module");
         } else {
-          return serialization::UniqueModuleId::Invalid();
+          return module::UniqueId::Invalid();
         }
       });
 
-  serialization::UniqueModuleId id("module");
+  module::UniqueId id("module");
   resources.AllocateModule(id);
   resources.module_map().insert(serialization::ModuleIndex::Self(),
                                 serialization::ModuleIndex(0), id);

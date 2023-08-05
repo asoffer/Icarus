@@ -6,10 +6,10 @@
 #include <utility>
 
 #include "absl/container/flat_hash_map.h"
+#include "module/unique_id.h"
 #include "nth/container/flyweight_set.h"
 #include "serialization/module_index.h"
 #include "serialization/proto/module_map.pb.h"
-#include "serialization/unique_module_id.h"
 
 namespace module {
 
@@ -34,8 +34,7 @@ struct GlobalModuleMap {
   // Inserts `id` into the module map and associates it with `dep_index` when
   // read from `module_index`.
   void insert(serialization::ModuleIndex module_index,
-              serialization::ModuleIndex dep_index,
-              serialization::UniqueModuleId const &id);
+              serialization::ModuleIndex dep_index, module::UniqueId const& id);
 
   // Given the module-specific index represented by `module_index` and
   // `dep_index`, returns the index relative to the currently being
@@ -46,8 +45,7 @@ struct GlobalModuleMap {
   // Returns the `serialization::ModuleIndex` associated with `id` relative to
   // `serialization::ModuleIndex::Self()` if one exists and
   // `serialization::ModuleIndex::Invalid()` otherwise.
-  serialization::ModuleIndex index(
-      serialization::UniqueModuleId const &id) const;
+  serialization::ModuleIndex index(module::UniqueId const& id) const;
 
   static void Serialize(GlobalModuleMap const& from,
                         serialization::proto::ModuleMap& to);
@@ -56,7 +54,7 @@ struct GlobalModuleMap {
                           GlobalModuleMap& to);
 
  private:
-  nth::flyweight_set<serialization::UniqueModuleId> data_;
+  nth::flyweight_set<module::UniqueId> data_;
   absl::flat_hash_map<
       std::pair<serialization::ModuleIndex, serialization::ModuleIndex>,
       serialization::ModuleIndex>

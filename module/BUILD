@@ -69,9 +69,9 @@ cc_library(
     hdrs = ["global_function_map.h"],
     srcs = ["global_function_map.cc"],
     deps = [
+        ":unique_id",
         "//serialization:function_index",
         "//serialization:module_index",
-        "//serialization:unique_module_id",
         "@com_google_absl//absl/container:flat_hash_map"
     ],
 )
@@ -96,11 +96,12 @@ cc_library(
     hdrs = ["global_module_map.h"],
     srcs = ["global_module_map.cc"],
     deps = [
+        ":unique_id",
         "//serialization:module_index",
         "//serialization:module_map_proto",
-        "//serialization:unique_module_id",
-        "@com_google_absl//absl/container:flat_hash_map",
+        "@asoffer_nth//nth/debug",
         "@asoffer_nth//nth/container:flyweight_set",
+        "@com_google_absl//absl/container:flat_hash_map",
     ],
 )
 
@@ -116,3 +117,12 @@ cc_library(
         "//serialization:unique_type_table",
     ],
 )
+
+cc_library(
+    name = "unique_id",
+    hdrs = ["unique_id.h"],
+    visibility = ["//visibility:public"],
+    deps = [],
+)
+
+

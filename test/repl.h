@@ -27,13 +27,11 @@ namespace test {
 inline diagnostic::TrackingConsumer tracking_consumer;
 
 inline module::Resources TestResources(
-    absl::AnyInvocable<serialization::UniqueModuleId(module::ModuleName const&)
-                           const>
-        name_resolver = [](module::ModuleName const& name)
-        -> serialization::UniqueModuleId {
+    absl::AnyInvocable<module::UniqueId(module::ModuleName const&) const>
+        name_resolver = [](module::ModuleName const& name) -> module::UniqueId {
       NTH_UNREACHABLE("{}") <<= {name.name()};
     }) {
-  return module::Resources(serialization::UniqueModuleId("~test-module~"),
+  return module::Resources(module::UniqueId("~test-module~"),
                            std::move(name_resolver), tracking_consumer);
 }
 

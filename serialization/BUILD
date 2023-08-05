@@ -132,15 +132,6 @@ cc_proto_library(
 )
 
 cc_library(
-    name = "unique_module_id",
-    hdrs = ["unique_module_id.h"],
-    visibility = ["//visibility:public"],
-    deps = [
-        "@asoffer_nth//nth/debug",
-    ],
-)
-
-cc_library(
     name = "unique_type_table",
     hdrs = ["unique_type_table.h"],
     srcs = ["unique_type_table.cc"],

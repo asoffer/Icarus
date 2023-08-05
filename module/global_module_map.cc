@@ -6,7 +6,7 @@ namespace module {
 
 void GlobalModuleMap::insert(serialization::ModuleIndex module_index,
                              serialization::ModuleIndex dep_index,
-                             serialization::UniqueModuleId const& value) {
+                             module::UniqueId const& value) {
   auto [iter, inserted] = data_.insert(value);
   mapping_.emplace(std::pair(module_index, dep_index),
                    serialization::ModuleIndex(data_.index(iter)));
@@ -23,7 +23,7 @@ serialization::ModuleIndex GlobalModuleMap::read(
 }
 
 serialization::ModuleIndex GlobalModuleMap::index(
-    serialization::UniqueModuleId const& id) const {
+    module::UniqueId const& id) const {
   auto iter = data_.find(id);
   if (iter == data_.end()) { return serialization::ModuleIndex::Invalid(); }
   return serialization::ModuleIndex(data_.index(iter));
@@ -38,9 +38,8 @@ bool GlobalModuleMap::Deserialize(serialization::ModuleIndex self_index,
                                   serialization::proto::ModuleMap const& from,
                                   GlobalModuleMap& to) {
   size_t i = 0;
-  for (auto const & id : from.ids()) {
-    to.insert(self_index, serialization::ModuleIndex(i),
-              serialization::UniqueModuleId(id));
+  for (auto const& id : from.ids()) {
+    to.insert(self_index, serialization::ModuleIndex(i), module::UniqueId(id));
     ++i;
   }
   return true;

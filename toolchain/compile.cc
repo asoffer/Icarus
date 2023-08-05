@@ -23,8 +23,7 @@ nth::exit_code Compile(nth::FlagValueSet flags) {
   auto const *source          = flags.get<nth::file_path>("source");
   auto const *output_path     = flags.get<nth::file_path>("output");
   auto const *module_map_file = flags.get<nth::file_path>("module-map");
-  auto const *id =
-      flags.get<serialization::UniqueModuleId>("module-identifier");
+  auto const *id = flags.get<module::UniqueId>("module-identifier");
 
   // TODO: Validate these as required.
   if (not source) { return nth::exit_code::usage; }
@@ -144,7 +143,7 @@ nth::Usage const nth::program_usage = {
             },
             {
                 .name = {"module-identifier"},
-                .type = nth::type<serialization::UniqueModuleId>,
+                .type = nth::type<module::UniqueId>,
                 .description =
                     "The path to the .icmodmap file describing the module map.",
 

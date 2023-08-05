@@ -8,8 +8,8 @@ cc_library(
     srcs = ["bazel.cc"],
     deps = [
         "//module:module_name",
+        "//module:unique_id",
         "//base:file",
-        "//serialization:unique_module_id",
         "@asoffer_nth//nth/debug",
         "@asoffer_nth//nth/io:file_path",
         "@com_google_absl//absl/strings",

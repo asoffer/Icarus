@@ -16,12 +16,12 @@ namespace module {
 
 struct Resources {
   explicit Resources(
-      serialization::UniqueModuleId const& id,
-      absl::AnyInvocable<serialization::UniqueModuleId(ModuleName const&) const>
+      module::UniqueId const& id,
+      absl::AnyInvocable<module::UniqueId(ModuleName const&) const>
           name_resolver,
       diagnostic::DiagnosticConsumer& diagnostic_consumer);
 
-  Module& AllocateModule(serialization::UniqueModuleId const& id);
+  Module& AllocateModule(module::UniqueId const& id);
 
   Module& primary_module() { return primary_module_; }
   Module const& primary_module() const { return primary_module_; }
@@ -70,7 +70,7 @@ struct Resources {
                             Symbol const& symbol);
 
  private:
-  Module primary_module_{serialization::UniqueModuleId(""), function_map_};
+  Module primary_module_{module::UniqueId(""), function_map_};
   std::vector<std::unique_ptr<Module>> modules_;
   serialization::ReadOnlyData read_only_data_;
 
@@ -78,11 +78,9 @@ struct Resources {
   GlobalFunctionMap function_map_;
   GlobalModuleMap module_map_;
   serialization::UniqueTypeTable unique_type_table_;
-  absl::AnyInvocable<serialization::UniqueModuleId(ModuleName const&) const>
-      name_resolver_;
+  absl::AnyInvocable<module::UniqueId(ModuleName const&) const> name_resolver_;
   diagnostic::DiagnosticConsumer& diagnostic_consumer_;
 };
-
 
 }  // namespace module
 

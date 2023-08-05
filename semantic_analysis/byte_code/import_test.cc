@@ -8,13 +8,13 @@ test::Repl MakeRepl(module::ModuleName name) {
   auto resources = test::TestResources(
       [name = std::move(name)](module::ModuleName const &module_name) {
         if (module_name == name) {
-          return serialization::UniqueModuleId("module");
+          return module::UniqueId("module");
         } else {
-          return serialization::UniqueModuleId();
+          return module::UniqueId();
         }
       });
 
-  serialization::UniqueModuleId id("module");
+  module::UniqueId id("module");
   resources.AllocateModule(id);
   resources.module_map().insert(serialization::ModuleIndex::Self(),
                                 serialization::ModuleIndex(0), id);

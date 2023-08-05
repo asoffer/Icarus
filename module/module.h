@@ -24,8 +24,7 @@
 namespace module {
 
 struct Module {
-  explicit Module(serialization::UniqueModuleId id,
-                  GlobalFunctionMap &function_map)
+  explicit Module(module::UniqueId id, GlobalFunctionMap &function_map)
       : id_(std::move(id)), function_table_(function_map) {}
 
   bool Serialize(std::ostream &output,
@@ -88,7 +87,7 @@ struct Module {
       vm::Function const *f);
 
  private:
-  serialization::UniqueModuleId id_;
+  module::UniqueId id_;
 
   vm::Function initializer_{0, 0};
 

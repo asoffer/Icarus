@@ -21,8 +21,7 @@ nth::exit_code Execute(nth::FlagValueSet flags,
                        std::span<std::string_view const> arguments) {
   auto const *input           = flags.get<nth::file_path>("input");
   auto const *module_map_file = flags.get<nth::file_path>("module-map");
-  auto const *id =
-      flags.get<serialization::UniqueModuleId>("module-identifier");
+  auto const *id = flags.get<module::UniqueId>("module-identifier");
 
   if (not input) { return nth::exit_code::usage; }
   if (not module_map_file) { return nth::exit_code::usage; }
@@ -58,7 +57,7 @@ nth::exit_code Execute(nth::FlagValueSet flags,
       return nth::exit_code::generic_error;
     }
     auto index = serialization::ModuleIndex(resources.imported_modules());
-    mptr = &resources.AllocateModule(id);
+    mptr       = &resources.AllocateModule(id);
 
     resources.module_map().insert(serialization::ModuleIndex::Self(), index,
                                   id);
@@ -139,7 +138,7 @@ nth::Usage const nth::program_usage = {
         {
             {
                 .name = {"module-identifier"},
-                .type = nth::type<serialization::UniqueModuleId>,
+                .type = nth::type<module::UniqueId>,
                 .description =
                     "The path to the .icmodmap file describing the module map.",
 

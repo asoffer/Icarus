@@ -3,15 +3,15 @@
 namespace module {
 
 Resources::Resources(
-    serialization::UniqueModuleId const &id,
-    absl::AnyInvocable<serialization::UniqueModuleId(ModuleName const &) const>
+    module::UniqueId const &id,
+    absl::AnyInvocable<module::UniqueId(ModuleName const &) const>
         name_resolver,
     diagnostic::DiagnosticConsumer &diagnostic_consumer)
     : primary_module_(id, function_map_),
       name_resolver_(std::move(name_resolver)),
       diagnostic_consumer_(diagnostic_consumer) {}
 
-Module &Resources::AllocateModule(serialization::UniqueModuleId const &id) {
+Module &Resources::AllocateModule(module::UniqueId const &id) {
   return *modules_.emplace_back(std::make_unique<Module>(id, function_map_));
 }
 
