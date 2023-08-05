@@ -18,9 +18,6 @@
 #include "frontend/parse_rule.h"
 #include "nth/debug/source_location.h"
 
-ABSL_FLAG(bool, debug_parser, false,
-          "Step through the parser step-by-step for debugging.");
-
 namespace frontend {
 namespace {
 
@@ -2046,25 +2043,6 @@ struct ParseState {
   diagnostic::DiagnosticConsumer &diag_;
 };
 
-// Print out the debug information for the parse stack, and pause.
-void Debug(ParseState *ps) {
-  // Clear the screen
-  fputs("\033[2J\033[1;1H\n", stderr);
-  for (auto x : ps->tag_stack_) {
-    std::stringstream ss;
-    ss << x;
-    absl::FPrintF(stderr, "%s, ", ss.str());
-  }
-  std::stringstream ss;
-  ss << ps->Next().tag_;
-  absl::FPrintF(stderr, " -> %s\n", ss.str());
-
-  for (const auto &node_ptr : ps->node_stack_) {
-    fputs(node_ptr->DebugString().c_str(), stderr);
-  }
-  fgetc(stdin);
-}
-
 void Shift(ParseState *ps) {
   if (not ps->lookahead_) { ps->LookAhead(); }
   auto ahead = *std::exchange(ps->lookahead_, std::nullopt);
@@ -2119,17 +2097,12 @@ bool Reduce(ParseState *ps) {
 
 void CleanUpReduction(ParseState *state) {
   // Reduce what you can
-  while (Reduce<kRules>(state)) {
-    if (absl::GetFlag(FLAGS_debug_parser)) { Debug(state); }
-  }
+  while (Reduce<kRules>(state)) {}
 
   Shift(state);
 
   // Reduce what you can again
-  while (Reduce<kRules>(state)) {
-    if (absl::GetFlag(FLAGS_debug_parser)) { Debug(state); }
-  }
-  if (absl::GetFlag(FLAGS_debug_parser)) { Debug(state); }
+  while (Reduce<kRules>(state)) {}
 }
 }  // namespace
 
@@ -2157,8 +2130,6 @@ std::vector<std::unique_ptr<ast::Node>> Parse(
         [[fallthrough]];
       case ShiftState::NeedMore: Shift(&state); break;
     }
-
-    if (absl::GetFlag(FLAGS_debug_parser)) { Debug(&state); }
   }
 
   // Cleanup

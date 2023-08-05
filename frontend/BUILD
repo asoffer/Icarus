@@ -25,8 +25,6 @@ cc_library(
         "//frontend/lex:token",
         "@asoffer_nth//nth/debug:source_location",
         "@com_google_absl//absl/container:flat_hash_map",
-        "@com_google_absl//absl/flags:flag",
-        "@com_google_absl//absl/flags:parse",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/strings:str_format",
     ],

@@ -28,6 +28,12 @@ struct UniqueModuleId {
     return H::combine(std::move(h), id.value_);
   }
 
+  friend bool NthCommandlineParse(std::string_view s, UniqueModuleId &id,
+                                  auto) {
+    id = UniqueModuleId(s);
+    return true;
+  }
+
  private:
   std::string value_;
 };

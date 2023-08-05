@@ -11,6 +11,7 @@ cc_library(
         "//base:file",
         "//serialization:unique_module_id",
         "@asoffer_nth//nth/debug",
+        "@asoffer_nth//nth/io:file_path",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/functional:any_invocable",
         "@com_google_absl//absl/container:flat_hash_map",
@@ -21,7 +22,6 @@ cc_binary(
     name = "builtin_compiler",
     srcs = ["builtin.cc"],
     deps = [
-        ":flags",
         "//core/type_system:type",
         "//module:global_function_map",
         "//module:type_system",
@@ -29,10 +29,9 @@ cc_binary(
         "//semantic_analysis:type_system",
         "//vm:function",
         "//vm:serialization",
-        "@com_google_absl//absl/debugging:failure_signal_handler",
-        "@com_google_absl//absl/debugging:symbolize",
-        "@com_google_absl//absl/flags:flag",
-        "@com_google_absl//absl/flags:parse",
+        "@asoffer_nth//nth/commandline:main",
+        "@asoffer_nth//nth/io:file_path",
+        "@asoffer_nth//nth/process:exit_code",
     ],
 )
 
@@ -41,32 +40,16 @@ cc_binary(
     srcs = ["compile.cc"],
     deps = [
         ":bazel",
-        ":flags",
         "//base:file",
+        "//diagnostic/consumer:streaming",
         "//frontend:parse",
         "//module",
         "//module:resources",
         "//semantic_analysis:context",
         "//semantic_analysis/type_verification:verify",
-        "@com_google_absl//absl/debugging:failure_signal_handler",
-        "@com_google_absl//absl/debugging:symbolize",
-        "@com_google_absl//absl/flags:flag",
-        "@com_google_absl//absl/flags:parse",
-        "@com_google_absl//absl/strings:str_format",
-    ],
-)
-
-cc_library(
-    name = "flags",
-    hdrs = ["flags.h"],
-    srcs = ["flags.cc"],
-    deps = [
-        "//diagnostic/consumer",
-        "//diagnostic/consumer:streaming",
-        "//frontend:source_indexer",
-        "@com_google_absl//absl/flags:flag",
-        "@com_google_absl//absl/flags:usage",
-        "@com_google_absl//absl/status:statusor",
+        "@asoffer_nth//nth/commandline:main",
+        "@asoffer_nth//nth/io:file_path",
+        "@asoffer_nth//nth/process:exit_code",
     ],
 )
 
@@ -75,15 +58,15 @@ cc_binary(
     srcs = ["run_bytecode.cc"],
     deps = [
         ":bazel",
-        ":flags",
+        "//diagnostic/consumer:streaming",
+        "//frontend:source_indexer",
         "//module",
         "//module:resources",
         "//vm:execute",
         "@asoffer_jasmin//jasmin:execute",
-        "@com_google_absl//absl/debugging:failure_signal_handler",
-        "@com_google_absl//absl/debugging:symbolize",
-        "@com_google_absl//absl/flags:flag",
-        "@com_google_absl//absl/flags:parse",
+        "@asoffer_nth//nth/commandline:main",
+        "@asoffer_nth//nth/io:file_path",
+        "@asoffer_nth//nth/process:exit_code",
     ],
 )
 

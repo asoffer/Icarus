@@ -24,6 +24,8 @@
 
 namespace test {
 
+inline diagnostic::TrackingConsumer tracking_consumer;
+
 inline module::Resources TestResources(
     absl::AnyInvocable<serialization::UniqueModuleId(module::ModuleName const&)
                            const>
@@ -32,8 +34,7 @@ inline module::Resources TestResources(
       NTH_UNREACHABLE("{}") <<= {name.name()};
     }) {
   return module::Resources(serialization::UniqueModuleId("~test-module~"),
-                           std::move(name_resolver),
-                           std::make_unique<diagnostic::TrackingConsumer>());
+                           std::move(name_resolver), tracking_consumer);
 }
 
 struct Repl {

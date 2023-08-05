@@ -19,7 +19,7 @@ struct Resources {
       serialization::UniqueModuleId const& id,
       absl::AnyInvocable<serialization::UniqueModuleId(ModuleName const&) const>
           name_resolver,
-      std::unique_ptr<diagnostic::DiagnosticConsumer> diagnostic_consumer);
+      diagnostic::DiagnosticConsumer& diagnostic_consumer);
 
   Module& AllocateModule(serialization::UniqueModuleId const& id);
 
@@ -70,8 +70,6 @@ struct Resources {
                             Symbol const& symbol);
 
  private:
-  explicit Resources() = default;
-
   Module primary_module_{serialization::UniqueModuleId(""), function_map_};
   std::vector<std::unique_ptr<Module>> modules_;
   serialization::ReadOnlyData read_only_data_;
@@ -82,7 +80,7 @@ struct Resources {
   serialization::UniqueTypeTable unique_type_table_;
   absl::AnyInvocable<serialization::UniqueModuleId(ModuleName const&) const>
       name_resolver_;
-  std::unique_ptr<diagnostic::DiagnosticConsumer> diagnostic_consumer_;
+  diagnostic::DiagnosticConsumer& diagnostic_consumer_;
 };
 
 

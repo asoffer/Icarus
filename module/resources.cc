@@ -6,10 +6,10 @@ Resources::Resources(
     serialization::UniqueModuleId const &id,
     absl::AnyInvocable<serialization::UniqueModuleId(ModuleName const &) const>
         name_resolver,
-    std::unique_ptr<diagnostic::DiagnosticConsumer> diagnostic_consumer)
+    diagnostic::DiagnosticConsumer &diagnostic_consumer)
     : primary_module_(id, function_map_),
       name_resolver_(std::move(name_resolver)),
-      diagnostic_consumer_(std::move(diagnostic_consumer)) {}
+      diagnostic_consumer_(diagnostic_consumer) {}
 
 Module &Resources::AllocateModule(serialization::UniqueModuleId const &id) {
   return *modules_.emplace_back(std::make_unique<Module>(id, function_map_));
@@ -21,7 +21,7 @@ serialization::ModuleIndex Resources::TryLoadModuleByName(
 }
 
 diagnostic::DiagnosticConsumer &Resources::diagnostic_consumer() {
-  return *NTH_ASSERT_NOT_NULL(diagnostic_consumer_);
+  return diagnostic_consumer_;
 }
 
 core::Type Resources::Translate(core::Type type,

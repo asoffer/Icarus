@@ -4,12 +4,8 @@
 #include <memory>
 #include <vector>
 
-#include "absl/flags/flag.h"
-#include "absl/flags/parse.h"
 #include "ast/node.h"
 #include "diagnostic/consumer/consumer.h"
-
-ABSL_DECLARE_FLAG(bool, debug_parser);
 
 namespace frontend {
 

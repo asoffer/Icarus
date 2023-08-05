@@ -13,6 +13,9 @@ cc_library(
     hdrs = ["file.h"],
     srcs = ["file.cc"],
     deps = [
+        "@asoffer_nth//nth/debug",
+        "@asoffer_nth//nth/io:file",
+        "@asoffer_nth//nth/io:file_path",
         "@com_google_absl//absl/cleanup",
     ]
 )

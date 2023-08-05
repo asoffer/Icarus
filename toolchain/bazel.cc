@@ -4,10 +4,11 @@
 
 #include "absl/strings/str_split.h"
 #include "nth/debug/debug.h"
+#include "nth/io/file_path.h"
 
 namespace toolchain {
 
-std::optional<BazelSpecification> BazelModuleMap(std::string const& file_name) {
+std::optional<BazelSpecification> BazelModuleMap(nth::file_path const& file_name) {
   std::optional content = base::ReadFileToString(file_name);
 
   std::optional<BazelSpecification> specification;

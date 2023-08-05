@@ -5,32 +5,17 @@
 #include <utility>
 #include <vector>
 
-#include "absl/debugging/failure_signal_handler.h"
-#include "absl/debugging/symbolize.h"
-#include "absl/flags/flag.h"
-#include "absl/flags/parse.h"
 #include "core/type_system/type.h"
 #include "module/global_function_map.h"
 #include "module/type_system.h"
+#include "nth/commandline/commandline.h"
+#include "nth/io/file_path.h"
 #include "semantic_analysis/type_system.h"
 #include "serialization/module.pb.h"
-#include "toolchain/flags.h"
 #include "vm/function_table.h"
 #include "vm/serialization.h"
 
-ABSL_FLAG(std::string, output, "",
-          "The location at which to write the output .icm file.");
-
 namespace toolchain {
-
-bool HelpFilter(std::string_view module) { return true; }
-
-void ValidateOutputPath(std::string_view output) {
-  if (output.empty()) {
-    std::cerr << "--output must not be empty.";
-    std::exit(1);
-  }
-}
 
 void SerializeType(core::Type t, serialization::Type &proto,
                    bool inline_storage) {
@@ -150,21 +135,16 @@ serialization::Module BuiltinModule() {
   return module;
 }
 
+nth::exit_code Main(nth::FlagValueSet flags, nth::file_path const &output) {
+  std::ofstream output_stream(output.path(), std::ofstream::out);
+  return BuiltinModule().SerializeToOstream(&output_stream)
+             ? nth::exit_code::success
+             : nth::exit_code::generic_error;
+}
+
 }  // namespace toolchain
 
-int main(int argc, char *argv[]) {
-  toolchain::InitializeFlags("Icarus Builtin Module Compiler",
-                             toolchain::HelpFilter);
-  std::vector<char *> args = absl::ParseCommandLine(argc, argv);
-
-  absl::InitializeSymbolizer(args[0]);
-  absl::FailureSignalHandlerOptions opts;
-  absl::InstallFailureSignalHandler(opts);
-
-  std::string output = absl::GetFlag(FLAGS_output);
-  toolchain::ValidateOutputPath(output);
-
-  auto builtin = toolchain::BuiltinModule();
-  std::ofstream output_stream(output.c_str(), std::ofstream::out);
-  return builtin.SerializeToOstream(&output_stream) ? 0 : 1;
-}
+nth::Usage const nth::program_usage = {
+    .description = "Icarus Builtin Module Compiler",
+    .execute     = toolchain::Main,
+};

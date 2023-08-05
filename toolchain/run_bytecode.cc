@@ -4,55 +4,44 @@
 #include <string_view>
 #include <vector>
 
-#include "absl/debugging/failure_signal_handler.h"
-#include "absl/debugging/symbolize.h"
-#include "absl/flags/flag.h"
-#include "absl/flags/parse.h"
+#include "diagnostic/consumer/streaming.h"
+#include "frontend/source_indexer.h"
 #include "jasmin/execute.h"
 #include "module/module.h"
 #include "module/resources.h"
+#include "nth/commandline/commandline.h"
+#include "nth/process/exit_code.h"
 #include "toolchain/bazel.h"
-#include "toolchain/flags.h"
 #include "vm/argument_slice.h"
 #include "vm/execute.h"
 
-ABSL_FLAG(std::string, diagnostics, "console",
-          "Indicates how diagnostics should be emitted. Options: console "
-          "(default).");
-ABSL_FLAG(std::string, module_identifier, "",
-          "Identifier to be used to uniquely identify this module amongst all "
-          "modules being linked together, and must not begin with a tilde (~) "
-          "character.");
-ABSL_FLAG(std::string, module_map_file, "",
-          "The path to the .icmodmap file describing the module map.");
-ABSL_FLAG(std::string, input, "", "The path to the .icm file to be executed.");
-
 namespace toolchain {
 
-bool HelpFilter(std::string_view module) { return true; }
+nth::exit_code Execute(nth::FlagValueSet flags,
+                       std::span<std::string_view const> arguments) {
+  auto const *input           = flags.get<nth::file_path>("input");
+  auto const *module_map_file = flags.get<nth::file_path>("module-map");
+  auto const *id =
+      flags.get<serialization::UniqueModuleId>("module-identifier");
 
-bool Execute(serialization::UniqueModuleId module_id,
-             std::string const &input_file, std::string const &module_map_file,
-             std::span<std::string_view const> arguments) {
-  auto specification = BazelModuleMap(module_map_file);
+  if (not input) { return nth::exit_code::usage; }
+  if (not module_map_file) { return nth::exit_code::usage; }
+  if (not id) { return nth::exit_code::usage; }
+
+  auto specification = BazelModuleMap(*module_map_file);
   if (not specification) {
     // TODO log an error
     std::cerr << "invalid spec.\n";
-    return false;
+    return nth::exit_code::generic_error;
   }
   auto name_resolver = BazelNameResolver(std::move(specification->names));
   NTH_ASSERT(name_resolver != nullptr);
 
   frontend::SourceIndexer source_indexer;
-  auto diagnostic_consumer =
-      toolchain::DiagnosticConsumerFromFlag(FLAGS_diagnostics, source_indexer);
-  if (not diagnostic_consumer.ok()) {
-    std::cerr << diagnostic_consumer.status().message();
-    return false;
-  }
+  diagnostic::StreamingConsumer diagnostic_consumer(stderr, &source_indexer);
 
-  module::Resources resources(std::move(module_id), std::move(name_resolver),
-                              std::move(*diagnostic_consumer));
+  module::Resources resources(*id, std::move(name_resolver),
+                              diagnostic_consumer);
 
   std::vector<std::pair<serialization::Module, module::Module *>> modules;
   for (auto const &[id, path] : specification->paths) {
@@ -60,13 +49,13 @@ bool Execute(serialization::UniqueModuleId module_id,
 
     if (not stream.is_open()) {
       std::cerr << "failed to open " << id.value() << " (" << path << ").\n";
-      return false;
+      return nth::exit_code::generic_error;
     }
 
     auto &[proto, mptr] = modules.emplace_back();
     if (not proto.ParseFromIstream(&stream)) {
       std::cerr << "failed to parse " << id.value() << " (" << path << ").\n";
-      return false;
+      return nth::exit_code::generic_error;
     }
     auto index = serialization::ModuleIndex(resources.imported_modules());
     mptr = &resources.AllocateModule(id);
@@ -78,7 +67,7 @@ bool Execute(serialization::UniqueModuleId module_id,
       // TODO Log an error.
       std::cerr << "failed to load module " << id.value() << " (" << path
                 << ").\n";
-      return false;
+      return nth::exit_code::generic_error;
     }
   }
 
@@ -92,21 +81,21 @@ bool Execute(serialization::UniqueModuleId module_id,
             resources.function_map(), resources.opaque_map())) {
       // TODO Log an error.
       std::cerr << "failed to load module.";
-      return false;
+      return nth::exit_code::generic_error;
     }
     ++i;
   }
 
-  std::ifstream stream(input_file);
+  std::ifstream stream(input->path());
   if (not stream.is_open()) {
-    std::cerr << "Failed to open '" << input_file << "'.\n";
-    return false;
+    std::cerr << "Failed to open '" << input->path() << "'.\n";
+    return nth::exit_code::generic_error;
   }
 
   serialization::Module proto;
   if (not proto.ParseFromIstream(&stream)) {
     std::cerr << "Invalid module.\n";
-    return false;
+    return nth::exit_code::generic_error;
   }
 
   if (not module::Module::DeserializeInto(
@@ -116,7 +105,7 @@ bool Execute(serialization::UniqueModuleId module_id,
           resources.function_map(), resources.opaque_map())) {
     // TODO Log an error.
     std::cerr << "failed to load module.";
-    return false;
+    return nth::exit_code::generic_error;
   }
 
   vm::ArgumentSlice argument_slice(
@@ -139,28 +128,29 @@ bool Execute(serialization::UniqueModuleId module_id,
       vm::ExecutionState{table, resources.primary_module().type_system(),
                          argument_slice},
       value_stack);
-  return true;
+  return nth::exit_code::success;
 }
 
 }  // namespace toolchain
 
-int main(int argc, char *argv[]) {
-  toolchain::InitializeFlags("Icarus Bytecode Runner", toolchain::HelpFilter);
-  std::vector<char *> args = absl::ParseCommandLine(argc, argv);
+nth::Usage const nth::program_usage = {
+    .description = "Icarus Bytecode Runner",
+    .flags =
+        {
+            {
+                .name = {"module-identifier"},
+                .type = nth::type<serialization::UniqueModuleId>,
+                .description =
+                    "The path to the .icmodmap file describing the module map.",
 
-  std::vector<std::string_view> arguments;
-  arguments.reserve(args.size() - 1);
-  for (auto iter = std::next(args.begin()); iter != args.end(); ++iter) {
-    arguments.push_back(*iter);
-  }
+            },
+            {
+                .name = {"module-map"},
+                .type = nth::type<nth::file_path>,
+                .description =
+                    "The path to the .icmodmap file describing the module map.",
 
-  absl::InitializeSymbolizer(args[0]);
-  absl::FailureSignalHandlerOptions opts;
-  absl::InstallFailureSignalHandler(opts);
-
-  bool success = toolchain::Execute(
-      serialization::UniqueModuleId(absl::GetFlag(FLAGS_module_identifier)),
-      absl::GetFlag(FLAGS_input), absl::GetFlag(FLAGS_module_map_file),
-      arguments);
-  return success ? 0 : 1;
-}
+            },
+        },
+    .execute = toolchain::Execute,
+};

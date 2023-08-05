@@ -48,9 +48,9 @@ def _compile_one(ctx, icm_file, icm_deps, module_map_file, short):
         outputs = [icm_file],
         arguments = [
             "--source={}".format(src_file.short_path),
-            "--module_identifier={}".format(_unique_id(ctx.label)),
+            "--module-identifier={}".format(_unique_id(ctx.label)),
             "--output={}".format(icm_file.path),
-            "--module_map_file={}".format(module_map_file.path),
+            "--module-map={}".format(module_map_file.path),
         ],
         progress_message = "Compiling {}".format(ctx.label.name),
         executable = ctx.attr._compile[0][DefaultInfo].files_to_run.executable,
@@ -132,7 +132,7 @@ def _ic_binary_impl(ctx):
         output = ctx.outputs.executable,
         is_executable = True,
        content = """
-        {executable} --input={icm} --module_map_file={mod} $@
+        {executable} --input={icm} --module-map={mod} $@
         """.format(
             executable = ctx.executable._run_bytecode.short_path,
             icm = icm_file.short_path,
@@ -186,7 +186,7 @@ def _ic_builtin_impl(ctx):
 
     ctx.actions.run(
         outputs = [icm_file],
-        arguments = ["--output={}".format(icm_file.path)],
+        arguments = [icm_file.path],
         progress_message = "Compiling {}".format(ctx.label.name),
         executable = ctx.attr._compile[0][DefaultInfo].files_to_run.executable,
     )
