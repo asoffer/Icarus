@@ -21,12 +21,12 @@
 
 namespace module {
 
-inline module::GlobalFunctionMap global_hack;
+inline GlobalFunctionMap global_hack;
 
 struct Module {
-  explicit Module(module::UniqueId id)
+  explicit Module(UniqueId id)
       : id_(std::move(id)), function_table_(global_hack) {}
-  explicit Module(module::UniqueId id, GlobalFunctionMap &function_map)
+  explicit Module(UniqueId id, GlobalFunctionMap &function_map)
       : id_(std::move(id)), function_table_(function_map) {}
 
   vm::Function &initializer() { return initializer_; }
@@ -67,29 +67,28 @@ struct Module {
                  }));
   }
 
-  module::UniqueId id() const { return id_; }
+  UniqueId id() const { return id_; }
 
   auto const &read_only_data() const { return read_only_data_; }
   auto &read_only_data() { return read_only_data_; }
   vm::FunctionTable const &function_table() const { return function_table_; }
   vm::FunctionTable &function_table() { return function_table_; }
 
-  std::pair<serialization::FunctionIndex, vm::Function const *> Wrap(
+  std::pair<module::LocalFnId, vm::Function const *> Wrap(
       vm::Function const *f);
 
   auto &exported_symbols() { return exported_symbols_; }
   auto const &exported_symbols() const { return exported_symbols_; }
 
  private:
-  module::UniqueId id_;
+  UniqueId id_;
 
   vm::Function initializer_{0, 0};
 
   absl::flat_hash_map<std::string, std::vector<Symbol>> exported_symbols_;
 
-  absl::flat_hash_map<
-      vm::Function const *,
-      std::pair<serialization::FunctionIndex, vm::Function const *>>
+  absl::flat_hash_map<vm::Function const *,
+                      std::pair<LocalFnId, vm::Function const *>>
       wrappers_;
 
   // The type-system containing all types referenceable in this module.

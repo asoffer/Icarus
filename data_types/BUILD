@@ -14,19 +14,6 @@ cc_library(
 )
 
 cc_library(
-    name = "fn",
-    visibility = ["//visibility:public"],
-    hdrs = ["fn.h"],
-    deps = [
-        "//module:unique_id",
-        "//serialization:function_index",
-        "//base:extend",
-        "//base/extend:absl_hash",
-        "//base/extend:absl_format",
-    ],
-)
-
-cc_library(
     name = "hashtag",
     visibility = ["//visibility:public"],
     hdrs = ["hashtag.h"],

@@ -1,16 +1,16 @@
 #ifndef ICARUS_MODULE_SYMBOL_H
 #define ICARUS_MODULE_SYMBOL_H
 
-#include "nth/debug/debug.h"
 #include "core/type_system/type.h"
-#include "data_types/fn.h"
 #include "jasmin/value.h"
+#include "module/function_id.h"
+#include "nth/debug/debug.h"
 
 namespace module {
 
 struct TypedFunction {
   core::Type type;
-  data_types::LocalFnId function;
+  LocalFnId function;
 };
 
 struct TypedValue {

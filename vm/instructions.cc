@@ -3,9 +3,10 @@
 #include <ffi.h>
 
 #include "absl/container/inlined_vector.h"
-#include "data_types/fn.h"
+#include "absl/strings/str_format.h"
 #include "jasmin/debug.h"
 #include "jasmin/value.h"
+#include "module/function_id.h"
 #include "vm/function.h"
 #include "vm/implementation.h"
 
@@ -229,7 +230,7 @@ void PushFunction::serialize(jasmin::Serializer& serializer,
   auto* ir_fn                = values[0].as<Function*>();
   auto [module_id, fn_index] = fn_map.find(ir_fn);
   NTH_ASSERT(module_id != module::UniqueId::Invalid());
-  NTH_ASSERT(fn_index != serialization::FunctionIndex::Invalid());
+  NTH_ASSERT(fn_index != module::LocalFnId::Invalid());
   // TODO: serializer(module_id);
   serializer(fn_index.value());
 }
@@ -241,13 +242,13 @@ bool PushFunction::deserialize(jasmin::Deserializer& deserializer,
   auto& [current_module_id, fn_map] = state;
   NTH_ASSERT(values.size() == 1);
   module::UniqueId module_id;
-  serialization::FunctionIndex::underlying_type function_index;
+  module::LocalFnId::underlying_type function_index;
   // TODO: if (not deserializer(module_id)) { return false; }
   if (not deserializer(function_index)) { return false; }
   // TODO: Properly deserialize.
   module_id = module::UniqueId::Self();
   values[0] = NTH_ASSERT_NOT_NULL(
-      fn_map.find(module_id, serialization::FunctionIndex(function_index)));
+      fn_map.find(module_id, module::LocalFnId(function_index)));
   return true;
 }
 

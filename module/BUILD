@@ -1,6 +1,18 @@
 package(default_visibility = ["//visibility:private"])
 
 cc_library(
+    name = "function_id",
+    hdrs = ["function_id.h"],
+    visibility = ["//visibility:public"],
+    deps = [
+        ":unique_id",
+        "//serialization:function_index_proto",
+        "@asoffer_nth//nth/debug",
+        "@asoffer_nth//nth/strings:interpolate",
+    ],
+)
+
+cc_library(
     name = "module",
     visibility = ["//visibility:public"],
     hdrs = ["module.h"],
@@ -87,7 +99,7 @@ cc_library(
     hdrs = ["symbol.h"],
     srcs = ["symbol.cc"],
     deps = [
-        "//data_types:fn",
+        ":function_id",
         "//core/type_system:type",
         "//semantic_analysis:type_system",
         "@asoffer_nth//nth/debug",
@@ -100,8 +112,8 @@ cc_library(
     hdrs = ["global_function_map.h"],
     srcs = ["global_function_map.cc"],
     deps = [
+        ":function_id",
         ":unique_id",
-        "//serialization:function_index",
         "@com_google_absl//absl/container:flat_hash_map"
     ],
 )

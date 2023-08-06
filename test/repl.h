@@ -184,7 +184,7 @@ struct Repl {
     return stmts.back()->as<ast::Expression>();
   }
 
-  vm::Function const* function(data_types::LocalFnId f) {
+  vm::Function const* function(module::LocalFnId f) {
     return &module().function_table().function(f);
   }
 

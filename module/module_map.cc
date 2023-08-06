@@ -70,10 +70,11 @@ std::optional<ModuleMap> ModuleMap::Load(nth::file_path const &path) {
 
   // for (auto const &[proto, mptr] : modules) {
   //   if (not Module::DeserializeModuleInto(
-  //           proto, resources.modules(), mptr->id(), map->imported_modules_[i],
+  //           proto, imported_modules_, mptr->id(),
+  //           map->imported_modules_[i],
   //           resources.primary_module().type_system(),
   //           resources.unique_type_table(),
-  //           resources.function_map(), resources.opaque_map())) {
+  //           resources.function_map())) {
   //     // TODO: Log an error.
   //     NTH_LOG((v.always), "Failed to deserialize module.");
   //     return std::nullopt;

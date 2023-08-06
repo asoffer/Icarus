@@ -4,25 +4,22 @@
 #include <utility>
 
 #include "absl/container/flat_hash_map.h"
+#include "module/function_id.h"
 #include "module/unique_id.h"
-#include "serialization/function_index.h"
 
 namespace module {
 
 struct GlobalFunctionMap {
   void insert_function(void const* f, UniqueId module_id,
-                       serialization::FunctionIndex function_index);
+                       LocalFnId function_id);
 
-  std::pair<UniqueId, serialization::FunctionIndex> find(void const* f);
+  std::pair<UniqueId, LocalFnId> find(void const* f);
 
-  void const* find(UniqueId id, serialization::FunctionIndex f);
+  void const* find(UniqueId id, LocalFnId f);
 
  private:
-  absl::flat_hash_map<void const*,
-                      std::pair<UniqueId, serialization::FunctionIndex>>
-      functions_;
-  absl::flat_hash_map<std::pair<UniqueId, serialization::FunctionIndex>,
-                      void const*>
+  absl::flat_hash_map<void const*, std::pair<UniqueId, LocalFnId>> functions_;
+  absl::flat_hash_map<std::pair<UniqueId, LocalFnId>, void const*>
       reverse_functions_;
 };
 

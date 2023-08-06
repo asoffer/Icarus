@@ -1,4 +1,4 @@
-package(default_visibility = ["//visibility:private"])
+package(default_visibility = ["//visibility:public"])
 
 proto_library(
     name = "constants_proto",
@@ -15,17 +15,6 @@ cc_proto_library(
 cc_proto_library(
     name = "function_index_proto",
     deps = ["//serialization/proto:function_index"],
-)
-
-cc_library(
-    name = "function_index",
-    hdrs = ["function_index.h"],
-    srcs = ["function_index.cc"],
-    visibility = ["//visibility:public"],
-    deps = [
-        ":function_index_proto",
-        "@asoffer_nth//nth/debug",
-    ],
 )
 
 cc_proto_library(
@@ -52,8 +41,8 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = [
         ":foreign_symbol_map_proto",
-        ":function_index",
         "//core/type_system:type",
+        "//module:function_id",
         "@asoffer_nth//nth/container:flyweight_map",
         "@asoffer_nth//nth/debug",
         "@com_google_absl//absl/container:flat_hash_map",

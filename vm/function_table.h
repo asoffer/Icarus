@@ -5,9 +5,9 @@
 
 #include "absl/container/btree_map.h"
 #include "absl/container/flat_hash_map.h"
+#include "module/function_id.h"
 #include "module/global_function_map.h"
 #include "module/unique_id.h"
-#include "serialization/function_index.h"
 #include "serialization/proto/function_table.pb.h"
 #include "vm/function.h"
 
@@ -18,12 +18,13 @@ struct SerializationState;
 struct FunctionTable {
   explicit FunctionTable(module::GlobalFunctionMap& map) : function_map_(map) {}
 
-  std::pair<serialization::FunctionIndex, Function*> emplace(
-      size_t parameters, size_t returns, module::UniqueId module_id);
+  std::pair<module::LocalFnId, Function*> emplace(size_t parameters,
+                                                  size_t returns,
+                                                  module::UniqueId module_id);
 
-  Function const& function(serialization::FunctionIndex index) const;
+  Function const& function(module::LocalFnId index) const;
 
-  serialization::FunctionIndex find(Function const* f);
+  module::LocalFnId find(Function const* f);
 
  private:
   friend void Serialize(Function const& f,
@@ -44,8 +45,7 @@ struct FunctionTable {
   // held need not be hashable or equality-comparable. Moreover they need to be
   // mutated after insertion.
   std::deque<Function> functions_;
-  absl::flat_hash_map<Function const*, serialization::FunctionIndex>
-      function_indices_;
+  absl::flat_hash_map<Function const*, module::LocalFnId> function_indices_;
 
   module::GlobalFunctionMap& function_map_;
 };

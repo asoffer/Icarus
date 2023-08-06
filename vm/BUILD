@@ -41,13 +41,12 @@ cc_library(
         "//core/type_system",
         "//core/type_system:type",
         "//data_types:addr",
-        "//data_types:fn",
         "//data_types:integer",
+        "//module:function_id",
         "//module:global_function_map",
         "//module:unique_id",
         "//semantic_analysis:type_system",
         "//serialization:foreign_symbol_map",
-        "//serialization:function_index",
         "//serialization:function_table_proto",
         "//serialization:read_only_data",
         "@asoffer_jasmin//jasmin:debug",
@@ -64,6 +63,7 @@ cc_library(
         "@asoffer_nth//nth/debug",
         "@com_google_absl//absl/container:btree",
         "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/strings:str_format",
         "@com_google_absl//absl/numeric:int128",
     ]
 )

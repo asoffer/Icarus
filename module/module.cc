@@ -2,8 +2,7 @@
 
 namespace module {
 
-std::pair<serialization::FunctionIndex, vm::Function const*> Module::Wrap(
-    vm::Function const* f) {
+std::pair<LocalFnId, vm::Function const*> Module::Wrap(vm::Function const* f) {
   auto [iter, inserted] = wrappers_.try_emplace(f);
   if (inserted) {
     auto result =

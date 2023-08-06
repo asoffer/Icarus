@@ -4,23 +4,22 @@
 
 namespace vm {
 
-Function const& FunctionTable::function(
-    serialization::FunctionIndex index) const {
+Function const& FunctionTable::function(module::LocalFnId index) const {
   NTH_ASSERT(index.value() < functions_.size());
   return functions_[index.value()];
 }
 
-serialization::FunctionIndex FunctionTable::find(Function const* f) {
+module::LocalFnId FunctionTable::find(Function const* f) {
   if (auto iter = function_indices_.find(f); iter != function_indices_.end()) {
     return iter->second;
   } else {
-    return serialization::FunctionIndex::Invalid();
+    return module::LocalFnId::Invalid();
   }
 }
 
-std::pair<serialization::FunctionIndex, Function*> FunctionTable::emplace(
+std::pair<module::LocalFnId, Function*> FunctionTable::emplace(
     size_t parameters, size_t returns, module::UniqueId module_id) {
-  serialization::FunctionIndex index(functions_.size());
+  module::LocalFnId index(functions_.size());
   auto& f = functions_.emplace_back(parameters, returns);
   function_indices_.emplace(&f, index);
 
