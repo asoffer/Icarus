@@ -154,8 +154,23 @@ cc_library(
 cc_library(
     name = "unique_id",
     hdrs = ["unique_id.h"],
+    srcs = ["unique_id.cc"],
     visibility = ["//visibility:public"],
-    deps = [],
+    deps = [
+        "@asoffer_nth//nth/debug",
+        "@asoffer_nth//nth/utility:no_destructor",
+        "@com_google_absl//absl/container:node_hash_set",
+        "@com_google_absl//absl/synchronization",
+    ],
+)
+
+cc_test(
+    name = "unique_id_test",
+    srcs = ["unique_id_test.cc"],
+    deps = [
+        ":unique_id",
+        "@asoffer_nth//nth/test:main",
+    ],
 )
 
 cc_library(

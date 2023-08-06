@@ -81,7 +81,7 @@ std::optional<ModuleMap> ModuleMap::Load(nth::file_path const &path) {
   // size_t i = 0;
   // for (auto const &[proto, mptr] : modules) {
   //   serialization::ModuleIndex index(i);
-  //   if (not Module::DeserializeInto(
+  //   if (not Module::DeserializeModuleInto(
   //           proto, resources.modules(), index, map->imported_modules_[i],
   //           resources.primary_module().type_system(),
   //           resources.unique_type_table(), resources.module_map(),
