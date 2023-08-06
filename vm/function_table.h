@@ -8,7 +8,6 @@
 #include "module/global_function_map.h"
 #include "module/unique_id.h"
 #include "serialization/function_index.h"
-#include "serialization/module_index.h"
 #include "serialization/proto/function_table.pb.h"
 #include "vm/function.h"
 

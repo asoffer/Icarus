@@ -6,7 +6,6 @@
 #include "absl/container/flat_hash_map.h"
 #include "module/unique_id.h"
 #include "serialization/function_index.h"
-#include "serialization/module_index.h"
 
 namespace module {
 

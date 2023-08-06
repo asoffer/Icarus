@@ -30,8 +30,7 @@ void DeserializeTypeSystem(UniqueId module_id,
                            serialization::TypeSystem const& proto,
                            semantic_analysis::TypeSystem& type_system,
                            semantic_analysis::TypeSystem& current_type_system,
-                           serialization::UniqueTypeTable& unique_type_table,
-                           GlobalIndexMap& opaque_map) {
+                           serialization::UniqueTypeTable& unique_type_table) {
   for (auto const& parameter_type : proto.parameters()) {
     core::Parameters<core::Type> parameters;
     parameters.reserve(parameter_type.parameters().size());
@@ -151,8 +150,7 @@ bool DeserializeModuleInto(serialization::Module const& proto,
                            semantic_analysis::TypeSystem& current_type_system,
                            serialization::UniqueTypeTable& unique_type_table,
                            ModuleMap& module_map,
-                           GlobalFunctionMap& function_map,
-                           GlobalIndexMap& opaque_map) {
+                           GlobalFunctionMap& function_map) {
   data_types::Deserialize(proto.integers(), module.integer_table());
 
   if (not serialization::ReadOnlyData::Deserialize(proto.read_only(),
@@ -163,7 +161,7 @@ bool DeserializeModuleInto(serialization::Module const& proto,
   }
 
   DeserializeTypeSystem(module_id, proto.type_system(), module.type_system(),
-                        current_type_system, unique_type_table, opaque_map);
+                        current_type_system, unique_type_table);
 
   for (auto const& [name, symbols] : proto.exported()) {
     for (auto const& symbol : symbols.symbols()) {

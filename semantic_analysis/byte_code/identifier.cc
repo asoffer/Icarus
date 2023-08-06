@@ -5,7 +5,7 @@ namespace semantic_analysis {
 void ByteCodeValueEmitter::operator()(ast::Identifier const* node,
                                       FunctionData data) {
   if (node->name() == "builtin") {
-    data.function().AppendPush(serialization::ModuleIndex::Builtin());
+    data.function().AppendPush(module::UniqueId::Builtin());
     return;
   }
 

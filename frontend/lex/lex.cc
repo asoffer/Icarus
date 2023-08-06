@@ -5,17 +5,17 @@
 
 #include "absl/container/flat_hash_map.h"
 #include "absl/container/node_hash_set.h"
+#include "absl/numeric/int128.h"
 #include "absl/status/statusor.h"
 #include "ast/ast.h"
 #include "core/type_system/type.h"
 #include "frontend/lex/numbers.h"
 #include "frontend/lex/operators.h"
 #include "frontend/lex/syntax.h"
+#include "module/unique_id.h"
 #include "nth/meta/sequence.h"
 #include "nth/meta/type.h"
-#include "absl/numeric/int128.h"
 #include "semantic_analysis/type_system.h"
-#include "serialization/module_index.h"
 
 namespace frontend {
 namespace {

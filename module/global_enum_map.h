@@ -5,7 +5,6 @@
 #include <utility>
 
 #include "absl/container/flat_hash_map.h"
-#include "serialization/module_index.h"
 
 namespace module {
 

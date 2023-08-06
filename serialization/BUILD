@@ -80,18 +80,6 @@ cc_proto_library(
     deps = [":module_proto"],
 )
 
-cc_library(
-    name = "module_index",
-    visibility = ["//visibility:public"],
-    hdrs = ["module_index.h"],
-    deps = [
-        "//base:extend",
-        "//base/extend:absl_format",
-        "//base/extend:absl_hash",
-        "//base/extend:compare",
-    ],
-)
-
 cc_proto_library(
     name = "read_only_data_proto",
     deps = ["//serialization/proto:read_only_data"],
@@ -103,7 +91,6 @@ cc_library(
     srcs = ["read_only_data.cc"],
     visibility = ["//visibility:public"],
     deps = [
-        ":module_index",
         "//serialization:read_only_data_proto",
         "@asoffer_nth//nth/container:flyweight_set",
         "@asoffer_nth//nth/debug",
@@ -130,7 +117,6 @@ cc_library(
     srcs = ["unique_type_table.cc"],
     visibility = ["//visibility:public"],
     deps = [
-        ":module_index",
         ":type_system",
         "//module:unique_id",
         "@asoffer_nth//nth/debug",

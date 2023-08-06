@@ -8,7 +8,6 @@
 
 #include "absl/container/flat_hash_map.h"
 #include "module/unique_id.h"
-#include "serialization/module_index.h"
 #include "serialization/type_system.pb.h"
 
 namespace serialization {

@@ -6,7 +6,6 @@ cc_library(
     hdrs = ["module.h"],
     srcs = ["module.cc"],
     deps = [
-        ":global_index_map",
         ":symbol",
         ":type_system",
         "//base:ptr_span",
@@ -69,7 +68,6 @@ cc_library(
     srcs = ["resources.cc"],
     deps = [
         ":global_function_map",
-        ":global_index_map",
         ":module",
         ":module_map",
         ":module_name",
@@ -104,24 +102,10 @@ cc_library(
     deps = [
         ":unique_id",
         "//serialization:function_index",
-        "//serialization:module_index",
         "@com_google_absl//absl/container:flat_hash_map"
     ],
 )
 
-
-cc_library(
-    name = "global_index_map",
-    visibility = ["//visibility:public"],
-    hdrs = ["global_index_map.h"],
-    srcs = ["global_index_map.cc"],
-    deps = [
-        "//serialization:function_index",
-        "//serialization:module_index",
-        "@asoffer_nth//nth/debug",
-        "@com_google_absl//absl/container:flat_hash_map"
-    ],
-)
 
 cc_library(
     name = "type_system",
@@ -163,7 +147,6 @@ cc_library(
     hdrs = ["serialize.h"],
     srcs = ["serialize.cc"],
     deps = [
-        ":global_index_map",
         ":module",
         ":module_map",
         ":symbol",

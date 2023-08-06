@@ -25,8 +25,8 @@ test::Repl MakeRepl(std::optional<std::string> name = std::nullopt) {
 
   module::UniqueId id("module");
   resources.AllocateModule(id);
-  resources.module_map().insert(serialization::ModuleIndex::Self(),
-                                serialization::ModuleIndex(0), id);
+  resources.module_map().insert(module::UniqueId::Self(),
+                                module::UniqueId("blah"), id);
   return test::Repl(std::move(resources));
 }
 

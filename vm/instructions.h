@@ -16,14 +16,14 @@
 #include "jasmin/serialization.h"
 #include "jasmin/value_stack.h"
 #include "module/global_function_map.h"
+#include "module/unique_id.h"
 #include "semantic_analysis/type_system.h"
 #include "serialization/foreign_symbol_map.h"
-#include "serialization/module_index.h"
 #include "serialization/read_only_data.h"
+#include "vm/argument_slice.h"
 #include "vm/function_table.h"
 #include "vm/immediate_values.h"
 #include "vm/instructions.h"
-#include "vm/argument_slice.h"
 
 namespace vm {
 

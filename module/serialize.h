@@ -9,7 +9,6 @@
 #include "base/ptr_span.h"
 #include "data_types/integer.h"
 #include "module/global_function_map.h"
-#include "module/global_index_map.h"
 #include "module/module.h"
 #include "module/module_map.h"
 #include "module/symbol.h"
@@ -17,7 +16,6 @@
 #include "semantic_analysis/type_system.h"
 #include "serialization/foreign_symbol_map.h"
 #include "serialization/module.pb.h"
-#include "serialization/module_index.h"
 #include "serialization/read_only_data.h"
 #include "serialization/unique_type_table.h"
 #include "vm/function.h"
@@ -35,8 +33,7 @@ bool DeserializeModuleInto(serialization::Module const &proto,
                            semantic_analysis::TypeSystem &current_type_system,
                            serialization::UniqueTypeTable &unique_type_table,
                            ModuleMap &module_map,
-                           GlobalFunctionMap &function_map,
-                           GlobalIndexMap &opaque_map);
+                           GlobalFunctionMap &function_map);
 
 }  // namespace module
 

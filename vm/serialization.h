@@ -4,7 +4,6 @@
 #include "module/global_function_map.h"
 #include "module/unique_id.h"
 #include "serialization/foreign_symbol_map.h"
-#include "serialization/module_index.h"
 #include "serialization/proto/function.pb.h"
 #include "serialization/read_only_data.h"
 #include "vm/function.h"

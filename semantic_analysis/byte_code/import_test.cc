@@ -18,8 +18,8 @@ test::Repl MakeRepl(module::ModuleName name) {
 
   module::UniqueId id("module");
   resources.AllocateModule(id);
-  resources.module_map().insert(serialization::ModuleIndex::Self(),
-                                serialization::ModuleIndex(0), id);
+  resources.module_map().insert(module::UniqueId::Self(),
+                                module::UniqueId("blah"), id);
   return test::Repl(std::move(resources));
 }
 
@@ -27,11 +27,11 @@ TEST(Import, Computation) {
   module::ModuleName name("abc");
   test::Repl repl = MakeRepl(name);
 
-  serialization::ModuleIndex expected_index =
+  module::UniqueId expected_index =
       repl.resources().TryLoadModuleByName(name);
-  ASSERT_NE(expected_index, serialization::ModuleIndex::Invalid());
+  ASSERT_NE(expected_index, module::UniqueId::Invalid());
 
-  EXPECT_EQ(repl.execute<serialization::ModuleIndex>(R"(import "abc")"),
+  EXPECT_EQ(repl.execute<module::UniqueId>(R"(import "abc")"),
             expected_index);
 }
 

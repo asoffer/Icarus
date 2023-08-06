@@ -42,8 +42,8 @@ nth::exit_code Compile(nth::FlagValueSet flags) {
     return nth::exit_code::generic_error;
   }
 
-  std::string_view file_content = source_indexer.insert(
-      serialization::ModuleIndex::Self(), *std::move(content));
+  std::string_view file_content =
+      source_indexer.insert(module::UniqueId::Self(), *std::move(content));
 
   auto parsed_nodes = frontend::Parse(file_content, diagnostic_consumer);
   if (diagnostic_consumer.num_consumed() != 0) {

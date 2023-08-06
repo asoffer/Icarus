@@ -10,7 +10,7 @@ cc_library(
         "//ast:ast",
         "//data_types:hashtag",
         "//diagnostic/consumer",
-        "//serialization:module_index",
+        "//module:unique_id",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/container:node_hash_set",
         "@com_google_absl//absl/numeric:int128",

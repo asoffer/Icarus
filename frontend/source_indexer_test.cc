@@ -2,6 +2,7 @@
 
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
+#include "module/unique_id.h"
 
 namespace frontend {
 namespace {
@@ -10,7 +11,7 @@ using ::testing::Pair;
 
 TEST(SourceIndexer, Insert) {
   SourceIndexer indexer;
-  std::string_view content1 = indexer.insert(serialization::ModuleIndex(0), R"(abc
+  std::string_view content1 = indexer.insert(module::UniqueId("module"), R"(abc
   def
   ghi)");
 
@@ -18,16 +19,17 @@ TEST(SourceIndexer, Insert) {
   def
   ghi)");
 
-  std::string_view content2 = indexer.insert(serialization::ModuleIndex(0), "");
+  std::string_view content2 = indexer.insert(module::UniqueId("module"), "");
   EXPECT_EQ(content2, content1);
 
-  std::string_view content3 = indexer.insert(serialization::ModuleIndex(1), "abc");
+  std::string_view content3 =
+      indexer.insert(module::UniqueId("other.module"), "abc");
   EXPECT_EQ(content3, "abc");
 }
 
 TEST(SourceIndexer, EntryFor) {
   SourceIndexer indexer;
-  std::string_view content = indexer.insert(serialization::ModuleIndex(0), R"(abc
+  std::string_view content = indexer.insert(module::UniqueId("module"), R"(abc
   def
   ghi)");
 
@@ -45,7 +47,7 @@ TEST(SourceIndexer, EntryFor) {
 
 TEST(SourceIndexer, Lines) {
   SourceIndexer indexer;
-  std::string_view content = indexer.insert(serialization::ModuleIndex(0), R"(abc
+  std::string_view content = indexer.insert(module::UniqueId("module"), R"(abc
   def
   ghi)");
 
@@ -57,7 +59,7 @@ TEST(SourceIndexer, Lines) {
 
 TEST(SourceIndexer, LineContaining) {
   SourceIndexer indexer;
-  std::string_view content = indexer.insert(serialization::ModuleIndex(0), R"(abc
+  std::string_view content = indexer.insert(module::UniqueId("module"), R"(abc
   def
   ghi)");
 
@@ -69,7 +71,7 @@ TEST(SourceIndexer, LineContaining) {
 
 TEST(SourceIndexer, LinesContaining) {
   SourceIndexer indexer;
-  std::string_view content = indexer.insert(serialization::ModuleIndex(0), R"(abc
+  std::string_view content = indexer.insert(module::UniqueId("module"), R"(abc
   def
   ghi)");
 

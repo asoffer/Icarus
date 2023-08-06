@@ -1,6 +1,6 @@
+#include "module/unique_id.h"
 #include "semantic_analysis/byte_code/emitter.h"
 #include "semantic_analysis/type_verification/casting.h"
-#include "serialization/module_index.h"
 
 namespace semantic_analysis {
 

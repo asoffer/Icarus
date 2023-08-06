@@ -6,7 +6,6 @@
 #include "base/ptr_span.h"
 #include "diagnostic/consumer/consumer.h"
 #include "module/global_function_map.h"
-#include "module/global_index_map.h"
 #include "module/module.h"
 #include "module/module_map.h"
 #include "module/module_name.h"
@@ -31,9 +30,6 @@ struct Resources {
 
   GlobalFunctionMap& function_map() { return function_map_; }
   GlobalFunctionMap const& function_map() const { return function_map_; }
-
-  GlobalIndexMap& opaque_map() { return opaque_map_; }
-  GlobalIndexMap const& opaque_map() const { return opaque_map_; }
 
   serialization::UniqueTypeTable const& unique_type_table() const {
     return unique_type_table_;
@@ -67,7 +63,6 @@ struct Resources {
   Module primary_module_{UniqueId(""), function_map_};
   serialization::ReadOnlyData read_only_data_;
 
-  GlobalIndexMap opaque_map_;
   GlobalFunctionMap function_map_;
   ModuleMap& module_map_;
   serialization::UniqueTypeTable unique_type_table_;

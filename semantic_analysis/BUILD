@@ -43,7 +43,6 @@ cc_library(
         "//data_types:addr",
         "//data_types:char",
         "//module:unique_id",
-        "//serialization:module_index",
         "//serialization:type_system",
     ]
 )

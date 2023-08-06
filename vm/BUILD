@@ -49,7 +49,6 @@ cc_library(
         "//serialization:foreign_symbol_map",
         "//serialization:function_index",
         "//serialization:function_table_proto",
-        "//serialization:module_index",
         "//serialization:read_only_data",
         "@asoffer_jasmin//jasmin:debug",
         "@asoffer_jasmin//jasmin:function",

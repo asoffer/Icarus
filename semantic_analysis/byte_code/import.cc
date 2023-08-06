@@ -5,8 +5,7 @@ namespace semantic_analysis {
 
 void ByteCodeValueEmitter::operator()(ast::Import const* node,
                                       FunctionData data) {
-  data.function().AppendPush(
-      context().constant<serialization::ModuleIndex>(node));
+  data.function().AppendPush(context().constant<module::UniqueId>(node));
 }
 
 void ByteCodeStatementEmitter::operator()(ast::Import const* node,

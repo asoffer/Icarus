@@ -31,8 +31,8 @@ TEST(Identifier, Evaluation) {
 TEST(Builtin, Evaluation) {
   test::Repl repl;
 
-  EXPECT_EQ(repl.execute<serialization::ModuleIndex>("builtin"),
-            serialization::ModuleIndex::Builtin());
+  EXPECT_EQ(repl.execute<module::UniqueId>("builtin"),
+            module::UniqueId::Builtin());
 }
 
 }  // namespace

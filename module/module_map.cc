@@ -68,11 +68,9 @@ std::optional<ModuleMap> ModuleMap::Load(nth::file_path const &path) {
         map->imported_modules_.emplace_back(std::make_unique<Module>(id)).get();
   }
 
-  // size_t i = 0;
   // for (auto const &[proto, mptr] : modules) {
-  //   serialization::ModuleIndex index(i);
   //   if (not Module::DeserializeModuleInto(
-  //           proto, resources.modules(), index, map->imported_modules_[i],
+  //           proto, resources.modules(), mptr->id(), map->imported_modules_[i],
   //           resources.primary_module().type_system(),
   //           resources.unique_type_table(),
   //           resources.function_map(), resources.opaque_map())) {
@@ -80,7 +78,6 @@ std::optional<ModuleMap> ModuleMap::Load(nth::file_path const &path) {
   //     NTH_LOG((v.always), "Failed to deserialize module.");
   //     return std::nullopt;
   //   }
-  //   ++i;
   // }
 
   return map;

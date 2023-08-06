@@ -48,7 +48,7 @@ cc_library(
     hdrs = ["source_indexer.h"],
     srcs = ["source_indexer.cc"],
     deps = [
-        "//serialization:module_index",
+        "//module:unique_id",
         "@asoffer_nth//nth/debug",
         "@com_google_absl//absl/container:flat_hash_map",
     ],

@@ -230,22 +230,24 @@ void PushFunction::serialize(jasmin::Serializer& serializer,
   auto [module_id, fn_index] = fn_map.find(ir_fn);
   NTH_ASSERT(module_id != module::UniqueId::Invalid());
   NTH_ASSERT(fn_index != serialization::FunctionIndex::Invalid());
-  serializer(module_id);
+  // TODO: serializer(module_id);
   serializer(fn_index.value());
 }
 
 bool PushFunction::deserialize(jasmin::Deserializer& deserializer,
                                std::span<jasmin::Value> values,
                                serialization_state& state) {
+  // TODO: We don't need to know the `current_module_id` anymore.
   auto& [current_module_id, fn_map] = state;
   NTH_ASSERT(values.size() == 1);
-  serialization::ModuleIndex::underlying_type module_index;
+  module::UniqueId module_id;
   serialization::FunctionIndex::underlying_type function_index;
-  if (not deserializer(module_index)) { return false; }
+  // TODO: if (not deserializer(module_id)) { return false; }
   if (not deserializer(function_index)) { return false; }
-  // TODO: Properly implement index.
-  values[0] = NTH_ASSERT_NOT_NULL(fn_map.find(
-      current_module_id, serialization::FunctionIndex(function_index)));
+  // TODO: Properly deserialize.
+  module_id = module::UniqueId::Self();
+  values[0] = NTH_ASSERT_NOT_NULL(
+      fn_map.find(module_id, serialization::FunctionIndex(function_index)));
   return true;
 }
 

@@ -18,7 +18,6 @@
 #include "data_types/char.h"
 #include "data_types/integer.h"
 #include "module/unique_id.h"
-#include "serialization/module_index.h"
 #include "serialization/type_system.pb.h"
 
 namespace semantic_analysis {
