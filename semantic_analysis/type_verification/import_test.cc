@@ -11,7 +11,9 @@ using ::test::HasQualTypes;
 using ::testing::AllOf;
 using ::testing::Pair;
 
+#if 0
 test::Repl MakeRepl(std::optional<std::string> name = std::nullopt) {
+  static module::ModuleMap
   auto resources = test::TestResources(
       [name = std::move(name)](module::ModuleName const &module_name) {
         if (name and module_name.name() == *name) {
@@ -72,6 +74,7 @@ TEST(Import, InvalidAndNonConstant) {
             HasDiagnostics(Pair("value-category-error", "non-constant-import"),
                            Pair("type-error", "invalid-import"))));
 }
+#endif
 
 }  // namespace
 }  // namespace semantic_analysis

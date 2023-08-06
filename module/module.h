@@ -10,7 +10,6 @@
 #include "data_types/integer.h"
 #include "module/global_function_map.h"
 #include "module/global_index_map.h"
-#include "module/global_module_map.h"
 #include "module/symbol.h"
 #include "semantic_analysis/type_system.h"
 #include "serialization/foreign_symbol_map.h"
@@ -23,22 +22,13 @@
 
 namespace module {
 
+inline module::GlobalFunctionMap global_hack;
+
 struct Module {
+  explicit Module(module::UniqueId id)
+      : id_(std::move(id)), function_table_(global_hack) {}
   explicit Module(module::UniqueId id, GlobalFunctionMap &function_map)
       : id_(std::move(id)), function_table_(function_map) {}
-
-  bool Serialize(std::ostream &output,
-                 serialization::UniqueTypeTable const &unique_type_table,
-                 GlobalModuleMap module_map,
-                 GlobalFunctionMap &function_map) const;
-  static bool DeserializeInto(
-      serialization::Module const &proto,
-      base::PtrSpan<Module const> dependencies,
-      serialization::ModuleIndex module_index, Module &module,
-      semantic_analysis::TypeSystem &current_type_system,
-      serialization::UniqueTypeTable &unique_type_table,
-      GlobalModuleMap &module_map, GlobalFunctionMap &function_map,
-      GlobalIndexMap &opaque_map);
 
   vm::Function &initializer() { return initializer_; }
   vm::Function const &initializer() const { return initializer_; }
@@ -78,6 +68,8 @@ struct Module {
                  }));
   }
 
+  module::UniqueId const &id() const { return id_; }
+
   auto const &read_only_data() const { return read_only_data_; }
   auto &read_only_data() { return read_only_data_; }
   vm::FunctionTable const &function_table() const { return function_table_; }
@@ -85,6 +77,9 @@ struct Module {
 
   std::pair<serialization::FunctionIndex, vm::Function const *> Wrap(
       vm::Function const *f);
+
+  auto &exported_symbols() { return exported_symbols_; }
+  auto const &exported_symbols() const { return exported_symbols_; }
 
  private:
   module::UniqueId id_;

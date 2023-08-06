@@ -2,22 +2,20 @@
 
 namespace module {
 
-Resources::Resources(
-    module::UniqueId const &id,
-    absl::AnyInvocable<module::UniqueId(ModuleName const &) const>
-        name_resolver,
-    diagnostic::DiagnosticConsumer &diagnostic_consumer)
+Resources::Resources(UniqueId const &id, ModuleMap &module_map,
+                     diagnostic::DiagnosticConsumer &diagnostic_consumer)
     : primary_module_(id, function_map_),
-      name_resolver_(std::move(name_resolver)),
+      module_map_(module_map),
       diagnostic_consumer_(diagnostic_consumer) {}
 
-Module &Resources::AllocateModule(module::UniqueId const &id) {
+Module &Resources::AllocateModule(UniqueId const &id) {
   return *modules_.emplace_back(std::make_unique<Module>(id, function_map_));
 }
 
 serialization::ModuleIndex Resources::TryLoadModuleByName(
     ModuleName const &name) const {
-  return module_map_.index(name_resolver_(name));
+  return module_map_.global_module_map().index(
+      module_map_.name_resolver()(name));
 }
 
 diagnostic::DiagnosticConsumer &Resources::diagnostic_consumer() {
@@ -82,7 +80,7 @@ core::Type Resources::Translate(core::Type type,
 
 Symbol Resources::TranslateToPrimary(serialization::ModuleIndex from,
                                      Symbol const &symbol) {
-  auto &m = module(from);
+  auto &m         = module(from);
   core::Type type = Translate(symbol.type(), from, m.type_system(),
                               primary_module().type_system());
   if (type == semantic_analysis::Type) {
@@ -102,7 +100,8 @@ Symbol Resources::TranslateToPrimary(serialization::ModuleIndex from,
              m.type_system().index<semantic_analysis::PrimitiveType>()) {
     return symbol;
   } else {
-    NTH_UNIMPLEMENTED("{}") <<= {semantic_analysis::DebugType(type, primary_module().type_system())};
+    NTH_UNIMPLEMENTED("{}") <<=
+        {semantic_analysis::DebugType(type, primary_module().type_system())};
   }
 }
 

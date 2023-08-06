@@ -2,12 +2,14 @@
 #define ICARUS_MODULE_RESOURCES_H
 
 #include "absl/functional/any_invocable.h"
+#include "absl/functional/function_ref.h"
 #include "base/ptr_span.h"
 #include "diagnostic/consumer/consumer.h"
 #include "module/global_function_map.h"
 #include "module/global_index_map.h"
 #include "module/global_module_map.h"
 #include "module/module.h"
+#include "module/module_map.h"
 #include "module/module_name.h"
 #include "serialization/read_only_data.h"
 #include "serialization/unique_type_table.h"
@@ -15,13 +17,10 @@
 namespace module {
 
 struct Resources {
-  explicit Resources(
-      module::UniqueId const& id,
-      absl::AnyInvocable<module::UniqueId(ModuleName const&) const>
-          name_resolver,
-      diagnostic::DiagnosticConsumer& diagnostic_consumer);
+  explicit Resources(UniqueId const& id, ModuleMap& module_map,
+                     diagnostic::DiagnosticConsumer& diagnostic_consumer);
 
-  Module& AllocateModule(module::UniqueId const& id);
+  Module& AllocateModule(UniqueId const& id);
 
   Module& primary_module() { return primary_module_; }
   Module const& primary_module() const { return primary_module_; }
@@ -34,8 +33,10 @@ struct Resources {
   GlobalIndexMap& opaque_map() { return opaque_map_; }
   GlobalIndexMap const& opaque_map() const { return opaque_map_; }
 
-  GlobalModuleMap& module_map() { return module_map_; }
-  GlobalModuleMap const& module_map() const { return module_map_; }
+  GlobalModuleMap& module_map() { return module_map_.global_module_map(); }
+  GlobalModuleMap const& module_map() const {
+    return module_map_.global_module_map();
+  }
 
   serialization::UniqueTypeTable const& unique_type_table() const {
     return unique_type_table_;
@@ -70,15 +71,14 @@ struct Resources {
                             Symbol const& symbol);
 
  private:
-  Module primary_module_{module::UniqueId(""), function_map_};
+  Module primary_module_{UniqueId(""), function_map_};
   std::vector<std::unique_ptr<Module>> modules_;
   serialization::ReadOnlyData read_only_data_;
 
   GlobalIndexMap opaque_map_;
   GlobalFunctionMap function_map_;
-  GlobalModuleMap module_map_;
+  ModuleMap& module_map_;
   serialization::UniqueTypeTable unique_type_table_;
-  absl::AnyInvocable<module::UniqueId(ModuleName const&) const> name_resolver_;
   diagnostic::DiagnosticConsumer& diagnostic_consumer_;
 };
 

@@ -16,6 +16,7 @@ struct ModuleName {
   std::string_view name() const { return name_; }
 
   friend bool operator==(ModuleName const &, ModuleName const &) = default;
+  friend bool operator!=(ModuleName const &, ModuleName const &) = default;
   template <typename H>
   friend H AbslHashValue(H h, ModuleName const &id) {
     return H::combine(std::move(h), id.name_);

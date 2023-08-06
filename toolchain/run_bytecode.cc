@@ -8,10 +8,11 @@
 #include "frontend/source_indexer.h"
 #include "jasmin/execute.h"
 #include "module/module.h"
+#include "module/module_map.h"
 #include "module/resources.h"
+#include "module/serialize.h"
 #include "nth/commandline/commandline.h"
 #include "nth/process/exit_code.h"
-#include "toolchain/bazel.h"
 #include "vm/argument_slice.h"
 #include "vm/execute.h"
 
@@ -27,63 +28,16 @@ nth::exit_code Execute(nth::FlagValueSet flags,
   if (not module_map_file) { return nth::exit_code::usage; }
   if (not id) { return nth::exit_code::usage; }
 
-  auto specification = BazelModuleMap(*module_map_file);
-  if (not specification) {
-    // TODO log an error
-    std::cerr << "invalid spec.\n";
+  std::optional module_map = module::ModuleMap::Load(*module_map_file);
+  if (not module_map) {
+    // TODO: log an error
     return nth::exit_code::generic_error;
   }
-  auto name_resolver = BazelNameResolver(std::move(specification->names));
-  NTH_ASSERT(name_resolver != nullptr);
 
   frontend::SourceIndexer source_indexer;
   diagnostic::StreamingConsumer diagnostic_consumer(stderr, &source_indexer);
 
-  module::Resources resources(*id, std::move(name_resolver),
-                              diagnostic_consumer);
-
-  std::vector<std::pair<serialization::Module, module::Module *>> modules;
-  for (auto const &[id, path] : specification->paths) {
-    std::ifstream stream(path);
-
-    if (not stream.is_open()) {
-      std::cerr << "failed to open " << id.value() << " (" << path << ").\n";
-      return nth::exit_code::generic_error;
-    }
-
-    auto &[proto, mptr] = modules.emplace_back();
-    if (not proto.ParseFromIstream(&stream)) {
-      std::cerr << "failed to parse " << id.value() << " (" << path << ").\n";
-      return nth::exit_code::generic_error;
-    }
-    auto index = serialization::ModuleIndex(resources.imported_modules());
-    mptr       = &resources.AllocateModule(id);
-
-    resources.module_map().insert(serialization::ModuleIndex::Self(), index,
-                                  id);
-    if (not module::GlobalModuleMap::Deserialize(index, proto.module_map(),
-                                                 resources.module_map())) {
-      // TODO Log an error.
-      std::cerr << "failed to load module " << id.value() << " (" << path
-                << ").\n";
-      return nth::exit_code::generic_error;
-    }
-  }
-
-  size_t i = 0;
-  for (auto const &[proto, mptr] : modules) {
-    serialization::ModuleIndex index(i);
-    if (not module::Module::DeserializeInto(
-            proto, resources.modules(), index, resources.module(index),
-            resources.primary_module().type_system(),
-            resources.unique_type_table(), resources.module_map(),
-            resources.function_map(), resources.opaque_map())) {
-      // TODO Log an error.
-      std::cerr << "failed to load module.";
-      return nth::exit_code::generic_error;
-    }
-    ++i;
-  }
+  module::Resources resources(std::move(*id), *module_map, diagnostic_consumer);
 
   std::ifstream stream(input->path());
   if (not stream.is_open()) {
@@ -97,11 +51,11 @@ nth::exit_code Execute(nth::FlagValueSet flags,
     return nth::exit_code::generic_error;
   }
 
-  if (not module::Module::DeserializeInto(
+  if (not module::DeserializeModuleInto(
           proto, resources.modules(), serialization::ModuleIndex::Self(),
           resources.primary_module(), resources.primary_module().type_system(),
-          resources.unique_type_table(), resources.module_map(),
-          resources.function_map(), resources.opaque_map())) {
+          resources.unique_type_table(), *module_map, resources.function_map(),
+          resources.opaque_map())) {
     // TODO Log an error.
     std::cerr << "failed to load module.";
     return nth::exit_code::generic_error;

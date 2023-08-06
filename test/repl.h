@@ -5,6 +5,7 @@
 #include <string_view>
 #include <vector>
 
+#include "absl/functional/function_ref.h"
 #include "absl/strings/str_split.h"
 #include "ast/module.h"
 #include "compiler/compiler.h"
@@ -26,13 +27,12 @@ namespace test {
 
 inline diagnostic::TrackingConsumer tracking_consumer;
 
+inline module::ModuleMap GlobalTestModuleMapHack;
+
 inline module::Resources TestResources(
-    absl::AnyInvocable<module::UniqueId(module::ModuleName const&) const>
-        name_resolver = [](module::ModuleName const& name) -> module::UniqueId {
-      NTH_UNREACHABLE("{}") <<= {name.name()};
-    }) {
-  return module::Resources(module::UniqueId("~test-module~"),
-                           std::move(name_resolver), tracking_consumer);
+    module::ModuleMap& module_map = GlobalTestModuleMapHack) {
+  return module::Resources(module::UniqueId("~test-module~"), module_map,
+                           tracking_consumer);
 }
 
 struct Repl {

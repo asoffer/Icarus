@@ -10,7 +10,7 @@ namespace module {
 // Represents an identifier for the module which is unique amongst all modules
 // linked into the same binary.
 struct UniqueId {
-  explicit UniqueId(std::string value) : value_(std::move(value)) {}
+  explicit UniqueId(std::string &&value) : value_(std::move(value)) {}
   explicit UniqueId(std::string_view value = "") : value_(value) {}
   template <size_t N>
   explicit UniqueId(char const (&value)[N]) : value_(value) {}

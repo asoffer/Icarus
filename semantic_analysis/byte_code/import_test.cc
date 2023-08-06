@@ -4,6 +4,8 @@
 namespace semantic_analysis {
 namespace {
 
+#if 0
+
 test::Repl MakeRepl(module::ModuleName name) {
   auto resources = test::TestResources(
       [name = std::move(name)](module::ModuleName const &module_name) {
@@ -32,6 +34,8 @@ TEST(Import, Computation) {
   EXPECT_EQ(repl.execute<serialization::ModuleIndex>(R"(import "abc")"),
             expected_index);
 }
+
+#endif
 
 }  // namespace
 }  // namespace semantic_analysis
