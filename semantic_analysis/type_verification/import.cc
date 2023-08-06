@@ -75,7 +75,7 @@ VerificationTask TypeVerifier::VerifyType(ast::Import const *node) {
     std::string_view name(ptr, length);
 
     auto index = resources().TryLoadModuleByName(module::ModuleName(name));
-    if (index == serialization::ModuleIndex::Invalid()) {
+    if (index == module::UniqueId::Invalid()) {
       ConsumeDiagnostic(NoSuchModule{.view = node->operand()->range()});
       qt = Error(qt);
     } else {

@@ -66,16 +66,6 @@ std::optional<ModuleMap> ModuleMap::Load(nth::file_path const &path) {
 
     mptr =
         map->imported_modules_.emplace_back(std::make_unique<Module>(id)).get();
-
-    auto &gmm = map->global_module_map_;
-    auto index = serialization::ModuleIndex(map->imported_modules_.size());
-    gmm.insert(serialization::ModuleIndex::Self(), index, id);
-    if (not GlobalModuleMap::Deserialize(index, proto.module_map(), gmm)) {
-      // TODO: Produce a proper diagnostic.
-      NTH_LOG((v.always), "Failed to load module {} ({}).") <<=
-          {id.value(), path};
-      return std::nullopt;
-    }
   }
 
   // size_t i = 0;
@@ -84,7 +74,7 @@ std::optional<ModuleMap> ModuleMap::Load(nth::file_path const &path) {
   //   if (not Module::DeserializeModuleInto(
   //           proto, resources.modules(), index, map->imported_modules_[i],
   //           resources.primary_module().type_system(),
-  //           resources.unique_type_table(), resources.module_map(),
+  //           resources.unique_type_table(),
   //           resources.function_map(), resources.opaque_map())) {
   //     // TODO: Log an error.
   //     NTH_LOG((v.always), "Failed to deserialize module.");

@@ -3,6 +3,7 @@
 
 #include <ostream>
 
+#include "absl/numeric/int128.h"
 #include "base/extend.h"
 #include "base/extend/absl_hash.h"
 #include "core/alignment.h"
@@ -16,7 +17,7 @@
 #include "core/type_system/type_system.h"
 #include "data_types/char.h"
 #include "data_types/integer.h"
-#include "absl/numeric/int128.h"
+#include "module/unique_id.h"
 #include "serialization/module_index.h"
 #include "serialization/type_system.pb.h"
 
@@ -205,12 +206,12 @@ struct SliceType : core::TypeCategory<SliceType, core::Type> {
 // The `EnumType` category represents a types that have a fixed set of
 // enumerated values defined by the user.
 struct EnumType
-    : core::TypeCategory<EnumType, serialization::ModuleIndex, size_t,
+    : core::TypeCategory<EnumType, module::UniqueId, size_t,
                          serialization::TypeSystem::EnumType const*> {
   explicit EnumType(core::TypeSystemSupporting<EnumType> auto& s,
-                    serialization::ModuleIndex module_index, size_t index,
+                    module::UniqueId module_id, size_t index,
                     serialization::TypeSystem::EnumType const* ptr)
-      : TypeCategory(s, module_index, index, ptr) {}
+      : TypeCategory(s, module_id, index, ptr) {}
 
   auto const& enumerators() const {
     return std::get<2>(decompose())->enumerator();

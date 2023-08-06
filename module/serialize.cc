@@ -26,7 +26,7 @@ void SerializeType(core::Type t, serialization::Type& proto,
   }
 }
 
-void DeserializeTypeSystem(serialization::ModuleIndex index,
+void DeserializeTypeSystem(UniqueId module_id,
                            serialization::TypeSystem const& proto,
                            semantic_analysis::TypeSystem& type_system,
                            semantic_analysis::TypeSystem& current_type_system,
@@ -74,11 +74,11 @@ void DeserializeTypeSystem(serialization::ModuleIndex index,
                        std::move(returns));
   }
 
-  unique_type_table.insert_enums(index, proto.enums());
+  unique_type_table.insert_enums(module_id, proto.enums());
   size_t i = 0;
   for (auto const& e : proto.enums()) {
-    semantic_analysis::EnumType(type_system, index, i, &e);
-    semantic_analysis::EnumType(current_type_system, index, i, &e);
+    semantic_analysis::EnumType(type_system, module_id, i, &e);
+    semantic_analysis::EnumType(current_type_system, module_id, i, &e);
     ++i;
   }
 }
@@ -87,8 +87,7 @@ void DeserializeTypeSystem(serialization::ModuleIndex index,
 
 bool SerializeModule(Module const& module, std::ostream& output,
                      serialization::UniqueTypeTable const& unique_type_table,
-                     ModuleMap &module_map,
-                     GlobalFunctionMap& function_map) {
+                     ModuleMap& module_map, GlobalFunctionMap& function_map) {
   serialization::Module proto;
 
   *proto.mutable_identifier() = module.id().value();
@@ -98,11 +97,7 @@ bool SerializeModule(Module const& module, std::ostream& output,
   // TODO: Fix const-correctness in Jasmin.
   vm::SerializationState state(const_cast<Module&>(module).read_only_data(),
                                const_cast<Module&>(module).foreign_symbol_map(),
-                               serialization::ModuleIndex::Invalid(),
-                               module_map.global_module_map(), function_map);
-
-  GlobalModuleMap::Serialize(module_map.global_module_map(),
-                             *proto.mutable_module_map());
+                               UniqueId::Invalid(), function_map);
 
   serialization::ForeignSymbolMap::Serialize(module.foreign_symbol_map(),
                                              *proto.mutable_foreign_symbols());
@@ -152,8 +147,7 @@ bool SerializeModule(Module const& module, std::ostream& output,
 
 bool DeserializeModuleInto(serialization::Module const& proto,
                            base::PtrSpan<Module const> dependencies,
-                           serialization::ModuleIndex module_index,
-                           Module& module,
+                           UniqueId module_id, Module& module,
                            semantic_analysis::TypeSystem& current_type_system,
                            serialization::UniqueTypeTable& unique_type_table,
                            ModuleMap& module_map,
@@ -168,7 +162,7 @@ bool DeserializeModuleInto(serialization::Module const& proto,
     return false;
   }
 
-  DeserializeTypeSystem(module_index, proto.type_system(), module.type_system(),
+  DeserializeTypeSystem(module_id, proto.type_system(), module.type_system(),
                         current_type_system, unique_type_table, opaque_map);
 
   for (auto const& [name, symbols] : proto.exported()) {
@@ -207,10 +201,10 @@ bool DeserializeModuleInto(serialization::Module const& proto,
   }
 
   vm::SerializationState state(module.read_only_data(),
-                               module.foreign_symbol_map(), module_index,
-                               module_map.global_module_map(), function_map);
+                               module.foreign_symbol_map(), module_id,
+                               function_map);
   if (not vm::Deserialize(proto.function_table(), module.function_table(),
-                          module_index, state)) {
+                          module_id, state)) {
     return false;
   }
   vm::Deserialize(proto.initializer(), module.initializer(), state);

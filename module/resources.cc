@@ -1,29 +1,31 @@
 #include "module/resources.h"
 
+#include "nth/debug/debug.h"
+
 namespace module {
 
-Resources::Resources(UniqueId const &id, ModuleMap &module_map,
+Resources::Resources(UniqueId id, ModuleMap &module_map,
                      diagnostic::DiagnosticConsumer &diagnostic_consumer)
     : primary_module_(id, function_map_),
       module_map_(module_map),
       diagnostic_consumer_(diagnostic_consumer) {}
 
-Module &Resources::AllocateModule(UniqueId const &id) {
-  return *modules_.emplace_back(std::make_unique<Module>(id, function_map_));
+Module &Resources::module(UniqueId module_id) {
+  for (auto *m : module_map().imported_modules()) {
+    if (m->id() == module_id) { return *m; }
+  }
+  NTH_UNREACHABLE("Unable to find module {}") <<= {module_id};
 }
 
-serialization::ModuleIndex Resources::TryLoadModuleByName(
-    ModuleName const &name) const {
-  return module_map_.global_module_map().index(
-      module_map_.name_resolver()(name));
+UniqueId Resources::TryLoadModuleByName(ModuleName const &name) const {
+  return module_map_.name_resolver()(name);
 }
 
 diagnostic::DiagnosticConsumer &Resources::diagnostic_consumer() {
   return diagnostic_consumer_;
 }
 
-core::Type Resources::Translate(core::Type type,
-                                serialization::ModuleIndex module_index,
+core::Type Resources::Translate(core::Type type, UniqueId module_id,
                                 semantic_analysis::TypeSystem &from,
                                 semantic_analysis::TypeSystem &to) const {
   namespace sa = semantic_analysis;
@@ -34,33 +36,33 @@ core::Type Resources::Translate(core::Type type,
       core::Parameters<core::Type> parameters =
           type.get<core::ParameterType>(from).value();
       for (auto &param : parameters) {
-        param.value = Translate(param.value, module_index, from, to);
+        param.value = Translate(param.value, module_id, from, to);
       }
       return core::ParameterType(to, std::move(parameters));
     }
     case sa::TypeSystem::index<core::PointerType>():
       return core::PointerType(
           to, Translate(type.get<core::PointerType>(from).pointee(),
-                        module_index, from, to));
+                        module_id, from, to));
     case sa::TypeSystem::index<sa::BufferPointerType>():
       return sa::BufferPointerType(
           to, Translate(type.get<sa::BufferPointerType>(from).pointee(),
-                        module_index, from, to));
+                        module_id, from, to));
     case sa::TypeSystem::index<sa::ArrayType>(): NTH_UNIMPLEMENTED(); break;
     case sa::TypeSystem::index<sa::SliceType>():
       return sa::SliceType(
-          to, Translate(type.get<sa::SliceType>(from).pointee(), module_index,
+          to, Translate(type.get<sa::SliceType>(from).pointee(), module_id,
                         from, to));
     case sa::TypeSystem::index<core::FunctionType>(): {
       auto f = type.get<core::FunctionType>(from);
       std::vector<core::Type> return_types;
       return_types.reserve(f.returns().size());
       for (core::Type t : f.returns()) {
-        return_types.push_back(Translate(t, module_index, from, to));
+        return_types.push_back(Translate(t, module_id, from, to));
       }
       return core::FunctionType(
           to,
-          Translate(f.parameter_type(), module_index, from, to)
+          Translate(f.parameter_type(), module_id, from, to)
               .get<core::ParameterType>(to),
           std::move(return_types));
     }
@@ -68,18 +70,18 @@ core::Type Resources::Translate(core::Type type,
       auto [from_index, enum_index, ptr] =
           type.get<sa::EnumType>(from).decompose();
       // TODO: I think this module index is wrong.
-      return sa::EnumType(to, module_index, enum_index, ptr);
+      return sa::EnumType(to, module_id, enum_index, ptr);
     }
     case sa::TypeSystem::index<sa::OpaqueType>(): {
-      return core::Type(sa::TypeSystem::index<sa::OpaqueType>(),
-                        opaque_map_.find(module_index, type.index()));
+      NTH_UNIMPLEMENTED();
+      // return core::Type(sa::TypeSystem::index<sa::OpaqueType>(),
+      //                   opaque_map_.find(module_id, type.index()));
     }
   }
   NTH_UNREACHABLE("{}") <<= {DebugType(type, from)};
 }
 
-Symbol Resources::TranslateToPrimary(serialization::ModuleIndex from,
-                                     Symbol const &symbol) {
+Symbol Resources::TranslateToPrimary(UniqueId from, Symbol const &symbol) {
   auto &m         = module(from);
   core::Type type = Translate(symbol.type(), from, m.type_system(),
                               primary_module().type_system());

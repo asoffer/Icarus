@@ -1,7 +1,0 @@
-syntax = "proto3";
-
-package serialization.proto;
-
-message ModuleMap {
-  repeated string ids = 1;
-}

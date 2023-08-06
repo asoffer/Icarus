@@ -3,7 +3,6 @@
 
 #include <optional>
 
-#include "module/global_module_map.h"
 #include "module/module.h"
 #include "module/module_name.h"
 #include "module/name_resolver.h"
@@ -40,21 +39,18 @@ struct ModuleMap {
   // `std::nullopt` otherwise.
   static std::optional<ModuleMap> Load(nth::file_path const& path);
 
-  NameResolver const& name_resolver() const { return name_resolver_; }
-
-  GlobalModuleMap& global_module_map() { return global_module_map_; }
-  GlobalModuleMap const& global_module_map() const {
-    return global_module_map_;
+  base::PtrSpan<Module> imported_modules() { return imported_modules_; }
+  base::PtrSpan<Module const> imported_modules() const {
+    return imported_modules_;
   }
+
+  NameResolver const& name_resolver() const { return name_resolver_; }
 
  private:
   explicit ModuleMap(absl::flat_hash_map<ModuleName, UniqueId> names);
 
   NameResolver name_resolver_;
   std::vector<std::unique_ptr<Module>> imported_modules_;
-
-  // TODO: Clean up this class.
-  GlobalModuleMap global_module_map_;
 };
 
 }  // namespace module

@@ -54,7 +54,8 @@ void BuiltinForeignFunction::execute(
 
   auto const& parameters = fn_type.parameters();
   std::span returns      = fn_type.returns();
-  auto [fn_index, f]     = table->emplace(parameters.size(), returns.size());
+  auto [fn_index, f]     = table->emplace(parameters.size(), returns.size(),
+                                          module::UniqueId::Builtin());
   NTH_ASSERT(returns.size() <= 1);
   f->AppendInvokeForeignFunction(foreign_symbol_map->function(index), fn_type);
   f->AppendReturn();
@@ -223,30 +224,28 @@ void PushFunction::execute(jasmin::ValueStack& value_stack,
 void PushFunction::serialize(jasmin::Serializer& serializer,
                              std::span<jasmin::Value const> values,
                              serialization_state& state) {
-  auto& fn_map = std::get<2>(state);
+  auto& fn_map = std::get<1>(state);
   NTH_ASSERT(values.size() == 1);
-  auto* ir_fn                   = values[0].as<Function*>();
-  auto [module_index, fn_index] = fn_map.find(ir_fn);
-  NTH_ASSERT(module_index != serialization::ModuleIndex::Invalid());
+  auto* ir_fn                = values[0].as<Function*>();
+  auto [module_id, fn_index] = fn_map.find(ir_fn);
+  NTH_ASSERT(module_id != module::UniqueId::Invalid());
   NTH_ASSERT(fn_index != serialization::FunctionIndex::Invalid());
-  serializer(module_index.value());
+  serializer(module_id);
   serializer(fn_index.value());
 }
 
 bool PushFunction::deserialize(jasmin::Deserializer& deserializer,
                                std::span<jasmin::Value> values,
                                serialization_state& state) {
-  auto& [current_index, module_map, fn_map] = state;
+  auto& [current_module_id, fn_map] = state;
   NTH_ASSERT(values.size() == 1);
   serialization::ModuleIndex::underlying_type module_index;
   serialization::FunctionIndex::underlying_type function_index;
   if (not deserializer(module_index)) { return false; }
   if (not deserializer(function_index)) { return false; }
-  auto index =
-      module_map.read(current_index, serialization::ModuleIndex(module_index));
-  auto* f = NTH_ASSERT_NOT_NULL(
-      fn_map.find(index, serialization::FunctionIndex(function_index)));
-  values[0] = f;
+  // TODO: Properly implement index.
+  values[0] = NTH_ASSERT_NOT_NULL(fn_map.find(
+      current_module_id, serialization::FunctionIndex(function_index)));
   return true;
 }
 
@@ -257,8 +256,7 @@ std::string PushFunction::debug(std::span<jasmin::Value const, 1> immediates) {
 
 void TranslateFunctionArguments::execute(
     jasmin::ValueStack& value_stack,
-    core::Parameters<core::Type> const* parameters,
-    serialization::ModuleIndex index) {
+    core::Parameters<core::Type> const* parameters, module::UniqueId) {
   std::vector<jasmin::Value> values;
   values.reserve(parameters->size());
   for (auto iter = parameters->rbegin(); iter != parameters->rend(); ++iter) {

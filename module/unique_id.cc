@@ -8,6 +8,8 @@ namespace module {
 namespace {
 
 std::string const InvalidString;
+std::string const BuiltinString("~builtin~");
+std::string const SelfString("~self~");
 
 absl::Mutex mutex;
 nth::NoDestructor<absl::node_hash_set<std::string>> intern_set;
@@ -15,6 +17,8 @@ nth::NoDestructor<absl::node_hash_set<std::string>> intern_set;
 }  // namespace
 
 UniqueId UniqueId::Invalid() { return UniqueId(&InvalidString); }
+UniqueId UniqueId::Builtin() { return UniqueId(&BuiltinString); }
+UniqueId UniqueId::Self() { return UniqueId(&SelfString); }
 
 UniqueId::UniqueId(std::string&& value)
     : value_((absl::MutexLock(&mutex),

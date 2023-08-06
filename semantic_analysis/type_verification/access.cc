@@ -31,8 +31,8 @@ VerificationTask TypeVerifier::VerifyType(ast::Access const *node) {
   QualifiedType qt = operand_qts[0];
   if (qt.type() == Module) {
     if (not(qt.qualifiers() >= Qualifiers::Constant())) { NTH_UNIMPLEMENTED(); }
-    auto index        = EvaluateAs<serialization::ModuleIndex>(node->operand());
-    auto &m           = resources().module(index);
+    auto id           = EvaluateAs<module::UniqueId>(node->operand());
+    auto &m           = resources().module(id);
     std::span symbols = m.LoadSymbols(node->member_name());
 
     absl::flat_hash_map<core::ParameterType, Context::CallableIdentifier>
@@ -49,7 +49,7 @@ VerificationTask TypeVerifier::VerifyType(ast::Access const *node) {
     }
     core::Type t;
     for (auto const &symbol : symbols) {
-      module::Symbol s = resources().TranslateToPrimary(index, symbol);
+      module::Symbol s = resources().TranslateToPrimary(id, symbol);
       t                = s.type();
       if (auto fn_type = t.get_if<core::FunctionType>(type_system())) {
         parameters_options.emplace(

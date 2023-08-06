@@ -5,7 +5,6 @@ import "serialization/proto/foreign_symbol_map.proto";
 import "serialization/proto/function.proto";
 import "serialization/proto/function_index.proto";
 import "serialization/proto/function_table.proto";
-import "serialization/proto/module_map.proto";
 import "serialization/proto/read_only_data.proto";
 import "serialization/type_system.proto";
 
@@ -47,6 +46,4 @@ message Module {
   IntegerTable integers = 7;
 
   map<string, Symbols> exported = 8;
-
-  proto.ModuleMap module_map = 9;
 }

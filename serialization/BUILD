@@ -70,7 +70,6 @@ proto_library(
         "//serialization/proto:function",
         "//serialization/proto:function_index",
         "//serialization/proto:function_table",
-        "//serialization/proto:module_map",
         "//serialization/proto:read_only_data",
     ],
 )
@@ -91,12 +90,6 @@ cc_library(
         "//base/extend:absl_hash",
         "//base/extend:compare",
     ],
-)
-
-cc_proto_library(
-    name = "module_map_proto",
-    visibility = ["//visibility:public"],
-    deps = ["//serialization/proto:module_map"],
 )
 
 cc_proto_library(
@@ -139,6 +132,7 @@ cc_library(
     deps = [
         ":module_index",
         ":type_system",
+        "//module:unique_id",
         "@asoffer_nth//nth/debug",
         "@com_google_absl//absl/container:flat_hash_map",
     ],

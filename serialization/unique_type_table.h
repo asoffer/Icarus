@@ -7,6 +7,7 @@
 #include <utility>
 
 #include "absl/container/flat_hash_map.h"
+#include "module/unique_id.h"
 #include "serialization/module_index.h"
 #include "serialization/type_system.pb.h"
 
@@ -14,7 +15,7 @@ namespace serialization {
 
 struct UniqueTypeTable {
   void insert_enums(
-      ModuleIndex index,
+      module::UniqueId module_id,
       google::protobuf::RepeatedPtrField<TypeSystem::EnumType> const& enums);
 
   std::pair<size_t, TypeSystem::EnumType const*> insert_enum(
@@ -39,10 +40,10 @@ struct UniqueTypeTable {
     TypeSystem::EnumType const* ptr_;
   };
 
-  EnumEntry find_enum(ModuleIndex index, size_t enum_index);
+  EnumEntry find_enum(module::UniqueId module_id, size_t enum_index);
 
  private:
-  absl::flat_hash_map<std::pair<ModuleIndex, size_t>,
+  absl::flat_hash_map<std::pair<module::UniqueId, size_t>,
                       TypeSystem::EnumType const*>
       enums_;
   google::protobuf::RepeatedPtrField<TypeSystem::EnumType> local_enums_;

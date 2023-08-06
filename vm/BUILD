@@ -44,7 +44,7 @@ cc_library(
         "//data_types:fn",
         "//data_types:integer",
         "//module:global_function_map",
-        "//module:global_module_map",
+        "//module:unique_id",
         "//semantic_analysis:type_system",
         "//serialization:foreign_symbol_map",
         "//serialization:function_index",
@@ -83,6 +83,7 @@ cc_library(
     srcs = ["serialization.cc"],
     deps = [
         ":function",
+        "//module:unique_id",
         "//serialization:foreign_symbol_map",
         "//serialization:function_proto",
         "//serialization:module",

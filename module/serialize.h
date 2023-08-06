@@ -13,6 +13,7 @@
 #include "module/module.h"
 #include "module/module_map.h"
 #include "module/symbol.h"
+#include "module/unique_id.h"
 #include "semantic_analysis/type_system.h"
 #include "serialization/foreign_symbol_map.h"
 #include "serialization/module.pb.h"
@@ -30,8 +31,7 @@ bool SerializeModule(Module const &module, std::ostream &output,
 
 bool DeserializeModuleInto(serialization::Module const &proto,
                            base::PtrSpan<Module const> dependencies,
-                           serialization::ModuleIndex module_index,
-                           Module &module,
+                           UniqueId module_id, Module &module,
                            semantic_analysis::TypeSystem &current_type_system,
                            serialization::UniqueTypeTable &unique_type_table,
                            ModuleMap &module_map,

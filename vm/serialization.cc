@@ -30,10 +30,10 @@ void Serialize(FunctionTable const& from,
 }
 
 bool Deserialize(serialization::proto::FunctionTable const& from,
-                 FunctionTable& to, serialization::ModuleIndex module_index,
+                 FunctionTable& to, module::UniqueId module_id,
                  SerializationState& state) {
   for (auto const& function : from.functions()) {
-    to.emplace(function.parameters(), function.returns(), module_index);
+    to.emplace(function.parameters(), function.returns(), module_id);
   }
 
   for (size_t i = 0; i < to.functions_.size(); ++i) {

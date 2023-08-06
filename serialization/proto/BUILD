@@ -26,11 +26,6 @@ proto_library(
 )
 
 proto_library(
-    name = "module_map",
-    srcs = ["module_map.proto"],
-)
-
-proto_library(
     name = "read_only_data",
     srcs = ["read_only_data.proto"],
 )

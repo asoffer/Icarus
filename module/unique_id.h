@@ -32,8 +32,9 @@ struct UniqueId {
   explicit UniqueId(char const (&value)[N])
       : UniqueId(std::string_view(value)) {}
 
-  // Valid modules must only use printable characters.
   static UniqueId Invalid();
+  static UniqueId Builtin();
+  static UniqueId Self();
 
   std::string_view value() const { return *value_; }
 

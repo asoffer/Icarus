@@ -68,7 +68,7 @@ struct Module {
                  }));
   }
 
-  module::UniqueId const &id() const { return id_; }
+  module::UniqueId id() const { return id_; }
 
   auto const &read_only_data() const { return read_only_data_; }
   auto &read_only_data() { return read_only_data_; }

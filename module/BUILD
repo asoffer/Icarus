@@ -29,7 +29,6 @@ cc_library(
     hdrs = ["module_map.h"],
     srcs = ["module_map.cc"],
     deps = [
-        ":global_module_map",
         ":module",
         ":module_name",
         ":name_resolver",
@@ -78,6 +77,7 @@ cc_library(
         "//serialization:foreign_symbol_map",
         "//serialization:read_only_data",
         "//serialization:unique_type_table",
+        "@asoffer_nth//nth/debug",
         "@com_google_absl//absl/functional:any_invocable",
         "@com_google_absl//absl/functional:function_ref",
     ]
@@ -122,22 +122,6 @@ cc_library(
         "@com_google_absl//absl/container:flat_hash_map"
     ],
 )
-
-cc_library(
-    name = "global_module_map",
-    visibility = ["//visibility:public"],
-    hdrs = ["global_module_map.h"],
-    srcs = ["global_module_map.cc"],
-    deps = [
-        ":unique_id",
-        "//serialization:module_index",
-        "//serialization:module_map_proto",
-        "@asoffer_nth//nth/debug",
-        "@asoffer_nth//nth/container:flyweight_set",
-        "@com_google_absl//absl/container:flat_hash_map",
-    ],
-)
-
 
 cc_library(
     name = "type_system",

@@ -37,7 +37,7 @@ void ByteCodeValueEmitter::operator()(ast::EnumLiteral const* node,
   auto [index, ptr] =
       resources().unique_type_table().insert_enum(std::move(enum_type));
   core::Type type =
-      EnumType(type_system(), serialization::ModuleIndex::Self(), index, ptr);
+      EnumType(type_system(), module::UniqueId::Self(), index, ptr);
   data.function().AppendPush(type);
 }
 

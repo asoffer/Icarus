@@ -52,7 +52,7 @@ nth::exit_code Execute(nth::FlagValueSet flags,
   }
 
   if (not module::DeserializeModuleInto(
-          proto, resources.modules(), serialization::ModuleIndex::Self(),
+          proto, resources.modules(), module::UniqueId::Self(),
           resources.primary_module(), resources.primary_module().type_system(),
           resources.unique_type_table(), *module_map, resources.function_map(),
           resources.opaque_map())) {

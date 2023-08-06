@@ -16,7 +16,6 @@
 #include "jasmin/serialization.h"
 #include "jasmin/value_stack.h"
 #include "module/global_function_map.h"
-#include "module/global_module_map.h"
 #include "semantic_analysis/type_system.h"
 #include "serialization/foreign_symbol_map.h"
 #include "serialization/module_index.h"
@@ -84,7 +83,7 @@ struct TranslateFunctionArguments
     : jasmin::StackMachineInstruction<TranslateFunctionArguments> {
   static void execute(jasmin::ValueStack& value_stack,
                       core::Parameters<core::Type> const* parameters,
-                      serialization::ModuleIndex index);
+                      module::UniqueId module_id);
 };
 
 struct InvokeForeignFunction
@@ -145,8 +144,7 @@ struct PushStringLiteral : jasmin::StackMachineInstruction<PushStringLiteral> {
 
 struct PushFunction : jasmin::StackMachineInstruction<PushFunction> {
   using serialization_state =
-      std::tuple<serialization::ModuleIndex, module::GlobalModuleMap&,
-                 module::GlobalFunctionMap&>;
+      std::tuple<module::UniqueId, module::GlobalFunctionMap&>;
 
   static void execute(jasmin::ValueStack& value_stack, jasmin::Value value);
 

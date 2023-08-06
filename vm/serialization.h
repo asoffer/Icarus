@@ -2,7 +2,7 @@
 #define ICARUS_VM_SERIALIZATION_H
 
 #include "module/global_function_map.h"
-#include "module/global_module_map.h"
+#include "module/unique_id.h"
 #include "serialization/foreign_symbol_map.h"
 #include "serialization/module_index.h"
 #include "serialization/proto/function.pb.h"
@@ -15,12 +15,11 @@ namespace vm {
 struct SerializationState {
   SerializationState(serialization::ReadOnlyData& read_only_data,
                      serialization::ForeignSymbolMap& foreign_symbol_map,
-                     serialization::ModuleIndex module_index,
-                     module::GlobalModuleMap& module_map,
+                     module::UniqueId module_id,
                      module::GlobalFunctionMap& fn_map)
       : read_only_data_(read_only_data),
         foreign_symbol_map_(foreign_symbol_map),
-        push_fn_state_(module_index, module_map, fn_map) {}
+        push_fn_state_(module_id, fn_map) {}
   template <typename T>
   T& get() {
     constexpr auto t = nth::type<T>;
@@ -36,9 +35,7 @@ struct SerializationState {
  private:
   serialization::ReadOnlyData& read_only_data_;
   serialization::ForeignSymbolMap& foreign_symbol_map_;
-  std::tuple<serialization::ModuleIndex, module::GlobalModuleMap&,
-             module::GlobalFunctionMap&>
-      push_fn_state_;
+  std::tuple<module::UniqueId, module::GlobalFunctionMap&> push_fn_state_;
 };
 
 void Serialize(Function const& f, serialization::proto::Function& proto,
@@ -51,7 +48,7 @@ void Serialize(FunctionTable const& from,
                SerializationState& state);
 
 bool Deserialize(serialization::proto::FunctionTable const& from,
-                 FunctionTable& to, serialization::ModuleIndex module_index,
+                 FunctionTable& to, module::UniqueId module_id,
                  SerializationState& state);
 
 }  // namespace vm

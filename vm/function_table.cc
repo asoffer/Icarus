@@ -19,8 +19,7 @@ serialization::FunctionIndex FunctionTable::find(Function const* f) {
 }
 
 std::pair<serialization::FunctionIndex, Function*> FunctionTable::emplace(
-    size_t parameters, size_t returns,
-    serialization::ModuleIndex module_index) {
+    size_t parameters, size_t returns, module::UniqueId module_id) {
   serialization::FunctionIndex index(functions_.size());
   auto& f = functions_.emplace_back(parameters, returns);
   function_indices_.emplace(&f, index);
@@ -28,7 +27,7 @@ std::pair<serialization::FunctionIndex, Function*> FunctionTable::emplace(
   // Note: This is correct because we only call `emplace` on the
   // currently-being compiled function.
 
-  function_map_.insert_function(&f, module_index, index);
+  function_map_.insert_function(&f, module_id, index);
 
   return std::pair(index, &f);
 }

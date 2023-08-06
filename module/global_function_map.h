@@ -11,22 +11,19 @@
 namespace module {
 
 struct GlobalFunctionMap {
-  void insert_function(void const* f, serialization::ModuleIndex module_index,
+  void insert_function(void const* f, UniqueId module_id,
                        serialization::FunctionIndex function_index);
 
-  std::pair<serialization::ModuleIndex, serialization::FunctionIndex> find(
-      void const* f);
+  std::pair<UniqueId, serialization::FunctionIndex> find(void const* f);
 
-  void const* find(serialization::ModuleIndex m,
-                   serialization::FunctionIndex f);
+  void const* find(UniqueId id, serialization::FunctionIndex f);
 
  private:
-  absl::flat_hash_map<void const*, std::pair<serialization::ModuleIndex,
-                                             serialization::FunctionIndex>>
+  absl::flat_hash_map<void const*,
+                      std::pair<UniqueId, serialization::FunctionIndex>>
       functions_;
-  absl::flat_hash_map<
-      std::pair<serialization::ModuleIndex, serialization::FunctionIndex>,
-      void const*>
+  absl::flat_hash_map<std::pair<UniqueId, serialization::FunctionIndex>,
+                      void const*>
       reverse_functions_;
 };
 

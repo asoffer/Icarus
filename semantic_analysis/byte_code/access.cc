@@ -1,3 +1,4 @@
+#include "module/unique_id.h"
 #include "semantic_analysis/byte_code/emitter.h"
 #include "serialization/module_index.h"
 
@@ -13,8 +14,8 @@ void ByteCodeValueEmitter::operator()(ast::Access const* node,
 
     data.function().AppendDrop(1);
   } else if (operand_qt.type() == Module) {
-    auto module_index = EvaluateAs<serialization::ModuleIndex>(node->operand());
-    auto& m           = resources().module(module_index);
+    auto module_id    = EvaluateAs<module::UniqueId>(node->operand());
+    auto& m           = resources().module(module_id);
     std::span symbols = m.LoadSymbols(node->member_name());
     switch (symbols.size()) {
       case 0: {
@@ -22,13 +23,13 @@ void ByteCodeValueEmitter::operator()(ast::Access const* node,
       } break;
       case 1: {
         core::Type symbol_type = resources().Translate(
-            symbols[0].type(), module_index, m.type_system(), type_system());
+            symbols[0].type(), module_id, m.type_system(), type_system());
         if (auto fn_type =
                 symbol_type.get_if<core::FunctionType>(type_system())) {
           NTH_UNIMPLEMENTED();
         } else if (symbol_type == Type) {
           core::Type t =
-              resources().Translate(symbols[0].as<core::Type>(), module_index,
+              resources().Translate(symbols[0].as<core::Type>(), module_id,
                                     m.type_system(), type_system());
           data.function().AppendPush(t);
         } else if (symbol_type.category() ==

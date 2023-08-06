@@ -30,7 +30,6 @@ void SerializeType(core::Type t, serialization::Type &proto,
 serialization::Module BuiltinModule() {
   semantic_analysis::TypeSystem ts;
   module::GlobalFunctionMap fn_map;
-  module::GlobalModuleMap mod_map;
   serialization::ForeignSymbolMap foreign_map(&ts);
   serialization::ReadOnlyData rodata;
 
@@ -49,7 +48,7 @@ serialization::Module BuiltinModule() {
         {semantic_analysis::U(8)});
     SerializeType(t, *symbol.mutable_symbol_type(), false);
 
-    auto [index, fn] = table.emplace(1, 1);
+    auto [index, fn] = table.emplace(1, 1, module::UniqueId::Builtin());
     symbol.mutable_function()->set_index(index.value());
     fn->AppendBuiltinAsciiDecode();
     fn->AppendReturn();
@@ -65,7 +64,7 @@ serialization::Module BuiltinModule() {
         {semantic_analysis::Char});
     SerializeType(t, *symbol.mutable_symbol_type(), false);
 
-    auto [index, fn] = table.emplace(1, 1);
+    auto [index, fn] = table.emplace(1, 1, module::UniqueId::Builtin());
     symbol.mutable_function()->set_index(index.value());
     fn->AppendBuiltinAsciiEncode();
     fn->AppendReturn();
@@ -80,7 +79,7 @@ serialization::Module BuiltinModule() {
 
     SerializeType(t, *symbol.mutable_symbol_type(), false);
 
-    auto [index, fn] = table.emplace(0, 2);
+    auto [index, fn] = table.emplace(0, 2, module::UniqueId::Builtin());
     symbol.mutable_function()->set_index(index.value());
     fn->AppendBuiltinArguments();
     fn->AppendReturn();
@@ -93,7 +92,7 @@ serialization::Module BuiltinModule() {
         {semantic_analysis::Type});
     SerializeType(t, *symbol.mutable_symbol_type(), false);
 
-    auto [index, fn] = table.emplace(0, 1);
+    auto [index, fn] = table.emplace(0, 1, module::UniqueId::Builtin());
     symbol.mutable_function()->set_index(index.value());
     fn->AppendBuiltinOpaque();
     fn->AppendReturn();
@@ -114,15 +113,14 @@ serialization::Module BuiltinModule() {
     // From the perspective of Jasmin this function has two inputs and two
     // returns, though the function itself only has one return in Icarus: A
     // slice.
-    auto [index, fn] = table.emplace(2, 2);
+    auto [index, fn] = table.emplace(2, 2, module::UniqueId::Builtin());
     symbol.mutable_function()->set_index(index.value());
     fn->AppendReturn();
   }
 
   serialization::UniqueTypeTable unique_type_table;
 
-  vm::SerializationState state(rodata, foreign_map,
-                               serialization::ModuleIndex::Self(), mod_map,
+  vm::SerializationState state(rodata, foreign_map, module::UniqueId::Self(),
                                fn_map);
   vm::Serialize(table, *module.mutable_function_table(), state);
   module::SerializeTypeSystem(ts, unique_type_table,
