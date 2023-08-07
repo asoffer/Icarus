@@ -21,24 +21,25 @@
 namespace toolchain {
 
 nth::exit_code Compile(nth::FlagValueSet flags) {
-  auto const *source          = flags.get<nth::file_path>("source");
-  auto const *output_path     = flags.get<nth::file_path>("output");
-  auto const *module_map_file = flags.get<nth::file_path>("module-map");
-  auto const *id = flags.get<module::UniqueId>("module-identifier");
-
-  // TODO: Validate these as required.
-  if (not source) { return nth::exit_code::usage; }
-  if (not output_path) { return nth::exit_code::usage; }
-  if (not module_map_file) { return nth::exit_code::usage; }
-  if (not id) { return nth::exit_code::usage; }
+  auto const &source          = flags.get<nth::file_path>("source");
+  auto const &output_path     = flags.get<nth::file_path>("output");
+  auto const &module_map_file = flags.get<nth::file_path>("module-map");
+  auto id = flags.get<module::UniqueId>("module-identifier");
 
   frontend::SourceIndexer source_indexer;
   diagnostic::StreamingConsumer diagnostic_consumer(stderr, &source_indexer);
 
-  std::optional content = base::ReadFileToString(*source);
+  std::optional content = base::ReadFileToString(source);
   if (not content) {
     // TODO Log an error with the diagnostics consumer.
-    NTH_LOG((v.always), "Failed to load the content from {}") <<= {source};
+    NTH_LOG((v.always), "Failed to load the content from \"{}\"") <<= {source};
+    return nth::exit_code::generic_error;
+  }
+
+  std::optional module_map = module::ModuleMap::Load(module_map_file);
+  if (not module_map) {
+    NTH_LOG((v.always), "Failed to load module map from \"{}\"") <<=
+        {module_map_file};
     return nth::exit_code::generic_error;
   }
 
@@ -53,13 +54,7 @@ nth::exit_code Compile(nth::FlagValueSet flags) {
   ast::Module ast_module;
   ast_module.insert(parsed_nodes.begin(), parsed_nodes.end());
 
-  std::optional module_map = module::ModuleMap::Load(*module_map_file);
-  if (not module_map) {
-    // TODO: log an error
-    return nth::exit_code::generic_error;
-  }
-
-  module::Resources resources(std::move(*id), *module_map, diagnostic_consumer);
+  module::Resources resources(id, *module_map, diagnostic_consumer);
 
   semantic_analysis::Context context;
   semantic_analysis::TypeVerifier tv(resources, context);
@@ -72,7 +67,7 @@ nth::exit_code Compile(nth::FlagValueSet flags) {
 
   semantic_analysis::EmitByteCodeForModule(ast_module, context, resources);
 
-  std::ofstream output(output_path->path());
+  std::ofstream output(output_path.path());
   return module::SerializeModule(resources.primary_module(), output,
                                  resources.unique_type_table(), *module_map,
                                  resources.function_map())

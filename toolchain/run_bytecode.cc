@@ -20,28 +20,25 @@ namespace toolchain {
 
 nth::exit_code Execute(nth::FlagValueSet flags,
                        std::span<std::string_view const> arguments) {
-  auto const *input           = flags.get<nth::file_path>("input");
-  auto const *module_map_file = flags.get<nth::file_path>("module-map");
-  auto const *id = flags.get<module::UniqueId>("module-identifier");
+  auto const &input           = flags.get<nth::file_path>("input");
+  auto const &module_map_file = flags.get<nth::file_path>("module-map");
+  auto id = flags.get<module::UniqueId>("module-identifier");
 
-  if (not input) { return nth::exit_code::usage; }
-  if (not module_map_file) { return nth::exit_code::usage; }
-  if (not id) { return nth::exit_code::usage; }
-
-  std::optional module_map = module::ModuleMap::Load(*module_map_file);
+  std::optional module_map = module::ModuleMap::Load(module_map_file);
   if (not module_map) {
-    // TODO: log an error
+    NTH_LOG((v.always), "Failed to load module map from \"{}\"") <<=
+        {module_map_file};
     return nth::exit_code::generic_error;
   }
 
   frontend::SourceIndexer source_indexer;
   diagnostic::StreamingConsumer diagnostic_consumer(stderr, &source_indexer);
 
-  module::Resources resources(std::move(*id), *module_map, diagnostic_consumer);
+  module::Resources resources(id, *module_map, diagnostic_consumer);
 
-  std::ifstream stream(input->path());
+  std::ifstream stream(input.path());
   if (not stream.is_open()) {
-    std::cerr << "Failed to open '" << input->path() << "'.\n";
+    std::cerr << "Failed to open '" << input.path() << "'.\n";
     return nth::exit_code::generic_error;
   }
 
