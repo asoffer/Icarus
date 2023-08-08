@@ -7,7 +7,6 @@
 #include <ostream>
 
 #include "base/ptr_span.h"
-#include "data_types/integer.h"
 #include "module/global_function_map.h"
 #include "module/module.h"
 #include "module/module_map.h"

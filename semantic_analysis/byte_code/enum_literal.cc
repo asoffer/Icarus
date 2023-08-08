@@ -1,3 +1,4 @@
+#include "core/integer.h"
 #include "semantic_analysis/byte_code/emitter.h"
 
 namespace semantic_analysis {
@@ -14,7 +15,7 @@ void ByteCodeValueEmitter::operator()(ast::EnumLiteral const* node,
     // TODO: Handle casts correctly.
     if (t == Integer) {
       value = absl::Int128Low64(
-          EvaluateAs<data_types::IntegerHandle>(value_expr.get()).value());
+          core::AsInt128(EvaluateAs<core::Integer>(value_expr.get())));
     } else {
       [[maybe_unused]] bool found =
           WithPrimitiveType(t, [&, v = value_expr.get()]<std::integral T> {

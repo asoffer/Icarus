@@ -145,11 +145,7 @@ template void Function::AppendBinary<'%', uint64_t>();
 
 template <typename T>
 void Function::AppendNegate() {
-  if constexpr (nth::type<T> == nth::type<data_types::IntegerHandle>) {
-    internal::Impl(data_).append<data_types::IntegerHandle::Negate>();
-  } else {
-    internal::Impl(data_).append<jasmin::Negate<T>>();
-  }
+  internal::Impl(data_).append<jasmin::Negate<T>>();
 }
 
 template void Function::AppendNegate<int8_t>();
@@ -158,7 +154,7 @@ template void Function::AppendNegate<int32_t>();
 template void Function::AppendNegate<int64_t>();
 template void Function::AppendNegate<float>();
 template void Function::AppendNegate<double>();
-template void Function::AppendNegate<data_types::IntegerHandle>();
+template void Function::AppendNegate<core::Integer>();
 
 template <typename T>
 void Function::AppendConstruct(std::type_identity_t<T> value) {

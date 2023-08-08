@@ -170,7 +170,7 @@ extern template void Function::AppendNegate<int32_t>();
 extern template void Function::AppendNegate<int64_t>();
 extern template void Function::AppendNegate<float>();
 extern template void Function::AppendNegate<double>();
-extern template void Function::AppendNegate<data_types::IntegerHandle>();
+extern template void Function::AppendNegate<core::Integer>();
 
 extern template void Function::AppendConstruct<bool>(bool value);
 extern template void Function::AppendConstruct<data_types::Char>(

@@ -15,6 +15,8 @@
 #include "jasmin/execute.h"
 #include "module/module.h"
 #include "module/resources.h"
+#include "nth/debug/log/log.h"
+#include "nth/debug/log/stderr_log_sink.h"
 #include "nth/io/string_printer.h"
 #include "nth/strings/format/universal.h"
 #include "semantic_analysis/context.h"
@@ -37,10 +39,13 @@ inline module::Resources TestResources(
 
 struct Repl {
   explicit Repl(module::Resources resources = TestResources())
-      : resources_(std::move(resources)),
-        state_(table_, type_system(), arguments_) {
+      : resources_(std::move(resources)), state_(type_system(), arguments_) {
     consumer_ = &static_cast<diagnostic::TrackingConsumer&>(
         resources_.diagnostic_consumer());
+    static bool b = [] {
+      nth::RegisterLogSink(nth::stderr_log_sink);
+      return false;
+    }();
   }
 
  private:
@@ -201,7 +206,6 @@ struct Repl {
 
   module::Resources resources_;
   std::deque<std::string> source_content_;
-  data_types::IntegerTable table_;
   ast::Module ast_module_;
   semantic_analysis::Context context_;
   diagnostic::TrackingConsumer* consumer_;
@@ -266,7 +270,6 @@ struct Snippet {
   // TODO: Doesn't need to be mutable?
   mutable module::Resources resources_;
   std::string content_;
-  mutable data_types::IntegerTable table_;
   ast::Module ast_module_;
   mutable semantic_analysis::Context context_;
   diagnostic::TrackingConsumer& consumer_;
@@ -392,8 +395,7 @@ struct EvaluatesTo {
     if constexpr (FitsInRegister<type>()) {
       type result;
 
-      vm::ExecutionState state_(snippet.table_, snippet.type_system(),
-                                snippet.arguments_);
+      vm::ExecutionState state_(snippet.type_system(), snippet.arguments_);
       vm::Execute(f, state_, {}, result);
       if constexpr (t == nth::type<T>) {
         return testing::ExplainMatchResult(testing::Eq(value_), result,

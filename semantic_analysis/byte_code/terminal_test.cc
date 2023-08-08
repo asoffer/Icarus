@@ -25,8 +25,7 @@ TEST(Terminal, Evaluation) {
   EXPECT_EQ(repl.execute<data_types::Char>("!'%'"), data_types::Char('%'));
   EXPECT_EQ(repl.execute<data_types::Char>("!'\n'"), data_types::Char('\n'));
   EXPECT_EQ(repl.execute<double>("1.25"), 1.25);
-  EXPECT_THAT(repl.execute<data_types::IntegerHandle>("1234").value(),
-              absl::int128(1234));
+  EXPECT_EQ(repl.execute<core::Integer>("1234"), 1234);
 }
 
 }  // namespace

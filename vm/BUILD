@@ -13,7 +13,6 @@ cc_library(
     deps = [
         ":argument_slice",
         ":function",
-        "//data_types:integer",
         "//semantic_analysis:type_system",
         "@asoffer_jasmin//jasmin:execute",
         "@asoffer_jasmin//jasmin:execution_state",
@@ -38,10 +37,10 @@ cc_library(
     deps = [
         ":argument_slice",
         ":immediate_values",
+        "//core:integer",
         "//core/type_system",
         "//core/type_system:type",
         "//data_types:addr",
-        "//data_types:integer",
         "//module:function_id",
         "//module:global_function_map",
         "//module:unique_id",

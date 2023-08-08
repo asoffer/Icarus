@@ -4,7 +4,7 @@
 #include <cstdint>
 #include <type_traits>
 
-#include "data_types/integer.h"
+#include "core/integer.h"
 #include "jasmin/debug.h"
 #include "jasmin/function.h"
 #include "jasmin/instruction.h"
@@ -286,30 +286,27 @@ struct InstructionSet
                            int64_t, uint8_t, uint16_t, uint32_t, uint64_t,
                            float, double>,
           ApplyInstruction<Construct, bool, data_types::Char, int8_t, int16_t,
-                           int32_t, int64_t, data_types::IntegerHandle, uint8_t,
-                           uint16_t, uint32_t, uint64_t, float, double,
+                           int32_t, int64_t, uint8_t, uint16_t, uint32_t,
+                           uint64_t, float, double, core::Integer,
                            data_types::addr_t>,
-          Destroy<data_types::IntegerHandle>,
-          CopyConstruct<data_types::IntegerHandle>,
-          MoveConstruct<data_types::IntegerHandle>,
-          data_types::IntegerHandle::Negate,
           ApplyInstruction<jasmin::Add, int8_t, int16_t, int32_t, int64_t,
-                           uint8_t, uint16_t, uint32_t, uint64_t, float,
-                           double>,
+                           uint8_t, uint16_t, uint32_t, uint64_t, float, double,
+                           core::Integer>,
           ApplyInstruction<jasmin::Subtract, int8_t, int16_t, int32_t, int64_t,
-                           uint8_t, uint16_t, uint32_t, uint64_t, float,
-                           double>,
+                           uint8_t, uint16_t, uint32_t, uint64_t, float, double,
+                           core::Integer>,
           ApplyInstruction<jasmin::Multiply, int8_t, int16_t, int32_t, int64_t,
-                           uint8_t, uint16_t, uint32_t, uint64_t, float,
-                           double>,
+                           uint8_t, uint16_t, uint32_t, uint64_t, float, double,
+                           core::Integer>,
           ApplyInstruction<jasmin::Divide, int8_t, int16_t, int32_t, int64_t,
-                           uint8_t, uint16_t, uint32_t, uint64_t, float,
-                           double>,
+                           uint8_t, uint16_t, uint32_t, uint64_t, float, double,
+                           core::Integer>,
           ApplyInstruction<jasmin::Mod, int8_t, int16_t, int32_t, int64_t,
-                           uint8_t, uint16_t, uint32_t, uint64_t>,
+                           uint8_t, uint16_t, uint32_t, uint64_t,
+                           core::Integer>,
           ApplyInstruction<jasmin::Negate, int8_t, int16_t, int32_t, int64_t,
-                           uint8_t, uint16_t, uint32_t, uint64_t, float,
-                           double>,
+                           uint8_t, uint16_t, uint32_t, uint64_t, float, double,
+                           core::Integer>,
           jasmin::DumpValueStack, BuiltinInstructionSet> {};
 
 }  // namespace vm

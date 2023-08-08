@@ -1,7 +1,6 @@
 #ifndef ICARUS_VM_EXECUTE_H
 #define ICARUS_VM_EXECUTE_H
 
-#include "data_types/integer.h"
 #include "jasmin/value_stack.h"
 #include "semantic_analysis/type_system.h"
 #include "vm/argument_slice.h"
@@ -10,8 +9,7 @@
 namespace vm {
 
 struct ExecutionState {
-  ExecutionState(data_types::IntegerTable& table,
-                 semantic_analysis::TypeSystem& type_system,
+  ExecutionState(semantic_analysis::TypeSystem& type_system,
                  ArgumentSlice& slice);
 
   ExecutionState(ExecutionState const& state);
@@ -24,7 +22,7 @@ struct ExecutionState {
                       jasmin::ValueStack& value_stack);
 
  private:
-  alignas(void*) char data_[4 * sizeof(void*)];
+  alignas(void*) char data_[3 * sizeof(void*)];
 };
 
 void Execute(Function const& f, ExecutionState state,

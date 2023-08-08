@@ -12,6 +12,8 @@
 #include "module/resources.h"
 #include "module/serialize.h"
 #include "nth/commandline/commandline.h"
+#include "nth/debug/log/log.h"
+#include "nth/debug/log/stderr_log_sink.h"
 #include "nth/process/exit_code.h"
 #include "vm/argument_slice.h"
 #include "vm/execute.h"
@@ -20,6 +22,7 @@ namespace toolchain {
 
 nth::exit_code Execute(nth::FlagValueSet flags,
                        std::span<std::string_view const> arguments) {
+  nth::RegisterLogSink(nth::stderr_log_sink);
   auto const &input           = flags.get<nth::file_path>("input");
   auto const &module_map_file = flags.get<nth::file_path>("module-map");
   auto id = flags.get<module::UniqueId>("module-identifier");
@@ -63,21 +66,17 @@ nth::exit_code Execute(nth::FlagValueSet flags,
 
   for (auto const *module : module_map->imported_modules()) {
     jasmin::ValueStack value_stack;
-    data_types::IntegerTable table;
-    vm::Execute(
-        module->initializer(),
-        vm::ExecutionState{table, resources.primary_module().type_system(),
-                           argument_slice},
-        value_stack);
+    vm::Execute(module->initializer(),
+                vm::ExecutionState{resources.primary_module().type_system(),
+                                   argument_slice},
+                value_stack);
   }
 
   jasmin::ValueStack value_stack;
-  data_types::IntegerTable table;
-  vm::Execute(
-      resources.primary_module().initializer(),
-      vm::ExecutionState{table, resources.primary_module().type_system(),
-                         argument_slice},
-      value_stack);
+  vm::Execute(resources.primary_module().initializer(),
+              vm::ExecutionState{resources.primary_module().type_system(),
+                                 argument_slice},
+              value_stack);
   return nth::exit_code::success;
 }
 

@@ -57,28 +57,32 @@ struct GenericInteger;
 
 using Integer = GenericInteger<0>;
 
+inline auto& IntegerTable = internal_integer::Table<0>;
+
 template <size_t Tag>
 struct [[clang::preferred_name(Integer)]] GenericInteger {
-  GenericInteger(absl::int128 n = 0) : GenericInteger(Table.insert(n)) {}
-  GenericInteger(std::integral auto n) : GenericInteger(Table.insert(n)) {}
+  using Table = internal_integer::InternTable;
+
+  GenericInteger(absl::int128 n = 0) : GenericInteger(table.insert(n)) {}
+  GenericInteger(std::integral auto n) : GenericInteger(table.insert(n)) {}
 
   friend GenericInteger operator+(GenericInteger lhs, GenericInteger rhs) {
-    return GenericInteger(Table.insert(*lhs.number_ + *rhs.number_));
+    return GenericInteger(table.insert(*lhs.number_ + *rhs.number_));
   }
   friend GenericInteger operator-(GenericInteger lhs, GenericInteger rhs) {
-    return GenericInteger(Table.insert(*lhs.number_ - *rhs.number_));
+    return GenericInteger(table.insert(*lhs.number_ - *rhs.number_));
   }
   friend GenericInteger operator*(GenericInteger lhs, GenericInteger rhs) {
-    return GenericInteger(Table.insert(*lhs.number_ * *rhs.number_));
+    return GenericInteger(table.insert(*lhs.number_ * *rhs.number_));
   }
   friend GenericInteger operator/(GenericInteger lhs, GenericInteger rhs) {
-    return GenericInteger(Table.insert(*lhs.number_ / *rhs.number_));
+    return GenericInteger(table.insert(*lhs.number_ / *rhs.number_));
   }
   friend GenericInteger operator%(GenericInteger lhs, GenericInteger rhs) {
-    return GenericInteger(Table.insert(*lhs.number_ % *rhs.number_));
+    return GenericInteger(table.insert(*lhs.number_ % *rhs.number_));
   }
-  GenericInteger operator-(GenericInteger n) {
-    return GenericInteger(Table.insert(-*n.number_));
+  GenericInteger operator-() const {
+    return GenericInteger(table.insert(-*number_));
   }
 
   friend bool operator==(GenericInteger lhs, GenericInteger rhs) {
@@ -104,13 +108,21 @@ struct [[clang::preferred_name(Integer)]] GenericInteger {
     printer.write(absl::StrFormat("%d", *n.number_));
   }
 
+  template <size_t N>
+  friend absl::int128 AsInt128(GenericInteger<N> n);
+
  private:
   explicit GenericInteger(absl::int128 const* number) : number_(number) {}
 
-  static constexpr auto& Table = internal_integer::Table<Tag>;
+  static constexpr auto& table = internal_integer::Table<Tag>;
 
   absl::int128 const* number_;
 };
+
+template <size_t Tag>
+absl::int128 AsInt128(GenericInteger<Tag> n) {
+  return *n.number_;
+}
 
 }  // namespace core
 

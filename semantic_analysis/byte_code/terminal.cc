@@ -10,8 +10,7 @@ void ByteCodeValueEmitter::operator()(ast::Terminal const* node,
   } else if (qt.type() == SliceType(type_system(), Char)) {
     data.function().AppendPushStringLiteral(node->value<std::string>());
   } else if (qt.type() == Integer) {
-    data.function().AppendPush(
-        module().integer_table().insert(node->value<absl::int128>()));
+    data.function().AppendPush(node->value<core::Integer>());
   } else if (qt.type() == F64) {
     // TODO: Long-term these won't be doubles, but rather a "rational" type that
     // is arbitrary-precision.

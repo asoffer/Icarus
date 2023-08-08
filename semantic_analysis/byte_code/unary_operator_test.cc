@@ -37,10 +37,8 @@ TEST(UnaryOperator, Pointers) {
 TEST(UnaryOperator, Negation) {
   test::Repl repl;
   EXPECT_EQ(repl.execute<double>("-3.14"), -3.14);
-  EXPECT_EQ(repl.execute<data_types::IntegerHandle>("-1234").value(),
-            -absl::int128(1234));
-  EXPECT_EQ(repl.execute<data_types::IntegerHandle>("-(-1234)").value(),
-            absl::int128(1234));
+  EXPECT_EQ(repl.execute<core::Integer>("-1234"), -1234);
+  EXPECT_EQ(repl.execute<core::Integer>("-(-1234)"), 1234);
 }
 
 TEST(UnaryOperator, Not) {

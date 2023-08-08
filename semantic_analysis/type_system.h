@@ -8,6 +8,7 @@
 #include "base/extend/absl_hash.h"
 #include "core/alignment.h"
 #include "core/bytes.h"
+#include "core/integer.h"
 #include "core/type_contour.h"
 #include "core/type_system/finite_set.h"
 #include "core/type_system/function.h"
@@ -16,7 +17,6 @@
 #include "core/type_system/sized_integer.h"
 #include "core/type_system/type_system.h"
 #include "data_types/char.h"
-#include "data_types/integer.h"
 #include "module/unique_id.h"
 #include "serialization/type_system.pb.h"
 

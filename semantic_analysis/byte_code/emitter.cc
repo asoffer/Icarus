@@ -26,9 +26,8 @@ std::span<std::byte const> EmitterBase::EvaluateConstant(
       f.AppendReturn();
 
       vm::ArgumentSlice argument_slice(nullptr, 0);
-      data_types::IntegerTable table;
       jasmin::ValueStack value_stack;
-      vm::Execute(f, vm::ExecutionState{table, type_system(), argument_slice},
+      vm::Execute(f, vm::ExecutionState{type_system(), argument_slice},
                   value_stack);
       result_ptr->resize(contour.bytes().value());
       std::byte *data = result_ptr->data();

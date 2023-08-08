@@ -7,7 +7,6 @@
 #include <ostream>
 
 #include "base/ptr_span.h"
-#include "data_types/integer.h"
 #include "module/global_function_map.h"
 #include "module/symbol.h"
 #include "module/unique_id.h"
@@ -39,11 +38,6 @@ struct Module {
   }
   serialization::ForeignSymbolMap &foreign_symbol_map() {
     return foreign_symbol_map_;
-  }
-
-  data_types::IntegerTable &integer_table() { return integer_table_; }
-  data_types::IntegerTable const &integer_table() const {
-    return integer_table_;
   }
 
   std::span<Symbol const> LoadSymbols(std::string_view name) const {
@@ -97,9 +91,6 @@ struct Module {
   // through `get`. Remove when that's fixed.
   mutable serialization::ForeignSymbolMap foreign_symbol_map_{&type_system_};
   mutable vm::FunctionTable function_table_;
-
-  // All integer constants used in the module.
-  data_types::IntegerTable integer_table_;
 
   mutable serialization::ReadOnlyData read_only_data_;
 };

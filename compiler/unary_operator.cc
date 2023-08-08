@@ -266,7 +266,7 @@ Compiler::Task TaskForNegate(ast::UnaryOperator const *node,
     if (data.kind() == EmitKind::Statement) { co_return; }
     operand_task.send<FunctionData>(data);
     operand_task.complete();
-    data.function().AppendNegate<data_types::IntegerHandle>();
+    data.function().AppendNegate<core::Integer>();
   } else {
     if (operand_type == F32 or operand_type == F64) {
       co_yield std::vector{QualifiedType(

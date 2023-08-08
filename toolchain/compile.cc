@@ -13,6 +13,8 @@
 #include "module/resources.h"
 #include "module/serialize.h"
 #include "nth/commandline/commandline.h"
+#include "nth/debug/log/log.h"
+#include "nth/debug/log/stderr_log_sink.h"
 #include "nth/io/file_path.h"
 #include "nth/process/exit_code.h"
 #include "semantic_analysis/context.h"
@@ -21,6 +23,7 @@
 namespace toolchain {
 
 nth::exit_code Compile(nth::FlagValueSet flags) {
+  nth::RegisterLogSink(nth::stderr_log_sink);
   auto const &source          = flags.get<nth::file_path>("source");
   auto const &output_path     = flags.get<nth::file_path>("output");
   auto const &module_map_file = flags.get<nth::file_path>("module-map");

@@ -1007,7 +1007,7 @@ struct ReturnStmt : Node {
 struct Terminal : Expression {
  private:
   static constexpr auto types =
-      nth::type_sequence<bool, data_types::Char, absl::int128, double,
+      nth::type_sequence<bool, data_types::Char, core::Integer, double,
                          data_types::addr_t, core::Type, std::string>;
 
   using variant_type = nth::type_t<types.reduce(

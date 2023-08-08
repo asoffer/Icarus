@@ -24,7 +24,7 @@ void ByteCodeValueEmitter::operator()(ast::UnaryOperator const *node,
       auto type = context().qualified_type(node).type();
       if (type == Integer) {
         Emit(node->operand(), data);
-        data.function().AppendNegate<data_types::IntegerHandle>();
+        data.function().AppendNegate<core::Integer>();
       } else {
         Emit(node->operand(), data);
         bool found = WithPrimitiveType(

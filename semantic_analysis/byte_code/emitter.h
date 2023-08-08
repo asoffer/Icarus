@@ -220,9 +220,7 @@ T Emitter<E>::EvaluateAs(ast::Expression const *expression) {
 
   vm::ArgumentSlice argument_slice(nullptr, 0);
   T result;
-  data_types::IntegerTable table;
-  vm::Execute(f, vm::ExecutionState{table, type_system(), argument_slice}, {},
-              result);
+  vm::Execute(f, vm::ExecutionState{type_system(), argument_slice}, {}, result);
   return result;
 }
 

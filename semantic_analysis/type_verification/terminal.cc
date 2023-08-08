@@ -10,7 +10,7 @@ core::Type TypeOfNode(ast::Terminal const& node, TypeSystem& type_system) {
   if (node.type() == nth::type<bool>) { return Bool; }
   if (node.type() == nth::type<data_types::Char>) { return Char; }
   if (node.type() == nth::type<core::Type>) { return Type; }
-  if (node.type() == nth::type<absl::int128>) { return Integer; }
+  if (node.type() == nth::type<core::Integer>) { return Integer; }
   if (node.type() == nth::type<double>) { return F64; }
   if (node.type() == nth::type<data_types::addr_t>) { return NullPtr; }
   if (node.type() == nth::type<std::string>) {

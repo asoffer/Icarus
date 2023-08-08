@@ -1,6 +1,7 @@
 #include "module/serialize.h"
 
 #include "absl/cleanup/cleanup.h"
+#include "core/integer.h"
 #include "core/serialize.h"
 #include "jasmin/serialization.h"
 #include "module/type_system.h"
@@ -110,7 +111,9 @@ bool SerializeModule(Module const& module, std::ostream& output,
 
   serialization::ReadOnlyData::Serialize(module.read_only_data(),
                                          *proto.mutable_read_only());
-  data_types::Serialize(module.integer_table(), *proto.mutable_integers());
+
+  core::Serializer<core::Integer::Table> s(*proto.mutable_integers());
+  IcarusSerialize(s, core::IntegerTable);
 
   auto& exported = *proto.mutable_exported();
   for (auto const& [name, symbols] : module.exported_symbols()) {
@@ -152,7 +155,8 @@ bool DeserializeModuleInto(serialization::Module const& proto,
                            serialization::UniqueTypeTable& unique_type_table,
                            ModuleMap& module_map,
                            GlobalFunctionMap& function_map) {
-  data_types::Deserialize(proto.integers(), module.integer_table());
+  core::Deserializer<core::Integer::Table> d(proto.integers());
+  IcarusDeserialize(d, core::IntegerTable);
 
   if (not serialization::ReadOnlyData::Deserialize(proto.read_only(),
                                                    module.read_only_data()) or
