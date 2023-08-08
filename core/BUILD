@@ -114,6 +114,27 @@ cc_test(
 )
 
 cc_library(
+    name = "integer",
+    hdrs = ["integer.h"],
+    deps = [
+        "//core:serialize",
+        "//serialization:constants",
+        "@asoffer_nth//nth/container:flyweight_set",
+        "@com_google_absl//absl/numeric:int128",
+        "@com_google_absl//absl/strings:str_format",
+    ],
+)
+
+cc_test(
+    name = "integer_test",
+    srcs = ["integer_test.cc"],
+    deps = [
+        ":integer",
+        "@asoffer_nth//nth/test:main",
+    ],
+)
+
+cc_library(
     name = "parameters",
     hdrs = ["parameters.h"],
     deps = [
@@ -133,6 +154,14 @@ cc_test(
     deps = [
         ":parameters",
         "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_library(
+    name = "serialize",
+    hdrs = ["serialize.h"],
+    deps = [
+        "@asoffer_nth//nth/base:attributes",
     ],
 )
 

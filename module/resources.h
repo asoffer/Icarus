@@ -21,10 +21,6 @@ struct Resources {
   Module& primary_module() { return primary_module_; }
   Module const& primary_module() const { return primary_module_; }
 
-  size_t imported_modules() const {
-    return module_map().imported_modules().size();
-  }
-
   ModuleMap& module_map() { return module_map_; }
   ModuleMap const& module_map() const { return module_map_; }
 
@@ -38,13 +34,7 @@ struct Resources {
     return unique_type_table_;
   }
 
-  base::PtrSpan<Module> modules() { return module_map().imported_modules(); }
-
   Module& module(UniqueId module_id);
-
-  // Returns the `UniqueId` associated with the given `name` if one exists, and
-  // returns `UniqueId::Invalid()` otherwise.
-  UniqueId TryLoadModuleByName(ModuleName const& name) const;
 
   diagnostic::DiagnosticConsumer& diagnostic_consumer();
 

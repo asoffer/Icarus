@@ -44,7 +44,9 @@ struct ModuleMap {
     return imported_modules_;
   }
 
-  NameResolver const& name_resolver() const { return name_resolver_; }
+  UniqueId resolve_name(ModuleName const& name) const {
+    return name_resolver_(name);
+  }
 
  private:
   explicit ModuleMap(absl::flat_hash_map<ModuleName, UniqueId> names);

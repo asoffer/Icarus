@@ -42,10 +42,10 @@ struct LocalFnId {
 
   underlying_type value() const { return value_; }
 
-  friend void IcarusSerialize(auto serializer, LocalFnId const &from) {
+  friend void IcarusSerialize(auto &serializer, LocalFnId const &from) {
     serializer.output().set_index(from.value());
   }
-  friend bool IcarusDeserialize(auto deserializer, LocalFnId &to) {
+  friend bool IcarusDeserialize(auto &deserializer, LocalFnId &to) {
     to.value_ = deserializer.input().index();
     return true;
   }

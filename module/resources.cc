@@ -17,10 +17,6 @@ Module &Resources::module(UniqueId module_id) {
   NTH_UNREACHABLE("Unable to find module {}") <<= {module_id};
 }
 
-UniqueId Resources::TryLoadModuleByName(ModuleName const &name) const {
-  return module_map_.name_resolver()(name);
-}
-
 diagnostic::DiagnosticConsumer &Resources::diagnostic_consumer() {
   return diagnostic_consumer_;
 }

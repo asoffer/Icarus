@@ -49,7 +49,7 @@ nth::exit_code Execute(nth::FlagValueSet flags,
   }
 
   if (not module::DeserializeModuleInto(
-          proto, resources.modules(), module::UniqueId::Self(),
+          proto, module_map->imported_modules(), module::UniqueId::Self(),
           resources.primary_module(), resources.primary_module().type_system(),
           resources.unique_type_table(), *module_map,
           resources.function_map())) {
@@ -61,7 +61,7 @@ nth::exit_code Execute(nth::FlagValueSet flags,
   vm::ArgumentSlice argument_slice(
       const_cast<std::string_view *>(arguments.data()), arguments.size());
 
-  for (auto const *module : resources.modules()) {
+  for (auto const *module : module_map->imported_modules()) {
     jasmin::ValueStack value_stack;
     data_types::IntegerTable table;
     vm::Execute(

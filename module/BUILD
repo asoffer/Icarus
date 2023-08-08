@@ -164,6 +164,7 @@ cc_library(
         ":symbol",
         ":type_system",
         "//base:ptr_span",
+        "//core:serialize",
         "//data_types:integer",
         "//semantic_analysis:type_system",
         "//serialization:foreign_symbol_map",

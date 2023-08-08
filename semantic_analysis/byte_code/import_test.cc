@@ -28,7 +28,7 @@ TEST(Import, Computation) {
   test::Repl repl = MakeRepl(name);
 
   module::UniqueId expected_index =
-      repl.resources().TryLoadModuleByName(name);
+      repl.resources().module_map().resolve_name(name);
   ASSERT_NE(expected_index, module::UniqueId::Invalid());
 
   EXPECT_EQ(repl.execute<module::UniqueId>(R"(import "abc")"),

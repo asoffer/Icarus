@@ -74,7 +74,8 @@ VerificationTask TypeVerifier::VerifyType(ast::Import const *node) {
     std::memcpy(&length, p + jasmin::ValueSize, sizeof(length));
     std::string_view name(ptr, length);
 
-    auto index = resources().TryLoadModuleByName(module::ModuleName(name));
+    auto index =
+        resources().module_map().resolve_name(module::ModuleName(name));
     if (index == module::UniqueId::Invalid()) {
       ConsumeDiagnostic(NoSuchModule{.view = node->operand()->range()});
       qt = Error(qt);

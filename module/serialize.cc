@@ -1,6 +1,7 @@
 #include "module/serialize.h"
 
 #include "absl/cleanup/cleanup.h"
+#include "core/serialize.h"
 #include "jasmin/serialization.h"
 #include "module/type_system.h"
 #include "nth/base/attributes.h"
@@ -11,27 +12,6 @@
 
 namespace module {
 namespace {
-
-template <typename T>
-struct Deserializer {
-  explicit Deserializer(NTH_ATTRIBUTE(lifetimebound)
-                            typename T::icarus_serialization_type const& input)
-      : input_(input) {}
-  auto const& input() const { return input_; }
-
- private:
-  typename T::icarus_serialization_type const& input_;
-};
-
-template <typename T>
-struct Serializer {
-  explicit Serializer(typename T::icarus_serialization_type& output)
-      : output_(output) {}
-  auto& output() { return output_; }
-
- private:
-  typename T::icarus_serialization_type& output_;
-};
 
 core::Type DeserializeType(serialization::Type const& proto) {
   return core::Type(proto.category(),
@@ -147,9 +127,8 @@ bool SerializeModule(Module const& module, std::ostream& output,
                           symbol.as<core::Type>().category()));
       } else if (symbol_type.category() ==
                  module.type_system().index<core::FunctionType>()) {
-        IcarusSerialize(
-            Serializer<LocalFnId>(*exported_symbol.mutable_function()),
-            symbol.as<TypedFunction>().function);
+        core::Serializer<LocalFnId> s(*exported_symbol.mutable_function());
+        IcarusSerialize(s, symbol.as<TypedFunction>().function);
       } else if (symbol_type.category() ==
                      module.type_system()
                          .index<semantic_analysis::PrimitiveType>() or
@@ -194,10 +173,8 @@ bool DeserializeModuleInto(serialization::Module const& proto,
       } else if (symbol_type.category() ==
                  module.type_system().index<core::FunctionType>()) {
         LocalFnId f;
-        if (not IcarusDeserialize(Deserializer<LocalFnId>(symbol.function()),
-                                  f)) {
-          return false;
-        }
+        core::Deserializer<LocalFnId> d(symbol.function());
+        if (not IcarusDeserialize(d, f)) { return false; }
         module.exported_symbols()[name].push_back(TypedFunction{
             .type     = symbol_type,
             .function = f,
