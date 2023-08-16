@@ -21,26 +21,6 @@ void ByteCodeValueEmitter::operator()(ast::Access const* node,
         NTH_UNIMPLEMENTED();
       } break;
       case 1: {
-        core::Type symbol_type = resources().Translate(
-            symbols[0].type(), module_id, m.type_system(), type_system());
-        if (auto fn_type =
-                symbol_type.get_if<core::FunctionType>(type_system())) {
-          NTH_UNIMPLEMENTED();
-        } else if (symbol_type == Type) {
-          core::Type t =
-              resources().Translate(symbols[0].as<core::Type>(), module_id,
-                                    m.type_system(), type_system());
-          data.function().AppendPush(t);
-        } else if (symbol_type.category() ==
-                   type_system().index<PrimitiveType>()) {
-          // TODO: There's no need for translation here, but do we want to call
-          // a translation for consistency?
-          data.function().AppendPush(symbols[0].as<module::TypedValue>().value);
-        } else {
-          NTH_UNIMPLEMENTED();
-        }
-      } break;
-      default: {
         NTH_UNIMPLEMENTED();
       } break;
     }

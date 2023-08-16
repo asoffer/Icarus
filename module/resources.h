@@ -38,17 +38,6 @@ struct Resources {
 
   diagnostic::DiagnosticConsumer& diagnostic_consumer();
 
-  // Assuming `type` is a type with respect to the type system `from`, returns
-  // the corresponding type with respect to the type system `to`.
-  core::Type Translate(core::Type type, UniqueId module_id,
-                       semantic_analysis::TypeSystem& from,
-                       semantic_analysis::TypeSystem& to) const;
-
-  // Assuming `symbol` is defined relative to the module indexed by `from`,
-  // returns a `Symbol` equivalent to `symbol` but relative to the primary
-  // module.
-  Symbol TranslateToPrimary(UniqueId from, Symbol const& symbol);
-
  private:
   Module primary_module_{UniqueId(""), function_map_};
   serialization::ReadOnlyData read_only_data_;

@@ -48,15 +48,8 @@ VerificationTask TypeVerifier::VerifyType(ast::Access const *node) {
       co_return TypeOf(node, Error());
     }
     core::Type t;
-    for (auto const &symbol : symbols) {
-      module::Symbol s = resources().TranslateToPrimary(id, symbol);
-      t                = s.type();
-      if (auto fn_type = t.get_if<core::FunctionType>(type_system())) {
-        parameters_options.emplace(
-            fn_type->parameter_type(),
-            Context::CallableIdentifier(s.as<module::TypedFunction>()));
-      }
-    }
+    NTH_UNIMPLEMENTED();
+
     if (not parameters_options.empty()) {
       co_yield ParametersOf(node, std::move(parameters_options));
     }

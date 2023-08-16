@@ -68,9 +68,6 @@ struct Module {
   vm::FunctionTable const &function_table() const { return function_table_; }
   vm::FunctionTable &function_table() { return function_table_; }
 
-  std::pair<module::LocalFnId, vm::Function const *> Wrap(
-      vm::Function const *f);
-
   auto &exported_symbols() { return exported_symbols_; }
   auto const &exported_symbols() const { return exported_symbols_; }
 
@@ -80,10 +77,6 @@ struct Module {
   vm::Function initializer_{0, 0};
 
   absl::flat_hash_map<std::string, std::vector<Symbol>> exported_symbols_;
-
-  absl::flat_hash_map<vm::Function const *,
-                      std::pair<LocalFnId, vm::Function const *>>
-      wrappers_;
 
   // The type-system containing all types referenceable in this module.
   mutable semantic_analysis::TypeSystem type_system_;

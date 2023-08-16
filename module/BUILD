@@ -16,7 +16,6 @@ cc_library(
     name = "module",
     visibility = ["//visibility:public"],
     hdrs = ["module.h"],
-    srcs = ["module.cc"],
     deps = [
         ":symbol",
         ":type_system",
