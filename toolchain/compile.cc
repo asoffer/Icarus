@@ -15,6 +15,7 @@
 #include "nth/commandline/commandline.h"
 #include "nth/debug/log/log.h"
 #include "nth/debug/log/stderr_log_sink.h"
+#include "nth/io/file.h"
 #include "nth/io/file_path.h"
 #include "nth/process/exit_code.h"
 #include "semantic_analysis/context.h"
@@ -30,7 +31,8 @@ nth::exit_code Compile(nth::FlagValueSet flags) {
   auto id = flags.get<module::UniqueId>("module-identifier");
 
   frontend::SourceIndexer source_indexer;
-  diagnostic::StreamingConsumer diagnostic_consumer(stderr, &source_indexer);
+  diagnostic::StreamingConsumer diagnostic_consumer(nth::file::err(),
+                                                    source_indexer);
 
   std::optional content = base::ReadFileToString(source);
   if (not content) {

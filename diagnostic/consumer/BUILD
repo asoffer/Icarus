@@ -29,7 +29,7 @@ cc_library(
         "//diagnostic:console_renderer",
         "//diagnostic:message",
         "//frontend:source_indexer",
-        "@asoffer_nth//nth/debug",
+        "@asoffer_nth//nth/io:file",
     ],
 )
 

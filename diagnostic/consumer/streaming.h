@@ -1,19 +1,17 @@
 #ifndef ICARUS_DIAGNOSTIC_CONSUMER_STREAMING_H
 #define ICARUS_DIAGNOSTIC_CONSUMER_STREAMING_H
 
-#include <cstdio>
-
-#include "nth/debug/debug.h"
 #include "diagnostic/console_renderer.h"
 #include "diagnostic/consumer/consumer.h"
 #include "diagnostic/message.h"
 #include "frontend/source_indexer.h"
+#include "nth/io/file.h"
 
 namespace diagnostic {
 
 struct StreamingConsumer : DiagnosticConsumer {
-  explicit StreamingConsumer(std::FILE* file,
-                             frontend::SourceIndexer* source_indexer)
+  explicit StreamingConsumer(nth::file& file,
+                             frontend::SourceIndexer& source_indexer)
       : renderer_(file, source_indexer) {}
   ~StreamingConsumer() override {}
 

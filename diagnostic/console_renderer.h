@@ -1,20 +1,17 @@
 #ifndef ICARUS_DIAGNOSTIC_CONSOLE_RENDERER_H
 #define ICARUS_DIAGNOSTIC_CONSOLE_RENDERER_H
 
-#include <cstdio>
-#include <type_traits>
-
-#include "nth/debug/debug.h"
 #include "diagnostic/message.h"
 #include "frontend/source_indexer.h"
+#include "nth/io/file.h"
 
 namespace diagnostic {
 
 struct ConsoleRenderer {
   // Assumes the file is already open.
-  constexpr explicit ConsoleRenderer(std::FILE* out,
-                                     frontend::SourceIndexer* source_indexer)
-      : source_indexer_(*NTH_ASSERT_NOT_NULL(source_indexer)), out_(out) {}
+  constexpr explicit ConsoleRenderer(nth::file& file,
+                                     frontend::SourceIndexer& source_indexer)
+      : source_indexer_(source_indexer), file_(file) {}
 
   void AddError(DiagnosticMessage const& diag) { Add(Category::Error, diag); }
 
@@ -26,7 +23,7 @@ struct ConsoleRenderer {
 
   bool has_data_ = false;
   frontend::SourceIndexer& source_indexer_;
-  std::FILE* out_;
+  nth::file& file_;
 };
 
 }  // namespace diagnostic

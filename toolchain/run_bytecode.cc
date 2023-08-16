@@ -14,6 +14,7 @@
 #include "nth/commandline/commandline.h"
 #include "nth/debug/log/log.h"
 #include "nth/debug/log/stderr_log_sink.h"
+#include "nth/io/file.h"
 #include "nth/process/exit_code.h"
 #include "vm/argument_slice.h"
 #include "vm/execute.h"
@@ -35,7 +36,8 @@ nth::exit_code Execute(nth::FlagValueSet flags,
   }
 
   frontend::SourceIndexer source_indexer;
-  diagnostic::StreamingConsumer diagnostic_consumer(stderr, &source_indexer);
+  diagnostic::StreamingConsumer diagnostic_consumer(nth::file::err(),
+                                                    source_indexer);
 
   module::Resources resources(id, *module_map, diagnostic_consumer);
 

@@ -17,6 +17,7 @@ cc_library(
         ":message",
         "//frontend:source_indexer",
         "@asoffer_nth//nth/meta:type",
+        "@asoffer_nth//nth/io:file",
         "@com_google_absl//absl/strings:str_format",
     ],
 )

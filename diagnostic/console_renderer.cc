@@ -26,8 +26,8 @@ inline int NumDigits(size_t n) {
 void ConsoleRenderer::Flush() {
   if (not has_data_) { return; }
   has_data_ = false;
-  std::fputs("\n\n", out_);
-  std::fflush(out_);
+  std::fputs("\n\n", file_.get());
+  std::fflush(file_.get());
 }
 
 void ConsoleRenderer::WriteSourceQuote(SourceQuote const &quote) {
@@ -47,16 +47,16 @@ void ConsoleRenderer::WriteSourceQuote(SourceQuote const &quote) {
     size_t number_width = NumDigits(end - 1);
     for (size_t i = 0; i < 80; ++i) { text_width_str += "\u2500"; }
     for (size_t i = 0; i < number_width; ++i) { number_width_str += "\u2500"; }
-    absl::FPrintF(out_, "    \u256d%s\u252c%s\u256e\n", number_width_str,
+    absl::FPrintF(file_.get(), "    \u256d%s\u252c%s\u256e\n", number_width_str,
                   text_width_str);
     // TODO: get the filename for this module id from the ModuleMap.
     for (size_t line_number = start; line_number < end; ++line_number) {
-      absl::FPrintF(out_, "    \u2502%*d\u2502%s%*s\u2502\n", number_width,
-                    line_number, entry.line(line_number),
+      absl::FPrintF(file_.get(), "    \u2502%*d\u2502%s%*s\u2502\n",
+                    number_width, line_number, entry.line(line_number),
                     80 - entry.line(line_number).size(), "");
     }
 
-    absl::FPrintF(out_, "    \u2570%s\u2534%s\u256f\n", number_width_str,
+    absl::FPrintF(file_.get(), "    \u2570%s\u2534%s\u256f\n", number_width_str,
                   text_width_str);
   }
 }
@@ -65,16 +65,16 @@ void ConsoleRenderer::Add(Category cat, DiagnosticMessage const &diag) {
   has_data_ = true;
 
   // TODO: Source file name.
-  std::fputs("\033[31;1mError\033[0m:\n", out_);
+  std::fputs("\033[31;1mError\033[0m:\n", file_.get());
 
   diag.for_each_component([&](auto const &component) {
     constexpr auto type = nth::type<std::decay_t<decltype(component)>>;
     if constexpr (type == nth::type<Text>) {
-      std::fputs(component.c_str(), out_);
-      std::fputs("\n\n", out_);
+      std::fputs(component.c_str(), file_.get());
+      std::fputs("\n\n", file_.get());
     } else if constexpr (type == nth::type<List>) {
       for (std::string const &item : component.items()) {
-        absl::FPrintF(out_, "  * %s\n", item);
+        absl::FPrintF(file_.get(), "  * %s\n", item);
       }
     } else if constexpr (type == nth::type<SourceQuote>) {
       WriteSourceQuote(component);
@@ -82,7 +82,7 @@ void ConsoleRenderer::Add(Category cat, DiagnosticMessage const &diag) {
       static_assert(type.dependent(false));
     }
   });
-  std::fputs("\n", out_);
+  std::fputs("\n", file_.get());
 }
 
 }  // namespace diagnostic
