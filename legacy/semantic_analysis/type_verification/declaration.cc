@@ -1,0 +1,244 @@
+#include "absl/cleanup/cleanup.h"
+#include "ast/ast.h"
+#include "compiler/common_diagnostics.h"
+#include "semantic_analysis/type_system.h"
+#include "semantic_analysis/type_verification/casting.h"
+#include "semantic_analysis/type_verification/verify.h"
+
+namespace semantic_analysis {
+namespace {
+
+struct NoDefaultValue {
+  static constexpr std::string_view kCategory = "type-error";
+  static constexpr std::string_view kName     = "no-default-value";
+
+  diagnostic::DiagnosticMessage ToMessage() const {
+    return diagnostic::DiagnosticMessage(
+        diagnostic::Text("There is no default value for the type `%s`.", type),
+        diagnostic::SourceQuote().Highlighted(view, diagnostic::Style{}));
+  }
+
+  std::string type;
+  std::string_view view;
+};
+
+struct InitializingConstantWithNonConstant {
+  static constexpr std::string_view kCategory = "value-category-error";
+  static constexpr std::string_view kName =
+      "initializing-constant-with-nonconstant";
+
+  diagnostic::DiagnosticMessage ToMessage() const {
+    return diagnostic::DiagnosticMessage(
+        diagnostic::Text("Cannot initialize a constant from a non-constant."),
+        diagnostic::SourceQuote().Highlighted(view, diagnostic::Style{}));
+  }
+
+  std::string_view view;
+};
+
+struct NonConstantTypeInDeclaration {
+  static constexpr std::string_view kCategory = "type-error";
+  static constexpr std::string_view kName = "non-constant-type-in-declaration";
+
+  diagnostic::DiagnosticMessage ToMessage() const {
+    return diagnostic::DiagnosticMessage(
+        diagnostic::Text("Non-constant type encountered in declaration."),
+        diagnostic::SourceQuote().Highlighted(view, diagnostic::Style{}));
+  }
+
+  std::string_view view;
+};
+
+struct NoValidCast {
+  static constexpr std::string_view kCategory = "type-error";
+  static constexpr std::string_view kName     = "no-valid-cast";
+
+  diagnostic::DiagnosticMessage ToMessage() const {
+    return diagnostic::DiagnosticMessage(
+        diagnostic::Text("No valid cast from a value of type `%s` to a value "
+                         "of type `%s`.",
+                         from, to),
+        diagnostic::SourceQuote().Highlighted(view, diagnostic::Style{}));
+  }
+
+  std::string_view view;
+  std::string from;
+  std::string to;
+};
+
+struct OutOfBoundsConstantInteger {
+  static constexpr std::string_view kCategory = "cast-error";
+  static constexpr std::string_view kName = "out-of-bounds-constant-integer";
+
+  diagnostic::DiagnosticMessage ToMessage() const {
+    return diagnostic::DiagnosticMessage(
+        diagnostic::Text("Cannot cast the integer value %s to the type `%s` "
+                         "because the value would be out of range.",
+                         value, type),
+        diagnostic::SourceQuote().Highlighted(view, diagnostic::Style{}));
+  }
+
+  std::string_view view;
+  std::string_view value;
+  std::string type;
+};
+
+struct Reserved {
+  static constexpr std::string_view kCategory = "name-error";
+  static constexpr std::string_view kName     = "reserved";
+
+  diagnostic::DiagnosticMessage ToMessage() const {
+    return diagnostic::DiagnosticMessage(
+        diagnostic::Text("\"%s\" is a reserved keyword and cannot be the name "
+                         "of a variable.",
+                         name),
+        diagnostic::SourceQuote().Highlighted(view, diagnostic::Style{}));
+  }
+
+  std::string_view name;
+  std::string_view view;
+};
+
+}  // namespace
+
+VerificationTask TypeVerifier::VerifyType(ast::Declaration const *node) {
+  for (auto const &id : node->ids()) {
+    if (id.name() == "builtin") {
+      ConsumeDiagnostic(Reserved{
+          .name = id.name(),
+          .view = id.range(),
+      });
+      co_return TypeOf(node, Error());
+    }
+  }
+
+  // It's possible to enter verification of a declaration directly, or through a
+  // declaration identifier (because we're verifying a call expression where the
+  // callee is an identifier possibly referencing a declaration we haven't seen
+  // yet). In the former case, we may never actually see the declaration
+  // identifiers, so we need to ensure that they're processed at some point in
+  // the future.
+  absl::Cleanup c = [&] {
+    for (auto const &id : node->ids()) { schedule(&id); }
+  };
+
+  std::span<QualifiedType const> initial_value_qts;
+  std::span<QualifiedType const> type_expr_qts;
+
+  switch (node->kind()) {
+    case ast::Declaration::kDefaultInit: {
+      // Syntactically: `var: T`, or `var :: T`
+      type_expr_qts = co_await VerifyTypeOf(node->type_expr());
+      if (type_expr_qts.size() != 1) { NTH_UNIMPLEMENTED("Log an error"); }
+      auto type_expr_qt = type_expr_qts[0];
+      if (type_expr_qt != Constant(Type)) {
+        ConsumeDiagnostic(NonConstantTypeInDeclaration{
+            .view = node->type_expr()->range(),
+        });
+        co_return TypeOf(node, Error());
+      }
+
+      // TODO: If it's a local variable, the type needs to be default
+      // initializable. If it's a parameter the type does not need to be default
+      // initializable.
+      // bool is_parameter = (node->flags() & ast::Declaration::f_IsFnParam);
+      // bool is_default_initializable = t->get()->IsDefaultInitializable();
+      // if (not is_parameter and not is_default_initializable) {
+      //   ConsumeDiagnostic(NoDefaultValue{
+      //       .type = TypeForDiagnostic(node),
+      //       .view = node->range(),
+      //   });
+      // }
+
+      QualifiedType qt(EvaluateAs<core::Type>(node->type_expr()));
+      if (node->flags() & ast::Declaration::f_IsConst) { qt = Constant(qt); }
+      co_return TypeOf(node, qt);
+    } break;
+    case ast::Declaration::kInferred: {
+      // Syntactically: `var := value`, or `var ::= value`
+      std::span parameters = co_await VerifyParametersOf(node->init_val());
+      if (parameters.data() != nullptr) {
+        NTH_ASSERT(parameters.size() == 1);
+        co_yield ParametersOf(node, parameters[0]);
+      }
+
+      initial_value_qts = co_await VerifyTypeOf(node->init_val());
+      if (initial_value_qts.size() != 1) { NTH_UNIMPLEMENTED("Log an error"); }
+      QualifiedType qt(initial_value_qts[0].type());
+      if (node->flags() & ast::Declaration::f_IsConst) {
+        if (not(initial_value_qts[0].qualifiers() >= Qualifiers::Constant())) {
+          ConsumeDiagnostic(InitializingConstantWithNonConstant{
+              .view = node->init_val()->range(),
+          });
+          qt = Error(qt);
+        }
+        qt = Constant(qt);
+      }
+      co_return TypeOf(node, qt);
+    } break;
+    case ast::Declaration::kCustomInit: {
+      // Syntactically: `var: T = value`, or `var :: T = value`
+      type_expr_qts = co_await VerifyTypeOf(node->type_expr());
+      if (type_expr_qts.size() != 1) { NTH_UNIMPLEMENTED("Log an error"); }
+      auto type_expr_qt = type_expr_qts[0];
+      if (type_expr_qt != Constant(Type)) {
+        ConsumeDiagnostic(NonConstantTypeInDeclaration{
+            .view = node->type_expr()->range(),
+        });
+        co_return TypeOf(node, Error());
+      }
+
+      core::Type t = EvaluateAs<core::Type>(node->type_expr());
+      if (node->flags() & ast::Declaration::f_IsConst) {
+        co_yield TypeOf(node, Constant(t));
+      } else {
+        co_yield TypeOf(node, QualifiedType(t));
+      }
+
+      std::span parameters = co_await VerifyParametersOf(node->init_val());
+      if (parameters.data() != nullptr) {
+        NTH_ASSERT(parameters.size() == 1);
+        co_yield ParametersOf(node, parameters[0]);
+      }
+
+      initial_value_qts = co_await VerifyTypeOf(node->init_val());
+      if (initial_value_qts.size() != 1) { NTH_UNIMPLEMENTED("Log an error"); }
+      QualifiedType init_qt(initial_value_qts[0].type());
+      if (node->flags() & ast::Declaration::f_IsConst) {
+        if (not(initial_value_qts[0].qualifiers() >= Qualifiers::Constant())) {
+          ConsumeDiagnostic(InitializingConstantWithNonConstant{
+              .view = node->init_val()->range(),
+          });
+          init_qt = Error(init_qt);
+        }
+        init_qt = Constant(init_qt);
+      }
+
+      QualifiedType qt(t);
+      if (node->flags() & ast::Declaration::f_IsConst) { qt = Constant(qt); }
+
+      if (CanCast(init_qt, t) == CastKind::None) {
+        co_return TypeOf(node, Error(qt));
+      }
+
+      co_return TypeOf(node, qt);
+    } break;
+    default: NTH_UNIMPLEMENTED("{}") <<= {node->DebugString()};
+  }
+}
+
+VerificationTask TypeVerifier::VerifyType(ast::Declaration::Id const *node) {
+  std::span parameters = co_await VerifyParametersOf(&node->declaration());
+  if (parameters.data() != nullptr) {
+    NTH_ASSERT(parameters.size() == node->declaration().ids().size());
+    co_yield ParametersOf(node, parameters[node->index()]);
+  }
+  std::span qts = co_await VerifyTypeOf(&node->declaration());
+  co_return TypeOf(node, qts[node->index()]);
+}
+
+VerificationTask TypeVerifier::VerifyType(ast::BindingDeclaration const *node) {
+  NTH_UNREACHABLE();
+}
+
+}  // namespace semantic_analysis
