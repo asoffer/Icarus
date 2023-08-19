@@ -26,6 +26,17 @@ NTH_TEST("lex/empty") {
   NTH_EXPECT(token_buffer.size() == 0);
 }
 
+NTH_TEST("lex/keyword") {
+  DiagnosticConsumer d;
+  auto token_buffer = Lex("let", d);
+  NTH_EXPECT(token_buffer.size() == 1) NTH_ELSE { return; }
+  NTH_EXPECT(token_buffer[0].kind() == Token::Kind::Let);
+
+  token_buffer = Lex("var", d);
+  NTH_EXPECT(token_buffer.size() == 1) NTH_ELSE { return; }
+  NTH_EXPECT(token_buffer[0].kind() == Token::Kind::Var);
+}
+
 NTH_TEST("lex/identifier", std::string_view id) {
   DiagnosticConsumer d;
   auto token_buffer = Lex(id, d);

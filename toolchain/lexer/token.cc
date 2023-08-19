@@ -50,4 +50,13 @@ Token Token::Symbol(Token::Kind kind, uint32_t offset) {
   return token;
 }
 
+#define IC_XMACRO_TOKEN_KIND_KEYWORD(kind, keyword)                            \
+  Token Token::Keyword##kind(uint32_t offset) {                                \
+    Token token;                                                               \
+    token.offset_ = offset;                                                    \
+    token.kind_   = static_cast<uint8_t>(Token::Kind::kind);                   \
+    return token;                                                              \
+  }
+#include "toolchain/lexer/token_kind.xmacro.h"
+
 }  // namespace ic

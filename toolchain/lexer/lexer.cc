@@ -54,31 +54,6 @@ constexpr bool WhitespaceCharacter(char c) { return std::isspace(c); }
 
 }  // namespace
 
-void TokenBuffer::AppendInteger(std::string_view integer, uint32_t offset) {
-  uint64_t value = 0;
-  // TODO: Overflow detection.
-  for (char c : integer) {
-    if (c == '_') { continue; }
-    value = value * 10 + (c - '0');
-  }
-
-  Token::IntegerPayload payload;
-  if (value >= Token::IntegerPayload::PayloadLimit) {
-    uint32_t index =
-        static_cast<uint32_t>(integers_.index(integers_.insert(value).first));
-    payload = Token::IntegerPayload::Index(index);
-  } else {
-    payload = Token::IntegerPayload::Immediate(value);
-  }
-  tokens_.push_back(Token::Integer(offset, payload));
-}
-
-void TokenBuffer::AppendIdentifier(std::string_view identifier, uint32_t offset) {
-  uint32_t index = static_cast<uint32_t>(
-      identifiers_.index(identifiers_.insert(identifier).first));
-  tokens_.push_back(Token::Identifier(offset, index));
-}
-
 TokenBuffer Lex(std::string_view source,
                 DiagnosticConsumer& diagnostic_consumer) {
   TokenBuffer buffer;
@@ -107,7 +82,7 @@ bool Lexer::TryLexKeywordOrIdentifier(std::string_view& source) {
   NTH_ASSERT((v.debug), not source.empty());
   if (not LeadingIdentifierCharacter(source.front())) { return false; }
   std::string_view identifier = ConsumeWhile<IdentifierCharacter>(source);
-  token_buffer_.AppendIdentifier(identifier, StartIndex(identifier));
+  token_buffer_.AppendKeywordOrIdentifier(identifier, StartIndex(identifier));
   return true;
 }
 

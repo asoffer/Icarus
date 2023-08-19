@@ -6,7 +6,7 @@ cc_library(
     srcs = ["lexer.cc"],
     deps = [
         ":token",
-        "@asoffer_nth//nth/container:flyweight_set",
+        ":token_buffer",
         "@asoffer_nth//nth/debug",
     ],
 )
@@ -49,3 +49,24 @@ cc_test(
         "@asoffer_nth//nth/strings/format:universal",
     ],
 )
+
+cc_library(
+    name = "token_buffer",
+    hdrs = ["token_buffer.h"],
+    srcs = ["token_buffer.cc"],
+    deps = [
+        ":token",
+        "@asoffer_nth//nth/container:flyweight_set",
+        "@asoffer_nth//nth/debug",
+    ],
+)
+
+# TODO
+# cc_test(
+#     name = "token_buffer_test",
+#     srcs = ["token_buffer_test.cc"],
+#     deps = [
+#         ":token_buffer",
+#         "@asoffer_nth//nth/test:main",
+#     ],
+# )

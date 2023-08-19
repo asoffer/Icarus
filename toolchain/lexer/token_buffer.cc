@@ -1,0 +1,38 @@
+#include "toolchain/lexer/token_buffer.h"
+
+namespace ic {
+
+void TokenBuffer::AppendInteger(std::string_view integer, uint32_t offset) {
+  uint64_t value = 0;
+  // TODO: Overflow detection.
+  for (char c : integer) {
+    if (c == '_') { continue; }
+    value = value * 10 + (c - '0');
+  }
+
+  Token::IntegerPayload payload;
+  if (value >= Token::IntegerPayload::PayloadLimit) {
+    uint32_t index =
+        static_cast<uint32_t>(integers_.index(integers_.insert(value).first));
+    payload = Token::IntegerPayload::Index(index);
+  } else {
+    payload = Token::IntegerPayload::Immediate(value);
+  }
+  tokens_.push_back(Token::Integer(offset, payload));
+}
+
+void TokenBuffer::AppendKeywordOrIdentifier(std::string_view identifier,
+                                            uint32_t offset) {
+#define IC_XMACRO_TOKEN_KIND_KEYWORD(kind, keyword)                            \
+  if (identifier == keyword) {                                                 \
+    tokens_.push_back(Token::Keyword##kind(offset));                           \
+    return;                                                                    \
+  }
+#include "toolchain/lexer/token_kind.xmacro.h"
+
+  uint32_t index = static_cast<uint32_t>(
+      identifiers_.index(identifiers_.insert(identifier).first));
+  tokens_.push_back(Token::Identifier(offset, index));
+}
+
+}  // namespace ic
