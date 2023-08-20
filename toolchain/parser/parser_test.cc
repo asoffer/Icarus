@@ -6,6 +6,7 @@
 
 namespace ic {
 
+using ::ic::testing::HasBooleanValue;
 using ::ic::testing::HasImmediateIntegerValue;
 using ::ic::testing::IsIdentifier;
 using ::nth::ElementsAreSequentially;
@@ -46,6 +47,16 @@ NTH_TEST("parser/declaration") {
   auto tree          = Parse(buffer, d);
   NTH_EXPECT(tree.nodes() >>= ElementsAreSequentially(
                  HasToken(HasImmediateIntegerValue(3)),
+                 IdentifierToken(buffer, "x") and HasSubtreeSize(2),
+                 HasSubtreeSize(3)));
+}
+
+NTH_TEST("parser/declaration") {
+  DiagnosticConsumer d;
+  TokenBuffer buffer = Lex("let x ::= true", d);
+  auto tree          = Parse(buffer, d);
+  NTH_EXPECT(tree.nodes() >>= ElementsAreSequentially(
+                 HasToken(HasBooleanValue(true)),
                  IdentifierToken(buffer, "x") and HasSubtreeSize(2),
                  HasSubtreeSize(3)));
 }

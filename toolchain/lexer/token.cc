@@ -33,6 +33,14 @@ Token::IntegerPayload Token::AsIntegerPayload() const {
   return IntegerPayload(payload_);
 }
 
+bool Token::AsBoolean() const {
+  switch (kind()) {
+    case Kind::True: return true;
+    case Kind::False: return false;
+    default: NTH_UNREACHABLE("{}") <<= {*this};
+  }
+}
+
 Token Token::Identifier(uint32_t offset, uint32_t identifier_index) {
   NTH_ASSERT((v.debug), identifier_index < PayloadLimit);
 

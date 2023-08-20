@@ -15,6 +15,7 @@ struct ParseTree {
       StatementSequence,
       Declaration,
       DeclarationIdentifier,
+      BooleanLiteral,
       IntegerLiteral
     };
     Kind kind;

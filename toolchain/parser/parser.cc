@@ -200,8 +200,16 @@ void Parser::HandleColonColonEqual(ParseTree& tree) {
 }
 
 void Parser::HandleExpression(ParseTree& tree) {
-  NTH_ASSERT((v.debug), current_token().kind() == Token::Kind::Integer);
-  tree.append_leaf(ParseTree::Node::Kind::IntegerLiteral, *iterator_++);
+  switch (current_token().kind()) {
+    case Token::Kind::True:
+    case Token::Kind::False:
+      tree.append_leaf(ParseTree::Node::Kind::BooleanLiteral, *iterator_++);
+      break;
+    case Token::Kind::Integer:
+      tree.append_leaf(ParseTree::Node::Kind::IntegerLiteral, *iterator_++);
+      break;
+    default: NTH_UNIMPLEMENTED("Token: {}") <<= {current_token()};
+  }
   pop_and_discard_state();
 }
 

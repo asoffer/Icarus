@@ -80,6 +80,7 @@ struct Token {
 #include "toolchain/lexer/token_kind.xmacro.h"
 
   IntegerPayload AsIntegerPayload() const;
+  bool AsBoolean() const;
 
   friend void NthPrint(nth::Printer auto& p, Token t) {
     nth::universal_formatter f({

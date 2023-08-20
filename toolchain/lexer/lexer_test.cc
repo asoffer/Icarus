@@ -25,6 +25,14 @@ NTH_TEST("lex/keyword") {
   token_buffer = Lex("var", d);
   NTH_EXPECT(token_buffer.size() == 1) NTH_ELSE { return; }
   NTH_EXPECT(token_buffer[0].kind() == Token::Kind::Var);
+
+  token_buffer = Lex("true", d);
+  NTH_EXPECT(token_buffer.size() == 1) NTH_ELSE { return; }
+  NTH_EXPECT(token_buffer[0].kind() == Token::Kind::True);
+
+  token_buffer = Lex("false", d);
+  NTH_EXPECT(token_buffer.size() == 1) NTH_ELSE { return; }
+  NTH_EXPECT(token_buffer[0].kind() == Token::Kind::False);
 }
 
 NTH_TEST("lex/identifier", std::string_view id) {
