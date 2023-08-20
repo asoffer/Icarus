@@ -68,11 +68,11 @@ NTH_INVOKE_TEST("lex/integer") {
 
 NTH_TEST("lex/basic") {
   DiagnosticConsumer d;
-  auto token_buffer = Lex("x ::= 3", d);
-  NTH_EXPECT(token_buffer >>=
-             ElementsAreSequentially(HasKind(Token::Kind::Identifier),
-                                     HasKind(Token::Kind::ColonColonEqual),
-                                     HasImmediateIntegerValue(3)));
+  auto token_buffer = Lex("let x ::= 3", d);
+  NTH_EXPECT(token_buffer >>= ElementsAreSequentially(
+                 HasKind(Token::Kind::Let), HasKind(Token::Kind::Identifier),
+                 HasKind(Token::Kind::ColonColonEqual),
+                 HasImmediateIntegerValue(3)));
 }
 
 }  // namespace

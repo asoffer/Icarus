@@ -84,7 +84,7 @@ struct Token {
         .depth    = 3,
         .fallback = "...",
     });
-    nth::Interpolate<"[{} @{}">(p, f, t.kind(), t.offset_);
+    nth::Interpolate<"{} @{}">(p, f, t.kind(), t.offset_);
 
     switch (t.kind()) {
       case Token::Kind::Integer:
@@ -95,7 +95,6 @@ struct Token {
         break;
       default: break;
     }
-    p.write("]");
   }
 
  private:

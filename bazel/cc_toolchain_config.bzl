@@ -109,8 +109,18 @@ def _impl(ctx):
             "-lstdc++",
         ]),
         mode_dependent_flags({
-            "dbg": ["-g", "-O0", "-DICARUS_DEBUG", "-gdwarf-4"],
-            "opt": ["-O2", "-DNDEBUG"],
+            "dbg": [
+                "-g",
+                "-O0",
+                "-DICARUS_DEBUG",
+                "-gdwarf-4",
+                "-DNTH_COMMANDLINE_BUILD_MODE=debug",
+            ],
+            "opt": [
+                "-O2",
+                "-DNDEBUG",
+                "-DNTH_COMMANDLINE_BUILD_MODE=optimize",
+            ],
         }),
 
     ]

@@ -1,0 +1,16 @@
+
+#if not defined(IC_XMACRO_PARSER_STATE_KIND)
+#error `IC_XMACRO_PARSER_STATE_KIND` must be defined.
+#endif
+
+IC_XMACRO_PARSER_STATE_KIND(StatementSequence)
+IC_XMACRO_PARSER_STATE_KIND(ResolveStatementSequence)
+IC_XMACRO_PARSER_STATE_KIND(SubsequentStatementSequence)
+IC_XMACRO_PARSER_STATE_KIND(Statement)
+IC_XMACRO_PARSER_STATE_KIND(ResolveDeclaration)
+IC_XMACRO_PARSER_STATE_KIND(NewlinesBetweenStatements)
+IC_XMACRO_PARSER_STATE_KIND(Identifier)
+IC_XMACRO_PARSER_STATE_KIND(ColonColonEqual)
+IC_XMACRO_PARSER_STATE_KIND(Expression)
+
+#undef IC_XMACRO_PARSER_STATE_KIND
