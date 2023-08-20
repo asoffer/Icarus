@@ -2,27 +2,13 @@
 
 #include "nth/test/test.h"
 #include "toolchain/lexer/lexer.h"
+#include "toolchain/lexer/token_matchers.h"
 
 namespace ic {
 
+using ::ic::testing::HasImmediateIntegerValue;
+using ::ic::testing::IsIdentifier;
 using ::nth::ElementsAreSequentially;
-
-inline constexpr nth::ExpectationMatcher HasKind("has-kind",
-                                                 [](auto const &value,
-                                                    Token::Kind kind) {
-                                                   return value.kind() == kind;
-                                                 });
-
-inline constexpr nth::ExpectationMatcher HasImmediateIntegerValue(
-    "has-kind", [](auto const &value, uint32_t number) {
-      return value.kind() == Token::Kind::Integer and
-             value.AsIntegerPayload() ==
-                 Token::IntegerPayload::Immediate(number);
-    });
-
-inline constexpr nth::ExpectationMatcher Anything("anything", [](auto const &) {
-  return true;
-});
 
 inline constexpr nth::ExpectationMatcher HasSubtreeSize(
     "has-subtree-size",
@@ -34,6 +20,11 @@ inline constexpr nth::ExpectationMatcher HasToken(
     "has-token", [](auto const &value, auto const &token_matcher) {
       return nth::Matches(token_matcher, value.token);
     });
+
+// Matches an identifier token whose identifier is given by `id`.
+auto IdentifierToken(TokenBuffer &buffer, std::string_view id) {
+  return HasToken(IsIdentifier(buffer.IdentifierIndex(id)));
+}
 
 NTH_TEST("parser/empty", std::string_view content) {
   DiagnosticConsumer d;
@@ -53,10 +44,10 @@ NTH_TEST("parser/declaration") {
   DiagnosticConsumer d;
   TokenBuffer buffer = Lex("let x ::= 3", d);
   auto tree          = Parse(buffer, d);
-  NTH_EXPECT(tree.nodes() >>=
-             ElementsAreSequentially(HasToken(HasKind(Token::Kind::Identifier)),
-                                     HasToken(HasKind(Token::Kind::Integer)),
-                                     HasSubtreeSize(3), HasSubtreeSize(4)));
+  NTH_EXPECT(tree.nodes() >>= ElementsAreSequentially(
+                 HasToken(HasImmediateIntegerValue(3)),
+                 IdentifierToken(buffer, "x") and HasSubtreeSize(2),
+                 HasSubtreeSize(3)));
 }
 
 NTH_TEST("parser/multiple-declarations-with-newlines") {
@@ -68,11 +59,11 @@ NTH_TEST("parser/multiple-declarations-with-newlines") {
                            d);
   auto tree          = Parse(buffer, d);
   NTH_EXPECT(tree.nodes() >>= ElementsAreSequentially(
-                 HasToken(HasKind(Token::Kind::Identifier)),
-                 HasToken(HasKind(Token::Kind::Integer)), HasSubtreeSize(3),
-                 HasToken(HasKind(Token::Kind::Identifier)),
-                 HasToken(HasKind(Token::Kind::Integer)), HasSubtreeSize(3),
-                 HasSubtreeSize(7)));
+                 HasToken(HasImmediateIntegerValue(3)),
+                 IdentifierToken(buffer, "x") and HasSubtreeSize(2),
+                 HasToken(HasImmediateIntegerValue(4)),
+                 IdentifierToken(buffer, "y") and HasSubtreeSize(2),
+                 HasSubtreeSize(5)));
 }
 
 }  // namespace ic

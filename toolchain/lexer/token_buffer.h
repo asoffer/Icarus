@@ -22,6 +22,8 @@ struct TokenBuffer {
   void AppendInteger(std::string_view integer, uint32_t offset);
   void AppendKeywordOrIdentifier(std::string_view identifier, uint32_t offset);
 
+  uint32_t IdentifierIndex(std::string_view identifier);
+
   Token operator[](size_t index) const { return tokens_[index]; }
   size_t size() const { return tokens_.size(); }
 

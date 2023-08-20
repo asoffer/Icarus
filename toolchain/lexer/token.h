@@ -73,6 +73,8 @@ struct Token {
   // Constructs a symbol token with the given kind at the given offset.
   static Token Symbol(Kind k, uint32_t offset);
 
+  uint32_t IdentifierIndex() const;
+
 #define IC_XMACRO_TOKEN_KIND_KEYWORD(kind, keyword)                            \
   static Token Keyword##kind(uint32_t offset);
 #include "toolchain/lexer/token_kind.xmacro.h"

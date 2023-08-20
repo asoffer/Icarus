@@ -21,6 +21,11 @@ void TokenBuffer::AppendInteger(std::string_view integer, uint32_t offset) {
   tokens_.push_back(Token::Integer(offset, payload));
 }
 
+uint32_t TokenBuffer::IdentifierIndex(std::string_view identifier) {
+  return static_cast<uint32_t>(
+      identifiers_.index(identifiers_.insert(identifier).first));
+}
+
 void TokenBuffer::AppendKeywordOrIdentifier(std::string_view identifier,
                                             uint32_t offset) {
 #define IC_XMACRO_TOKEN_KIND_KEYWORD(kind, keyword)                            \
@@ -30,9 +35,7 @@ void TokenBuffer::AppendKeywordOrIdentifier(std::string_view identifier,
   }
 #include "toolchain/lexer/token_kind.xmacro.h"
 
-  uint32_t index = static_cast<uint32_t>(
-      identifiers_.index(identifiers_.insert(identifier).first));
-  tokens_.push_back(Token::Identifier(offset, index));
+  tokens_.push_back(Token::Identifier(offset, IdentifierIndex(identifier)));
 }
 
 }  // namespace ic

@@ -16,6 +16,7 @@ cc_test(
     srcs = ["lexer_test.cc"],
     deps = [
         ":lexer",
+        ":token_matchers",
         "@asoffer_nth//nth/test:main",
     ],
 )
@@ -23,6 +24,16 @@ cc_test(
 cc_library(
     name = "token_kind_xmacro",
     textual_hdrs = ["token_kind.xmacro.h"],
+)
+
+cc_library(
+    name = "token_matchers",
+    testonly = True,
+    hdrs = ["token_matchers.h"],
+    deps = [
+        ":token",
+        "@asoffer_nth//nth/test",
+    ],
 )
 
 cc_library(

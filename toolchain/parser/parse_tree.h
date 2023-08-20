@@ -14,7 +14,7 @@ struct ParseTree {
     enum class Kind {
       StatementSequence,
       Declaration,
-      Identifier,
+      DeclarationIdentifier,
       IntegerLiteral
     };
     Kind kind;

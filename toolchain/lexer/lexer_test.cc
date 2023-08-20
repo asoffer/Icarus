@@ -1,24 +1,14 @@
 #include "toolchain/lexer/lexer.h"
 
+#include "toolchain/lexer/token_matchers.h"
 #include "nth/test/test.h"
 
 namespace ic {
 namespace {
 
+using ::ic::testing::HasImmediateIntegerValue;
+using ::ic::testing::HasKind;
 using ::nth::ElementsAreSequentially;
-
-inline constexpr nth::ExpectationMatcher HasKind("has-kind",
-                                                 [](auto const &value,
-                                                    Token::Kind kind) {
-                                                   return value.kind() == kind;
-                                                 });
-
-inline constexpr nth::ExpectationMatcher HasImmediateIntegerValue(
-    "has-kind", [](auto const &value, uint32_t number) {
-      return value.kind() == Token::Kind::Integer and
-             value.AsIntegerPayload() ==
-                 Token::IntegerPayload::Immediate(number);
-    });
 
 NTH_TEST("lex/empty") {
   DiagnosticConsumer d;

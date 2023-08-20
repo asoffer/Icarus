@@ -20,9 +20,9 @@ struct Parser {
   // TODO: Also handle ends due to group closing.
   bool AtChunkEnd() const { return iterator_ == token_buffer_.end(); }
 
-  Token::Kind current_kind() const {
-    NTH_ASSERT((v.debug),  iterator_ != token_buffer_.end());
-    return iterator_->kind();
+  Token current_token() const {
+    NTH_ASSERT((v.debug), iterator_ != token_buffer_.end());
+    return *iterator_;
   }
 
   struct State {
@@ -45,19 +45,19 @@ struct Parser {
     Token token;
     uint32_t subtree_start = -1;
 
-  friend void NthPrint(auto& p, State const& s) {
-    nth::universal_formatter f({
-        .depth    = 3,
-        .fallback = "...",
-    });
-    nth::Interpolate<"[{} {}]">(p, f, s.kind, s.subtree_start);
-  }
-
+    friend void NthPrint(auto& p, State const& s) {
+      nth::universal_formatter f({
+          .depth    = 3,
+          .fallback = "...",
+      });
+      nth::Interpolate<"[{} {}]">(p, f, s.kind, s.subtree_start);
+    }
   };
 #define IC_XMACRO_PARSER_STATE_KIND(state) void Handle##state(ParseTree& tree);
 #include "toolchain/parser/parse_state.xmacro.h"
 
   std::span<State const> state() const { return state_; }
+  std::span<State> state() { return state_; }
 
   void pop_and_discard_state() {
     NTH_ASSERT((v.debug), not state_.empty());
@@ -79,13 +79,16 @@ struct Parser {
     state_.pop_back();
     int dummy;
     (dummy = ... = ExpandStateImpl(states));
-  } 
+  }
 
  private:
   int ExpandStateImpl(State::Kind kind) {
     return ExpandStateImpl(State{.kind = kind});
   }
-  int ExpandStateImpl(State state) { state_.push_back(state);return 0; }
+  int ExpandStateImpl(State state) {
+    state_.push_back(state);
+    return 0;
+  }
   std::vector<State> state_ = {
       {.kind = State::Kind::StatementSequence, .subtree_start = 0},
   };
@@ -104,7 +107,7 @@ ParseTree Parse(TokenBuffer const& token_buffer,
   Parser p(token_buffer, diagnostic_consumer);
 
   while (not p.state().empty()) {
-    NTH_LOG((v.debug), "{}") <<= { p.state() };
+    NTH_LOG((v.debug), "{}") <<= {p.state()};
     switch (p.state().back().kind) {
 #define IC_XMACRO_PARSER_STATE_KIND(state)                                     \
   case Parser::State::Kind::state:                                             \
@@ -118,7 +121,7 @@ ParseTree Parse(TokenBuffer const& token_buffer,
 
 void Parser::HandleStatementSequence(ParseTree& tree) {
   // Ignore leading newlines.
-  while (not AtChunkEnd() and current_kind() == Token::Kind::Newline) {
+  while (not AtChunkEnd() and current_token().kind() == Token::Kind::Newline) {
     ++iterator_;
   }
 
@@ -150,16 +153,14 @@ void Parser::HandleSubsequentStatementSequence(ParseTree& tree) {
 }
 
 void Parser::HandleStatement(ParseTree& tree) {
-  switch (current_kind()) {
+  switch (current_token().kind()) {
     case Token::Kind::Let:
     case Token::Kind::Var:
-      ExpandState(State::Kind::Identifier, State::Kind::ColonColonEqual,
-                  State::Kind::Expression,
-                  State{
-                      .kind          = State::Kind::ResolveDeclaration,
-                      .token         = *iterator_++,
-                      .subtree_start = tree.size(),
-                  });
+      ExpandState(State::Kind::DeclarationIdentifier,
+                  State::Kind::ColonColonEqual, State::Kind::Expression,
+                  State{.kind          = State::Kind::ResolveDeclaration,
+                        .subtree_start = tree.size()});
+      ++iterator_;
       break;
     default: NTH_UNIMPLEMENTED("Token: {}") <<= {*iterator_};
   }
@@ -172,8 +173,8 @@ void Parser::HandleResolveDeclaration(ParseTree& tree) {
 }
 
 void Parser::HandleNewlinesBetweenStatements(ParseTree& tree) {
-  NTH_ASSERT((v.debug), current_kind() == Token::Kind::Newline);
-  while (not AtChunkEnd() and current_kind() == Token::Kind::Newline) {
+  NTH_ASSERT((v.debug), current_token().kind() == Token::Kind::Newline);
+  while (not AtChunkEnd() and current_token().kind() == Token::Kind::Newline) {
     ++iterator_;
   }
 
@@ -185,20 +186,21 @@ void Parser::HandleNewlinesBetweenStatements(ParseTree& tree) {
   }
 }
 
-void Parser::HandleIdentifier(ParseTree& tree) {
-  NTH_ASSERT((v.debug), current_kind() == Token::Kind::Identifier);
-  tree.append_leaf(ParseTree::Node::Kind::Identifier, *iterator_++);
+void Parser::HandleDeclarationIdentifier(ParseTree& tree) {
+  NTH_ASSERT((v.debug), current_token().kind() == Token::Kind::Identifier);
+  state()[state().size() - 4].token = current_token();
+  ++iterator_;
   pop_and_discard_state();
 }
 
 void Parser::HandleColonColonEqual(ParseTree& tree) {
-  NTH_ASSERT((v.debug), current_kind() == Token::Kind::ColonColonEqual);
+  NTH_ASSERT((v.debug), current_token().kind() == Token::Kind::ColonColonEqual);
   pop_and_discard_state();
   ++iterator_;
 }
 
 void Parser::HandleExpression(ParseTree& tree) {
-  NTH_ASSERT((v.debug), current_kind() == Token::Kind::Integer);
+  NTH_ASSERT((v.debug), current_token().kind() == Token::Kind::Integer);
   tree.append_leaf(ParseTree::Node::Kind::IntegerLiteral, *iterator_++);
   pop_and_discard_state();
 }

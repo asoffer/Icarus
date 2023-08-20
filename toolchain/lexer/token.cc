@@ -59,4 +59,9 @@ Token Token::Symbol(Token::Kind kind, uint32_t offset) {
   }
 #include "toolchain/lexer/token_kind.xmacro.h"
 
+uint32_t Token::IdentifierIndex() const {
+  NTH_ASSERT((v.debug), kind() == Kind::Identifier);
+  return payload_;
+}
+
 }  // namespace ic

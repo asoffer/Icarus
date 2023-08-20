@@ -31,6 +31,7 @@ cc_test(
     srcs = ["parser_test.cc"],
     deps = [
         "//toolchain/lexer",
+        "//toolchain/lexer:token_matchers",
         ":parser",
         "@asoffer_nth//nth/test:main",
     ],
