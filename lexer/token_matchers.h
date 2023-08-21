@@ -2,7 +2,7 @@
 #define ICARUS_LEXER_TOKEN_MATCHERS_H
 
 #include "nth/test/test.h"
-#include "toolchain/lexer/token.h"
+#include "lexer/token.h"
 
 namespace ic::testing {
 

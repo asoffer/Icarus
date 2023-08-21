@@ -1,6 +1,6 @@
-#include "toolchain/lexer/lexer.h"
+#include "lexer/lexer.h"
 
-#include "toolchain/lexer/token_matchers.h"
+#include "lexer/token_matchers.h"
 #include "nth/test/test.h"
 
 namespace ic {

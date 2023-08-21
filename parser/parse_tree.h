@@ -1,11 +1,11 @@
-#ifndef ICARUS_TOOLCHAIN_PARSER_PARSE_TREE_H
-#define ICARUS_TOOLCHAIN_PARSER_PARSE_TREE_H
+#ifndef ICARUS_PARSER_PARSE_TREE_H
+#define ICARUS_PARSER_PARSE_TREE_H
 
 #include <cstdint>
 #include <span>
 #include <vector>
 
-#include "toolchain/lexer/token.h"
+#include "lexer/token.h"
 
 namespace ic {
 
@@ -45,4 +45,4 @@ struct ParseTree {
 
 }  // namespace ic
 
-#endif  // ICARUS_TOOLCHAIN_PARSER_PARSE_TREE_H
+#endif  // ICARUS_PARSER_PARSE_TREE_H

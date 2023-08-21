@@ -1,12 +1,12 @@
-#ifndef ICARUS_TOOLCHAIN_LEXER_TOKEN_BUFFER_H
-#define ICARUS_TOOLCHAIN_LEXER_TOKEN_BUFFER_H
+#ifndef ICARUS_LEXER_TOKEN_BUFFER_H
+#define ICARUS_LEXER_TOKEN_BUFFER_H
 
 #include <string_view>
 #include <vector>
 
+#include "lexer/token.h"
 #include "nth/container/flyweight_set.h"
 #include "nth/io/string_printer.h"
-#include "toolchain/lexer/token.h"
 
 namespace ic {
 
@@ -77,4 +77,4 @@ void NthPrint(auto& printer, TokenBuffer const& token_buffer) {
 
 }  // namespace ic
 
-#endif  // ICARUS_TOOLCHAIN_LEXER_TOKEN_BUFFER_H
+#endif  // ICARUS_LEXER_TOKEN_BUFFER_H

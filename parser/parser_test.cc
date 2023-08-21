@@ -1,8 +1,8 @@
-#include "toolchain/parser/parser.h"
+#include "parser/parser.h"
 
+#include "lexer/lexer.h"
+#include "lexer/token_matchers.h"
 #include "nth/test/test.h"
-#include "toolchain/lexer/lexer.h"
-#include "toolchain/lexer/token_matchers.h"
 
 namespace ic {
 

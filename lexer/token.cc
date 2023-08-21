@@ -1,4 +1,4 @@
-#include "toolchain/lexer/token.h"
+#include "lexer/token.h"
 
 #include <cstdint>
 
@@ -65,7 +65,7 @@ Token Token::Symbol(Token::Kind kind, uint32_t offset) {
     token.kind_   = static_cast<uint8_t>(Token::Kind::kind);                   \
     return token;                                                              \
   }
-#include "toolchain/lexer/token_kind.xmacro.h"
+#include "lexer/token_kind.xmacro.h"
 
 uint32_t Token::IdentifierIndex() const {
   NTH_ASSERT((v.debug), kind() == Kind::Identifier);

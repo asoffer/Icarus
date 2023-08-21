@@ -1,4 +1,4 @@
-#include "toolchain/lexer/token.h"
+#include "lexer/token.h"
 
 #include "nth/io/string_printer.h"
 #include "nth/strings/format/universal.h"

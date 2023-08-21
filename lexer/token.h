@@ -1,5 +1,5 @@
-#ifndef ICARUS_TOOLCHAIN_LEXER_TOKEN_H
-#define ICARUS_TOOLCHAIN_LEXER_TOKEN_H
+#ifndef ICARUS_LEXER_TOKEN_H
+#define ICARUS_LEXER_TOKEN_H
 
 #include <array>
 #include <cstdint>
@@ -24,7 +24,7 @@ struct Token {
   // A categorization describing the token.
   enum class Kind : uint8_t {
 #define IC_XMACRO_TOKEN_KIND(kind) kind,
-#include "toolchain/lexer/token_kind.xmacro.h"
+#include "lexer/token_kind.xmacro.h"
   };
 
   struct IntegerPayload {
@@ -77,7 +77,7 @@ struct Token {
 
 #define IC_XMACRO_TOKEN_KIND_KEYWORD(kind, keyword)                            \
   static Token Keyword##kind(uint32_t offset);
-#include "toolchain/lexer/token_kind.xmacro.h"
+#include "lexer/token_kind.xmacro.h"
 
   IntegerPayload AsIntegerPayload() const;
   bool AsBoolean() const;
@@ -112,11 +112,11 @@ void NthPrint(nth::Printer auto& p, Token::Kind k) {
   std::string_view("tk.(" symbol ")"),
 
 #define IC_XMACRO_TOKEN_KIND(kind) std::string_view("tk." #kind),
-#include "toolchain/lexer/token_kind.xmacro.h"
+#include "lexer/token_kind.xmacro.h"
   };
   p.write(KindStrings[static_cast<uint8_t>(k)]);
 }
 
 }  // namespace ic
 
-#endif  // ICARUS_TOOLCHAIN_LEXER_TOKEN_H
+#endif  // ICARUS_LEXER_TOKEN_H

@@ -1,4 +1,4 @@
-#include "toolchain/lexer/lexer.h"
+#include "lexer/lexer.h"
 
 #include <cctype>
 #include <concepts>
@@ -126,7 +126,7 @@ bool Lexer::TryLexOperator(std::string_view& source) {
     source.remove_prefix(std::string_view(symbol).size());                     \
     return true;                                                               \
   }
-#include "toolchain/lexer/token_kind.xmacro.h"
+#include "lexer/token_kind.xmacro.h"
 
   return false;
 }

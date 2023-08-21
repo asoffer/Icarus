@@ -9,7 +9,7 @@ cc_library(
     name = "parse_tree",
     hdrs = ["parse_tree.h"],
     deps = [
-        "//toolchain/lexer:token",
+        "//lexer:token",
     ],
 )
 
@@ -20,8 +20,8 @@ cc_library(
     deps = [
         ":parse_state_xmacro",
         ":parse_tree",
-        "//toolchain/lexer:token",
-        "//toolchain/lexer:token_buffer",
+        "//lexer:token",
+        "//lexer:token_buffer",
         "@asoffer_nth//nth/debug",
     ],
 )
@@ -30,9 +30,9 @@ cc_test(
     name = "parser_test",
     srcs = ["parser_test.cc"],
     deps = [
-        "//toolchain/lexer",
-        "//toolchain/lexer:token_matchers",
         ":parser",
+        "//lexer",
+        "//lexer:token_matchers",
         "@asoffer_nth//nth/test:main",
     ],
 )

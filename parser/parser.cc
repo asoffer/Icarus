@@ -1,11 +1,11 @@
-#include "toolchain/parser/parser.h"
+#include "parser/parser.h"
 
 #include <concepts>
 #include <cstring>
 #include <span>
 
 #include "nth/debug/debug.h"
-#include "toolchain/parser/parse_tree.h"
+#include "parser/parse_tree.h"
 
 namespace ic {
 namespace {
@@ -28,7 +28,7 @@ struct Parser {
   struct State {
     enum class Kind {
 #define IC_XMACRO_PARSER_STATE_KIND(state) state,
-#include "toolchain/parser/parse_state.xmacro.h"
+#include "parser/parse_state.xmacro.h"
     };
 
     friend void NthPrint(auto& p, Kind const& k) {
@@ -37,7 +37,7 @@ struct Parser {
   case Kind::kind:                                                             \
     p.write(#kind);                                                            \
     break;
-#include "toolchain/parser/parse_state.xmacro.h"
+#include "parser/parse_state.xmacro.h"
       }
     }
 
@@ -54,7 +54,7 @@ struct Parser {
     }
   };
 #define IC_XMACRO_PARSER_STATE_KIND(state) void Handle##state(ParseTree& tree);
-#include "toolchain/parser/parse_state.xmacro.h"
+#include "parser/parse_state.xmacro.h"
 
   std::span<State const> state() const { return state_; }
   std::span<State> state() { return state_; }
@@ -113,7 +113,7 @@ ParseTree Parse(TokenBuffer const& token_buffer,
   case Parser::State::Kind::state:                                             \
     p.Handle##state(tree);                                                     \
     break;
-#include "toolchain/parser/parse_state.xmacro.h"
+#include "parser/parse_state.xmacro.h"
     }
   }
   return tree;
