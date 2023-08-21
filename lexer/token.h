@@ -73,6 +73,9 @@ struct Token {
   // Constructs a symbol token with the given kind at the given offset.
   static Token Symbol(Kind k, uint32_t offset);
 
+  // Constructs an invalid token that may not appear in a correct lex-stream.
+  static Token Invalid();
+
   uint32_t IdentifierIndex() const;
 
 #define IC_XMACRO_TOKEN_KIND_KEYWORD(kind, keyword)                            \
@@ -87,7 +90,7 @@ struct Token {
         .depth    = 3,
         .fallback = "...",
     });
-    nth::Interpolate<"{} @{}">(p, f, t.kind(), t.offset_);
+    nth::Interpolate<"[{} @{}">(p, f, t.kind(), t.offset_);
 
     switch (t.kind()) {
       case Token::Kind::Integer:
@@ -98,6 +101,7 @@ struct Token {
         break;
       default: break;
     }
+    p.write("]");
   }
 
  private:

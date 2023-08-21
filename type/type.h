@@ -4,7 +4,7 @@
 #include <cstdint>
 #include <cstring>
 
-namespace ic {
+namespace ic::type {
 
 #define IC_XMACRO_TYPE_KIND(kind) struct kind##Type;
 #include "type/type_kind.xmacro.h"
@@ -68,6 +68,6 @@ inline constexpr Type Bool    = PrimitiveType(PrimitiveType::Kind::Bool);
 inline constexpr Type Integer = PrimitiveType(PrimitiveType::Kind::Integer);
 inline constexpr Type Type_   = PrimitiveType(PrimitiveType::Kind::Type);
 
-}  // namespace ic
+}  // namespace ic::type
 
 #endif  // ICARUS_TYPE_TYPE_H

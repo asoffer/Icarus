@@ -1,4 +1,3 @@
-
 #if not defined(IC_XMACRO_PARSER_STATE_KIND)
 #error `IC_XMACRO_PARSER_STATE_KIND` must be defined.
 #endif

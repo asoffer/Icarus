@@ -11,32 +11,31 @@ namespace ic {
 
 struct ParseTree {
   struct Node {
+    struct Index {
+      private:
+        friend ParseTree;
+        explicit constexpr Index(uint32_t n) : value_(n) {}
+        uint32_t value_;
+    };
+
     enum class Kind {
-      StatementSequence,
-      Declaration,
-      DeclarationIdentifier,
-      BooleanLiteral,
-      IntegerLiteral
+#define IC_XMACRO_PARSE_TREE_NODE_KIND(kind) kind,
+#include "parser/parse_tree_node_kind.xmacro.h"
     };
     Kind kind;
-    Token token;
     uint32_t subtree_size;
+    Token token = Token::Invalid();
   };
 
   std::span<Node const> nodes() const { return nodes_; }
   uint32_t size() const { return nodes_.size(); }
 
-  void append(Node::Kind kind, Token token, int subtree_start) {
-    nodes_.push_back({
-        .kind  = kind,
-        .token = token,
-        .subtree_size =
-            static_cast<uint32_t>(nodes_.size() - subtree_start + 1),
-    });
-  }
+  std::span<Node const> subtree(Node::Index node_index) const;
+
+  void append(Node::Kind kind, Token token, int subtree_start);
 
   void append_leaf(Node::Kind kind, Token token) {
-    nodes_.push_back({.kind = kind, .token = token, .subtree_size = 1});
+    nodes_.push_back({.kind = kind, .subtree_size = 1, .token = token});
   }
 
  private:

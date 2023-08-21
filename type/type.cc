@@ -4,7 +4,7 @@
 
 #include "nth/debug/debug.h"
 
-namespace ic {
+namespace ic::type {
 
 #define IC_XMACRO_TYPE_KIND(k)                                                 \
   static_assert(sizeof(Type) == sizeof(k##Type));                              \
@@ -20,4 +20,4 @@ namespace ic {
 
 Type::Kind Type::kind() const { return static_cast<Kind>(data_ >> 56); }
 
-}  // namespace ic
+}  // namespace ic::type

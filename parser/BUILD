@@ -1,6 +1,11 @@
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
+    name = "parse_tree_node_kind_xmacro",
+    textual_hdrs = ["parse_tree_node_kind.xmacro.h"],
+)
+
+cc_library(
     name = "parse_state_xmacro",
     textual_hdrs = ["parse_state.xmacro.h"],
 )
@@ -8,8 +13,11 @@ cc_library(
 cc_library(
     name = "parse_tree",
     hdrs = ["parse_tree.h"],
+    srcs = ["parse_tree.cc"],
     deps = [
+        ":parse_tree_node_kind_xmacro",
         "//lexer:token",
+        "@asoffer_nth//nth/debug",
     ],
 )
 

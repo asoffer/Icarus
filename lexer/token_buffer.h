@@ -42,37 +42,14 @@ struct TokenBuffer {
 };
 
 void NthPrint(auto& printer, TokenBuffer const& token_buffer) {
-  std::vector<std::string> strs;
-  strs.reserve(token_buffer.tokens_.size());
   nth::universal_formatter f({
       .depth    = 3,
       .fallback = "...",
   });
 
-  size_t size = 0;
   for (auto const& token : token_buffer.tokens_) {
-    nth::string_printer p(strs.emplace_back());
-    nth::Interpolate<" {} ">(p, f, token);
-    size = std::max(strs.back().size(), size);
+    nth::Interpolate<"\n  {}">(printer, f, token);
   }
-
-  std::string border = "╭";
-  for (size_t i = 0; i < size; ++i) { border.append("─"); }
-  border.append("╮");
-
-  size_t length      = std::strlen("╮");
-  char* left_border  = border.data();
-  char* right_border = border.data() + border.size() - length;
-  for (std::string_view s : strs) {
-    nth::Interpolate<"{}\n">(printer, f, border);
-    std::memcpy(left_border, "├", length);
-    std::memcpy(right_border, "┤", length);
-    nth::Interpolate<"│{}{}│\n">(printer, f, s,
-                                 std::string(size - s.size(), ' '));
-  }
-  std::memcpy(left_border, "╰", length);
-  std::memcpy(right_border, "╯", length);
-  nth::Interpolate<"{}\n">(printer, f, border);
 }
 
 }  // namespace ic

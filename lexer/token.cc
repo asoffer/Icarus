@@ -58,6 +58,13 @@ Token Token::Symbol(Token::Kind kind, uint32_t offset) {
   return token;
 }
 
+Token Token::Invalid() {
+  Token token;
+  token.offset_ = -1;
+  token.kind_   = static_cast<uint8_t>(Kind::Invalid);
+  return token;
+}
+
 #define IC_XMACRO_TOKEN_KIND_KEYWORD(kind, keyword)                            \
   Token Token::Keyword##kind(uint32_t offset) {                                \
     Token token;                                                               \

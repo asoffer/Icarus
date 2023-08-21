@@ -139,7 +139,7 @@ void Parser::HandleStatementSequence(ParseTree& tree) {
 
 void Parser::HandleResolveStatementSequence(ParseTree& tree) {
   State state = pop_state();
-  tree.append(ParseTree::Node::Kind::StatementSequence, state.token,
+  tree.append(ParseTree::Node::Kind::StatementSequence, Token::Invalid(),
               state.subtree_start);
 }
 

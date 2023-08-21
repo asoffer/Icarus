@@ -38,12 +38,12 @@ NTH_TEST("token/value") {
 }
 
 NTH_TEST("token/print") {
-  NTH_EXPECT(AsString(Token::Identifier(5, 3)) == "tk.Identifier @5 #3");
+  NTH_EXPECT(AsString(Token::Identifier(5, 3)) == "[tk.Identifier @5 #3]");
   NTH_EXPECT(AsString(Token::Integer(5, Token::IntegerPayload::Index(3))) ==
-             "tk.Integer @5 #3");
+             "[tk.Integer @5 #3]");
   NTH_EXPECT(AsString(Token::Integer(5, Token::IntegerPayload::Immediate(3))) ==
-             "tk.Integer @5 !3");
-  NTH_EXPECT(AsString(Token::Symbol(Token::Kind::Colon, 3)) == "tk.(:) @3");
+             "[tk.Integer @5 !3]");
+  NTH_EXPECT(AsString(Token::Symbol(Token::Kind::Colon, 3)) == "[tk.(:) @3]");
 }
 
 }  // namespace

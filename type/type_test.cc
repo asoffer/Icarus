@@ -2,7 +2,7 @@
 
 #include "nth/test/test.h"
 
-namespace ic {
+namespace ic::type {
 namespace {
 
 NTH_TEST("type/construction") {
@@ -12,4 +12,4 @@ NTH_TEST("type/construction") {
 }
 
 }  // namespace
-}  // namespace ic
+}  // namespace ic::type
