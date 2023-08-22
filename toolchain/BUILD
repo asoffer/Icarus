@@ -5,9 +5,10 @@ cc_binary(
     srcs = ["compile.cc"],
     deps = [
         "//ir",
+        "//common:errno",
         "//common:string",
         "//diagnostics:message",
-        "//diagnostics/consumer:tty",
+        "//diagnostics/consumer:streaming",
         "//lexer",
         "//parser",
         "@asoffer_nth//nth/commandline:main",

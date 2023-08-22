@@ -17,12 +17,11 @@ cc_library(
 )
 
 cc_library(
-    name = "tty",
-    hdrs = ["tty.h"],
-    srcs = ["tty.cc"],
+    name = "streaming",
+    hdrs = ["streaming.h"],
+    srcs = ["streaming.cc"],
     deps = [
         ":consumer",
-        "//common:errno",
         "//diagnostics:message",
         "@com_google_absl//absl/strings:str_format",
         "@asoffer_nth//nth/debug",

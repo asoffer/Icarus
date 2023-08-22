@@ -1,4 +1,4 @@
-# load("//toolchain:ic_rule.bzl", "ic_library", "ic_binary")
+load("//toolchain:ic_rule.bzl", "ic_binary")
 
 # filegroup(
 #     name = "example_file",
@@ -63,12 +63,12 @@
 #     srcs = ["import.ic"],
 #     deps = ["//toolchain/stdlib:io"],
 # )
-# 
-# ic_binary(
-#     name = "minimal_program",
-#     srcs = ["minimal_program.ic"],
-# )
-# 
+
+ic_binary(
+    name = "minimal_program",
+    srcs = ["minimal_program.ic"],
+)
+
 # ic_library(
 #     name = "utility",
 #     srcs = ["utility.ic"],
