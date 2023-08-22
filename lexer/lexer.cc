@@ -82,13 +82,7 @@ TokenBuffer Lex(std::string_view source,
 bool Lexer::TryLexComment(std::string_view& source) {
   if (source.size() < 2 or source.substr(0, 2) != "//") { return false; }
   size_t index = source.find("\n");
-  if (index == std::string_view::npos) {
-    index = source.size();
-  } else {
-    ++index;
-  }
-  token_buffer_.Append(Token::Comment(StartIndex(source.substr(0, index))));
-  source.remove_prefix(index);
+  source.remove_prefix(std::min(index, source.size()));
   return true;
 }
 
