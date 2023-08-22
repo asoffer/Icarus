@@ -28,6 +28,7 @@ cc_library(
     deps = [
         ":parse_state_xmacro",
         ":parse_tree",
+        "//diagnostics/consumer",
         "//lexer:token",
         "//lexer:token_buffer",
         "@asoffer_nth//nth/debug",
@@ -39,6 +40,7 @@ cc_test(
     srcs = ["parser_test.cc"],
     deps = [
         ":parser",
+        "//diagnostics/consumer:null",
         "//lexer",
         "//lexer:token_matchers",
         "@asoffer_nth//nth/test:main",

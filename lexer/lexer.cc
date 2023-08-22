@@ -55,7 +55,7 @@ constexpr bool WhitespaceCharacter(char c) { return std::isspace(c); }
 }  // namespace
 
 TokenBuffer Lex(std::string_view source,
-                DiagnosticConsumer& diagnostic_consumer) {
+                diag::DiagnosticConsumer& diagnostic_consumer) {
   TokenBuffer buffer;
   Lexer lexer(buffer, source.data());
   while (true) {
@@ -73,7 +73,6 @@ TokenBuffer Lex(std::string_view source,
     if (lexer.TryLexNumber(source)) { continue; }
     if (lexer.TryLexOperator(source)) { continue; }
     if (lexer.TryLexStringLiteral(source)) { continue; }
-    diagnostic_consumer.Consume();
     return buffer;
   }
 }

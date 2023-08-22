@@ -3,12 +3,13 @@
 
 #include <string_view>
 
+#include "diagnostics/consumer/consumer.h"
 #include "lexer/token_buffer.h"
 
 namespace ic {
 
 TokenBuffer Lex(std::string_view source,
-                DiagnosticConsumer& diagnostic_consumer);
+                diag::DiagnosticConsumer& diagnostic_consumer);
 
 }  // namespace ic
 

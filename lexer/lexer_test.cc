@@ -1,5 +1,6 @@
 #include "lexer/lexer.h"
 
+#include "diagnostics/consumer/null.h"
 #include "lexer/token_matchers.h"
 #include "nth/test/test.h"
 
@@ -11,13 +12,13 @@ using ::ic::testing::HasKind;
 using ::nth::ElementsAreSequentially;
 
 NTH_TEST("lex/empty") {
-  DiagnosticConsumer d;
+  diag::NullConsumer d;
   auto token_buffer = Lex("", d);
   NTH_EXPECT(token_buffer.size() == 0);
 }
 
 NTH_TEST("lex/keyword") {
-  DiagnosticConsumer d;
+  diag::NullConsumer d;
   auto token_buffer = Lex("let", d);
   NTH_EXPECT(token_buffer.size() == 1) NTH_ELSE { return; }
   NTH_EXPECT(token_buffer[0].kind() == Token::Kind::Let);
@@ -36,7 +37,7 @@ NTH_TEST("lex/keyword") {
 }
 
 NTH_TEST("lex/identifier", std::string_view id) {
-  DiagnosticConsumer d;
+  diag::NullConsumer d;
   auto token_buffer = Lex(id, d);
   NTH_EXPECT(token_buffer.size() == 1) NTH_ELSE { return; }
   NTH_EXPECT(token_buffer[0].kind() == Token::Kind::Identifier);
@@ -49,9 +50,8 @@ NTH_INVOKE_TEST("lex/identifier") {
   }
 }
 
-
 NTH_TEST("lex/integer", std::string_view n, uint32_t expected) {
-  DiagnosticConsumer d;
+  diag::NullConsumer d;
   auto token_buffer = Lex(n, d);
   NTH_EXPECT(token_buffer >>=
              ElementsAreSequentially(HasImmediateIntegerValue(expected)));
@@ -65,7 +65,7 @@ NTH_INVOKE_TEST("lex/integer") {
 }
 
 NTH_TEST("lex/basic") {
-  DiagnosticConsumer d;
+  diag::NullConsumer d;
   auto token_buffer = Lex("let x ::= 3", d);
   NTH_EXPECT(token_buffer >>= ElementsAreSequentially(
                  HasKind(Token::Kind::Let), HasKind(Token::Kind::Identifier),

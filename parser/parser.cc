@@ -4,6 +4,7 @@
 #include <cstring>
 #include <span>
 
+#include "diagnostics/consumer/consumer.h"
 #include "nth/debug/debug.h"
 #include "parser/parse_tree.h"
 
@@ -12,7 +13,7 @@ namespace {
 
 struct Parser {
   explicit Parser(TokenBuffer const& token_buffer,
-                  DiagnosticConsumer& diagnostic_consumer)
+                  diag::DiagnosticConsumer& diagnostic_consumer)
       : iterator_(token_buffer.begin()),
         token_buffer_(token_buffer),
         diagnostic_consumer_(diagnostic_consumer) {}
@@ -96,13 +97,13 @@ struct Parser {
   TokenBuffer::const_iterator iterator_;
 
   TokenBuffer const& token_buffer_;
-  DiagnosticConsumer& diagnostic_consumer_;
+  diag::DiagnosticConsumer& diagnostic_consumer_;
 };
 
 }  // namespace
 
 ParseTree Parse(TokenBuffer const& token_buffer,
-                DiagnosticConsumer& diagnostic_consumer) {
+                diag::DiagnosticConsumer& diagnostic_consumer) {
   ParseTree tree;
   Parser p(token_buffer, diagnostic_consumer);
 

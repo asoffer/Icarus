@@ -4,15 +4,12 @@
 #include <string_view>
 #include <vector>
 
+#include "diagnostics/consumer/consumer.h"
 #include "lexer/token.h"
 #include "nth/container/flyweight_set.h"
 #include "nth/io/string_printer.h"
 
 namespace ic {
-
-struct DiagnosticConsumer {
-  void Consume() {}
-};
 
 struct TokenBuffer {
   using const_iterator = std::vector<Token>::const_iterator;
@@ -34,7 +31,7 @@ struct TokenBuffer {
 
  private:
   friend TokenBuffer Lex(std::string_view source,
-                         DiagnosticConsumer& diagnostic_consumer);
+                         diag::DiagnosticConsumer& diagnostic_consumer);
 
   nth::flyweight_set<std::string_view> identifiers_;
   nth::flyweight_set<uint64_t> integers_;

@@ -7,6 +7,7 @@ cc_library(
     deps = [
         ":token",
         ":token_buffer",
+        "//diagnostics/consumer",
         "@asoffer_nth//nth/debug",
     ],
 )
@@ -17,6 +18,7 @@ cc_test(
     deps = [
         ":lexer",
         ":token_matchers",
+        "//diagnostics/consumer:null",
         "@asoffer_nth//nth/test:main",
     ],
 )
@@ -67,6 +69,7 @@ cc_library(
     srcs = ["token_buffer.cc"],
     deps = [
         ":token",
+        "//diagnostics/consumer",
         "@asoffer_nth//nth/container:flyweight_set",
         "@asoffer_nth//nth/debug",
     ],

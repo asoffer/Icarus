@@ -1,5 +1,6 @@
 #include "parser/parser.h"
 
+#include "diagnostics/consumer/null.h"
 #include "lexer/lexer.h"
 #include "lexer/token_matchers.h"
 #include "nth/test/test.h"
@@ -28,7 +29,7 @@ auto IdentifierToken(TokenBuffer &buffer, std::string_view id) {
 }
 
 NTH_TEST("parser/empty", std::string_view content) {
-  DiagnosticConsumer d;
+  diag::NullConsumer d;
   TokenBuffer buffer = Lex(content, d);
   auto tree          = Parse(buffer, d);
   NTH_EXPECT(tree.nodes() >>= ElementsAreSequentially());
@@ -42,7 +43,7 @@ NTH_INVOKE_TEST("parser/empty") {
 }
 
 NTH_TEST("parser/declaration") {
-  DiagnosticConsumer d;
+  diag::NullConsumer d;
   TokenBuffer buffer = Lex("let x ::= 3", d);
   auto tree          = Parse(buffer, d);
   NTH_EXPECT(tree.nodes() >>= ElementsAreSequentially(
@@ -52,7 +53,7 @@ NTH_TEST("parser/declaration") {
 }
 
 NTH_TEST("parser/declaration") {
-  DiagnosticConsumer d;
+  diag::NullConsumer d;
   TokenBuffer buffer = Lex("let x ::= true", d);
   auto tree          = Parse(buffer, d);
   NTH_EXPECT(tree.nodes() >>= ElementsAreSequentially(
@@ -62,7 +63,7 @@ NTH_TEST("parser/declaration") {
 }
 
 NTH_TEST("parser/multiple-declarations-with-newlines") {
-  DiagnosticConsumer d;
+  diag::NullConsumer d;
   TokenBuffer buffer = Lex(R"(
   let x ::= 3
   var y ::= 4

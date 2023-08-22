@@ -14,3 +14,14 @@ cc_test(
         "@asoffer_nth//nth/test:main",
     ]
 )
+
+cc_library(
+    name = "string",
+    hdrs = ["string.h"],
+    deps = [
+        "@asoffer_nth//nth/io:string_printer",
+        "@asoffer_nth//nth/strings:interpolate",
+        "@asoffer_nth//nth/strings/format:universal",
+    ],
+)
+
