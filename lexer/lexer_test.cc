@@ -73,5 +73,42 @@ NTH_TEST("lex/basic") {
                  HasImmediateIntegerValue(3)));
 }
 
+NTH_TEST("lex/comment/eof") {
+  diag::NullConsumer d;
+  auto token_buffer = Lex("// comment", d);
+  NTH_EXPECT(token_buffer >>= ElementsAreSequentially(HasKind(Token::Kind::Comment)));
+}
+
+NTH_TEST("lex/comment/multiple") {
+  diag::NullConsumer d;
+  auto token_buffer = Lex(
+      R"(// some comments
+         // more comments)",
+      d);
+  NTH_EXPECT(token_buffer >>= ElementsAreSequentially(
+                 HasKind(Token::Kind::Comment), HasKind(Token::Kind::Comment)));
+}
+
+NTH_TEST("lex/comment/with-non-comments") {
+  diag::NullConsumer d;
+  auto token_buffer = Lex(
+      R"(// some comments
+         x
+         // more comments)",
+      d);
+  NTH_EXPECT(token_buffer >>= ElementsAreSequentially(
+                 HasKind(Token::Kind::Comment),
+                 HasKind(Token::Kind::Identifier),
+                 HasKind(Token::Kind::Newline), HasKind(Token::Kind::Comment)));
+}
+
+NTH_TEST("lex/comment/end-of-line") {
+  diag::NullConsumer d;
+  auto token_buffer = Lex(R"(x // some comments)", d);
+  NTH_EXPECT(token_buffer >>=
+             ElementsAreSequentially(HasKind(Token::Kind::Identifier),
+                                     HasKind(Token::Kind::Comment)));
+}
+
 }  // namespace
 }  // namespace ic

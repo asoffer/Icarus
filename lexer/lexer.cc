@@ -18,6 +18,7 @@ struct Lexer {
   bool TryLexNumber(std::string_view& source);
   bool TryLexOperator(std::string_view& source);
   bool TryLexStringLiteral(std::string_view& source);
+  bool TryLexComment(std::string_view& source);
 
   uint32_t StartIndex(std::string_view s) const { return s.data() - start_; }
   uint32_t StartIndex(char const* s) const { return s - start_; }
@@ -73,8 +74,22 @@ TokenBuffer Lex(std::string_view source,
     if (lexer.TryLexNumber(source)) { continue; }
     if (lexer.TryLexOperator(source)) { continue; }
     if (lexer.TryLexStringLiteral(source)) { continue; }
+    if (lexer.TryLexComment(source)) { continue; }
     return buffer;
   }
+}
+
+bool Lexer::TryLexComment(std::string_view& source) {
+  if (source.size() < 2 or source.substr(0, 2) != "//") { return false; }
+  size_t index = source.find("\n");
+  if (index == std::string_view::npos) {
+    index = source.size();
+  } else {
+    ++index;
+  }
+  token_buffer_.Append(Token::Comment(StartIndex(source.substr(0, index))));
+  source.remove_prefix(index);
+  return true;
 }
 
 bool Lexer::TryLexKeywordOrIdentifier(std::string_view& source) {

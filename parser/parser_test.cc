@@ -62,6 +62,16 @@ NTH_TEST("parser/declaration") {
                  HasSubtreeSize(3)));
 }
 
+NTH_TEST("parser/comment") {
+  diag::NullConsumer d;
+  TokenBuffer buffer = Lex("let x ::= true  // comment!", d);
+  auto tree          = Parse(buffer, d);
+  NTH_EXPECT(tree.nodes() >>= ElementsAreSequentially(
+                 HasToken(HasBooleanValue(true)),
+                 IdentifierToken(buffer, "x") and HasSubtreeSize(2),
+                 HasSubtreeSize(3)));
+}
+
 NTH_TEST("parser/multiple-declarations-with-newlines") {
   diag::NullConsumer d;
   TokenBuffer buffer = Lex(R"(

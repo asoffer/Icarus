@@ -122,7 +122,9 @@ ParseTree Parse(TokenBuffer const& token_buffer,
 
 void Parser::HandleStatementSequence(ParseTree& tree) {
   // Ignore leading newlines.
-  while (not AtChunkEnd() and current_token().kind() == Token::Kind::Newline) {
+  while (not AtChunkEnd() and
+         (current_token().kind() == Token::Kind::Newline or
+          current_token().kind() == Token::Kind::Comment)) {
     ++iterator_;
   }
 
@@ -174,8 +176,11 @@ void Parser::HandleResolveDeclaration(ParseTree& tree) {
 }
 
 void Parser::HandleNewlinesBetweenStatements(ParseTree& tree) {
-  NTH_ASSERT((v.debug), current_token().kind() == Token::Kind::Newline);
-  while (not AtChunkEnd() and current_token().kind() == Token::Kind::Newline) {
+  NTH_ASSERT((v.debug), current_token().kind() == Token::Kind::Newline or
+                            current_token().kind() == Token::Kind::Comment);
+  while (not AtChunkEnd() and
+         (current_token().kind() == Token::Kind::Newline or
+          current_token().kind() == Token::Kind::Comment)) {
     ++iterator_;
   }
 
