@@ -6,19 +6,20 @@ on:
     branches: [main]
 jobs:
   test:
-    runs-on: ubuntu-22.04
-    env:
-      ICARUS_MODULE_PATH: stdlib
+    runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v2
-      - name: Bazel cache
-        id: bazel-cache
-        uses: actions/cache@v2
+      - uses: actions/checkout@v2
+      - name: Install Clang
+        uses: egor-tensin/setup-clang@v1
         with:
-          path: |
-            ~/.cache/bazel
-          key: ${{ runner.os }}-bazel-cache
-      - name: Test
+          version: 16
+          platform: x64
+      - name: Test Debug Build
         run: >-
-          bazel test -- ...
+          bazel test -c dbg ...
+      - name: Test ASAN Build
+        run: >-
+          bazel test --config=asan ...
+      - name: Test Optimized Build
+        run: >-
+          bazel test -c opt ...
