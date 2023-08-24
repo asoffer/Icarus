@@ -1,25 +1,30 @@
-common --experimental_enable_bzlmod
-build --crosstool_top=//bazel:cc
-build --cpu=clang
-build --host_crosstool_top=@bazel_tools//tools/cpp:toolchain
-build --strip=never
-build --color=yes
-test  --color=yes
-test  --test_arg="--use-colour yes"
-test  --test_output=errors
+common \
+  --color=yes \
+  --experimental_enable_bzlmod
+build \
+  --crosstool_top=//bazel:cc \
+  --host_crosstool_top=@bazel_tools//tools/cpp:toolchain \
+  --strip=never
+test \
+  --test_arg="--use-colour yes" \
+  --test_output=errors \
 
-# TODO: ./leak.suppress holds some intentional leak suppressions but I'm not
-# sure how to expose that to all ASAN builds/tests. I believe it needs to be
-# A data dependency so LSAN_OPTIONS=suppressions=leak.suppress can find it.
-# TODO: Once you do the above and can reliably detect the leaks you care
-# about and ignore the explicitly suppressed leaks, reenable leak-sanitizer.
 build:asan \
   --copt=-fsanitize=address \
-  --linkopt=-fsanitize=address
+  --linkopt=-fsanitize=address \
+
 test:asan \
   --test_env=ASAN_OPTIONS=external_symbolizer_path=/usr/bin/llvm-symbolizer \
-  --test_env=ASAN_OPTIONS=detect_leaks=0
+  --test_env=ASAN_OPTIONS=detect_leaks=0 \
+  --test_tag_filters="-noasan" \
 
-build:tsan --copt=-fsanitize=thread --linkopt=-fsanitize=thread
-build:ubsan --copt=-fsanitize=undefined --linkopt=-fsanitize=undefined
-build:profile --copt=-fno-omit-frame-pointer
+build:tsan \
+  --copt=-fsanitize=thread \
+  --linkopt=-fsanitize=thread \
+
+build:ubsan \
+  --copt=-fsanitize=undefined \
+  --linkopt=-fsanitize=undefined \
+
+build:profile \
+  --copt=-fno-omit-frame-pointer \

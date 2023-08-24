@@ -82,76 +82,59 @@ def linking_flags(ls):
     )
 
 def _impl(ctx):
-    tool_paths = [
-        tool_path(name = "gcc",     path = ctx.attr.compiler_path),
-        tool_path(name = "ld",      path = "/usr/bin/ld"),
-        tool_path(name = "ar",      path = "/usr/bin/ar"),
-        tool_path(name = "cpp",     path = "/bin/false"),
-        tool_path(name = "gcov",    path = "/bin/false"),
-        tool_path(name = "nm",      path = "/bin/false"),
-        tool_path(name = "objdump", path = "/bin/false"),
-        tool_path(name = "strip",   path = "/bin/false"),
-    ]
-    features = [
-        std_lib_version("2a"),
-        compiler_flags(ctx.attr.warnings + [
-            "-fbracket-depth=1024",
-            "-fdiagnostics-color=always",
-            "-fno-exceptions",
-            "-fPIE",
-        ]),
-        linking_flags([
-            "-ldl",
-            "-lm",
-            "-lpthread",
-            "-lffi",
-            "-rdynamic",
-            "-lstdc++",
-        ]),
-        mode_dependent_flags({
-            "dbg": [
-                "-g",
-                "-O0",
-                "-DICARUS_DEBUG",
-                "-gdwarf-4",
-                "-DNTH_COMMANDLINE_BUILD_MODE=debug",
-            ],
-            "opt": [
-                "-O2",
-                "-DNDEBUG",
-                "-DNTH_COMMANDLINE_BUILD_MODE=optimize",
-            ],
-        }),
-
-    ]
-
     return cc_common.create_cc_toolchain_config_info(
         ctx = ctx,
-        toolchain_identifier = "asmjs-toolchain",
-        host_system_name = "i686-unknown-linux-gnu",
-        target_system_name = "asmjs-unknown-emscripten",
-        target_cpu = "gcc",
+        toolchain_identifier = ctx.label.name,
+        host_system_name = "unknown",
+        target_system_name = "unknown",
+        target_cpu = "unknown",
         target_libc = "unknown",
-        compiler = "gcc",
-        abi_version = "unknown",
-        abi_libc_version = "unknown",
-        cxx_builtin_include_directories = [
-            "/usr/lib",
-            "/usr/include",
-            "/usr/local/include",
+        compiler = "unknown",
+        cxx_builtin_include_directories = ctx.attr.include_dirs,
+        tool_paths = [
+            tool_path(name = "gcc",     path = ctx.attr.compiler_path),
+            tool_path(name = "ld",      path = "/usr/bin/ld"),
+            tool_path(name = "ar",      path = "/usr/bin/ar"),
+            tool_path(name = "cpp",     path = "/bin/false"),
+            tool_path(name = "gcov",    path = "/bin/false"),
+            tool_path(name = "nm",      path = "/bin/false"),
+            tool_path(name = "objdump", path = "/bin/false"),
+            tool_path(name = "strip",   path = "/bin/false"),
         ],
-        tool_paths = tool_paths,
-        features = features + [
+        features = [
+            std_lib_version("2a"),
+            compiler_flags(ctx.attr.warnings + [
+                "-fdiagnostics-color=always",
+                "-fno-exceptions",
+                "-fno-rtti",
+                "-fPIE",
+            ]),
+            linking_flags([
+                "-lstdc++",
+            ]),
+            mode_dependent_flags({
+                "dbg": [
+                    "-g",
+                    "-O0",
+                    "-DNTH_COMMANDLINE_BUILD_MODE=debug",
+                ],
+                "opt": [
+                    "-O2",
+                    "-DNDEBUG",
+                    "-DNTH_COMMANDLINE_BUILD_MODE=optimize",
+                ],
+            }),
             feature(name = "dbg"),
             feature(name = "fastbuild"),
             feature(name = "opt"),
-        ],
+        ]
     )
 
 cc_toolchain_config = rule(
     implementation = _impl,
     attrs = {
         "compiler_path": attr.string(),
+        "include_dirs": attr.string_list(),
         "warnings": attr.string_list(),
     },
     provides = [CcToolchainConfigInfo],
