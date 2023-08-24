@@ -25,6 +25,7 @@ void HandleParseTreeNodeDeclaration(ParseTree::Node node, IrContext& context) {
 
 void HandleParseTreeNodeStatementSequence(ParseTree::Node node,
                                           IrContext& context) {
+  context.emit.statement_type.emplace(node, context.type_stack.back());
 }
 
 }  // namespace

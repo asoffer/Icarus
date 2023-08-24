@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "absl/container/flat_hash_map.h"
+#include "ir/emit.h"
 #include "parser/parse_tree.h"
 #include "type/type.h"
 
@@ -13,6 +14,7 @@ namespace ic {
 struct IrContext {
   absl::flat_hash_map<uint32_t, type::Type> identifiers;
   std::vector<type::Type> type_stack;
+  EmitContext emit;
 };
 
 void ProcessIr(std::span<ParseTree::Node const> nodes, IrContext& context);

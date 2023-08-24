@@ -22,6 +22,14 @@ struct ParseTree {
 #define IC_XMACRO_PARSE_TREE_NODE_KIND(kind) kind,
 #include "parser/parse_tree_node_kind.xmacro.h"
     };
+
+    template <typename H>
+    friend H AbslHashValue(H h, Node n) {
+      return H::combine(std::move(h), n.kind, n.subtree_size, n.token);
+    }
+    friend bool operator==(Node const&, Node const &) = default;
+    friend bool operator!=(Node const&, Node const &) = default;
+
     Kind kind;
     uint32_t subtree_size;
     Token token = Token::Invalid();

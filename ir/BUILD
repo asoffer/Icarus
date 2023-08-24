@@ -21,8 +21,10 @@ cc_library(
         ":module",
         "//parser:parse_tree",
         "//parser:parse_tree_node_kind_xmacro",
+        "//type",
         "@asoffer_nth//nth/debug",
         "@asoffer_nth//nth/debug/log",
+        "@com_google_absl//absl/container:flat_hash_map",
     ],
 )
 
@@ -31,6 +33,7 @@ cc_library(
     hdrs = ["ir.h"],
     srcs = ["ir.cc"],
     deps = [
+        ":emit",
         "//parser:parse_tree",
         "//parser:parse_tree_node_kind_xmacro",
         "//type",

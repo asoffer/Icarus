@@ -16,16 +16,20 @@ void HandleParseTreeNodeBooleanLiteral(ParseTree::Node node,
 
 void HandleParseTreeNodeIntegerLiteral(ParseTree::Node node,
                                        EmitContext& context) {
-  // TODO: Choose the count based on the type.
-  context.module.initializer.append<jasmin::Drop>(1);
+  NTH_UNIMPLEMENTED();
 }
 
 void HandleParseTreeNodeDeclaration(ParseTree::Node node,
                                     EmitContext& context) {
+  NTH_UNIMPLEMENTED();
 }
 
 void HandleParseTreeNodeStatementSequence(ParseTree::Node node,
-                                          EmitContext& context) {}
+                                          EmitContext& context) {
+  auto iter = context.statement_type.find(node);
+  NTH_ASSERT(iter != context.statement_type.end());
+  context.module.initializer.append<jasmin::Drop>(type::Size(iter->second));
+}
 
 }  // namespace
 

@@ -20,4 +20,8 @@ namespace ic::type {
 
 Type::Kind Type::kind() const { return static_cast<Kind>(data_ >> 56); }
 
+size_t Size(Type t) {
+  return 1;
+}
+
 }  // namespace ic::type

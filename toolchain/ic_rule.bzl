@@ -35,7 +35,6 @@ def _ic_binary_impl(ctx):
         output = ctx.outputs.executable,
         is_executable = True,
         content = """
-        echo "{executable} --input={icm} $@"
         {executable} --input={icm} $@
         """.format(
             executable = ctx.executable._run_bytecode.short_path,

@@ -104,6 +104,14 @@ struct Token {
     p.write("]");
   }
 
+  friend bool operator==(Token const&, Token const&) = default;
+  friend bool operator!=(Token const&, Token const&) = default;
+
+  template <typename H>
+  friend H AbslHashValue(H h, Token t) {
+    return H::combine(std::move(h), t.offset_, t.kind_, t.payload_);
+  }
+
  private:
   uint32_t offset_;
   uint32_t kind_ : 8;

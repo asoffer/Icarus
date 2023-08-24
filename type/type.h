@@ -68,6 +68,8 @@ inline constexpr Type Bool    = PrimitiveType(PrimitiveType::Kind::Bool);
 inline constexpr Type Integer = PrimitiveType(PrimitiveType::Kind::Integer);
 inline constexpr Type Type_   = PrimitiveType(PrimitiveType::Kind::Type);
 
+size_t Size(Type t);
+
 }  // namespace ic::type
 
 #endif  // ICARUS_TYPE_TYPE_H

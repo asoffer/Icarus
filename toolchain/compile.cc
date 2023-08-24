@@ -58,8 +58,8 @@ nth::exit_code Compile(nth::FlagValueSet flags, nth::file_path const& source) {
   TokenBuffer token_buffer = Lex(*content, consumer);
   ParseTree parse_tree     = Parse(token_buffer, consumer);
   IrContext ir_context     = ProcessIr(parse_tree);
-  EmitContext emit_context = EmitIr(parse_tree);
-  ModuleProto module       = Serialize(emit_context.module);
+  EmitIr(parse_tree.nodes(), ir_context.emit);
+  ModuleProto module = Serialize(ir_context.emit.module);
 
   std::ofstream out(output_path.path());
   return module.SerializeToOstream(&out) ? nth::exit_code::success
