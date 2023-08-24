@@ -5,6 +5,9 @@ cc_binary(
     srcs = ["compile.cc"],
     deps = [
         "//ir",
+        "//ir:emit",
+        "//ir:serialize",
+        "//ir:module_cc_proto",
         "//common:errno",
         "//common:string",
         "//diagnostics:message",
@@ -13,7 +16,26 @@ cc_binary(
         "//parser",
         "@asoffer_nth//nth/commandline:main",
         "@asoffer_nth//nth/debug/log",
-        "@asoffer_nth//nth/debug/log:stderr_log_sink",
+        "@asoffer_nth//nth/io:file",
+        "@asoffer_nth//nth/io:file_path",
+        "@asoffer_nth//nth/process:exit_code",
+    ],
+)
+
+cc_binary(
+    name = "run_bytecode",
+    srcs = ["run_bytecode.cc"],
+    deps = [
+        "//ir:deserialize",
+        "//ir:module",
+        "//ir:module_cc_proto",
+        "//common:errno",
+        "//common:string",
+        "//diagnostics:message",
+        "//diagnostics/consumer:streaming",
+        "@asoffer_jasmin//jasmin:execute",
+        "@asoffer_nth//nth/commandline:main",
+        "@asoffer_nth//nth/debug/log",
         "@asoffer_nth//nth/io:file",
         "@asoffer_nth//nth/io:file_path",
         "@asoffer_nth//nth/process:exit_code",

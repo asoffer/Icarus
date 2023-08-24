@@ -28,14 +28,19 @@ def _ic_binary_impl(ctx):
     )
 
     runfiles = ctx.runfiles(
-        files = [icm_file]
+        files = [ctx.executable._run_bytecode, icm_file]
     )
 
     ctx.actions.write(
         output = ctx.outputs.executable,
         is_executable = True,
         content = """
-        """
+        echo "{executable} --input={icm} $@"
+        {executable} --input={icm} $@
+        """.format(
+            executable = ctx.executable._run_bytecode.short_path,
+            icm = icm_file.short_path,
+        )
     )
     return [
         DefaultInfo(
@@ -52,6 +57,12 @@ ic_binary = rule(
         "deps": attr.label_list(providers = [IcarusInfo]),
         "_compile": attr.label(
             default = Label("//toolchain:compile"),
+            allow_single_file = True,
+            executable = True,
+            cfg = ic_tooling_transition,
+        ),
+        "_run_bytecode": attr.label(
+            default = Label("//toolchain:run_bytecode"),
             allow_single_file = True,
             executable = True,
             cfg = ic_tooling_transition,

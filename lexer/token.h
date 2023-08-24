@@ -109,6 +109,7 @@ struct Token {
   uint32_t kind_ : 8;
   uint32_t payload_ : PayloadBits;
 };
+static_assert(sizeof(Token) == 8);
 
 void NthPrint(nth::Printer auto& p, Token::Kind k) {
   static constexpr std::array KindStrings{

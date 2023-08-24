@@ -17,6 +17,12 @@ struct IrContext {
 
 void ProcessIr(std::span<ParseTree::Node const> nodes, IrContext& context);
 
+inline IrContext ProcessIr(ParseTree const& tree) {
+  IrContext context;
+  ProcessIr(tree.nodes(), context);
+  return context;
+}
+
 }  // namespace ic
 
 #endif  // ICARUS_IR_IR_H

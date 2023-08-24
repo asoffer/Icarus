@@ -163,7 +163,7 @@ void Parser::HandleStatement(ParseTree& tree) {
                         .subtree_start = tree.size()});
       ++iterator_;
       break;
-    default: NTH_UNIMPLEMENTED("Token: {}") <<= {*iterator_};
+    default: ExpandState(State::Kind::Expression);
   }
 }
 

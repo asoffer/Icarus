@@ -7,11 +7,13 @@
 #include "common/string.h"
 #include "diagnostics/consumer/streaming.h"
 #include "diagnostics/message.h"
+#include "ir/emit.h"
 #include "ir/ir.h"
+#include "ir/module.pb.h"
+#include "ir/serialize.h"
 #include "lexer/lexer.h"
 #include "nth/commandline/commandline.h"
 #include "nth/debug/log/log.h"
-#include "nth/debug/log/stderr_log_sink.h"
 #include "nth/io/file.h"
 #include "nth/io/file_path.h"
 #include "nth/process/exit_code.h"
@@ -37,8 +39,6 @@ std::optional<std::string> ReadFileToString(nth::file_path const& file_name) {
   return result;
 }
 
-}  // namespace
-
 nth::exit_code Compile(nth::FlagValueSet flags, nth::file_path const& source) {
   auto const& output_path = flags.get<nth::file_path>("output");
 
@@ -53,22 +53,20 @@ nth::exit_code Compile(nth::FlagValueSet flags, nth::file_path const& source) {
     return nth::exit_code::generic_error;
   }
 
-  std::string_view file_content = *content;
-  consumer.set_source(file_content);
+  consumer.set_source(*content);
+
   TokenBuffer token_buffer = Lex(*content, consumer);
   ParseTree parse_tree     = Parse(token_buffer, consumer);
-  IrContext context;
-  ProcessIr(parse_tree.nodes(), context);
+  IrContext ir_context     = ProcessIr(parse_tree);
+  EmitContext emit_context = EmitIr(parse_tree);
+  ModuleProto module       = Serialize(emit_context.module);
 
-  {
-    // TODO:
-    std::ofstream out(output_path.path());
-    out << "echo \"Hi\"";
-  }
-
-  return nth::exit_code::success;
+  std::ofstream out(output_path.path());
+  return module.SerializeToOstream(&out) ? nth::exit_code::success
+                                         : nth::exit_code::generic_error;
 }
 
+}  // namespace
 }  // namespace ic
 
 nth::Usage const nth::program_usage = {

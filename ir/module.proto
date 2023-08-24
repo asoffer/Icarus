@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package ic;
+
+message FunctionProto {
+  uint32 parameters = 1;
+  uint32 returns = 2;
+  bytes content = 3;
+}
+
+message ModuleProto {
+  // Subroutine at which to begin execution.
+  FunctionProto initializer = 1;
+}

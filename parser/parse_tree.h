@@ -26,6 +26,7 @@ struct ParseTree {
     uint32_t subtree_size;
     Token token = Token::Invalid();
   };
+  static_assert(sizeof(Node) == 16);
 
   std::span<Node const> nodes() const { return nodes_; }
   uint32_t size() const { return nodes_.size(); }
