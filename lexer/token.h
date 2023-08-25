@@ -65,7 +65,7 @@ struct Token {
   constexpr uint32_t offset() const { return offset_; }
 
   // Constructs an integer token at the given offset.
-  static Token Integer(uint32_t offset, IntegerPayload payload);
+  static Token IntegerLiteral(uint32_t offset, IntegerPayload payload);
 
   // Constructs an identifier token at the given offset.
   static Token Identifier(uint32_t offset, uint32_t identifier_index);
@@ -93,7 +93,7 @@ struct Token {
     nth::Interpolate<"[{} @{}">(p, f, t.kind(), t.offset_);
 
     switch (t.kind()) {
-      case Token::Kind::Integer:
+      case Token::Kind::IntegerLiteral:
         nth::Interpolate<" {}">(p, f, IntegerPayload(t.payload_));
         break;
       case Token::Kind::Identifier:

@@ -23,15 +23,15 @@ inline constexpr nth::ExpectationMatcher HasKind("has-kind",
 // Matches a token representing an integer holding `number` as its immediate
 // value.
 inline constexpr nth::ExpectationMatcher HasImmediateIntegerValue(
-    "has-kind", [](auto const &value, uint32_t number) {
-      return value.kind() == Token::Kind::Integer and
+    "has-immediate-integer-value", [](auto const &value, uint32_t number) {
+      return value.kind() == Token::Kind::IntegerLiteral and
              value.AsIntegerPayload() ==
                  Token::IntegerPayload::Immediate(number);
     });
 
 // Matches a token representing a boolean value holding `b`.
 inline constexpr nth::ExpectationMatcher HasBooleanValue(
-    "has-kind", [](auto const &value, bool b) {
+    "has-boolean-value", [](auto const &value, bool b) {
       return (value.kind() == Token::Kind::True and b) or
              (value.kind() == Token::Kind::False and not b);
     });

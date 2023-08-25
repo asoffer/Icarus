@@ -16,7 +16,7 @@ struct TokenBuffer {
 
   void Append(Token token) { tokens_.push_back(token); }
 
-  void AppendInteger(std::string_view integer, uint32_t offset);
+  void AppendIntegerLiteral(std::string_view integer, uint32_t offset);
   void AppendKeywordOrIdentifier(std::string_view identifier, uint32_t offset);
 
   uint32_t IdentifierIndex(std::string_view identifier);

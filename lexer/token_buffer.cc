@@ -2,7 +2,8 @@
 
 namespace ic {
 
-void TokenBuffer::AppendInteger(std::string_view integer, uint32_t offset) {
+void TokenBuffer::AppendIntegerLiteral(std::string_view integer,
+                                       uint32_t offset) {
   uint64_t value = 0;
   // TODO: Overflow detection.
   for (char c : integer) {
@@ -18,7 +19,7 @@ void TokenBuffer::AppendInteger(std::string_view integer, uint32_t offset) {
   } else {
     payload = Token::IntegerPayload::Immediate(value);
   }
-  tokens_.push_back(Token::Integer(offset, payload));
+  tokens_.push_back(Token::IntegerLiteral(offset, payload));
 }
 
 uint32_t TokenBuffer::IdentifierIndex(std::string_view identifier) {

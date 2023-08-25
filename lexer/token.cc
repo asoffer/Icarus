@@ -20,16 +20,16 @@ Token::IntegerPayload Token::IntegerPayload::Immediate(uint32_t value) {
   return p;
 }
 
-Token Token::Integer(uint32_t offset, IntegerPayload payload) {
+Token Token::IntegerLiteral(uint32_t offset, IntegerPayload payload) {
   Token token;
   token.offset_  = offset;
-  token.kind_    = static_cast<uint8_t>(Kind::Integer);
+  token.kind_    = static_cast<uint8_t>(Kind::IntegerLiteral);
   token.payload_ = payload.value();
   return token;
 }
 
 Token::IntegerPayload Token::AsIntegerPayload() const {
-  NTH_ASSERT((v.debug), kind() == Kind::Integer);
+  NTH_ASSERT((v.debug), kind() == Kind::IntegerLiteral);
   return IntegerPayload(payload_);
 }
 

@@ -11,6 +11,7 @@ cc_library(
     srcs = ["type.cc"],
     deps = [
         ":type_kind_xmacro",
+        "//lexer:token_kind_xmacro",
         "@asoffer_nth//nth/debug",
     ],
 )

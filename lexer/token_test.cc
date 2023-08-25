@@ -28,10 +28,12 @@ NTH_TEST("token/value") {
   NTH_EXPECT(Token::Identifier(5, 3).kind() == Token::Kind::Identifier);
   NTH_EXPECT(Token::Identifier(5, 3).offset() == 5);
 
-  NTH_EXPECT(Token::Integer(5, Token::IntegerPayload::Immediate(3)).kind() ==
-             Token::Kind::Integer);
-  NTH_EXPECT(Token::Integer(5, Token::IntegerPayload::Immediate(3)).offset() ==
-             5);
+  NTH_EXPECT(
+      Token::IntegerLiteral(5, Token::IntegerPayload::Immediate(3)).kind() ==
+      Token::Kind::IntegerLiteral);
+  NTH_EXPECT(
+      Token::IntegerLiteral(5, Token::IntegerPayload::Immediate(3)).offset() ==
+      5);
 
   NTH_EXPECT(Token::Symbol(Token::Kind::Colon, 4).kind() == Token::Kind::Colon);
   NTH_EXPECT(Token::Symbol(Token::Kind::Colon, 4).offset() == 4);
@@ -39,10 +41,12 @@ NTH_TEST("token/value") {
 
 NTH_TEST("token/print") {
   NTH_EXPECT(AsString(Token::Identifier(5, 3)) == "[tk.Identifier @5 #3]");
-  NTH_EXPECT(AsString(Token::Integer(5, Token::IntegerPayload::Index(3))) ==
-             "[tk.Integer @5 #3]");
-  NTH_EXPECT(AsString(Token::Integer(5, Token::IntegerPayload::Immediate(3))) ==
-             "[tk.Integer @5 !3]");
+  NTH_EXPECT(
+      AsString(Token::IntegerLiteral(5, Token::IntegerPayload::Index(3))) ==
+      "[tk.IntegerLiteral @5 #3]");
+  NTH_EXPECT(
+      AsString(Token::IntegerLiteral(5, Token::IntegerPayload::Immediate(3))) ==
+      "[tk.IntegerLiteral @5 !3]");
   NTH_EXPECT(AsString(Token::Symbol(Token::Kind::Colon, 3)) == "[tk.(:) @3]");
 }
 

@@ -42,7 +42,10 @@ struct Type {
 };
 
 struct PrimitiveType {
-  enum class Kind : uint8_t { Bool, Integer, Type };
+  enum class Kind : uint8_t {
+#define IC_XMACRO_TOKEN_KIND_BUILTIN_TYPE(kind, symbol, spelling) kind,
+#include "lexer/token_kind.xmacro.h"
+  };
 
   explicit constexpr PrimitiveType(Kind k)
       : data_((static_cast<uint64_t>(Type::Kind::Primitive) << 56) |
@@ -64,9 +67,9 @@ struct PrimitiveType {
   inline constexpr Type::Type(kind##Type t) : data_(t.data_) {}
 #include "type/type_kind.xmacro.h"
 
-inline constexpr Type Bool    = PrimitiveType(PrimitiveType::Kind::Bool);
-inline constexpr Type Integer = PrimitiveType(PrimitiveType::Kind::Integer);
-inline constexpr Type Type_   = PrimitiveType(PrimitiveType::Kind::Type);
+#define IC_XMACRO_TOKEN_KIND_BUILTIN_TYPE(kind, symbol, spelling)              \
+  inline constexpr Type symbol = PrimitiveType(PrimitiveType::Kind::kind);
+#include "lexer/token_kind.xmacro.h"
 
 size_t Size(Type t);
 

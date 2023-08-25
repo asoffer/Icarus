@@ -99,8 +99,8 @@ bool Lexer::TryLexNumber(std::string_view& source) {
   char const * start = source.data();
   if (source.front() == '0') {
     if (source.size() == 1) {
-      token_buffer_.AppendInteger(source.substr(0, 1),
-                                  StartIndex(source.substr(0, 1)));
+      token_buffer_.AppendIntegerLiteral(source.substr(0, 1),
+                                         StartIndex(source.substr(0, 1)));
       source.remove_prefix(1);
       return true;
     } else {
@@ -119,7 +119,7 @@ bool Lexer::TryLexNumber(std::string_view& source) {
   consume_decimal:
     std::string_view number = ConsumeWhile<DecimalCharacter>(source);
     if (number.empty()) { return false; }
-    token_buffer_.AppendInteger(number, StartIndex(start));
+    token_buffer_.AppendIntegerLiteral(number, StartIndex(start));
     return true;
   }
   NTH_UNREACHABLE();

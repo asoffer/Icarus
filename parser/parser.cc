@@ -207,7 +207,7 @@ void Parser::HandleExpression(ParseTree& tree) {
       tree.append_leaf(ParseTree::Node::Kind::BooleanLiteral, *iterator_++);
       pop_and_discard_state();
       break;
-    case Token::Kind::Integer:
+    case Token::Kind::IntegerLiteral:
       tree.append_leaf(ParseTree::Node::Kind::IntegerLiteral, *iterator_++);
       pop_and_discard_state();
       break;
