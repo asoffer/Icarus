@@ -205,13 +205,32 @@ void Parser::HandleExpression(ParseTree& tree) {
     case Token::Kind::True:
     case Token::Kind::False:
       tree.append_leaf(ParseTree::Node::Kind::BooleanLiteral, *iterator_++);
+      pop_and_discard_state();
       break;
     case Token::Kind::Integer:
       tree.append_leaf(ParseTree::Node::Kind::IntegerLiteral, *iterator_++);
+      pop_and_discard_state();
+      break;
+    case Token::Kind::Bool:
+      tree.append_leaf(ParseTree::Node::Kind::TypeLiteral, *iterator_++);
+      pop_and_discard_state();
+      break;
+    case Token::Kind::Star:
+    case Token::Kind::BracketedStar:
+      ExpandState(State::Kind::Expression,
+                  State{
+                      .kind          = State::Kind::ResolveUnaryExpression,
+                      .subtree_start = tree.size(),
+                  });
+      ++iterator_;
       break;
     default: NTH_UNIMPLEMENTED("Token: {}") <<= {current_token()};
   }
-  pop_and_discard_state();
+}
+
+void Parser::HandleResolveUnaryExpression(ParseTree& tree) {
+  auto t = pop_state().token;
+  NTH_LOG("Token: {}") <<= {t};
 }
 
 }  // namespace ic

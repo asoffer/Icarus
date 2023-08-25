@@ -17,6 +17,10 @@ void HandleParseTreeNodeIntegerLiteral(ParseTree::Node node,
   context.type_stack.push_back(type::Integer);
 }
 
+void HandleParseTreeNodeTypeLiteral(ParseTree::Node node, IrContext& context) {
+  context.type_stack.push_back(type::Type_);
+}
+
 void HandleParseTreeNodeDeclaration(ParseTree::Node node, IrContext& context) {
   context.identifiers.emplace(node.token.IdentifierIndex(),
                               context.type_stack.back());

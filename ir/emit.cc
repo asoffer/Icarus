@@ -19,6 +19,16 @@ void HandleParseTreeNodeIntegerLiteral(ParseTree::Node node,
   NTH_UNIMPLEMENTED();
 }
 
+void HandleParseTreeNodeTypeLiteral(ParseTree::Node node,
+                                       EmitContext& context) {
+  switch (node.token.kind()) {
+    case Token::Kind::Bool:
+      context.module.initializer.append<jasmin::Push>(type::Bool);
+      break;
+    default: NTH_UNREACHABLE();
+  }
+}
+
 void HandleParseTreeNodeDeclaration(ParseTree::Node node,
                                     EmitContext& context) {
   NTH_UNIMPLEMENTED();
