@@ -45,11 +45,9 @@ struct Token {
     friend Token;
     explicit constexpr IntegerPayload(uint32_t value) : value_(value) {}
 
-    friend void NthPrint(nth::Printer auto& p, IntegerPayload payload) {
-      nth::universal_formatter f({
-          .depth    = 3,
-          .fallback = "...",
-      });
+    friend void NthPrint(nth::Printer auto& p,
+                         nth::FormatterFor<IntegerPayload> auto& f,
+                         IntegerPayload payload) {
       if (payload.value_ > PayloadLimit) {
         nth::Interpolate<"#{}">(p, f, payload.value_ - PayloadLimit);
       } else {
@@ -85,11 +83,8 @@ struct Token {
   IntegerPayload AsIntegerPayload() const;
   bool AsBoolean() const;
 
-  friend void NthPrint(nth::Printer auto& p, Token t) {
-    nth::universal_formatter f({
-        .depth    = 3,
-        .fallback = "...",
-    });
+  friend void NthPrint(nth::Printer auto& p, nth::FormatterFor<Token> auto& f,
+                       Token t) {
     nth::Interpolate<"[{} @{}">(p, f, t.kind(), t.offset_);
 
     switch (t.kind()) {
@@ -119,7 +114,8 @@ struct Token {
 };
 static_assert(sizeof(Token) == 8);
 
-void NthPrint(nth::Printer auto& p, Token::Kind k) {
+void NthPrint(nth::Printer auto& p, nth::FormatterFor<Token::Kind> auto&,
+              Token::Kind k) {
   static constexpr std::array KindStrings{
 #define IC_XMACRO_TOKEN_KIND_OPERATOR(kind, symbol)                            \
   std::string_view("tk.(" symbol ")"),

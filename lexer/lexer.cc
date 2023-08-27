@@ -72,9 +72,9 @@ TokenBuffer Lex(std::string_view source,
 
     if (lexer.TryLexKeywordOrIdentifier(source)) { continue; }
     if (lexer.TryLexNumber(source)) { continue; }
+    if (lexer.TryLexComment(source)) { continue; }
     if (lexer.TryLexOperator(source)) { continue; }
     if (lexer.TryLexStringLiteral(source)) { continue; }
-    if (lexer.TryLexComment(source)) { continue; }
     return buffer;
   }
 }

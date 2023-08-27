@@ -32,7 +32,7 @@ struct Parser {
 #include "parser/parse_state.xmacro.h"
     };
 
-    friend void NthPrint(auto& p, Kind const& k) {
+    friend void NthPrint(auto& p, auto&, Kind const& k) {
       switch (k) {
 #define IC_XMACRO_PARSER_STATE_KIND(kind)                                      \
   case Kind::kind:                                                             \
@@ -46,11 +46,7 @@ struct Parser {
     Token token;
     uint32_t subtree_start = -1;
 
-    friend void NthPrint(auto& p, State const& s) {
-      nth::universal_formatter f({
-          .depth    = 3,
-          .fallback = "...",
-      });
+    friend void NthPrint(auto& p, auto& f, State const& s) {
       nth::Interpolate<"[{} {}]">(p, f, s.kind, s.subtree_start);
     }
   };

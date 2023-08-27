@@ -9,17 +9,18 @@ namespace ic {
 
 using ::ic::testing::HasBooleanValue;
 using ::ic::testing::HasImmediateIntegerValue;
+using ::ic::testing::HasKind;
 using ::ic::testing::IsIdentifier;
 using ::nth::ElementsAreSequentially;
 
-inline constexpr nth::ExpectationMatcher HasSubtreeSize(
-    "has-subtree-size",
-    [](auto const &value, auto const &subtree_size_matcher) {
-      return nth::Matches(subtree_size_matcher, value.subtree_size);
-    });
+inline constexpr auto HasSubtreeSize =
+    nth::ExpectationMatcher<"has-subtree-size">(
+        [](auto const &value, auto const &subtree_size_matcher) {
+          return nth::Matches(subtree_size_matcher, value.subtree_size);
+        });
 
-inline constexpr nth::ExpectationMatcher HasToken(
-    "has-token", [](auto const &value, auto const &token_matcher) {
+inline constexpr auto HasToken = nth::ExpectationMatcher<"has-token">(
+    [](auto const &value, auto const &token_matcher) {
       return nth::Matches(token_matcher, value.token);
     });
 
