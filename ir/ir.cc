@@ -32,6 +32,20 @@ void HandleParseTreeNodeStatementSequence(ParseTree::Node node,
   context.emit.statement_type.emplace(node, context.type_stack.back());
 }
 
+void HandleParseTreeNodeIdentifier(ParseTree::Node node, IrContext& context) {
+  NTH_UNIMPLEMENTED();
+}
+
+void HandleParseTreeNodeInfixOperator(ParseTree::Node node,
+                                      IrContext& context) {
+  NTH_UNIMPLEMENTED();
+}
+
+void HandleParseTreeNodeExpressionGroup(ParseTree::Node node,
+                                        IrContext& context) {
+  NTH_UNIMPLEMENTED();
+}
+
 }  // namespace
 
 void ProcessIr(std::span<ParseTree::Node const> nodes, IrContext& context) {

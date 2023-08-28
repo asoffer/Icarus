@@ -14,32 +14,32 @@ using ::nth::ElementsAreSequentially;
 NTH_TEST("lex/empty") {
   diag::NullConsumer d;
   auto token_buffer = Lex("", d);
-  NTH_EXPECT(token_buffer.size() == 0);
+  NTH_EXPECT(token_buffer.size() == 1);
 }
 
 NTH_TEST("lex/keyword") {
   diag::NullConsumer d;
   auto token_buffer = Lex("let", d);
-  NTH_EXPECT(token_buffer.size() == 1) NTH_ELSE { return; }
+  NTH_EXPECT(token_buffer.size() == 2) NTH_ELSE { return; }
   NTH_EXPECT(token_buffer[0].kind() == Token::Kind::Let);
 
   token_buffer = Lex("var", d);
-  NTH_EXPECT(token_buffer.size() == 1) NTH_ELSE { return; }
+  NTH_EXPECT(token_buffer.size() == 2) NTH_ELSE { return; }
   NTH_EXPECT(token_buffer[0].kind() == Token::Kind::Var);
 
   token_buffer = Lex("true", d);
-  NTH_EXPECT(token_buffer.size() == 1) NTH_ELSE { return; }
+  NTH_EXPECT(token_buffer.size() == 2) NTH_ELSE { return; }
   NTH_EXPECT(token_buffer[0].kind() == Token::Kind::True);
 
   token_buffer = Lex("false", d);
-  NTH_EXPECT(token_buffer.size() == 1) NTH_ELSE { return; }
+  NTH_EXPECT(token_buffer.size() == 2) NTH_ELSE { return; }
   NTH_EXPECT(token_buffer[0].kind() == Token::Kind::False);
 }
 
 NTH_TEST("lex/identifier", std::string_view id) {
   diag::NullConsumer d;
   auto token_buffer = Lex(id, d);
-  NTH_EXPECT(token_buffer.size() == 1) NTH_ELSE { return; }
+  NTH_EXPECT(token_buffer.size() == 2) NTH_ELSE { return; }
   NTH_EXPECT(token_buffer[0].kind() == Token::Kind::Identifier);
 }
 
@@ -54,7 +54,8 @@ NTH_TEST("lex/integer", std::string_view n, uint32_t expected) {
   diag::NullConsumer d;
   auto token_buffer = Lex(n, d);
   NTH_EXPECT(token_buffer >>=
-             ElementsAreSequentially(HasImmediateIntegerValue(expected)));
+             ElementsAreSequentially(HasImmediateIntegerValue(expected),
+                                     HasKind(Token::Kind::Eof)));
 }
 
 NTH_INVOKE_TEST("lex/integer") {
@@ -70,13 +71,13 @@ NTH_TEST("lex/basic") {
   NTH_EXPECT(token_buffer >>= ElementsAreSequentially(
                  HasKind(Token::Kind::Let), HasKind(Token::Kind::Identifier),
                  HasKind(Token::Kind::ColonColonEqual),
-                 HasImmediateIntegerValue(3)));
+                 HasImmediateIntegerValue(3), HasKind(Token::Kind::Eof)));
 }
 
 NTH_TEST("lex/comment/eof") {
   diag::NullConsumer d;
   auto token_buffer = Lex("// comment", d);
-  NTH_EXPECT(token_buffer >>= ElementsAreSequentially());
+  NTH_EXPECT(token_buffer >>= ElementsAreSequentially(HasKind(Token::Kind::Eof)));
 }
 
 NTH_TEST("lex/comment/multiple") {
@@ -85,8 +86,8 @@ NTH_TEST("lex/comment/multiple") {
       R"(// some comments
          // more comments)",
       d);
-  NTH_EXPECT(token_buffer >>=
-             ElementsAreSequentially(HasKind(Token::Kind::Newline)));
+  NTH_EXPECT(token_buffer >>= ElementsAreSequentially(
+                 HasKind(Token::Kind::Newline), HasKind(Token::Kind::Eof)));
 }
 
 NTH_TEST("lex/comment/with-non-comments") {
@@ -96,17 +97,17 @@ NTH_TEST("lex/comment/with-non-comments") {
          x
          // more comments)",
       d);
-  NTH_EXPECT(token_buffer >>=
-             ElementsAreSequentially(HasKind(Token::Kind::Newline),
-                                     HasKind(Token::Kind::Identifier),
-                                     HasKind(Token::Kind::Newline)));
+  NTH_EXPECT(token_buffer >>= ElementsAreSequentially(
+                 HasKind(Token::Kind::Newline),
+                 HasKind(Token::Kind::Identifier),
+                 HasKind(Token::Kind::Newline), HasKind(Token::Kind::Eof)));
 }
 
 NTH_TEST("lex/comment/end-of-line") {
   diag::NullConsumer d;
   auto token_buffer = Lex(R"(x // some comments)", d);
-  NTH_EXPECT(token_buffer >>=
-             ElementsAreSequentially(HasKind(Token::Kind::Identifier)));
+  NTH_EXPECT(token_buffer >>= ElementsAreSequentially(
+                 HasKind(Token::Kind::Identifier), HasKind(Token::Kind::Eof)));
 }
 
 }  // namespace

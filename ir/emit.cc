@@ -41,6 +41,20 @@ void HandleParseTreeNodeStatementSequence(ParseTree::Node node,
   context.module.initializer.append<jasmin::Drop>(type::Size(iter->second));
 }
 
+void HandleParseTreeNodeIdentifier(ParseTree::Node node, EmitContext& context) {
+  NTH_UNIMPLEMENTED();
+}
+
+void HandleParseTreeNodeInfixOperator(ParseTree::Node node,
+                                      EmitContext& context) {
+  NTH_UNIMPLEMENTED();
+}
+
+void HandleParseTreeNodeExpressionGroup(ParseTree::Node node,
+                                        EmitContext& context) {
+  NTH_UNIMPLEMENTED();
+}
+
 }  // namespace
 
 void EmitIr(std::span<ParseTree::Node const> nodes, EmitContext& context) {

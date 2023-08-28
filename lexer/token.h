@@ -71,6 +71,9 @@ struct Token {
   // Constructs a symbol token with the given kind at the given offset.
   static Token Symbol(Kind k, uint32_t offset);
 
+  // Constructs a token representing the end of the lex-stream.
+  static Token Eof();
+
   // Constructs an invalid token that may not appear in a correct lex-stream.
   static Token Invalid();
 

@@ -18,6 +18,8 @@ cc_library(
         ":parse_tree_node_kind_xmacro",
         "//lexer:token",
         "@asoffer_nth//nth/debug",
+        "@asoffer_nth//nth/strings:interpolate",
+        "@asoffer_nth//nth/utility:iterator_range",
     ],
 )
 
@@ -28,6 +30,7 @@ cc_library(
     deps = [
         ":parse_state_xmacro",
         ":parse_tree",
+        ":precedence",
         "//diagnostics/consumer",
         "//lexer:token",
         "//lexer:token_buffer",
@@ -44,5 +47,20 @@ cc_test(
         "//lexer",
         "//lexer:token_matchers",
         "@asoffer_nth//nth/test:main",
+    ],
+)
+
+cc_library(
+    name = "precedence_groups_xmacro",
+    textual_hdrs = ["precedence_groups.xmacro.h"],
+)
+
+cc_library(
+    name = "precedence",
+    hdrs = ["precedence.h"],
+    srcs = ["precedence.cc"],
+    deps = [
+        ":precedence_groups_xmacro",
+        "@asoffer_nth//nth/debug",
     ],
 )

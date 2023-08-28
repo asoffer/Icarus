@@ -68,15 +68,17 @@ TokenBuffer Lex(std::string_view source,
     }
 
     ConsumeWhile<WhitespaceCharacter>(source);
-    if (source.empty()) { return buffer; }
+    if (source.empty()) { break; }
 
     if (lexer.TryLexKeywordOrIdentifier(source)) { continue; }
     if (lexer.TryLexNumber(source)) { continue; }
     if (lexer.TryLexComment(source)) { continue; }
     if (lexer.TryLexOperator(source)) { continue; }
     if (lexer.TryLexStringLiteral(source)) { continue; }
-    return buffer;
+    break;
   }
+  buffer.Append(Token::Eof());
+  return buffer;
 }
 
 bool Lexer::TryLexComment(std::string_view& source) {

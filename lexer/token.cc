@@ -58,6 +58,13 @@ Token Token::Symbol(Token::Kind kind, uint32_t offset) {
   return token;
 }
 
+Token Token::Eof() {
+  Token token;
+  token.offset_ = -1;
+  token.kind_   = static_cast<uint8_t>(Kind::Eof);
+  return token;
+}
+
 Token Token::Invalid() {
   Token token;
   token.offset_ = -1;
