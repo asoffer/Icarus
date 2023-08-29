@@ -3,8 +3,13 @@ package(default_visibility = ["//visibility:public"])
 cc_library(
     name = "consumer",
     hdrs = ["consumer.h"],
+    srcs = ["consumer.cc"],
     deps = [
+        "//lexer:token",
+        "//parser:parse_tree",
         "//diagnostics:message",
+        "@asoffer_nth//nth/base:attributes",
+        "@asoffer_nth//nth/debug",
     ],
 )
 

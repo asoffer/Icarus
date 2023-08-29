@@ -26,4 +26,16 @@ void ParseTree::set_back_child_count() {
   nodes_.back().child_count = count;
 }
 
+ParseTree::Node& ParseTree::operator[](ParseTree::Node::Index node_index) {
+  NTH_ASSERT(node_index.value_ < size());
+
+  return nodes_[node_index.value_];
+}
+
+ParseTree::Node const& ParseTree::operator[](
+    ParseTree::Node::Index node_index) const {
+  NTH_ASSERT(node_index.value_ < size());
+  return nodes_[node_index.value_];
+}
+
 }  // namespace ic

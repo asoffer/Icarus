@@ -23,7 +23,8 @@ def _ic_binary_impl(ctx):
             src_file.short_path,
             "--output={}".format(icm_file.path),
         ],
-        progress_message = "Compiling {}".format(ctx.label.name),
+        progress_message = "Compiling //{}:{}".format(ctx.label.package, 
+                                                      ctx.label.name),
         executable = ctx.attr._compile[0][DefaultInfo].files_to_run.executable,
     )
 

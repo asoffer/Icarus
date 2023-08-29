@@ -14,10 +14,11 @@ namespace ic {
 struct ParseTree {
   struct Node {
     struct Index {
-      private:
-        friend ParseTree;
-        explicit constexpr Index(uint32_t n) : value_(n) {}
-        uint32_t value_;
+      explicit constexpr Index(uint32_t n) : value_(n) {}
+
+     private:
+      friend ParseTree;
+      uint32_t value_;
     };
 
     enum class Kind : uint8_t {
@@ -49,6 +50,9 @@ struct ParseTree {
   uint32_t size() const { return nodes_.size(); }
 
   std::span<Node const> subtree(Node::Index node_index) const;
+
+  Node &operator[](Node::Index node_index);
+  Node const &operator[](Node::Index node_index) const;
 
   struct sibling_iterator {
     sibling_iterator &operator++() {

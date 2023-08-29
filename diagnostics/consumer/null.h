@@ -1,5 +1,5 @@
-#ifndef ICARUS_DIAGNOSTICS_CONSUMER_TTY_H
-#define ICARUS_DIAGNOSTICS_CONSUMER_TTY_H
+#ifndef ICARUS_DIAGNOSTICS_CONSUMER_NULL_H
+#define ICARUS_DIAGNOSTICS_CONSUMER_NULL_H
 
 #include "diagnostics/consumer/consumer.h"
 #include "diagnostics/message.h"
@@ -7,7 +7,6 @@
 namespace ic::diag {
 
 struct NullConsumer : DiagnosticConsumer {
-  explicit NullConsumer() : DiagnosticConsumer("") {}
   ~NullConsumer() = default;
 
   void Start(MessageComponent const &component) override {}
@@ -17,4 +16,4 @@ struct NullConsumer : DiagnosticConsumer {
 
 }  // namespace ic::diag
 
-#endif  // ICARUS_DIAGNOSTICS_CONSUMER_TTY_H
+#endif  // ICARUS_DIAGNOSTICS_CONSUMER_NULL_H

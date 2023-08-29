@@ -13,6 +13,13 @@
 namespace ic {
 
 struct IrContext {
+  ParseTree::Node const& Node(ParseTree::Node::Index index) {
+    return tree[index];
+  }
+
+  auto Children(ParseTree::Node::Index index) { return tree.children(index); }
+
+  ParseTree const& tree;
   absl::flat_hash_map<uint32_t, type::Type> identifiers;
   std::vector<type::Type> type_stack;
   std::vector<Token::Kind> operator_stack;
@@ -24,7 +31,7 @@ void ProcessIr(std::span<ParseTree::Node const> nodes, IrContext& context,
 
 inline IrContext ProcessIr(ParseTree const& tree,
                            diag::DiagnosticConsumer& diag) {
-  IrContext context;
+  IrContext context{.tree = tree};
   ProcessIr(tree.nodes(), context, diag);
   return context;
 }

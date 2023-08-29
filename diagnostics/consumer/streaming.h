@@ -11,8 +11,6 @@
 namespace ic::diag {
 
 struct StreamingConsumer : DiagnosticConsumer {
-  using DiagnosticConsumer::DiagnosticConsumer;
-
   ~StreamingConsumer() = default;
 
   void Start(MessageComponent const &component) override;

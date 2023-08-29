@@ -24,7 +24,7 @@ nth::exit_code Run(nth::FlagValueSet flags, std::span<std::string_view const>) {
   auto const& input = flags.get<nth::file_path>("input");
   std::ifstream in(input.path());
 
-  diag::StreamingConsumer consumer("");
+  diag::StreamingConsumer consumer;
 
   if (not in.is_open()) {
     consumer.Consume({

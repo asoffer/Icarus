@@ -9,18 +9,17 @@
 #include <variant>
 #include <vector>
 
+#include "lexer/token.h"
+
 namespace ic::diag {
 
 enum class MessageKind { Error };
 
 struct Header {
-  explicit Header(MessageKind kind, size_t offset = -1) : kind_(kind), offset_(offset) {}
-
-  size_t offset() const { return offset_; }
+  explicit Header(MessageKind kind) : kind_(kind) {}
 
  private:
   MessageKind kind_;
-  size_t offset_;
 };
 
 struct Text {
@@ -32,6 +31,16 @@ struct Text {
   std::string text_;
 };
 
+struct SourceQuote {
+  explicit SourceQuote(Token token) : token_(token) {}
+
+  Token token() const { return token_; };
+
+ private:
+  Token token_;
+};
+
+
 struct MessageComponent {
   template <typename T>
   MessageComponent(T t) : component_(std::move(t)) {}
@@ -42,7 +51,7 @@ struct MessageComponent {
   }
 
  private:
-  std::variant<Header, Text> component_;
+  std::variant<Header, Text, SourceQuote> component_;
 };
 
 struct Message {
