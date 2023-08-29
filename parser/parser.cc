@@ -209,16 +209,21 @@ void Parser::HandleExpression(ParseTree& tree) {
 }
 
 void Parser::HandleTerm(ParseTree& tree) {
-ParseTree::Node::Kind k;
+  ParseTree::Node::Kind k;
   switch (current_token().kind()) {
     case Token::Kind::True:
     case Token::Kind::False: k = ParseTree::Node::Kind::BooleanLiteral; break;
     case Token::Kind::IntegerLiteral:
       k = ParseTree::Node::Kind::IntegerLiteral;
       break;
-    case Token::Kind::Bool: k = ParseTree::Node::Kind::TypeLiteral; break;
     case Token::Kind::Identifier: k = ParseTree::Node::Kind::Identifier; break;
-    default: NTH_UNIMPLEMENTED("Token: {}") <<= {state().back().token};
+
+#define IC_XMACRO_TOKEN_KIND_BUILTIN_TYPE(kind, symbol, spelling)              \
+  case Token::Kind::kind:
+#include "lexer/token_kind.xmacro.h"
+      k = ParseTree::Node::Kind::TypeLiteral;
+      break;
+    default: NTH_UNIMPLEMENTED("Token: {}") <<= {current_token()};
   }
 
   tree.append_leaf(k, *iterator_++);
@@ -247,6 +252,7 @@ void Parser::HandleBinaryOperatorAndRhs(ParseTree& tree) {
       tree.append(ParseTree::Node::Kind::ExpressionGroup, Token::Invalid(),
                   state.subtree_start -
                       tree.nodes()[state.subtree_start].subtree_size - 1);
+      tree.set_back_child_count();
       break;
     case Priority::Same:
       NTH_ASSERT(state_.back().kind == State::Kind::ResolveExpressionGroup);
@@ -273,6 +279,7 @@ void Parser::HandleResolveExpressionGroup(ParseTree& tree) {
   auto state = pop_state();
   tree.append(ParseTree::Node::Kind::ExpressionGroup, Token::Invalid(),
               state.subtree_start);
+  tree.set_back_child_count();
 }
 
 void Parser::HandleResolveUnaryExpression(ParseTree& tree) {

@@ -18,7 +18,10 @@ struct DiagnosticConsumer {
       Process(component);
       Complete(component);
     }
+    ++count_;
   }
+
+  size_t count() const { return count_; }
 
   virtual ~DiagnosticConsumer()                            = default;
   virtual void Start(MessageComponent const &component)    = 0;
@@ -26,6 +29,7 @@ struct DiagnosticConsumer {
   virtual void Complete(MessageComponent const &component) = 0;
 
  private:
+  size_t count_ = 0;
   std::string_view source_;
 };
 

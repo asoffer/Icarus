@@ -38,6 +38,8 @@ struct ParseTree {
     friend bool operator!=(Node const&, Node const &) = default;
 
     Kind kind;
+    // Note: This field may not be populated on all node kinds.
+    int16_t child_count = -1;
     uint32_t subtree_size;
     Token token = Token::Invalid();
   };
@@ -50,24 +52,24 @@ struct ParseTree {
 
   struct sibling_iterator {
     sibling_iterator &operator++() {
-      node_ += node_->subtree_size;
+      node_ -= node_->subtree_size;
       return *this;
     }
 
     sibling_iterator operator++(int) {
       auto copy = *this;
-      --*this;
+      ++*this;
       return copy;
     }
 
     sibling_iterator &operator--() {
-      node_ -= node_->subtree_size;
+      node_ += node_->subtree_size;
       return *this;
     }
 
     sibling_iterator operator--(int) {
       auto copy = *this;
-      ++*this;
+      --*this;
       return copy;
     }
 
@@ -89,6 +91,7 @@ struct ParseTree {
   }
 
   void append(Node::Kind kind, Token token, int subtree_start);
+  void set_back_child_count();
 
   void append_leaf(Node::Kind kind, Token token) {
     nodes_.push_back({.kind = kind, .subtree_size = 1, .token = token});

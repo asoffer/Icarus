@@ -34,6 +34,8 @@ cc_library(
     srcs = ["ir.cc"],
     deps = [
         ":emit",
+        "//common:string",
+        "//diagnostics/consumer",
         "//parser:parse_tree",
         "//parser:parse_tree_node_kind_xmacro",
         "//type",

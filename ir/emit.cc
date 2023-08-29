@@ -47,7 +47,7 @@ void HandleParseTreeNodeIdentifier(ParseTree::Node node, EmitContext& context) {
 
 void HandleParseTreeNodeInfixOperator(ParseTree::Node node,
                                       EmitContext& context) {
-  NTH_UNIMPLEMENTED();
+  context.operator_stack.push_back(node.token.kind());
 }
 
 void HandleParseTreeNodeExpressionGroup(ParseTree::Node node,

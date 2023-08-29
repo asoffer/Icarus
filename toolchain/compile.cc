@@ -56,8 +56,11 @@ nth::exit_code Compile(nth::FlagValueSet flags, nth::file_path const& source) {
   consumer.set_source(*content);
 
   TokenBuffer token_buffer = Lex(*content, consumer);
-  ParseTree parse_tree     = Parse(token_buffer, consumer);
-  IrContext ir_context     = ProcessIr(parse_tree);
+  if (consumer.count() != 0) { return nth::exit_code::generic_error; }
+  ParseTree parse_tree = Parse(token_buffer, consumer);
+  if (consumer.count() != 0) { return nth::exit_code::generic_error; }
+  IrContext ir_context = ProcessIr(parse_tree, consumer);
+  if (consumer.count() != 0) { return nth::exit_code::generic_error; }
   EmitIr(parse_tree.nodes(), ir_context.emit);
   ModuleProto module = Serialize(ir_context.emit.module);
 

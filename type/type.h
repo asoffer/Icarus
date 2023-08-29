@@ -15,7 +15,7 @@ struct Type {
 #include "type/type_kind.xmacro.h"
   };
 
-  friend void NthPrint(auto& p, Kind k) {
+  friend void NthPrint(auto& p, auto&, Kind k) {
     switch (k) {
 #define IC_XMACRO_TYPE_KIND(kind)                                              \
   case Kind::kind:                                                             \
@@ -35,6 +35,8 @@ struct Type {
   constexpr Type(kind##Type t);                                                \
   kind##Type As##kind() const;
 #include "type/type_kind.xmacro.h"
+
+  friend void NthPrint(auto& p, auto& f, Type t);
 
  private:
   Type() = default;
@@ -56,6 +58,16 @@ struct PrimitiveType {
 
   Kind kind() const { return static_cast<Kind>(data_ & 0xff); }
 
+  friend void NthPrint(auto& p, auto& f, PrimitiveType t) {
+    switch (t.kind()) {
+#define IC_XMACRO_TOKEN_KIND_BUILTIN_TYPE(kind, symbol, spelling)              \
+  case Kind::kind:                                                             \
+    p.write(spelling);                                                         \
+    return;
+#include "lexer/token_kind.xmacro.h"
+    }
+  }
+
  private:
   friend Type;
   PrimitiveType() = default;
@@ -70,6 +82,16 @@ struct PrimitiveType {
 #define IC_XMACRO_TOKEN_KIND_BUILTIN_TYPE(kind, symbol, spelling)              \
   inline constexpr Type symbol = PrimitiveType(PrimitiveType::Kind::kind);
 #include "lexer/token_kind.xmacro.h"
+
+void NthPrint(auto& p, auto& f, Type t) {
+  switch (t.kind()) {
+#define IC_XMACRO_TYPE_KIND(kind)                                              \
+  case Type::Kind::kind:                                                       \
+    f(p, t.As##kind());                                                        \
+    return;
+#include "type/type_kind.xmacro.h"
+  }
+}
 
 size_t Size(Type t);
 

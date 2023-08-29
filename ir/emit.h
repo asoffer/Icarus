@@ -13,6 +13,7 @@ namespace ic {
 struct EmitContext {
   Module module;
   absl::flat_hash_map<ParseTree::Node , type::Type> statement_type;
+  std::vector<Token::Kind> operator_stack;
 };
 
 void EmitIr(std::span<ParseTree::Node const> nodes, EmitContext& context);
