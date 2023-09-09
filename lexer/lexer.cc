@@ -70,11 +70,22 @@ TokenBuffer Lex(std::string_view source,
     ConsumeWhile<WhitespaceCharacter>(source);
     if (source.empty()) { break; }
 
+    switch (source.front()) {
+#define IC_XMACRO_TOKEN_KIND_ONE_CHARACTER_TOKEN(kind, symbol)                 \
+  case symbol:                                                                 \
+    buffer.Append(Token::Symbol(Token::Kind::kind, lexer.StartIndex(source))); \
+    source.remove_prefix(1);                                                   \
+    continue;
+#include "lexer/token_kind.xmacro.h"
+      default: break;
+    }
+
     if (lexer.TryLexKeywordOrIdentifier(source)) { continue; }
     if (lexer.TryLexNumber(source)) { continue; }
     if (lexer.TryLexComment(source)) { continue; }
     if (lexer.TryLexOperator(source)) { continue; }
     if (lexer.TryLexStringLiteral(source)) { continue; }
+
     break;
   }
   buffer.Append(Token::Eof());
@@ -98,7 +109,7 @@ bool Lexer::TryLexKeywordOrIdentifier(std::string_view& source) {
 
 bool Lexer::TryLexNumber(std::string_view& source) {
   NTH_ASSERT((v.debug), not source.empty());
-  char const * start = source.data();
+  char const* start = source.data();
   if (source.front() == '0') {
     if (source.size() == 1) {
       token_buffer_.AppendIntegerLiteral(source.substr(0, 1),

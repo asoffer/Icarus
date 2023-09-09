@@ -105,7 +105,7 @@ ParseTree Parse(TokenBuffer const& token_buffer,
   Parser p(token_buffer, diagnostic_consumer);
 
   while (not p.state().empty()) {
-    NTH_LOG((v.debug), "{}") <<= {p.state()};
+    NTH_LOG((v.debug), "\n{}:\t{}") <<= {p.current_token(), p.state()};
     switch (p.state().back().kind) {
 #define IC_XMACRO_PARSER_STATE_KIND(state)                                     \
   case Parser::State::Kind::state:                                             \
@@ -205,7 +205,36 @@ void Parser::HandleColonColonEqual(ParseTree& tree) {
 }
 
 void Parser::HandleExpression(ParseTree& tree) {
+    switch (current_token().kind()) {
+      case Token::Kind::LeftParen:
+      case Token::Kind::LeftBracket:
+      case Token::Kind::LeftBrace:
+        ExpandState(state().back(),
+                    State{
+                        .kind               = State::Kind::ExpressionClosing,
+                        .ambient_precedence = Precedence::Loosest(),
+                        .subtree_start      = tree.size(),
+                    });
+        ++iterator_;
+        return;
+      case Token::Kind::RightParen:
+      case Token::Kind::RightBracket:
+      case Token::Kind::RightBrace:
+        NTH_UNIMPLEMENTED();
+      default: break;
+    }
   ExpandState(State::Kind::Term, State::Kind::BinaryOperatorAndRhs);
+}
+
+void Parser::HandleExpressionClosing(ParseTree& tree) {
+  NTH_ASSERT(current_token().kind() == Token::Kind::RightParen or
+             current_token().kind() == Token::Kind::RightBracket or
+             current_token().kind() == Token::Kind::RightBrace);
+  State state = pop_state();
+  tree.append(
+      ParseTree::Node::Kind::ExpressionGroup, *iterator_++,
+      state.subtree_start - tree.nodes()[state.subtree_start].subtree_size - 1);
+  tree.set_back_child_count();
 }
 
 void Parser::HandleTerm(ParseTree& tree) {
@@ -241,6 +270,11 @@ void Parser::HandleBinaryOperatorAndRhs(ParseTree& tree) {
   case Token::Kind::kind:                                                      \
     p = Precedence::precedence_group();                                        \
     break;
+#define IC_XMACRO_TOKEN_KIND_ONE_CHARACTER_TOKEN(kind, symbol)                 \
+  case Token::Kind::kind:                                                      \
+    pop_and_discard_state();                                                   \
+    return;
+
 #include "lexer/token_kind.xmacro.h"
     case Token::Kind::Star: p = Precedence::MultiplyDivide(); break;
     default: NTH_UNIMPLEMENTED("Token: {}") <<= {current_token()};
@@ -249,7 +283,8 @@ void Parser::HandleBinaryOperatorAndRhs(ParseTree& tree) {
   State state = pop_state();
   switch (Precedence::Priority(state.ambient_precedence, p)) {
     case Priority::Left:
-      tree.append(ParseTree::Node::Kind::ExpressionGroup, Token::Invalid(),
+      tree.append(ParseTree::Node::Kind::ExpressionPrecedenceGroup,
+                  Token::Invalid(),
                   state.subtree_start -
                       tree.nodes()[state.subtree_start].subtree_size - 1);
       tree.set_back_child_count();
@@ -277,14 +312,14 @@ void Parser::HandleBinaryOperatorAndRhs(ParseTree& tree) {
 
 void Parser::HandleResolveExpressionGroup(ParseTree& tree) {
   auto state = pop_state();
-  tree.append(ParseTree::Node::Kind::ExpressionGroup, Token::Invalid(),
-              state.subtree_start);
+  tree.append(ParseTree::Node::Kind::ExpressionPrecedenceGroup,
+              Token::Invalid(), state.subtree_start);
   tree.set_back_child_count();
 }
 
 void Parser::HandleResolveUnaryExpression(ParseTree& tree) {
   auto t = pop_state().token;
-  NTH_LOG("Token: {}") <<= {t};
+  NTH_LOG((v.debug), "Token: {}") <<= {t};
 }
 
 }  // namespace ic

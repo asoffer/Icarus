@@ -49,9 +49,9 @@ void HandleParseTreeNodeInfixOperator(ParseTree::Node::Index index, IrContext& c
   context.operator_stack.push_back(node.token.kind());
 }
 
-void HandleParseTreeNodeExpressionGroup(ParseTree::Node::Index index,
-                                        IrContext& context,
-                                        diag::DiagnosticConsumer& diag) {
+void HandleParseTreeNodeExpressionPrecedenceGroup(
+    ParseTree::Node::Index index, IrContext& context,
+    diag::DiagnosticConsumer& diag) {
   Token::Kind kind = context.operator_stack.back();
   context.operator_stack.pop_back();
   switch (kind) {
@@ -98,6 +98,12 @@ void HandleParseTreeNodeExpressionGroup(ParseTree::Node::Index index,
     } break;
     default: NTH_UNIMPLEMENTED();
   }
+}
+
+void HandleParseTreeNodeExpressionGroup(ParseTree::Node::Index index,
+                                        IrContext& context,
+                                        diag::DiagnosticConsumer& diag) {
+  // Nothing to do here.
 }
 
 }  // namespace

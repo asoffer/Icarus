@@ -24,10 +24,11 @@ inline constexpr auto HasToken = nth::ExpectationMatcher<"has-token">(
       return nth::Matches(token_matcher, value.token);
     });
 
-inline constexpr auto ExpressionGroup =
-    nth::ExpectationMatcher<"expression-group">([](auto const &value) {
-      return value.kind == ParseTree::Node::Kind::ExpressionGroup;
-    });
+inline constexpr auto ExpressionPrecedenceGroup =
+    nth::ExpectationMatcher<"expression-precedence-group">(
+        [](auto const &value) {
+          return value.kind == ParseTree::Node::Kind::ExpressionPrecedenceGroup;
+        });
 
 // Matches an identifier token whose identifier is given by `id`.
 auto IdentifierToken(TokenBuffer &buffer, std::string_view id) {
@@ -108,8 +109,8 @@ NTH_TEST("parser/operator-precedence/plus-times") {
                  IdentifierToken(buffer, "x"), InfixOperator(Token::Kind::Plus),
                  IdentifierToken(buffer, "y"), InfixOperator(Token::Kind::Star),
                  IdentifierToken(buffer, "z"),
-                 ExpressionGroup() and HasSubtreeSize(4),
-                 ExpressionGroup() and HasSubtreeSize(7), HasSubtreeSize(8)));
+                 ExpressionPrecedenceGroup() and HasSubtreeSize(4),
+                 ExpressionPrecedenceGroup() and HasSubtreeSize(7), HasSubtreeSize(8)));
 }
 
 NTH_TEST("parser/operator-precedence/times-plus") {
@@ -119,9 +120,9 @@ NTH_TEST("parser/operator-precedence/times-plus") {
   NTH_EXPECT(tree.nodes() >>= ElementsAreSequentially(
                  IdentifierToken(buffer, "x"), InfixOperator(Token::Kind::Star),
                  IdentifierToken(buffer, "y"),
-                 ExpressionGroup() and HasSubtreeSize(4),
+                 ExpressionPrecedenceGroup() and HasSubtreeSize(4),
                  InfixOperator(Token::Kind::Plus), IdentifierToken(buffer, "z"),
-                 ExpressionGroup() and HasSubtreeSize(7), HasSubtreeSize(8)));
+                 ExpressionPrecedenceGroup() and HasSubtreeSize(7), HasSubtreeSize(8)));
 }
 
 NTH_TEST("parser/operator-precedence/plus-plus") {
@@ -132,7 +133,7 @@ NTH_TEST("parser/operator-precedence/plus-plus") {
                  IdentifierToken(buffer, "x"), InfixOperator(Token::Kind::Plus),
                  IdentifierToken(buffer, "y"), InfixOperator(Token::Kind::Plus),
                  IdentifierToken(buffer, "z"),
-                 ExpressionGroup() and HasSubtreeSize(6), HasSubtreeSize(7)));
+                 ExpressionPrecedenceGroup() and HasSubtreeSize(6), HasSubtreeSize(7)));
 }
 
 }  // namespace ic

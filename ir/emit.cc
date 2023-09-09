@@ -50,9 +50,14 @@ void HandleParseTreeNodeInfixOperator(ParseTree::Node node,
   context.operator_stack.push_back(node.token.kind());
 }
 
+void HandleParseTreeNodeExpressionPrecedenceGroup(ParseTree::Node node,
+                                                  EmitContext& context) {
+  NTH_UNIMPLEMENTED();
+}
+
 void HandleParseTreeNodeExpressionGroup(ParseTree::Node node,
                                         EmitContext& context) {
-  NTH_UNIMPLEMENTED();
+  // Nothing to do here.
 }
 
 }  // namespace
