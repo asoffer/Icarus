@@ -60,6 +60,10 @@ void HandleParseTreeNodeExpressionGroup(ParseTree::Node node,
   // Nothing to do here.
 }
 
+void HandleParseTreeNodeBuiltin(ParseTree::Node index, EmitContext& context) {
+  NTH_UNIMPLEMENTED();
+}
+
 }  // namespace
 
 void EmitIr(std::span<ParseTree::Node const> nodes, EmitContext& context) {

@@ -240,6 +240,7 @@ void Parser::HandleExpressionClosing(ParseTree& tree) {
 void Parser::HandleTerm(ParseTree& tree) {
   ParseTree::Node::Kind k;
   switch (current_token().kind()) {
+    case Token::Kind::Builtin: k = ParseTree::Node::Kind::Builtin; break;
     case Token::Kind::True:
     case Token::Kind::False: k = ParseTree::Node::Kind::BooleanLiteral; break;
     case Token::Kind::IntegerLiteral:

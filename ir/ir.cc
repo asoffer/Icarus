@@ -40,7 +40,8 @@ void HandleParseTreeNodeStatementSequence(ParseTree::Node::Index index,
 
 void HandleParseTreeNodeIdentifier(ParseTree::Node::Index index, IrContext& context,
                                    diag::DiagnosticConsumer& diag) {
-  NTH_UNIMPLEMENTED();
+  auto node = context.Node(index);
+  NTH_UNIMPLEMENTED("{}") <<= {node};
 }
 
 void HandleParseTreeNodeInfixOperator(ParseTree::Node::Index index, IrContext& context,
@@ -103,6 +104,12 @@ void HandleParseTreeNodeExpressionGroup(ParseTree::Node::Index index,
                                         IrContext& context,
                                         diag::DiagnosticConsumer& diag) {
   // Nothing to do here.
+}
+
+void HandleParseTreeNodeBuiltin(ParseTree::Node::Index index,
+                                IrContext& context,
+                                diag::DiagnosticConsumer& diag) {
+  NTH_UNIMPLEMENTED();
 }
 
 }  // namespace
