@@ -84,7 +84,6 @@ void HandleParseTreeNodeExpressionPrecedenceGroup(
 
       if (return_type != type::Type_) {
         auto iter = context.Children(index).begin();
-        ++iter;
         diag.Consume({
             diag::Header(diag::MessageKind::Error),
             diag::Text(

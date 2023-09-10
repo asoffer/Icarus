@@ -38,7 +38,7 @@ auto IdentifierToken(TokenBuffer &buffer, std::string_view id) {
 inline constexpr auto InfixOperator = nth::ExpectationMatcher<"infix-operator">(
     [](auto const &value, auto const &op_matcher) {
       return value.kind == ParseTree::Node::Kind::InfixOperator and
-             nth::Matches(value.token.kind(), op_matcher);
+             nth::Matches(op_matcher, value.token.kind());
     });
 
 NTH_TEST("parser/empty", std::string_view content) {
@@ -134,6 +134,46 @@ NTH_TEST("parser/operator-precedence/plus-plus") {
                  IdentifierToken(buffer, "y"), InfixOperator(Token::Kind::Plus),
                  IdentifierToken(buffer, "z"),
                  ExpressionPrecedenceGroup() and HasSubtreeSize(6), HasSubtreeSize(7)));
+}
+
+NTH_TEST("parser/access/basic") {
+  diag::NullConsumer d;
+  TokenBuffer buffer = Lex(R"(a.b)", d);
+  auto tree          = Parse(buffer, d);
+  NTH_EXPECT(tree.nodes() >>= ElementsAreSequentially(
+                 IdentifierToken(buffer, "a"), InfixOperator(Token::Kind::Period),
+                 IdentifierToken(buffer, "b"),
+                 ExpressionPrecedenceGroup() and HasSubtreeSize(4),
+                 HasSubtreeSize(5)));
+}
+
+NTH_TEST("parser/access/nested") {
+  diag::NullConsumer d;
+  TokenBuffer buffer = Lex(R"(a.b.c)", d);
+  auto tree          = Parse(buffer, d);
+  NTH_EXPECT(
+      tree.nodes() >>= ElementsAreSequentially(
+          IdentifierToken(buffer, "a"), InfixOperator(Token::Kind::Period),
+          IdentifierToken(buffer, "b"), InfixOperator(Token::Kind::Period),
+          IdentifierToken(buffer, "c"),
+          ExpressionPrecedenceGroup() and HasSubtreeSize(6),
+          HasSubtreeSize(7)));
+}
+
+NTH_TEST("parser/access/precedence") {
+  diag::NullConsumer d;
+  TokenBuffer buffer = Lex(R"(a.b * c.d)", d);
+  auto tree          = Parse(buffer, d);
+  NTH_EXPECT(
+      tree.nodes() >>= ElementsAreSequentially(
+          IdentifierToken(buffer, "a"), InfixOperator(Token::Kind::Period),
+          IdentifierToken(buffer, "b"),
+          ExpressionPrecedenceGroup() and HasSubtreeSize(4),
+          InfixOperator(Token::Kind::Star), IdentifierToken(buffer, "c"),
+          InfixOperator(Token::Kind::Period), IdentifierToken(buffer, "d"),
+          ExpressionPrecedenceGroup() and HasSubtreeSize(4),
+          ExpressionPrecedenceGroup() and HasSubtreeSize(10),
+          HasSubtreeSize(11)));
 }
 
 }  // namespace ic

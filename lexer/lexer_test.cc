@@ -110,5 +110,26 @@ NTH_TEST("lex/comment/end-of-line") {
                  HasKind(Token::Kind::Identifier), HasKind(Token::Kind::Eof)));
 }
 
+NTH_TEST("lex/comma") {
+  diag::NullConsumer d;
+  auto token_buffer = Lex(R"(,)", d);
+  NTH_EXPECT(token_buffer >>= ElementsAreSequentially(
+                 HasKind(Token::Kind::Comma), HasKind(Token::Kind::Eof)));
+}
+
+NTH_TEST("lex/period") {
+  diag::NullConsumer d;
+  auto token_buffer = Lex(R"(.)", d);
+  NTH_EXPECT(token_buffer >>= ElementsAreSequentially(
+                 HasKind(Token::Kind::Period), HasKind(Token::Kind::Eof)));
+}
+
+NTH_TEST("lex/semicolon") {
+  diag::NullConsumer d;
+  auto token_buffer = Lex(R"(;)", d);
+  NTH_EXPECT(token_buffer >>= ElementsAreSequentially(
+                 HasKind(Token::Kind::Semicolon), HasKind(Token::Kind::Eof)));
+}
+
 }  // namespace
 }  // namespace ic
