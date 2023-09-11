@@ -16,6 +16,15 @@ struct ParseTree {
     struct Index {
       explicit constexpr Index(uint32_t n) : value_(n) {}
 
+
+      friend constexpr Index operator+(Index i, int32_t n) {
+        return Index(i.value_ + n);
+      }
+
+      friend constexpr Index operator-(Index i, int32_t n) {
+        return Index(i.value_ - n);
+      }
+
      private:
       friend ParseTree;
       uint32_t value_;

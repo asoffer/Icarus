@@ -1,6 +1,15 @@
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
+    name = "builtin_module",
+    hdrs = ["builtin_module.h"],
+    srcs = ["builtin_module.cc"],
+    deps = [
+        ":module",
+    ],
+)
+
+cc_library(
     name = "deserialize",
     hdrs = ["deserialize.h"],
     srcs = ["deserialize.cc"],
@@ -34,6 +43,7 @@ cc_library(
     srcs = ["ir.cc"],
     deps = [
         ":emit",
+        ":module_id",
         "//common:string",
         "//diagnostics/consumer",
         "//parser:parse_tree",
@@ -46,14 +56,26 @@ cc_library(
 )
 
 cc_library(
+    name = "module_id",
+    hdrs = ["module_id.h"],
+    deps = [
+        "@asoffer_jasmin//jasmin:value",
+    ],
+)
+
+cc_library(
     name = "module",
     hdrs = ["module.h"],
+    srcs = ["module.cc"],
     deps = [
+        "//type",
         "@asoffer_jasmin//jasmin:function",
         "@asoffer_jasmin//jasmin:instruction",
         "@asoffer_jasmin//jasmin/instructions:core",
         "@asoffer_nth//nth/debug",
         "@asoffer_nth//nth/debug/log",
+        "@com_google_absl//absl/container:inlined_vector",
+        "@com_google_absl//absl/container:flat_hash_map",
     ],
 )
 

@@ -11,7 +11,7 @@ ModuleProto Serialize(Module& module) {
   auto& initializer = *proto.mutable_initializer();
   initializer.set_parameters(0);
   initializer.set_returns(0);
-  jasmin::Serialize(module.initializer, *initializer.mutable_content());
+  jasmin::Serialize(module.initializer(), *initializer.mutable_content());
   return proto;
 }
 

@@ -10,8 +10,8 @@ void HandleParseTreeNodeBooleanLiteral(ParseTree::Node node,
                                        EmitContext& context) {
   NTH_ASSERT((v.debug), node.token.kind() == Token::Kind::True or
                             node.token.kind() == Token::Kind::False);
-  context.module.initializer.append<jasmin::Push>(node.token.kind() ==
-                                                  Token::Kind::True);
+  context.module.initializer().append<jasmin::Push>(node.token.kind() ==
+                                                    Token::Kind::True);
 }
 
 void HandleParseTreeNodeIntegerLiteral(ParseTree::Node node,
@@ -23,7 +23,7 @@ void HandleParseTreeNodeTypeLiteral(ParseTree::Node node,
                                        EmitContext& context) {
   switch (node.token.kind()) {
     case Token::Kind::Bool:
-      context.module.initializer.append<jasmin::Push>(type::Bool);
+      context.module.initializer().append<jasmin::Push>(type::Bool);
       break;
     default: NTH_UNREACHABLE();
   }
@@ -38,11 +38,11 @@ void HandleParseTreeNodeStatementSequence(ParseTree::Node node,
                                           EmitContext& context) {
   auto iter = context.statement_type.find(node);
   NTH_ASSERT(iter != context.statement_type.end());
-  context.module.initializer.append<jasmin::Drop>(type::Size(iter->second));
+  context.module.initializer().append<jasmin::Drop>(type::Size(iter->second));
 }
 
 void HandleParseTreeNodeIdentifier(ParseTree::Node node, EmitContext& context) {
-  NTH_UNIMPLEMENTED();
+  NTH_UNIMPLEMENTED("{}") <<= {node};
 }
 
 void HandleParseTreeNodeInfixOperator(ParseTree::Node node,
@@ -77,7 +77,7 @@ void EmitIr(std::span<ParseTree::Node const> nodes, EmitContext& context) {
 #include "parser/parse_tree_node_kind.xmacro.h"
     }
   }
-  context.module.initializer.append<jasmin::Return>();
+  context.module.initializer().append<jasmin::Return>();
 }
 
 }  // namespace ic

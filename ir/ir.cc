@@ -1,6 +1,7 @@
 #include "ir/ir.h"
 
 #include "common/string.h"
+#include "ir/module_id.h"
 #include "nth/debug/debug.h"
 #include "nth/debug/log/log.h"
 #include "type/type.h"
@@ -38,10 +39,34 @@ void HandleParseTreeNodeStatementSequence(ParseTree::Node::Index index,
   context.emit.statement_type.emplace(node, context.type_stack.back());
 }
 
-void HandleParseTreeNodeIdentifier(ParseTree::Node::Index index, IrContext& context,
+void HandleParseTreeNodeIdentifier(ParseTree::Node::Index index,
+                                   IrContext& context,
                                    diag::DiagnosticConsumer& diag) {
   auto node = context.Node(index);
-  NTH_UNIMPLEMENTED("{}") <<= {node};
+  if (not context.operator_stack.empty() and
+      context.operator_stack.back() == Token::Kind::Period) {
+    NTH_ASSERT(not context.type_stack.empty());
+    if (context.type_stack.back() == type::Module) {
+      auto module_id = context.EvaluateAs<ModuleId>(index - 2);
+      NTH_ASSERT(module_id.has_value());
+      context.type_stack.back() =
+          context.module(*module_id).Lookup(node.token.IdentifierIndex()).type;
+    } else if (context.type_stack.back() == type::Type_) {
+      NTH_UNIMPLEMENTED("{} -> {}") <<= {context.type_stack.back(), node.token};
+    } else {
+      diag.Consume({
+          diag::Header(diag::MessageKind::Error),
+          diag::Text(
+              InterpolateString<"Access operator `.` may only follow a type, "
+                                "module, or enum, but you provided: {}.">(
+                  context.type_stack.back())),
+          diag::SourceQuote(context.Node(index - 2).token),
+      });
+      context.type_stack.back() = type::Error;
+    }
+  } else {
+    NTH_UNIMPLEMENTED("{}") <<= {node};
+  }
 }
 
 void HandleParseTreeNodeInfixOperator(ParseTree::Node::Index index, IrContext& context,
@@ -56,6 +81,7 @@ void HandleParseTreeNodeExpressionPrecedenceGroup(
   Token::Kind kind = context.operator_stack.back();
   context.operator_stack.pop_back();
   switch (kind) {
+    case Token::Kind::Period: break;
     case Token::Kind::MinusGreater: {
       auto node = context.Node(index);
       if (node.child_count != 2) {
@@ -109,20 +135,19 @@ void HandleParseTreeNodeExpressionGroup(ParseTree::Node::Index index,
 void HandleParseTreeNodeBuiltin(ParseTree::Node::Index index,
                                 IrContext& context,
                                 diag::DiagnosticConsumer& diag) {
-  NTH_UNIMPLEMENTED();
+  context.type_stack.push_back(type::Module);
 }
 
 }  // namespace
 
-void ProcessIr(std::span<ParseTree::Node const> nodes, IrContext& context,
-               diag::DiagnosticConsumer& diag) {
-  for (size_t i = 0; i < nodes.size(); ++i) {
-    auto node = context.Node(ParseTree::Node::Index(i));
+void IrContext::ProcessIr(diag::DiagnosticConsumer& diag) {
+  for (size_t i = 0; i < tree.nodes().size(); ++i) {
+    auto node = Node(ParseTree::Node::Index(i));
     switch (node.kind) {
 #define IC_XMACRO_PARSE_TREE_NODE_KIND(kind)                                   \
   case ParseTree::Node::Kind::kind:                                            \
     NTH_LOG((v.always), "Parse node {}") <<= {#kind};                          \
-    HandleParseTreeNode##kind(ParseTree::Node::Index(i), context, diag);       \
+    HandleParseTreeNode##kind(ParseTree::Node::Index(i), *this, diag);         \
     break;
 #include "parser/parse_tree_node_kind.xmacro.h"
     }

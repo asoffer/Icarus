@@ -39,6 +39,7 @@ constexpr PrecedenceTable MakePrecedenceTable() {
   result(Precedence::Comparison(), Precedence::PlusMinus()) = Priority::Right;
   result(Precedence::PlusMinus(), Precedence::MultiplyDivide()) = Priority::Right;
   result(Precedence::MultiplyDivide(), Precedence::Member()) = Priority::Right;
+  result(Precedence::Function(), Precedence::Member()) = Priority::Right;
 
   bool changed = true;
   while (not changed) {

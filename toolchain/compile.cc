@@ -7,6 +7,7 @@
 #include "common/string.h"
 #include "diagnostics/consumer/streaming.h"
 #include "diagnostics/message.h"
+#include "ir/builtin_module.h"
 #include "ir/emit.h"
 #include "ir/ir.h"
 #include "ir/module.pb.h"
@@ -60,7 +61,12 @@ nth::exit_code Compile(nth::FlagValueSet flags, nth::file_path const& source) {
   ParseTree parse_tree = Parse(token_buffer, consumer);
   if (consumer.count() != 0) { return nth::exit_code::generic_error; }
   consumer.set_parse_tree(parse_tree);
-  IrContext ir_context = ProcessIr(parse_tree, consumer);
+
+  IrContext ir_context = {
+      .tree    = parse_tree,
+      .modules = {BuiltinModule()},
+  };
+  ir_context.ProcessIr(consumer);
   if (consumer.count() != 0) { return nth::exit_code::generic_error; }
   EmitIr(parse_tree.nodes(), ir_context.emit);
   ModuleProto module = Serialize(ir_context.emit.module);

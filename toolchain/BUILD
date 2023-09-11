@@ -5,6 +5,7 @@ cc_binary(
     srcs = ["compile.cc"],
     deps = [
         "//ir",
+        "//ir:builtin_module",
         "//ir:emit",
         "//ir:serialize",
         "//ir:module_cc_proto",
