@@ -12,8 +12,10 @@ namespace ic {
 struct ModuleId {
   constexpr ModuleId() = default;
 
-  static constexpr ModuleId Invalid() { return ModuleId(0); }
-  static constexpr ModuleId Builtin() { return ModuleId(1); }
+  static constexpr ModuleId Invalid() {
+    return ModuleId(std::numeric_limits<uint32_t>::max());
+  }
+  static constexpr ModuleId Builtin() { return ModuleId(0); }
 
   friend constexpr bool operator==(ModuleId, ModuleId) = default;
   friend constexpr bool operator!=(ModuleId, ModuleId) = default;

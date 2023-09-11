@@ -11,7 +11,7 @@
 #include "ir/emit.h"
 #include "ir/module.h"
 #include "ir/module_id.h"
-#include "jasmin/value.h"
+#include "jasmin/value_stack.h"
 #include "nth/debug/debug.h"
 #include "parser/parse_tree.h"
 #include "type/type.h"
@@ -31,7 +31,16 @@ struct IrContext {
 
   template <typename T>
   std::optional<T> EvaluateAs(ParseTree::Node::Index subtree) const {
-    return T{};
+    T result;
+    jasmin::ValueStack value_stack;
+    Evaluate(tree.subtree(subtree), value_stack);
+    if (IcarusDeserializeValue(
+            std::span(value_stack.begin(), value_stack.end()), result)) {
+      NTH_LOG("{}") <<= {result};
+      return result;
+    } else {
+      return std::nullopt;
+    }
   }
 
   ParseTree const& tree;

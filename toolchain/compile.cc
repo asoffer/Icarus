@@ -62,18 +62,20 @@ nth::exit_code Compile(nth::FlagValueSet flags, nth::file_path const& source) {
   if (consumer.count() != 0) { return nth::exit_code::generic_error; }
   consumer.set_parse_tree(parse_tree);
 
+  Module module;
   IrContext ir_context = {
       .tree    = parse_tree,
       .modules = {BuiltinModule()},
+      .emit    = EmitContext(module),
   };
   ir_context.ProcessIr(consumer);
   if (consumer.count() != 0) { return nth::exit_code::generic_error; }
   EmitIr(parse_tree.nodes(), ir_context.emit);
-  ModuleProto module = Serialize(ir_context.emit.module);
+  ModuleProto module_proto = Serialize(module);
 
   std::ofstream out(output_path.path());
-  return module.SerializeToOstream(&out) ? nth::exit_code::success
-                                         : nth::exit_code::generic_error;
+  return module_proto.SerializeToOstream(&out) ? nth::exit_code::success
+                                               : nth::exit_code::generic_error;
 }
 
 }  // namespace

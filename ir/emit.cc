@@ -1,5 +1,7 @@
 #include "ir/emit.h"
 
+#include "ir/module_id.h"
+#include "jasmin/execute.h"
 #include "nth/debug/debug.h"
 #include "nth/debug/log/log.h"
 
@@ -10,8 +12,8 @@ void HandleParseTreeNodeBooleanLiteral(ParseTree::Node node,
                                        EmitContext& context) {
   NTH_ASSERT((v.debug), node.token.kind() == Token::Kind::True or
                             node.token.kind() == Token::Kind::False);
-  context.module.initializer().append<jasmin::Push>(node.token.kind() ==
-                                                    Token::Kind::True);
+  context.function_stack.back()->append<jasmin::Push>(node.token.kind() ==
+                                                      Token::Kind::True);
 }
 
 void HandleParseTreeNodeIntegerLiteral(ParseTree::Node node,
@@ -20,10 +22,10 @@ void HandleParseTreeNodeIntegerLiteral(ParseTree::Node node,
 }
 
 void HandleParseTreeNodeTypeLiteral(ParseTree::Node node,
-                                       EmitContext& context) {
+                                    EmitContext& context) {
   switch (node.token.kind()) {
     case Token::Kind::Bool:
-      context.module.initializer().append<jasmin::Push>(type::Bool);
+      context.function_stack.back()->append<jasmin::Push>(type::Bool);
       break;
     default: NTH_UNREACHABLE();
   }
@@ -38,7 +40,7 @@ void HandleParseTreeNodeStatementSequence(ParseTree::Node node,
                                           EmitContext& context) {
   auto iter = context.statement_type.find(node);
   NTH_ASSERT(iter != context.statement_type.end());
-  context.module.initializer().append<jasmin::Drop>(type::Size(iter->second));
+  context.function_stack.back()->append<jasmin::Drop>(type::Size(iter->second));
 }
 
 void HandleParseTreeNodeIdentifier(ParseTree::Node node, EmitContext& context) {
@@ -61,7 +63,7 @@ void HandleParseTreeNodeExpressionGroup(ParseTree::Node node,
 }
 
 void HandleParseTreeNodeBuiltin(ParseTree::Node index, EmitContext& context) {
-  NTH_UNIMPLEMENTED();
+  context.function_stack.back()->append<jasmin::Push>(ModuleId::Builtin());
 }
 
 }  // namespace
@@ -77,7 +79,18 @@ void EmitIr(std::span<ParseTree::Node const> nodes, EmitContext& context) {
 #include "parser/parse_tree_node_kind.xmacro.h"
     }
   }
-  context.module.initializer().append<jasmin::Return>();
+  context.function_stack.back()->append<jasmin::Return>();
+}
+
+void EmitIr(std::span<ParseTree::Node const> nodes, EmitContext& context);
+
+void Evaluate(std::span<ParseTree::Node const> subtree,
+              jasmin::ValueStack& value_stack) {
+  IrFunction f(0, 1);
+  EmitContext context(f);
+  EmitIr(subtree, context);
+  context.function_stack.back()->append<jasmin::Return>();
+  jasmin::Execute(f, value_stack);
 }
 
 }  // namespace ic
