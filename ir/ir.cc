@@ -138,6 +138,18 @@ void HandleParseTreeNodeBuiltin(ParseTree::Node::Index index,
   context.type_stack.push_back(type::Module);
 }
 
+void HandleParseTreeNodeCallArgumentsStart(ParseTree::Node::Index index,
+                                           IrContext& context,
+                                           diag::DiagnosticConsumer& diag) {
+  NTH_UNIMPLEMENTED();
+}
+
+void HandleParseTreeNodeCallExpression(ParseTree::Node::Index index,
+                                       IrContext& context,
+                                       diag::DiagnosticConsumer& diag) {
+  NTH_UNIMPLEMENTED();
+}
+
 }  // namespace
 
 void IrContext::ProcessIr(diag::DiagnosticConsumer& diag) {

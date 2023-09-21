@@ -223,7 +223,7 @@ void Parser::HandleExpression(ParseTree& tree) {
         NTH_UNIMPLEMENTED();
       default: break;
     }
-  ExpandState(State::Kind::Term, State::Kind::BinaryOperatorAndRhs);
+  ExpandState(State::Kind::Term, State::Kind::ExpressionSuffix);
 }
 
 void Parser::HandleExpressionClosing(ParseTree& tree) {
@@ -260,21 +260,38 @@ void Parser::HandleTerm(ParseTree& tree) {
   pop_and_discard_state();
 }
 
-void Parser::HandleBinaryOperatorAndRhs(ParseTree& tree) {
+void Parser::HandleCallExpression(ParseTree& tree) {
+  pop_and_discard_state();
+  push_state({.kind          = State::Kind::ResolveCallExpression,
+              .token         = Token::Invalid(),
+              .subtree_start = tree.size() - 1});
+  tree.append_leaf(ParseTree::Node::Kind::CallArgumentsStart, *iterator_++);
+}
+
+void Parser::HandleResolveCallExpression(ParseTree& tree) {
+  NTH_ASSERT(state().back().kind == State::Kind::ResolveCallExpression);
+  NTH_ASSERT(current_token().kind() == Token::Kind::RightParen);
+  tree.append(ParseTree::Node::Kind::CallExpression, current_token(),
+              state().back().subtree_start);
+  ++iterator_;
+  pop_and_discard_state();
+}
+
+void Parser::HandleExpressionSuffix(ParseTree& tree) {
   Precedence p = Precedence::Loosest();
   switch (current_token().kind()) {
     case Token::Kind::Newline:
     case Token::Kind::Eof: pop_and_discard_state(); return;
+    case Token::Kind::LeftParen: {
+      state().back().kind = State::Kind::CallExpression;
+      return;
+    }
 
 #define IC_XMACRO_TOKEN_KIND_BINARY_ONLY_OPERATOR(kind, symbol,                \
                                                   precedence_group)            \
   case Token::Kind::kind:                                                      \
     p = Precedence::precedence_group();                                        \
     break;
-#define IC_XMACRO_TOKEN_KIND_ONE_CHARACTER_TOKEN(kind, symbol)                 \
-  case Token::Kind::kind:                                                      \
-    pop_and_discard_state();                                                   \
-    return;
 
 #include "lexer/token_kind.xmacro.h"
     case Token::Kind::Star: p = Precedence::MultiplyDivide(); break;

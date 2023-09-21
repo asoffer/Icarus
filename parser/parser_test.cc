@@ -30,6 +30,16 @@ inline constexpr auto ExpressionPrecedenceGroup =
           return value.kind == ParseTree::Node::Kind::ExpressionPrecedenceGroup;
         });
 
+inline constexpr auto CallArgumentsStart =
+    nth::ExpectationMatcher<"call-expression-start">(
+        [](auto const &value) {
+          return value.kind == ParseTree::Node::Kind::CallArgumentsStart;
+        });
+inline constexpr auto CallExpression =
+    nth::ExpectationMatcher<"call-expression">([](auto const &value) {
+      return value.kind == ParseTree::Node::Kind::CallExpression;
+    });
+
 // Matches an identifier token whose identifier is given by `id`.
 auto IdentifierToken(TokenBuffer &buffer, std::string_view id) {
   return HasToken(IsIdentifier(buffer.IdentifierIndex(id)));
@@ -174,6 +184,16 @@ NTH_TEST("parser/access/precedence") {
           ExpressionPrecedenceGroup() and HasSubtreeSize(4),
           ExpressionPrecedenceGroup() and HasSubtreeSize(10),
           HasSubtreeSize(11)));
+}
+
+
+NTH_TEST("parser/invoke/empty") {
+  diag::NullConsumer d;
+  TokenBuffer buffer = Lex(R"(f())", d);
+  auto tree          = Parse(buffer, d);
+  NTH_EXPECT(tree.nodes() >>= ElementsAreSequentially(
+                 IdentifierToken(buffer, "f"), CallArgumentsStart(),
+                 CallExpression() and HasSubtreeSize(3), HasSubtreeSize(4)));
 }
 
 }  // namespace ic

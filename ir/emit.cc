@@ -66,6 +66,16 @@ void HandleParseTreeNodeBuiltin(ParseTree::Node index, EmitContext& context) {
   context.function_stack.back()->append<jasmin::Push>(ModuleId::Builtin());
 }
 
+void HandleParseTreeNodeCallArgumentsStart(ParseTree::Node index,
+                                           EmitContext& context) {
+  NTH_UNIMPLEMENTED();
+}
+
+void HandleParseTreeNodeCallExpression(ParseTree::Node index,
+                                       EmitContext& context) {
+  NTH_UNIMPLEMENTED();
+}
+
 }  // namespace
 
 void EmitIr(std::span<ParseTree::Node const> nodes, EmitContext& context) {
