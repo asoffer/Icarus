@@ -23,7 +23,7 @@ struct Parser {
   bool AtChunkEnd() const { return iterator_->kind() == Token::Kind::Eof; }
 
   Token current_token() const {
-    NTH_ASSERT((v.debug), iterator_ != token_buffer_.end());
+    NTH_REQUIRE((v.debug), iterator_ != token_buffer_.end());
     return *iterator_;
   }
 
@@ -59,14 +59,14 @@ struct Parser {
   std::span<State> state() { return state_; }
 
   void pop_and_discard_state() {
-    NTH_ASSERT((v.debug), not state_.empty());
+    NTH_REQUIRE((v.debug), not state_.empty());
     state_.pop_back();
   }
 
   void push_state(State state) { state_.push_back(state); }
 
   State pop_state() {
-    NTH_ASSERT((v.debug), not state_.empty());
+    NTH_REQUIRE((v.debug), not state_.empty());
     auto state = state_.back();
     pop_and_discard_state();
     return state;
@@ -83,7 +83,7 @@ struct Parser {
     prototype.kind = kind;
     return ExpandStateImpl(prototype, prototype);
   }
-  int ExpandStateImpl(State , State state) {
+  int ExpandStateImpl(State, State state) {
     state_.push_back(state);
     return 0;
   }
@@ -178,7 +178,7 @@ void Parser::HandleResolveDeclaration(ParseTree& tree) {
 }
 
 void Parser::HandleNewlinesBetweenStatements(ParseTree& tree) {
-  NTH_ASSERT((v.debug), current_token().kind() == Token::Kind::Newline);
+  NTH_REQUIRE((v.debug), current_token().kind() == Token::Kind::Newline);
   while (not AtChunkEnd() and current_token().kind() == Token::Kind::Newline) {
     ++iterator_;
   }
@@ -192,44 +192,44 @@ void Parser::HandleNewlinesBetweenStatements(ParseTree& tree) {
 }
 
 void Parser::HandleDeclarationIdentifier(ParseTree& tree) {
-  NTH_ASSERT((v.debug), current_token().kind() == Token::Kind::Identifier);
+  NTH_REQUIRE((v.debug), current_token().kind() == Token::Kind::Identifier);
   state()[state().size() - 4].token = current_token();
   ++iterator_;
   pop_and_discard_state();
 }
 
 void Parser::HandleColonColonEqual(ParseTree& tree) {
-  NTH_ASSERT((v.debug), current_token().kind() == Token::Kind::ColonColonEqual);
+  NTH_REQUIRE((v.debug),
+              current_token().kind() == Token::Kind::ColonColonEqual);
   pop_and_discard_state();
   ++iterator_;
 }
 
 void Parser::HandleExpression(ParseTree& tree) {
-    switch (current_token().kind()) {
-      case Token::Kind::LeftParen:
-      case Token::Kind::LeftBracket:
-      case Token::Kind::LeftBrace:
-        ExpandState(state().back(),
-                    State{
-                        .kind               = State::Kind::ExpressionClosing,
-                        .ambient_precedence = Precedence::Loosest(),
-                        .subtree_start      = tree.size(),
-                    });
-        ++iterator_;
-        return;
-      case Token::Kind::RightParen:
-      case Token::Kind::RightBracket:
-      case Token::Kind::RightBrace:
-        NTH_UNIMPLEMENTED();
-      default: break;
-    }
+  switch (current_token().kind()) {
+    case Token::Kind::LeftParen:
+    case Token::Kind::LeftBracket:
+    case Token::Kind::LeftBrace:
+      ExpandState(state().back(),
+                  State{
+                      .kind               = State::Kind::ExpressionClosing,
+                      .ambient_precedence = Precedence::Loosest(),
+                      .subtree_start      = tree.size(),
+                  });
+      ++iterator_;
+      return;
+    case Token::Kind::RightParen:
+    case Token::Kind::RightBracket:
+    case Token::Kind::RightBrace: NTH_UNIMPLEMENTED();
+    default: break;
+  }
   ExpandState(State::Kind::Term, State::Kind::ExpressionSuffix);
 }
 
 void Parser::HandleExpressionClosing(ParseTree& tree) {
-  NTH_ASSERT(current_token().kind() == Token::Kind::RightParen or
-             current_token().kind() == Token::Kind::RightBracket or
-             current_token().kind() == Token::Kind::RightBrace);
+  NTH_REQUIRE(current_token().kind() == Token::Kind::RightParen or
+              current_token().kind() == Token::Kind::RightBracket or
+              current_token().kind() == Token::Kind::RightBrace);
   State state = pop_state();
   tree.append(
       ParseTree::Node::Kind::ExpressionGroup, *iterator_++,
@@ -269,8 +269,8 @@ void Parser::HandleCallExpression(ParseTree& tree) {
 }
 
 void Parser::HandleResolveCallExpression(ParseTree& tree) {
-  NTH_ASSERT(state().back().kind == State::Kind::ResolveCallExpression);
-  NTH_ASSERT(current_token().kind() == Token::Kind::RightParen);
+  NTH_REQUIRE(state().back().kind == State::Kind::ResolveCallExpression);
+  NTH_REQUIRE(current_token().kind() == Token::Kind::RightParen);
   tree.append(ParseTree::Node::Kind::CallExpression, current_token(),
               state().back().subtree_start);
   ++iterator_;
@@ -308,7 +308,7 @@ void Parser::HandleExpressionSuffix(ParseTree& tree) {
       tree.set_back_child_count();
       break;
     case Priority::Same:
-      NTH_ASSERT(state_.back().kind == State::Kind::ResolveExpressionGroup);
+      NTH_REQUIRE(state_.back().kind == State::Kind::ResolveExpressionGroup);
       break;
     case Priority::Right:
       push_state({.kind          = State::Kind::ResolveExpressionGroup,

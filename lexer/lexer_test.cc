@@ -9,7 +9,7 @@ namespace {
 
 using ::ic::testing::HasImmediateIntegerValue;
 using ::ic::testing::HasKind;
-using ::nth::ElementsAreSequentially;
+using ::nth::debug::ElementsAreSequentially;
 
 NTH_TEST("lex/empty") {
   diag::NullConsumer d;
@@ -20,30 +20,30 @@ NTH_TEST("lex/empty") {
 NTH_TEST("lex/keyword") {
   diag::NullConsumer d;
   auto token_buffer = Lex("let", d);
-  NTH_EXPECT(token_buffer.size() == 2) NTH_ELSE { return; }
+  NTH_ASSERT(token_buffer.size() == 2);
   NTH_EXPECT(token_buffer[0].kind() == Token::Kind::Let);
 
   token_buffer = Lex("var", d);
-  NTH_EXPECT(token_buffer.size() == 2) NTH_ELSE { return; }
+  NTH_ASSERT(token_buffer.size() == 2);
   NTH_EXPECT(token_buffer[0].kind() == Token::Kind::Var);
 
   token_buffer = Lex("true", d);
-  NTH_EXPECT(token_buffer.size() == 2) NTH_ELSE { return; }
+  NTH_ASSERT(token_buffer.size() == 2);
   NTH_EXPECT(token_buffer[0].kind() == Token::Kind::True);
 
   token_buffer = Lex("false", d);
-  NTH_EXPECT(token_buffer.size() == 2) NTH_ELSE { return; }
+  NTH_ASSERT(token_buffer.size() == 2);
   NTH_EXPECT(token_buffer[0].kind() == Token::Kind::False);
 
   token_buffer = Lex("builtin", d);
-  NTH_EXPECT(token_buffer.size() == 2) NTH_ELSE { return; }
+  NTH_ASSERT(token_buffer.size() == 2);
   NTH_EXPECT(token_buffer[0].kind() == Token::Kind::Builtin);
 }
 
 NTH_TEST("lex/identifier", std::string_view id) {
   diag::NullConsumer d;
   auto token_buffer = Lex(id, d);
-  NTH_EXPECT(token_buffer.size() == 2) NTH_ELSE { return; }
+  NTH_ASSERT(token_buffer.size() == 2);
   NTH_EXPECT(token_buffer[0].kind() == Token::Kind::Identifier);
 }
 

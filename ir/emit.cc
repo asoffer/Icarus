@@ -10,8 +10,8 @@ namespace {
 
 void HandleParseTreeNodeBooleanLiteral(ParseTree::Node node,
                                        EmitContext& context) {
-  NTH_ASSERT((v.debug), node.token.kind() == Token::Kind::True or
-                            node.token.kind() == Token::Kind::False);
+  NTH_REQUIRE((v.debug), node.token.kind() == Token::Kind::True or
+                             node.token.kind() == Token::Kind::False);
   context.function_stack.back()->append<jasmin::Push>(node.token.kind() ==
                                                       Token::Kind::True);
 }
@@ -39,7 +39,7 @@ void HandleParseTreeNodeDeclaration(ParseTree::Node node,
 void HandleParseTreeNodeStatementSequence(ParseTree::Node node,
                                           EmitContext& context) {
   auto iter = context.statement_type.find(node);
-  NTH_ASSERT(iter != context.statement_type.end());
+  NTH_REQUIRE(iter != context.statement_type.end());
   context.function_stack.back()->append<jasmin::Drop>(type::Size(iter->second));
 }
 

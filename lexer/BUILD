@@ -34,7 +34,7 @@ cc_library(
     hdrs = ["token_matchers.h"],
     deps = [
         ":token",
-        "@asoffer_nth//nth/test",
+        "@asoffer_nth//nth/debug/property",
     ],
 )
 

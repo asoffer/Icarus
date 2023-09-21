@@ -35,7 +35,7 @@ std::optional<std::string> ReadFileToString(nth::file_path const& file_name) {
     result.emplace();
     result->resize(file_size, '\0');
     (void)file->read_into(*result);
-    NTH_ASSERT(file->close());
+    NTH_REQUIRE(file->close());
   }
   return result;
 }

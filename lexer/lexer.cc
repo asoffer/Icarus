@@ -100,7 +100,7 @@ bool Lexer::TryLexComment(std::string_view& source) {
 }
 
 bool Lexer::TryLexKeywordOrIdentifier(std::string_view& source) {
-  NTH_ASSERT((v.debug), not source.empty());
+  NTH_REQUIRE((v.debug), not source.empty());
   if (not LeadingIdentifierCharacter(source.front())) { return false; }
   std::string_view identifier = ConsumeWhile<IdentifierCharacter>(source);
   token_buffer_.AppendKeywordOrIdentifier(identifier, StartIndex(identifier));
@@ -108,7 +108,7 @@ bool Lexer::TryLexKeywordOrIdentifier(std::string_view& source) {
 }
 
 bool Lexer::TryLexNumber(std::string_view& source) {
-  NTH_ASSERT((v.debug), not source.empty());
+  NTH_REQUIRE((v.debug), not source.empty());
   char const* start = source.data();
   if (source.front() == '0') {
     if (source.size() == 1) {
@@ -139,7 +139,7 @@ bool Lexer::TryLexNumber(std::string_view& source) {
 }
 
 bool Lexer::TryLexOperator(std::string_view& source) {
-  NTH_ASSERT((v.debug), not source.empty());
+  NTH_REQUIRE((v.debug), not source.empty());
 #define IC_XMACRO_TOKEN_KIND_OPERATOR(kind, symbol)                            \
   if (source.starts_with(symbol)) {                                            \
     token_buffer_.Append(                                                      \
@@ -153,7 +153,7 @@ bool Lexer::TryLexOperator(std::string_view& source) {
 }
 
 bool Lexer::TryLexStringLiteral(std::string_view& source) {
-  NTH_ASSERT((v.debug), not source.empty());
+  NTH_REQUIRE((v.debug), not source.empty());
   return false;
 }
 

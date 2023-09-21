@@ -11,44 +11,41 @@ using ::ic::testing::HasBooleanValue;
 using ::ic::testing::HasImmediateIntegerValue;
 using ::ic::testing::HasKind;
 using ::ic::testing::IsIdentifier;
-using ::nth::ElementsAreSequentially;
+using ::nth::debug::ElementsAreSequentially;
 
-inline constexpr auto HasSubtreeSize =
-    nth::ExpectationMatcher<"has-subtree-size">(
-        [](auto const &value, auto const &subtree_size_matcher) {
-          return nth::Matches(subtree_size_matcher, value.subtree_size);
-        });
+inline constexpr auto HasSubtreeSize = nth::debug::MakeProperty<"has-subtree-size">(
+    [](auto const &value, auto const &subtree_size_matcher) {
+      return nth::debug::Matches(subtree_size_matcher, value.subtree_size);
+    });
 
-inline constexpr auto HasToken = nth::ExpectationMatcher<"has-token">(
+inline constexpr auto HasToken = nth::debug::MakeProperty<"has-token">(
     [](auto const &value, auto const &token_matcher) {
-      return nth::Matches(token_matcher, value.token);
+      return nth::debug::Matches(token_matcher, value.token);
     });
 
 inline constexpr auto ExpressionPrecedenceGroup =
-    nth::ExpectationMatcher<"expression-precedence-group">(
-        [](auto const &value) {
-          return value.kind == ParseTree::Node::Kind::ExpressionPrecedenceGroup;
-        });
+    nth::debug::MakeProperty<"expression-precedence-group">([](auto const &value) {
+      return value.kind == ParseTree::Node::Kind::ExpressionPrecedenceGroup;
+    });
 
 inline constexpr auto CallArgumentsStart =
-    nth::ExpectationMatcher<"call-expression-start">(
-        [](auto const &value) {
-          return value.kind == ParseTree::Node::Kind::CallArgumentsStart;
-        });
+    nth::debug::MakeProperty<"call-expression-start">([](auto const &value) {
+      return value.kind == ParseTree::Node::Kind::CallArgumentsStart;
+    });
 inline constexpr auto CallExpression =
-    nth::ExpectationMatcher<"call-expression">([](auto const &value) {
+    nth::debug::MakeProperty<"call-expression">([](auto const &value) {
       return value.kind == ParseTree::Node::Kind::CallExpression;
     });
 
-// Matches an identifier token whose identifier is given by `id`.
+// debug::Matches an identifier token whose identifier is given by `id`.
 auto IdentifierToken(TokenBuffer &buffer, std::string_view id) {
   return HasToken(IsIdentifier(buffer.IdentifierIndex(id)));
 }
 
-inline constexpr auto InfixOperator = nth::ExpectationMatcher<"infix-operator">(
+inline constexpr auto InfixOperator = nth::debug::MakeProperty<"infix-operator">(
     [](auto const &value, auto const &op_matcher) {
       return value.kind == ParseTree::Node::Kind::InfixOperator and
-             nth::Matches(op_matcher, value.token.kind());
+             nth::debug::Matches(op_matcher, value.token.kind());
     });
 
 NTH_TEST("parser/empty", std::string_view content) {

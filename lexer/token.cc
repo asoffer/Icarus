@@ -7,14 +7,14 @@
 namespace ic {
 
 Token::IntegerPayload Token::IntegerPayload::Index(uint32_t index) {
-  NTH_ASSERT((v.debug), index < IntegerPayload::PayloadLimit);
+  NTH_REQUIRE((v.debug), index < IntegerPayload::PayloadLimit);
   Token::IntegerPayload p;
   p.value_ = (IntegerPayload::PayloadLimit | index);
   return p;
 }
 
 Token::IntegerPayload Token::IntegerPayload::Immediate(uint32_t value) {
-  NTH_ASSERT((v.debug), value < IntegerPayload::PayloadLimit);
+  NTH_REQUIRE((v.debug), value < IntegerPayload::PayloadLimit);
   Token::IntegerPayload p;
   p.value_ = value;
   return p;
@@ -29,7 +29,7 @@ Token Token::IntegerLiteral(uint32_t offset, IntegerPayload payload) {
 }
 
 Token::IntegerPayload Token::AsIntegerPayload() const {
-  NTH_ASSERT((v.debug), kind() == Kind::IntegerLiteral);
+  NTH_REQUIRE((v.debug), kind() == Kind::IntegerLiteral);
   return IntegerPayload(payload_);
 }
 
@@ -42,7 +42,7 @@ bool Token::AsBoolean() const {
 }
 
 Token Token::Identifier(uint32_t offset, uint32_t identifier_index) {
-  NTH_ASSERT((v.debug), identifier_index < PayloadLimit);
+  NTH_REQUIRE((v.debug), identifier_index < PayloadLimit);
 
   Token token;
   token.offset_  = offset;
@@ -82,7 +82,7 @@ Token Token::Invalid() {
 #include "lexer/token_kind.xmacro.h"
 
 uint32_t Token::IdentifierIndex() const {
-  NTH_ASSERT((v.debug), kind() == Kind::Identifier);
+  NTH_REQUIRE((v.debug), kind() == Kind::Identifier);
   return payload_;
 }
 

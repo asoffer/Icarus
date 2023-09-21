@@ -5,7 +5,7 @@
 namespace ic::diag {
 
 ParseTree const &DiagnosticConsumer::parse_tree() const {
-  NTH_ASSERT(tree_ != nullptr);
+  NTH_REQUIRE(tree_ != nullptr);
   return *tree_;
 }
 
@@ -30,16 +30,16 @@ std::pair<uint32_t, uint32_t> DiagnosticConsumer::LineAndColumn(
     Token token) const {
   auto iter =
       std::lower_bound(offsets_.begin(), offsets_.end(), token.offset());
-  NTH_ASSERT(iter != offsets_.end());
+  NTH_REQUIRE(iter != offsets_.end());
   if (*iter != token.offset()) { --iter; }
   return std::pair<uint32_t, uint32_t>(
       std::distance(offsets_.begin(), iter) + 1, token.offset() - *iter);
 }
 
 std::string_view DiagnosticConsumer::Line(uint32_t line) const {
-  NTH_ASSERT(source_ != "");
-  NTH_ASSERT(line > 0);
-  NTH_ASSERT(line < offsets_.size());
+  NTH_REQUIRE(source_ != "");
+  NTH_REQUIRE(line > 0);
+  NTH_REQUIRE(line < offsets_.size());
   return std::string_view(source_.data() + offsets_[line - 1],
                           source_.data() + offsets_[line]);
 }

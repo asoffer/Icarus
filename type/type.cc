@@ -11,7 +11,7 @@ namespace ic::type {
   static_assert(alignof(Type) == alignof(k##Type));                            \
                                                                                \
   k##Type Type::As##k() const {                                                \
-    NTH_ASSERT((v.debug), kind() == Kind::k);                                  \
+    NTH_REQUIRE((v.debug), kind() == Kind::k);                                 \
     k##Type t;                                                                 \
     std::memcpy(&t, this, sizeof(Type));                                       \
     return t;                                                                  \

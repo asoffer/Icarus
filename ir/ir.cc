@@ -45,10 +45,10 @@ void HandleParseTreeNodeIdentifier(ParseTree::Node::Index index,
   auto node = context.Node(index);
   if (not context.operator_stack.empty() and
       context.operator_stack.back() == Token::Kind::Period) {
-    NTH_ASSERT(not context.type_stack.empty());
+    NTH_REQUIRE(not context.type_stack.empty());
     if (context.type_stack.back() == type::Module) {
       auto module_id = context.EvaluateAs<ModuleId>(index - 2);
-      NTH_ASSERT(module_id.has_value());
+      NTH_REQUIRE(module_id.has_value());
       context.type_stack.back() =
           context.module(*module_id).Lookup(node.token.IdentifierIndex()).type;
     } else if (context.type_stack.back() == type::Type_) {
@@ -85,7 +85,7 @@ void HandleParseTreeNodeExpressionPrecedenceGroup(
     case Token::Kind::MinusGreater: {
       auto node = context.Node(index);
       if (node.child_count != 2) {
-        NTH_ASSERT(node.child_count != -1);
+        NTH_REQUIRE(node.child_count != -1);
         diag.Consume({
             diag::Header(diag::MessageKind::Error),
             diag::Text(
@@ -93,7 +93,7 @@ void HandleParseTreeNodeExpressionPrecedenceGroup(
                 "cannot be used together without parentheses."),
         });
       }
-      NTH_ASSERT(context.type_stack.size() >= 2);
+      NTH_REQUIRE(context.type_stack.size() >= 2);
       type::Type return_type = context.type_stack.back();
       context.type_stack.pop_back();
       type::Type parameters_type = context.type_stack.back();
