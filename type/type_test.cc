@@ -19,5 +19,41 @@ NTH_TEST("type/construction") {
   NTH_EXPECT(t.kind() == Type::Kind::Primitive);
 }
 
+
+NTH_TEST("type/parameters/construction") {
+  Type t0 = Parameters({});
+  Type t1 = Parameters({ParametersType::Parameter{.name = 3, .type = Bool}});
+  Type t2 = Parameters({ParametersType::Parameter{.name = 4, .type = Bool}});
+  Type t3 = Parameters({ParametersType::Parameter{.name = 4, .type = Char}});
+
+  NTH_EXPECT(t0 == t0);
+  NTH_EXPECT(t0 != t1);
+  NTH_EXPECT(t0 != t2);
+  NTH_EXPECT(t0 != t3);
+  NTH_EXPECT(t1 != t0);
+  NTH_EXPECT(t1 == t1);
+  NTH_EXPECT(t1 != t2);
+  NTH_EXPECT(t1 != t3);
+  NTH_EXPECT(t2 != t1);
+  NTH_EXPECT(t2 != t0);
+  NTH_EXPECT(t2 == t2);
+  NTH_EXPECT(t2 != t3);
+  NTH_EXPECT(t3 != t0);
+  NTH_EXPECT(t3 != t1);
+  NTH_EXPECT(t3 != t2);
+  NTH_EXPECT(t3 == t3);
+
+  NTH_EXPECT(t0.kind() == Type::Kind::Parameters);
+  NTH_EXPECT(t1.kind() == Type::Kind::Parameters);
+  NTH_EXPECT(t2.kind() == Type::Kind::Parameters);
+  NTH_EXPECT(t3.kind() == Type::Kind::Parameters);
+
+  NTH_EXPECT(t0 != Error);
+  NTH_EXPECT(t0 != Bool);
+
+  NTH_EXPECT(t3 ==
+             Parameters({ParametersType::Parameter{.name = 4, .type = Char}}));
+}
+
 }  // namespace
 }  // namespace ic::type

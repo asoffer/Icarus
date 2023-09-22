@@ -12,7 +12,9 @@ cc_library(
     deps = [
         ":type_kind_xmacro",
         "//lexer:token_kind_xmacro",
+        "@asoffer_nth//nth/container:flyweight_set",
         "@asoffer_nth//nth/debug",
+        "@asoffer_nth//nth/utility:no_destructor",
     ],
 )
 
