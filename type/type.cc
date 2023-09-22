@@ -56,4 +56,17 @@ FunctionType Function(ParametersType pt, std::vector<Type> const& r) {
   return FunctionType(functions->index(functions->insert({pt, rt}).first));
 }
 
+ParametersType FunctionType::parameters() const {
+  return functions->from_index(data()).first;
+}
+
+std::vector<ParametersType::Parameter> const& ParametersType::operator*()
+    const {
+  return parameters->from_index(data());
+}
+
+std::vector<Type> const& FunctionType::returns() const {
+  return ic::type::returns->from_index(functions->from_index(data()).second);
+}
+
 }  // namespace ic::type

@@ -55,5 +55,15 @@ NTH_TEST("type/parameters/construction") {
              Parameters({ParametersType::Parameter{.name = 4, .type = Char}}));
 }
 
+NTH_TEST("qualified-type/construction") {
+  NTH_EXPECT(QualifiedType(Qualifier::Constant(), Bool).type() == Bool);
+  NTH_EXPECT(QualifiedType(Qualifier::Constant(), Bool).qualifier() ==
+             Qualifier::Constant());
+
+  NTH_EXPECT(QualifiedType(Qualifier::Constant(), Bool).type() == Bool);
+  NTH_EXPECT(QualifiedType(Qualifier::Unqualified(), Bool).qualifier() ==
+             Qualifier::Unqualified());
+}
+
 }  // namespace
 }  // namespace ic::type

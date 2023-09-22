@@ -8,19 +8,22 @@
 namespace ic::type {
 
 // All types definable within the type-system can be categorized by "kind" and
-// fit into one of the kinds specified in "type/type_kind.xmacro.h".
+// fit into one of the kinds specified in "type/type_kind.xmacro.h". Each such
+// type must be precisely 64-bits wide, and must reserve have the
+// most-significant 8 bytes be unset in any valid representation. Furthermore,
+// the second-most-significant 8 bytes must be filled with a representation of
+// the corresponding `Type::Kind` defined below.
 #define IC_XMACRO_TYPE_KIND(kind) struct kind##Type;
 #include "type/type_kind.xmacro.h"
 
 // Objects of type `Type` represent types within the modeled type-system. The
 // type `Type` is regular (i.e., can be safely copied, compared for equality,
 // etc as one would expect `int` to be). Two `Type`s are considered equal if and
-// only if they represent the same type in the type-system.
-//
-// `Type` is internally represented as a single `uint64_t`, and stores every
-// other type-kind directly. Each such type-kind is responsible for setting its
-// most-signficant byte to be the `uint8_t` encoding its kind. type-kind.
+// only if they represent the same type in the type-system. A `Type` is
+// precisely 64-bits wide, and its most-significant 8 bits must always be unset.
 struct Type {
+  Type() = default;
+
   enum class Kind : uint8_t {
 #define IC_XMACRO_TYPE_KIND(kind) kind,
 #include "type/type_kind.xmacro.h"
@@ -58,7 +61,46 @@ struct Type {
   friend void NthPrint(auto& p, auto& f, Type t);
 
  private:
-  Type() = default;
+  friend struct QualifiedType;
+
+  explicit constexpr Type(uint64_t data) : data_(data) {}
+
+  uint64_t data_;
+};
+
+struct Qualifier {
+  static constexpr Qualifier Constant() { return Qualifier(1); }
+  static constexpr Qualifier Unqualified() { return Qualifier(0); }
+
+  friend bool operator==(Qualifier, Qualifier) = default;
+
+  template <typename H>
+  friend H AbslHashValue(H h, Qualifier q) {
+    H::combine(std::move(h), q.data_);
+  }
+
+ private:
+  friend struct QualifiedType;
+  explicit constexpr Qualifier(uint8_t data) : data_(data) {}
+
+  uint8_t data_;
+};
+
+struct QualifiedType {
+  constexpr explicit QualifiedType(Qualifier q, Type t)
+      : data_(static_cast<uint64_t>(q.data_) << 56 | t.data_) {}
+
+  friend bool operator==(QualifiedType,QualifiedType) = default;
+
+  template <typename H>
+  friend H AbslHashValue(H h, QualifiedType q) {
+    return H::combine(std::move(h), q.data_);
+  }
+
+  constexpr Qualifier qualifier() const { return Qualifier(data_ >> 56); }
+  constexpr Type type() const { return Type(data_ & 0x00ffffff'ffffffff); }
+
+ private:
   uint64_t data_;
 };
 
@@ -115,6 +157,8 @@ struct ParametersType {
     return H::combine(std::move(h), t.data_);
   }
 
+  std::vector<Parameter> const& operator*() const;
+
  private:
   friend Type;
   friend ParametersType Parameters(std::vector<ParametersType::Parameter>&&);
@@ -124,6 +168,8 @@ struct ParametersType {
   explicit ParametersType() = default;
   explicit constexpr ParametersType(uint64_t n)
       : data_((static_cast<uint64_t>(Type::Kind::Parameters) << 56) | n) {}
+
+  uint64_t data() const { return data_ & uint64_t{0x00ffffff'ffffffff}; }
 
   uint64_t data_;
 };
@@ -139,6 +185,9 @@ struct FunctionType {
     return H::combine(std::move(h), t.data_);
   }
 
+  ParametersType parameters() const;
+  std::vector<Type> const& returns() const;
+
  private:
   friend Type;
   friend FunctionType Function(ParametersType, std::vector<Type>&&);
@@ -147,6 +196,8 @@ struct FunctionType {
   explicit FunctionType() = default;
   explicit constexpr FunctionType(uint64_t n)
       : data_((static_cast<uint64_t>(Type::Kind::Function) << 56) | n) {}
+
+  uint64_t data() const { return data_ & uint64_t{0x00ffffff'ffffffff}; }
 
   uint64_t data_;
 };
