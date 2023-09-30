@@ -3,6 +3,8 @@
 #include <optional>
 #include <string>
 
+#include "absl/debugging/failure_signal_handler.h"
+#include "absl/debugging/symbolize.h"
 #include "common/errno.h"
 #include "common/string.h"
 #include "diagnostics/consumer/streaming.h"
@@ -41,6 +43,10 @@ std::optional<std::string> ReadFileToString(nth::file_path const& file_name) {
 }
 
 nth::exit_code Compile(nth::FlagValueSet flags, nth::file_path const& source) {
+  absl::InitializeSymbolizer("");
+  absl::FailureSignalHandlerOptions opts;
+  absl::InstallFailureSignalHandler(opts);
+
   auto const& output_path = flags.get<nth::file_path>("output");
 
   diag::StreamingConsumer consumer;
@@ -64,13 +70,14 @@ nth::exit_code Compile(nth::FlagValueSet flags, nth::file_path const& source) {
 
   Module module;
   IrContext ir_context = {
-      .tree    = parse_tree,
-      .modules = {BuiltinModule()},
-      .emit    = EmitContext(module),
+      .emit    = EmitContext(parse_tree, module),
+  };
+  ir_context.emit.modules = {
+      BuiltinModule(token_buffer),
   };
   ir_context.ProcessIr(consumer);
   if (consumer.count() != 0) { return nth::exit_code::generic_error; }
-  EmitIr(parse_tree.nodes(), ir_context.emit);
+  EmitIr(parse_tree.node_range(), ir_context.emit);
   ModuleProto module_proto = Serialize(module);
 
   std::ofstream out(output_path.path());

@@ -1,10 +1,28 @@
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
+    name = "lex",
+    hdrs = ["lex.h"],
+    srcs = ["lex.cc"],
+    deps = [
+        ":lex_impl",
+    ],
+)
+
+cc_library(
+    name = "lex_impl",
+    hdrs = ["lex_impl.h"],
+    visibility = ["//visibility:private"],
+    deps = [],
+)
+
+cc_library(
     name = "lexer",
     hdrs = ["lexer.h"],
     srcs = ["lexer.cc"],
     deps = [
+        ":lex",
+        ":lex_impl",
         ":token",
         ":token_buffer",
         "//diagnostics/consumer",

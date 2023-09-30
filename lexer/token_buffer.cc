@@ -1,5 +1,7 @@
 #include "lexer/token_buffer.h"
 
+#include "nth/debug/log/log.h"
+
 namespace ic {
 
 void TokenBuffer::AppendIntegerLiteral(std::string_view integer,

@@ -1,5 +1,6 @@
 #include "parser/precedence.h"
 
+#include <cstdlib>
 #include <array>
 #include <cstddef>
 
@@ -37,11 +38,10 @@ constexpr PrecedenceTable MakePrecedenceTable() {
 #include "parser/precedence_groups.xmacro.h"
 
   result(Precedence::Comparison(), Precedence::PlusMinus()) = Priority::Right;
-  result(Precedence::PlusMinus(), Precedence::MultiplyDivide()) = Priority::Right;
-  result(Precedence::MultiplyDivide(), Precedence::Member()) = Priority::Right;
-  result(Precedence::Function(), Precedence::Member()) = Priority::Right;
+  result(Precedence::PlusMinus(), Precedence::MultiplyDivide()) =
+      Priority::Right;
 
-  bool changed = true;
+  bool changed = false;
   while (not changed) {
     changed = false;
 

@@ -87,6 +87,8 @@ struct Qualifier {
 };
 
 struct QualifiedType {
+  constexpr explicit QualifiedType() = default;
+
   constexpr explicit QualifiedType(Qualifier q, Type t)
       : data_(static_cast<uint64_t>(q.data_) << 56 | t.data_) {}
 
@@ -98,7 +100,9 @@ struct QualifiedType {
   }
 
   constexpr Qualifier qualifier() const { return Qualifier(data_ >> 56); }
-  constexpr Type type() const { return Type(data_ & 0x00ffffff'ffffffff); }
+  constexpr Type type() const {
+    return Type(data_ & uint64_t{0x00ffffff'ffffffff});
+  }
 
  private:
   uint64_t data_;
@@ -112,7 +116,7 @@ struct PrimitiveType {
   };
 
   explicit constexpr PrimitiveType(Kind k)
-      : data_((static_cast<uint64_t>(Type::Kind::Primitive) << 56) |
+      : data_((static_cast<uint64_t>(Type::Kind::Primitive) << 48) |
                static_cast<uint64_t>(k)) {}
 
   friend bool operator==(PrimitiveType, PrimitiveType) = default;
@@ -167,9 +171,9 @@ struct ParametersType {
 
   explicit ParametersType() = default;
   explicit constexpr ParametersType(uint64_t n)
-      : data_((static_cast<uint64_t>(Type::Kind::Parameters) << 56) | n) {}
+      : data_((static_cast<uint64_t>(Type::Kind::Parameters) << 48) | n) {}
 
-  uint64_t data() const { return data_ & uint64_t{0x00ffffff'ffffffff}; }
+  uint64_t data() const { return data_ & uint64_t{0x0000ffff'ffffffff}; }
 
   uint64_t data_;
 };
@@ -195,9 +199,9 @@ struct FunctionType {
 
   explicit FunctionType() = default;
   explicit constexpr FunctionType(uint64_t n)
-      : data_((static_cast<uint64_t>(Type::Kind::Function) << 56) | n) {}
+      : data_((static_cast<uint64_t>(Type::Kind::Function) << 48) | n) {}
 
-  uint64_t data() const { return data_ & uint64_t{0x00ffffff'ffffffff}; }
+  uint64_t data() const { return data_ & uint64_t{0x0000ffff'ffffffff}; }
 
   uint64_t data_;
 };

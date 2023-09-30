@@ -17,6 +17,7 @@ cc_library(
     deps = [
         ":parse_tree_node_kind_xmacro",
         "//lexer:token",
+        "@asoffer_nth//nth/container:interval",
         "@asoffer_nth//nth/debug",
         "@asoffer_nth//nth/strings:interpolate",
         "@asoffer_nth//nth/utility:iterator_range",

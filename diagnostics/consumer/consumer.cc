@@ -1,5 +1,6 @@
 #include "diagnostics/consumer/consumer.h"
 
+#include "lexer/lex.h"
 #include "nth/debug/debug.h"
 
 namespace ic::diag {
@@ -42,6 +43,11 @@ std::string_view DiagnosticConsumer::Line(uint32_t line) const {
   NTH_REQUIRE(line < offsets_.size());
   return std::string_view(source_.data() + offsets_[line - 1],
                           source_.data() + offsets_[line]);
+}
+
+std::string_view DiagnosticConsumer::Symbol(Token token) const {
+  std::string_view s = source_.substr(token.offset());
+  return lex::ConsumeIdentifier(s);
 }
 
 }  // namespace ic::diag

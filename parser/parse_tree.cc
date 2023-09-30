@@ -4,11 +4,17 @@
 
 namespace ic {
 
+nth::interval<ParseTree::Node::Index> ParseTree::subtree_range(
+    Node::Index node_index) const {
+  NTH_REQUIRE((v.harden), node_index.value() < nodes_.size());
+  auto const& node = nodes_[node_index.value()];
+  return nth::interval(node_index - node.subtree_size + 1, node_index + 1);
+}
+
 std::span<ParseTree::Node const> ParseTree::subtree(
     Node::Index node_index) const {
-  NTH_REQUIRE((v.debug), node_index.value_ < nodes_.size());
-  auto const& node = nodes_[node_index.value_];
-  return std::span<Node const>(&node - node.subtree_size + 1, &node + 1);
+  auto [lower, upper] = subtree_range(node_index);
+  return std::span<Node const>(&nodes_[lower.value()], &nodes_[upper.value()]);
 }
 
 void ParseTree::append(Node::Kind kind, Token token, int subtree_start) {
@@ -25,15 +31,15 @@ void ParseTree::set_back_child_count() {
 }
 
 ParseTree::Node& ParseTree::operator[](ParseTree::Node::Index node_index) {
-  NTH_REQUIRE(node_index.value_ < size());
+  NTH_REQUIRE((v.harden), node_index.value() < size());
 
-  return nodes_[node_index.value_];
+  return nodes_[node_index.value()];
 }
 
 ParseTree::Node const& ParseTree::operator[](
     ParseTree::Node::Index node_index) const {
-  NTH_REQUIRE(node_index.value_ < size());
-  return nodes_[node_index.value_];
+  NTH_REQUIRE((v.harden), node_index.value() < size());
+  return nodes_[node_index.value()];
 }
 
 }  // namespace ic

@@ -13,12 +13,18 @@
 
 namespace ic {
 
-using InstructionSet = jasmin::MakeInstructionSet<jasmin::Push, jasmin::Drop>;
+struct PrintHelloWorld : jasmin::StackMachineInstruction<PrintHelloWorld> {
+  static void execute() { std::cerr << "Hello, world!\n"; }
+};
+
+using InstructionSet =
+    jasmin::MakeInstructionSet<jasmin::Push, jasmin::Drop, PrintHelloWorld>;
 using IrFunction     = jasmin::Function<InstructionSet>;
 
 struct Module {
   struct Entry {
-    type::Type type = type::Error;
+    type::QualifiedType qualified_type =
+        type::QualifiedType(type::Qualifier::Unqualified(), type::Error);
     absl::InlinedVector<jasmin::Value, 2> value;
   };
   Entry const& Lookup(uint32_t index) const;

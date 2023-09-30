@@ -5,6 +5,7 @@ cc_library(
     hdrs = ["consumer.h"],
     srcs = ["consumer.cc"],
     deps = [
+        "//lexer:lex",
         "//lexer:token",
         "//parser:parse_tree",
         "//diagnostics:message",

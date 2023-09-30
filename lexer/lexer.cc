@@ -5,6 +5,8 @@
 #include <string_view>
 #include <vector>
 
+#include "lexer/lex.h"
+#include "lexer/lex_impl.h"
 #include "nth/debug/debug.h"
 
 namespace ic {
@@ -28,25 +30,8 @@ struct Lexer {
   char const* start_;
 };
 
-template <auto F>
-requires(std::is_invocable_r_v<bool, decltype(F), char>)  //
-    std::string_view ConsumeWhile(std::string_view& source) {
-  char const* end   = source.data() + source.size();
-  char const* start = source.data();
-  char const* p     = start;
-  for (; p != end and F(*p); ++p) {}
-  size_t count            = std::distance(start, p);
-  std::string_view result = source.substr(0, count);
-  source.remove_prefix(count);
-  return result;
-}
-
 constexpr bool LeadingIdentifierCharacter(char c) {
   return std::isalpha(c) or c == '_';
-}
-
-constexpr bool IdentifierCharacter(char c) {
-  return std::isalnum(c) or c == '_';
 }
 
 constexpr bool DecimalCharacter(char c) { return std::isdigit(c) or c == '_'; }
@@ -67,7 +52,7 @@ TokenBuffer Lex(std::string_view source,
       continue;
     }
 
-    ConsumeWhile<WhitespaceCharacter>(source);
+    lex::ConsumeWhile<WhitespaceCharacter>(source);
     if (source.empty()) { break; }
 
     switch (source.front()) {
@@ -102,7 +87,7 @@ bool Lexer::TryLexComment(std::string_view& source) {
 bool Lexer::TryLexKeywordOrIdentifier(std::string_view& source) {
   NTH_REQUIRE((v.debug), not source.empty());
   if (not LeadingIdentifierCharacter(source.front())) { return false; }
-  std::string_view identifier = ConsumeWhile<IdentifierCharacter>(source);
+  std::string_view identifier = lex::ConsumeIdentifier(source);
   token_buffer_.AppendKeywordOrIdentifier(identifier, StartIndex(identifier));
   return true;
 }
@@ -130,7 +115,7 @@ bool Lexer::TryLexNumber(std::string_view& source) {
     }
   } else {
   consume_decimal:
-    std::string_view number = ConsumeWhile<DecimalCharacter>(source);
+    std::string_view number = lex::ConsumeWhile<DecimalCharacter>(source);
     if (number.empty()) { return false; }
     token_buffer_.AppendIntegerLiteral(number, StartIndex(start));
     return true;

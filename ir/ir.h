@@ -9,8 +9,6 @@
 #include "absl/container/inlined_vector.h"
 #include "diagnostics/consumer/consumer.h"
 #include "ir/emit.h"
-#include "ir/module.h"
-#include "ir/module_id.h"
 #include "jasmin/value_stack.h"
 #include "nth/debug/debug.h"
 #include "parser/parse_tree.h"
@@ -20,34 +18,34 @@ namespace ic {
 
 struct IrContext {
   ParseTree::Node const& Node(ParseTree::Node::Index index) {
-    return tree[index];
+    return emit.tree[index];
   }
 
-  auto Children(ParseTree::Node::Index index) { return tree.children(index); }
-
-  Module const& module(ModuleId id) const { return modules[id.value()]; }
+  auto Children(ParseTree::Node::Index index) {
+    return emit.tree.children(index);
+  }
 
   void ProcessIr(diag::DiagnosticConsumer& diag);
 
   template <typename T>
-  std::optional<T> EvaluateAs(ParseTree::Node::Index subtree) const {
+  std::optional<T> EvaluateAs(ParseTree::Node::Index subtree_root_index) {
     T result;
-    jasmin::ValueStack value_stack;
-    Evaluate(tree.subtree(subtree), value_stack);
+    nth::interval range   = emit.tree.subtree_range(subtree_root_index);
+    auto [iter, inserted] = emit.constants.try_emplace(range);
+    NTH_REQUIRE((v.harden), inserted);
+    jasmin::ValueStack& value_stack = iter->second;
+    Evaluate(range, emit.tree, value_stack);
     if (IcarusDeserializeValue(
             std::span(value_stack.begin(), value_stack.end()), result)) {
-      NTH_LOG("{}") <<= {result};
       return result;
     } else {
       return std::nullopt;
     }
   }
 
-  ParseTree const& tree;
-  absl::flat_hash_map<uint32_t, type::Type> identifiers;
-  std::vector<type::Type> type_stack;
+  absl::flat_hash_map<uint32_t, type::QualifiedType> identifiers;
+  std::vector<type::QualifiedType> type_stack;
   std::vector<Token::Kind> operator_stack;
-  std::vector<Module> modules;
   EmitContext emit;
 };
 

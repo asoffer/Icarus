@@ -23,6 +23,8 @@ struct DiagnosticConsumer {
 
   ParseTree const &parse_tree() const;
 
+  std::string_view Symbol(Token token) const;
+
   std::pair<uint32_t, uint32_t> LineAndColumn(Token token) const;
 
   std::string_view Line(uint32_t line) const;

@@ -31,7 +31,9 @@ nth::NoDestructor<nth::flyweight_set<std::pair<ParametersType, uint64_t>>>
   }
 #include "type/type_kind.xmacro.h"
 
-Type::Kind Type::kind() const { return static_cast<Kind>(data_ >> 56); }
+Type::Kind Type::kind() const {
+  return static_cast<Kind>((data_ >> 48) & 0xff);
+}
 
 size_t Size(Type t) {
   // TODO: This is not correct.
