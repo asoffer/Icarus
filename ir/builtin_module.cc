@@ -9,8 +9,9 @@ namespace ic {
 
 nth::NoDestructor<IrFunction> Print([] {
   IrFunction f(0, 1);
-  f.append<PrintHelloWorld>(true);
+  f.append<PrintHelloWorld>();
   f.append<jasmin::Push>(true);
+  f.append<jasmin::Return>();
   return f;
 }());
 

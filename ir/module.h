@@ -13,12 +13,22 @@
 
 namespace ic {
 
+struct PushFunction : jasmin::StackMachineInstruction<PushFunction> {
+  static std::string_view name() { return "push-function"; }
+
+  static constexpr void execute(jasmin::ValueStack& value_stack,
+                                jasmin::Value v) {
+    value_stack.push(v);
+  }
+};
+
 struct PrintHelloWorld : jasmin::StackMachineInstruction<PrintHelloWorld> {
   static void execute() { std::cerr << "Hello, world!\n"; }
 };
 
 using InstructionSet =
-    jasmin::MakeInstructionSet<jasmin::Push, jasmin::Drop, PrintHelloWorld>;
+    jasmin::MakeInstructionSet<jasmin::Push, PushFunction, jasmin::Drop,
+                               PrintHelloWorld>;
 using IrFunction     = jasmin::Function<InstructionSet>;
 
 struct Module {

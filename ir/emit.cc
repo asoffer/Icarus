@@ -123,7 +123,7 @@ void HandleParseTreeNodeMemberExpression(ParseTree::Node::Index index,
   auto symbol = context.module(module_id).Lookup(
       context.Node(index).token.IdentifierIndex());
   for (jasmin::Value const& v : symbol.value) {
-    context.function_stack.back()->append<jasmin::Push>(v);
+    context.Push(v, symbol.qualified_type.type());
   }
 }
 
@@ -152,13 +152,23 @@ void EmitNonConstant(nth::interval<ParseTree::Node::Index> node_range,
 
 }  // namespace
 
+void EmitContext::Push(jasmin::Value v, type::Type t) {
+  switch (t.kind()) {
+    case type::Type::Kind::Function: {
+      function_stack.back()->append<PushFunction>(v);
+    } break;
+    default: {
+      function_stack.back()->append<jasmin::Push>(v);
+    } break;
+  }
+}
+
 void EmitIr(nth::interval<ParseTree::Node::Index> node_range, EmitContext& context) {
   ParseTree::Node::Index start{0};
   for (auto const& [range, value_stack] : context.constants) {
     EmitNonConstant(nth::interval(start, range.lower_bound()), context);
-    for (jasmin::Value const& v : value_stack) {
-      context.function_stack.back()->append<jasmin::Push>(v);
-    }
+    // TODO: This type is wrong.
+    for (jasmin::Value const& v : value_stack) { context.Push(v, type::Bool); }
     start = range.upper_bound();
   }
   EmitNonConstant(nth::interval(start, node_range.upper_bound()), context);

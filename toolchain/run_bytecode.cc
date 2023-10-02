@@ -6,10 +6,12 @@
 #include "common/string.h"
 #include "diagnostics/consumer/streaming.h"
 #include "diagnostics/message.h"
+#include "ir/builtin_module.h"
 #include "ir/deserialize.h"
 #include "ir/module.h"
 #include "ir/module.pb.h"
 #include "jasmin/execute.h"
+#include "lexer/token_buffer.h"
 #include "nth/commandline/commandline.h"
 #include "nth/debug/log/log.h"
 #include "nth/debug/log/stderr_log_sink.h"
@@ -37,7 +39,12 @@ nth::exit_code Run(nth::FlagValueSet flags, std::span<std::string_view const>) {
 
   ModuleProto proto;
   Module module;
-  if (not proto.ParseFromIstream(&in) or not Deserialize(proto, module)) {
+
+  TokenBuffer token_buffer;
+  Module builtin = BuiltinModule(token_buffer);
+  Deserializer d;
+  d.set_builtin_module(builtin);
+  if (not proto.ParseFromIstream(&in) or not d.Deserialize(proto, module)) {
     consumer.Consume({
         diag::Header(diag::MessageKind::Error),
         diag::Text(

@@ -18,7 +18,7 @@ cc_library(
     deps = [
         ":module",
         ":module_cc_proto",
-        "@asoffer_jasmin//jasmin:serialization",
+        "@asoffer_nth//nth/base:attributes",
         "@asoffer_nth//nth/debug",
         "@asoffer_nth//nth/debug/log",
     ],
@@ -105,7 +105,6 @@ cc_library(
     deps = [
         ":module",
         ":module_cc_proto",
-        "@asoffer_jasmin//jasmin:serialization",
         "@asoffer_nth//nth/debug",
         "@asoffer_nth//nth/debug/log",
     ],

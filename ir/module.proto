@@ -2,10 +2,27 @@ syntax = "proto3";
 
 package ic;
 
+message InstructionProto {
+  enum OpCode {
+    // Note: This needs to be kept in sync with the `jasmin::InstructionSet`
+    // defined in "ir/module.h"
+    CALL = 0;
+    JUMP = 1;
+    JUMP_IF = 2;
+    RETURN = 3;
+    PUSH = 4;
+    PUSH_FUNCTION = 5;
+    DROP = 6;
+    PRINT_HELLO_WORLD = 7;
+  }
+  OpCode op_code = 1;
+  repeated uint64 content = 2;
+}
+
 message FunctionProto {
   uint32 parameters = 1;
   uint32 returns = 2;
-  bytes content = 3;
+  repeated InstructionProto instructions = 3;
 }
 
 message ModuleProto {

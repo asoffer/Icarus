@@ -25,6 +25,8 @@ struct EmitContext {
 
   Module const& module(ModuleId id) const { return modules[id.value()]; }
 
+  void Push(jasmin::Value v, type::Type);
+
   ParseTree::Node const& Node(ParseTree::Node::Index index) {
     return tree[index];
   }
