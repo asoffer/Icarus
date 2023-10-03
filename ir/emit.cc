@@ -22,6 +22,13 @@ void HandleParseTreeNodeIntegerLiteral(ParseTree::Node::Index index,
   NTH_UNIMPLEMENTED();
 }
 
+void HandleParseTreeNodeStringLiteral(ParseTree::Node::Index index,
+                                      EmitContext& context) {
+  std::string_view s = context.token_buffer.StringLiteral(
+      context.Node(index).token.AsStringLiteralIndex());
+  context.function_stack.back()->append<PushStringLiteral>(s.data(), s.size());
+}
+
 void HandleParseTreeNodeTypeLiteral(ParseTree::Node::Index index,
                                     EmitContext& context) {
   auto node = context.Node(index);
@@ -176,10 +183,11 @@ void EmitIr(nth::interval<ParseTree::Node::Index> node_range, EmitContext& conte
 
 void Evaluate(nth::interval<ParseTree::Node::Index> subtree,
               ParseTree const& tree,
+              TokenBuffer const& token_buffer NTH_ATTRIBUTE(lifetimebound),
               DependentModules const& modules NTH_ATTRIBUTE(lifetimebound),
               jasmin::ValueStack& value_stack) {
   IrFunction f(0, 1);
-  EmitContext context(tree, modules, f);
+  EmitContext context(tree, token_buffer, modules, f);
   EmitIr(subtree, context);
   context.function_stack.back()->append<jasmin::Return>();
   jasmin::Execute(f, value_stack);

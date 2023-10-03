@@ -85,7 +85,7 @@ bool Lexer::TryLexComment(std::string_view& source) {
 }
 
 bool Lexer::TryLexKeywordOrIdentifier(std::string_view& source) {
-  NTH_REQUIRE((v.debug), not source.empty());
+  NTH_REQUIRE((v.harden), not source.empty());
   if (not LeadingIdentifierCharacter(source.front())) { return false; }
   std::string_view identifier = lex::ConsumeIdentifier(source);
   token_buffer_.AppendKeywordOrIdentifier(identifier, StartIndex(identifier));
@@ -93,7 +93,7 @@ bool Lexer::TryLexKeywordOrIdentifier(std::string_view& source) {
 }
 
 bool Lexer::TryLexNumber(std::string_view& source) {
-  NTH_REQUIRE((v.debug), not source.empty());
+  NTH_REQUIRE((v.harden), not source.empty());
   char const* start = source.data();
   if (source.front() == '0') {
     if (source.size() == 1) {
@@ -124,7 +124,7 @@ bool Lexer::TryLexNumber(std::string_view& source) {
 }
 
 bool Lexer::TryLexOperator(std::string_view& source) {
-  NTH_REQUIRE((v.debug), not source.empty());
+  NTH_REQUIRE((v.harden), not source.empty());
 #define IC_XMACRO_TOKEN_KIND_OPERATOR(kind, symbol)                            \
   if (source.starts_with(symbol)) {                                            \
     token_buffer_.Append(                                                      \
@@ -138,7 +138,63 @@ bool Lexer::TryLexOperator(std::string_view& source) {
 }
 
 bool Lexer::TryLexStringLiteral(std::string_view& source) {
-  NTH_REQUIRE((v.debug), not source.empty());
+  NTH_REQUIRE((v.harden), not source.empty());
+  if (not source.starts_with("\"")) { return false; }
+  char const * p = source.data() + 1;
+  bool escaped = false;
+  std::string content;
+  while (p != source.data() + source.size()) {
+    if (escaped) {
+      escaped = false;
+      switch (*p) {
+        case '\\': ++p; break;
+        case 'n':
+          ++p;
+          content.push_back('\n');
+          break;
+        case 'r':
+          ++p;
+          content.push_back('\r');
+          break;
+        case 't':
+          ++p;
+          content.push_back('\t');
+          break;
+        case '"':
+          ++p;
+          content.push_back('"');
+          break;
+        case '0':
+          ++p;
+          content.push_back('\0');
+          break;
+        default:
+          NTH_UNIMPLEMENTED("Invalid escape character \\{}. Emit an error.") <<=
+              {*p};
+      }
+    } else {
+      switch (*p) {
+        case '\\':
+          ++p;
+          escaped = true;
+          break;
+        case '"':
+          token_buffer_.AppendStringLiteral(std::move(content),
+                                            StartIndex(source.substr(0, 1)));
+          source.remove_prefix(++p - source.data());
+          return true;
+        case '\n':
+          NTH_UNIMPLEMENTED(
+              "Raw newline in string literal should emit an error.");
+        default:
+          // TODO: Check if this is a valid character or a literal '\r', '\t' or
+          // something similar.
+          content.push_back(*p++); break;
+      }
+    }
+  }
+
+  NTH_UNIMPLEMENTED("Reached the end of the file without closing the string.");
   return false;
 }
 

@@ -12,8 +12,9 @@ message InstructionProto {
     RETURN = 3;
     PUSH = 4;
     PUSH_FUNCTION = 5;
-    DROP = 6;
-    PRINT_HELLO_WORLD = 7;
+    PUSH_STRING_LITERAL = 6;
+    DROP = 7;
+    PRINT_HELLO_WORLD = 8;
   }
   OpCode op_code = 1;
   repeated uint64 content = 2;

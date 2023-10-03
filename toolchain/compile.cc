@@ -82,7 +82,7 @@ nth::exit_code Compile(nth::FlagValueSet flags, nth::file_path const& source) {
 
   Module module(registry);
   IrContext ir_context = {
-      .emit = EmitContext(parse_tree, dependencies, module),
+      .emit = EmitContext(parse_tree, token_buffer, dependencies, module),
   };
   ir_context.ProcessIr(consumer);
   if (consumer.count() != 0) { return nth::exit_code::generic_error; }

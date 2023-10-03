@@ -209,6 +209,31 @@ struct FunctionType {
 FunctionType Function(ParametersType pt, std::vector<Type>&& r);
 FunctionType Function(ParametersType pt, std::vector<Type> const& r);
 
+struct SliceType {
+  friend bool operator==(SliceType, SliceType) = default;
+
+  template <typename H>
+  friend H AbslHashValue(H h, SliceType t) {
+    return H::combine(std::move(h), t.data_);
+  }
+
+  Type element_type() const;
+
+ private:
+  friend Type;
+  friend SliceType Slice(Type);
+
+  explicit SliceType() = default;
+  explicit constexpr SliceType(uint64_t n)
+      : data_((static_cast<uint64_t>(Type::Kind::Slice) << 48) | n) {}
+
+  uint64_t data() const { return data_ & uint64_t{0x0000ffff'ffffffff}; }
+
+  uint64_t data_;
+};
+
+SliceType Slice(Type t);
+
 #define IC_XMACRO_TYPE_KIND(kind)                                              \
   inline constexpr Type::Type(kind##Type t) : data_(t.data_) {}
 #include "type/type_kind.xmacro.h"

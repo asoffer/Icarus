@@ -24,6 +24,15 @@ void TokenBuffer::AppendIntegerLiteral(std::string_view integer,
   tokens_.push_back(Token::IntegerLiteral(offset, payload));
 }
 
+std::string_view TokenBuffer::StringLiteral(uint32_t index) const {
+  return strings_.from_index(index);
+}
+
+void TokenBuffer::AppendStringLiteral(std::string s, uint32_t offset) {
+  uint32_t index = strings_.index(strings_.insert(std::move(s)).first);
+  tokens_.push_back(Token::StringLiteral(offset, index));
+}
+
 uint32_t TokenBuffer::IdentifierIndex(std::string_view identifier) {
   return static_cast<uint32_t>(
       identifiers_.index(identifiers_.insert(identifier).first));

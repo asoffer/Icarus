@@ -135,5 +135,30 @@ NTH_TEST("lex/semicolon") {
                  HasKind(Token::Kind::Semicolon), HasKind(Token::Kind::Eof)));
 }
 
+NTH_TEST("lex/string-literal", std::string_view content) {
+  diag::NullConsumer d;
+  auto token_buffer = Lex(content, d);
+  NTH_EXPECT(token_buffer >>=
+             ElementsAreSequentially(HasKind(Token::Kind::StringLiteral),
+                                     HasKind(Token::Kind::Eof)));
+}
+
+NTH_INVOKE_TEST("lex/string-literal") {
+  for (std::string_view content : {
+           R"("")",
+           R"("abc")",
+           R"("\"")",
+           R"("\n")",
+           R"("\r")",
+           R"("\t")",
+           R"("\\")",
+           R"("\\\\")",
+           R"("abc\tdef")",
+           R"("abc\\tdef")",
+       }) {
+    co_yield content;
+  }
+}
+
 }  // namespace
 }  // namespace ic

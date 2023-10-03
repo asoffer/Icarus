@@ -34,7 +34,7 @@ struct IrContext {
     auto [iter, inserted] = emit.constants.try_emplace(range);
     NTH_REQUIRE((v.harden), inserted);
     jasmin::ValueStack& value_stack = iter->second;
-    Evaluate(range, emit.tree, emit.modules, value_stack);
+    Evaluate(range, emit.tree, emit.token_buffer, emit.modules, value_stack);
     if (IcarusDeserializeValue(
             std::span(value_stack.begin(), value_stack.end()), result)) {
       return result;

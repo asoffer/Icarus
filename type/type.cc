@@ -16,6 +16,7 @@ nth::NoDestructor<nth::flyweight_set<std::vector<ParametersType::Parameter>>>
 nth::NoDestructor<nth::flyweight_set<std::vector<Type>>> returns;
 nth::NoDestructor<nth::flyweight_set<std::pair<ParametersType, uint64_t>>>
     functions;
+nth::NoDestructor<nth::flyweight_set<Type>> slice_element_types;
 
 }  // namespace
 
@@ -56,6 +57,15 @@ FunctionType Function(ParametersType pt, std::vector<Type>&& r) {
 FunctionType Function(ParametersType pt, std::vector<Type> const& r) {
   uint64_t rt = returns->index(returns->insert(r).first);
   return FunctionType(functions->index(functions->insert({pt, rt}).first));
+}
+
+SliceType Slice(Type t) {
+  return SliceType(
+      slice_element_types->index(slice_element_types->insert(t).first));
+}
+
+Type SliceType::element_type() const {
+  return slice_element_types->from_index(data());
 }
 
 ParametersType FunctionType::parameters() const {

@@ -65,6 +65,9 @@ struct Token {
   // Constructs an integer token at the given offset.
   static Token IntegerLiteral(uint32_t offset, IntegerPayload payload);
 
+  // Constructs a string-literal token at the given offset.
+  static Token StringLiteral(uint32_t offset, uint32_t index);
+
   // Constructs an identifier token at the given offset.
   static Token Identifier(uint32_t offset, uint32_t identifier_index);
 
@@ -85,6 +88,7 @@ struct Token {
 
   IntegerPayload AsIntegerPayload() const;
   bool AsBoolean() const;
+  uint32_t AsStringLiteralIndex() const;
 
   friend void NthPrint(nth::Printer auto& p, nth::FormatterFor<Token> auto& f,
                        Token t) {
@@ -94,6 +98,7 @@ struct Token {
       case Token::Kind::IntegerLiteral:
         nth::Interpolate<" {}">(p, f, IntegerPayload(t.payload_));
         break;
+      case Token::Kind::StringLiteral:
       case Token::Kind::Identifier:
         nth::Interpolate<" #{}">(p, f, t.payload_);
         break;

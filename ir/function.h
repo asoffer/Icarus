@@ -20,13 +20,23 @@ struct PushFunction : jasmin::StackMachineInstruction<PushFunction> {
   }
 };
 
+struct PushStringLiteral : jasmin::StackMachineInstruction<PushStringLiteral> {
+  static std::string_view name() { return "push-string-literal"; }
+
+  static constexpr void execute(jasmin::ValueStack& value_stack,
+                                char const* data, size_t length) {
+    value_stack.push(data);
+    value_stack.push(length);
+  }
+};
+
 struct PrintHelloWorld : jasmin::StackMachineInstruction<PrintHelloWorld> {
   static void execute() { std::puts("Hello, world!"); }
 };
 
 using InstructionSet =
-    jasmin::MakeInstructionSet<jasmin::Push, PushFunction, jasmin::Drop,
-                               PrintHelloWorld>;
+    jasmin::MakeInstructionSet<jasmin::Push, PushFunction, PushStringLiteral,
+                               jasmin::Drop, PrintHelloWorld>;
 using IrFunction = jasmin::Function<InstructionSet>;
 
 }  // namespace ic

@@ -28,6 +28,15 @@ Token Token::IntegerLiteral(uint32_t offset, IntegerPayload payload) {
   return token;
 }
 
+
+Token Token::StringLiteral(uint32_t offset, uint32_t index) {
+  Token token;
+  token.offset_  = offset;
+  token.kind_    = static_cast<uint8_t>(Kind::StringLiteral);
+  token.payload_ = index;
+  return token;
+}
+
 Token::IntegerPayload Token::AsIntegerPayload() const {
   NTH_REQUIRE((v.debug), kind() == Kind::IntegerLiteral);
   return IntegerPayload(payload_);
@@ -39,6 +48,11 @@ bool Token::AsBoolean() const {
     case Kind::False: return false;
     default: NTH_UNREACHABLE("{}") <<= {*this};
   }
+}
+
+uint32_t Token::AsStringLiteralIndex() const {
+  NTH_REQUIRE(kind() == Kind::StringLiteral);
+  return payload_;
 }
 
 Token Token::Identifier(uint32_t offset, uint32_t identifier_index) {

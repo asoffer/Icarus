@@ -10,6 +10,7 @@
 #include "ir/module.h"
 #include "ir/module_id.h"
 #include "jasmin/value_stack.h"
+#include "lexer/token_buffer.h"
 #include "nth/base/attributes.h"
 #include "parser/parse_tree.h"
 #include "type/type.h"
@@ -17,16 +18,24 @@
 namespace ic {
 
 struct EmitContext {
-  explicit EmitContext(ParseTree const& tree NTH_ATTRIBUTE(lifetimebound),
-                       DependentModules const& modules
-                           NTH_ATTRIBUTE(lifetimebound),
-                       IrFunction& f)
-      : tree(tree), function_stack{&f}, modules(modules) {}
-  explicit EmitContext(ParseTree const& tree NTH_ATTRIBUTE(lifetimebound),
-                       DependentModules const& modules
-                           NTH_ATTRIBUTE(lifetimebound),
-                       Module& module)
-      : tree(tree), function_stack{&module.initializer()}, modules(modules) {}
+  explicit EmitContext(
+      ParseTree const& tree NTH_ATTRIBUTE(lifetimebound),
+      TokenBuffer const& token_buffer NTH_ATTRIBUTE(lifetimebound),
+      DependentModules const& modules NTH_ATTRIBUTE(lifetimebound),
+      IrFunction& f)
+      : tree(tree),
+        function_stack{&f},
+        token_buffer(token_buffer),
+        modules(modules) {}
+  explicit EmitContext(
+      ParseTree const& tree NTH_ATTRIBUTE(lifetimebound),
+      TokenBuffer const& token_buffer NTH_ATTRIBUTE(lifetimebound),
+      DependentModules const& modules NTH_ATTRIBUTE(lifetimebound),
+      Module& module)
+      : tree(tree),
+        function_stack{&module.initializer()},
+        token_buffer(token_buffer),
+        modules(modules) {}
 
   Module const& module(ModuleId id) const { return modules[id]; }
 
@@ -61,6 +70,7 @@ struct EmitContext {
   // TODO: This should really be it's own interval map type.
   absl::btree_map<nth::interval<ParseTree::Node::Index>, jasmin::ValueStack, Compare>
       constants;
+  TokenBuffer const & token_buffer;
   DependentModules const & modules;
 };
 
@@ -68,6 +78,7 @@ void EmitIr(nth::interval<ParseTree::Node::Index> node_range, EmitContext& conte
 
 void Evaluate(nth::interval<ParseTree::Node::Index> subtree,
               ParseTree const& tree,
+              TokenBuffer const& token_buffer NTH_ATTRIBUTE(lifetimebound),
               DependentModules const& modules NTH_ATTRIBUTE(lifetimebound),
               jasmin::ValueStack& value_stack);
 

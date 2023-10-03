@@ -304,6 +304,9 @@ void Parser::HandleAtomicTerm(ParseTree& tree) {
     case Token::Kind::Builtin: k = ParseTree::Node::Kind::BuiltinLiteral; break;
     case Token::Kind::True:
     case Token::Kind::False: k = ParseTree::Node::Kind::BooleanLiteral; break;
+    case Token::Kind::StringLiteral:
+      k = ParseTree::Node::Kind::StringLiteral;
+      break;
     case Token::Kind::IntegerLiteral:
       k = ParseTree::Node::Kind::IntegerLiteral;
       break;

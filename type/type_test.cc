@@ -55,6 +55,14 @@ NTH_TEST("type/parameters/construction") {
              Parameters({ParametersType::Parameter{.name = 4, .type = Char}}));
 }
 
+NTH_TEST("type/slice") {
+  NTH_EXPECT(Slice(Char) == Slice(Char));
+  NTH_EXPECT(Slice(Slice(Char)) != Slice(Char));
+  NTH_EXPECT(Slice(Slice(Char)).element_type() == Slice(Char));
+  NTH_EXPECT(Slice(Slice(Char)).element_type().AsSlice().element_type() ==
+             Char);
+}
+
 NTH_TEST("qualified-type/construction") {
   NTH_EXPECT(QualifiedType(Qualifier::Constant(), Bool).type() == Bool);
   NTH_EXPECT(QualifiedType(Qualifier::Constant(), Bool).qualifier() ==
