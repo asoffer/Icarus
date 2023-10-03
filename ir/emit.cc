@@ -106,7 +106,7 @@ void HandleParseTreeNodeExpressionGroup(ParseTree::Node::Index, EmitContext&) {
 void HandleParseTreeNodeMemberExpression(ParseTree::Node::Index index,
                                          EmitContext& context) {
   // TODO: Once we have interval_map this will be easier.
-  jasmin::ValueStack const* vs;
+  jasmin::ValueStack const* vs = nullptr;
   for (auto const& [range, value_stack] : context.constants) {
     if (range.upper_bound() == index) {
       vs = &value_stack;
@@ -141,13 +141,12 @@ void EmitNonConstant(nth::interval<ParseTree::Node::Index> node_range,
     switch (node->kind) {
 #define IC_XMACRO_PARSE_TREE_NODE_KIND(kind)                                   \
   case ParseTree::Node::Kind::kind:                                            \
-    NTH_LOG((v.when(true)), "Parse node {}") <<= {#kind};                      \
+    NTH_LOG((v.when(false)), "Emit node {}") <<= {#kind};                      \
     HandleParseTreeNode##kind(index, context);                                 \
     break;
 #include "parser/parse_tree_node_kind.xmacro.h"
     }
   }
-  context.function_stack.back()->append<jasmin::Return>();
 }
 
 }  // namespace
@@ -164,7 +163,7 @@ void EmitContext::Push(jasmin::Value v, type::Type t) {
 }
 
 void EmitIr(nth::interval<ParseTree::Node::Index> node_range, EmitContext& context) {
-  ParseTree::Node::Index start{0};
+  ParseTree::Node::Index start = node_range.lower_bound();
   for (auto const& [range, value_stack] : context.constants) {
     EmitNonConstant(nth::interval(start, range.lower_bound()), context);
     // TODO: This type is wrong.

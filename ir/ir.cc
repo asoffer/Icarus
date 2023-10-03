@@ -211,7 +211,7 @@ void IrContext::ProcessIr(diag::DiagnosticConsumer& diag) {
     switch (node.kind) {
 #define IC_XMACRO_PARSE_TREE_NODE_KIND(kind)                                   \
   case ParseTree::Node::Kind::kind:                                            \
-    NTH_LOG((v.when(true)), "Parse node {}") <<= {#kind};                     \
+    NTH_LOG((v.when(false)), "Parse node {}") <<= {#kind};                     \
     HandleParseTreeNode##kind(ParseTree::Node::Index(i), *this, diag);         \
     break;
 #include "parser/parse_tree_node_kind.xmacro.h"
