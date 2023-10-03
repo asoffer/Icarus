@@ -1,9 +1,0 @@
-syntax = "proto3";
-
-package serialization.proto;
-
-message Function {
-  uint32 parameters = 1;
-  uint32 returns = 2;
-  bytes content = 3;
-}

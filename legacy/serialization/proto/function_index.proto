@@ -1,7 +1,0 @@
-syntax = "proto3";
-
-package serialization.proto;
-
-message FunctionIndex {
-  uint32 index = 1;
-}

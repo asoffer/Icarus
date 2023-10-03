@@ -1,7 +1,0 @@
-syntax = "proto3";
-
-package serialization.proto;
-
-message ReadOnlyData {
-  repeated string strings = 1;
-}
