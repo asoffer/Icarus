@@ -15,13 +15,18 @@ nth::NoDestructor<IrFunction> Print([] {
   return f;
 }());
 
-Module BuiltinModule(TokenBuffer& token_buffer) {
-  Module m;
+Module BuiltinModule(TokenBuffer& token_buffer,
+                     GlobalFunctionRegistry& registry) {
+  uint32_t next_id = 0;
+
+  Module m(registry);
   m.Insert(token_buffer.IdentifierIndex("hello_world"),
            {.qualified_type = type::QualifiedType(
                 type::Qualifier::Constant(),
                 type::Function(type::Parameters({}), {type::Bool})),
             .value = {jasmin::Value(&*Print)}});
+  registry.Register(FunctionId(ModuleId::Builtin(), LocalFunctionId(next_id++)),
+                    &*Print);
   return m;
 }
 

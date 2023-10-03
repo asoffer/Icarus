@@ -1,20 +1,32 @@
 #ifndef ICARUS_IR_EXECUTE_H
 #define ICARUS_IR_EXECUTE_H
 
+#include "ir/dependent_modules.h"
 #include "ir/module.h"
 #include "ir/module.pb.h"
+#include "lexer/token_buffer.h"
 #include "nth/base/attributes.h"
 
 namespace ic {
 
 struct Deserializer {
-  bool Deserialize(ModuleProto const& proto, Module& module);
+  explicit Deserializer(TokenBuffer& token_buffer,
+                        GlobalFunctionRegistry& registry)
+      : token_buffer_(token_buffer), registry_(registry) {}
 
-  void set_builtin_module(Module& builtin NTH_ATTRIBUTE(lifetimebound)) {
-    builtin_module_ = &builtin;
-  }
+  bool Deserialize(ModuleProto const& proto, Module& module);
+  bool DeserializeFunction(FunctionProto const& proto, IrFunction& f);
+
+  // Populates `dm` from the given collection of serialized modules. Serialized
+  // modules must constitute all transitive dependencies of the
+  // currently-being-compiled module and must be listed in a topologically
+  // sorted order so that if `b` depends on `a`, then `a` appears before `b`.
+  bool DeserializeDependentModules(std::span<ModuleProto const> protos,
+                                   DependentModules& dm);
 
  private:
+  TokenBuffer& token_buffer_;
+  GlobalFunctionRegistry& registry_;
   Module const* builtin_module_;
 };
 

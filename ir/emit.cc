@@ -176,9 +176,11 @@ void EmitIr(nth::interval<ParseTree::Node::Index> node_range, EmitContext& conte
 }
 
 void Evaluate(nth::interval<ParseTree::Node::Index> subtree,
-              ParseTree const& tree, jasmin::ValueStack& value_stack) {
+              ParseTree const& tree,
+              DependentModules const& modules NTH_ATTRIBUTE(lifetimebound),
+              jasmin::ValueStack& value_stack) {
   IrFunction f(0, 1);
-  EmitContext context(tree, f);
+  EmitContext context(tree, modules, f);
   EmitIr(subtree, context);
   context.function_stack.back()->append<jasmin::Return>();
   jasmin::Execute(f, value_stack);

@@ -1,16 +1,14 @@
 #include "ir/deserialize.h"
 
+#include "ir/builtin_module.h"
 #include "nth/debug/debug.h"
 #include "nth/debug/log/log.h"
 
 namespace ic {
 
-bool Deserializer::Deserialize(ModuleProto const& proto, Module& module) {
-  NTH_REQUIRE(proto.initializer().parameters() == 0);
-  NTH_REQUIRE(proto.initializer().returns() == 0);
-
-  auto& f = module.initializer();
-  for (auto const& instruction : proto.initializer().instructions()) {
+bool Deserializer::DeserializeFunction(FunctionProto const& proto,
+                                       IrFunction& f) {
+  for (auto const& instruction : proto.instructions()) {
     uint64_t op_code = static_cast<uint64_t>(instruction.op_code());
 
     jasmin::Value op_code_value = jasmin::Value::Uninitialized();
@@ -24,7 +22,7 @@ bool Deserializer::Deserialize(ModuleProto const& proto, Module& module) {
         [[maybe_unused]] uint32_t module_index = index >> 32;
         uint32_t function_index                = index & uint32_t{0xffffffff};
         NTH_REQUIRE(builtin_module_ != nullptr);
-        auto entry =  builtin_module_->Lookup(function_index);
+        auto entry = builtin_module_->Lookup(function_index);
         if (entry.qualified_type.type() == type::Error) { return false; }
         if (entry.value.size() != 1) { return false; }
         f.raw_append(entry.value[0]);
@@ -41,6 +39,43 @@ bool Deserializer::Deserialize(ModuleProto const& proto, Module& module) {
           f.raw_append(v);
         }
       } break;
+    }
+  }
+  return true;
+}
+
+bool Deserializer::Deserialize(ModuleProto const& proto, Module& module) {
+  if (proto.initializer().parameters() != 0) { return false; }
+  if (proto.initializer().returns() != 0) { return false; }
+
+  // Insert all functions, so that when we populate their bodies we have a
+  // stable `IrFunction` to refer to.
+  for (auto const& function : proto.functions()) {
+    module.add_function(function.parameters(), function.returns());
+  }
+
+  if (not DeserializeFunction(proto.initializer(), module.initializer())) {
+    return false;
+  }
+
+  size_t i = 0;
+  for (auto const& function : proto.functions()) {
+    if (not DeserializeFunction(function, module.functions()[i++])) {
+      return false;
+    }
+  }
+  return true;
+}
+
+bool Deserializer::DeserializeDependentModules(
+    std::span<ModuleProto const> protos, DependentModules& dm) {
+  NTH_REQUIRE(dm.count() == 0);
+  dm.modules_.reserve(protos.size() + 1);
+  dm.modules_.emplace_back(BuiltinModule(token_buffer_, registry_));
+  builtin_module_ = &dm.modules_[0];
+  for (auto const& proto : protos) {
+    if (not Deserialize(proto, dm.modules_.emplace_back(registry_))) {
+      return false;
     }
   }
   return true;

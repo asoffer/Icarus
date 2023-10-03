@@ -6,6 +6,7 @@
 
 #include "absl/container/btree_map.h"
 #include "absl/container/flat_hash_map.h"
+#include "ir/dependent_modules.h"
 #include "ir/module.h"
 #include "ir/module_id.h"
 #include "jasmin/value_stack.h"
@@ -17,13 +18,17 @@ namespace ic {
 
 struct EmitContext {
   explicit EmitContext(ParseTree const& tree NTH_ATTRIBUTE(lifetimebound),
+                       DependentModules const& modules
+                           NTH_ATTRIBUTE(lifetimebound),
                        IrFunction& f)
-      : tree(tree), function_stack{&f} {}
+      : tree(tree), function_stack{&f}, modules(modules) {}
   explicit EmitContext(ParseTree const& tree NTH_ATTRIBUTE(lifetimebound),
+                       DependentModules const& modules
+                           NTH_ATTRIBUTE(lifetimebound),
                        Module& module)
-      : tree(tree), function_stack{&module.initializer()} {}
+      : tree(tree), function_stack{&module.initializer()}, modules(modules) {}
 
-  Module const& module(ModuleId id) const { return modules[id.value()]; }
+  Module const& module(ModuleId id) const { return modules[id]; }
 
   void Push(jasmin::Value v, type::Type);
 
@@ -56,13 +61,15 @@ struct EmitContext {
   // TODO: This should really be it's own interval map type.
   absl::btree_map<nth::interval<ParseTree::Node::Index>, jasmin::ValueStack, Compare>
       constants;
-  std::vector<Module> modules;
+  DependentModules const & modules;
 };
 
 void EmitIr(nth::interval<ParseTree::Node::Index> node_range, EmitContext& context);
 
 void Evaluate(nth::interval<ParseTree::Node::Index> subtree,
-              ParseTree const& tree, jasmin::ValueStack& value_stack);
+              ParseTree const& tree,
+              DependentModules const& modules NTH_ATTRIBUTE(lifetimebound),
+              jasmin::ValueStack& value_stack);
 
 }  // namespace ic
 

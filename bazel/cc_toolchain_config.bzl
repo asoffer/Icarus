@@ -110,6 +110,7 @@ def _impl(ctx):
                 "-fPIE",
             ]),
             linking_flags([
+                "-lm",
                 "-lstdc++",
             ]),
             mode_dependent_flags({

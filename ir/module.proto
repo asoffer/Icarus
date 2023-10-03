@@ -28,4 +28,7 @@ message FunctionProto {
 message ModuleProto {
   // Subroutine at which to begin execution.
   FunctionProto initializer = 1;
+
+  // Subroutines defined within the module.
+  repeated FunctionProto functions = 2;
 }

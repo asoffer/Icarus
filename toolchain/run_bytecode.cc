@@ -6,7 +6,7 @@
 #include "common/string.h"
 #include "diagnostics/consumer/streaming.h"
 #include "diagnostics/message.h"
-#include "ir/builtin_module.h"
+#include "ir/dependent_modules.h"
 #include "ir/deserialize.h"
 #include "ir/module.h"
 #include "ir/module.pb.h"
@@ -37,13 +37,22 @@ nth::exit_code Run(nth::FlagValueSet flags, std::span<std::string_view const>) {
     return nth::exit_code::generic_error;
   }
 
+  GlobalFunctionRegistry registry;
   ModuleProto proto;
-  Module module;
+  Module module(registry);
 
   TokenBuffer token_buffer;
-  Module builtin = BuiltinModule(token_buffer);
-  Deserializer d;
-  d.set_builtin_module(builtin);
+
+  std::vector<ModuleProto> dependent_module_protos;
+  DependentModules dependencies;
+  Deserializer d(token_buffer, registry);
+  if (not d.DeserializeDependentModules(dependent_module_protos,
+                                        dependencies)) {
+    consumer.Consume({diag::Header(diag::MessageKind::Error),
+                      diag::Text("Failed to deserialize dependent modules.")});
+    return nth::exit_code::generic_error;
+  }
+
   if (not proto.ParseFromIstream(&in) or not d.Deserialize(proto, module)) {
     consumer.Consume({
         diag::Header(diag::MessageKind::Error),

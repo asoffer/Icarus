@@ -2,36 +2,20 @@
 #define ICARUS_IR_MODULE_H
 
 #include <cstdint>
+#include <span>
 
 #include "absl/container/flat_hash_map.h"
 #include "absl/container/inlined_vector.h"
-#include "jasmin/function.h"
-#include "jasmin/instruction.h"
-#include "jasmin/instructions/core.h"
+#include "ir/function.h"
+#include "ir/global_function_registry.h"
 #include "jasmin/value.h"
 #include "type/type.h"
 
 namespace ic {
 
-struct PushFunction : jasmin::StackMachineInstruction<PushFunction> {
-  static std::string_view name() { return "push-function"; }
-
-  static constexpr void execute(jasmin::ValueStack& value_stack,
-                                jasmin::Value v) {
-    value_stack.push(v);
-  }
-};
-
-struct PrintHelloWorld : jasmin::StackMachineInstruction<PrintHelloWorld> {
-  static void execute() { std::cerr << "Hello, world!\n"; }
-};
-
-using InstructionSet =
-    jasmin::MakeInstructionSet<jasmin::Push, PushFunction, jasmin::Drop,
-                               PrintHelloWorld>;
-using IrFunction     = jasmin::Function<InstructionSet>;
-
 struct Module {
+  explicit Module(GlobalFunctionRegistry& registry) : registry_(&registry) {}
+
   struct Entry {
     type::QualifiedType qualified_type =
         type::QualifiedType(type::Qualifier::Unqualified(), type::Error);
@@ -43,13 +27,25 @@ struct Module {
   constexpr IrFunction& initializer() { return initializer_; }
   constexpr IrFunction const& initializer() const { return initializer_; }
 
+  constexpr std::span<IrFunction> functions() { return functions_; }
+  constexpr std::span<IrFunction const> functions() const { return functions_; }
+
+  IrFunction& add_function(size_t parameters, size_t returns) {
+    auto& f = functions_.emplace_back(parameters, returns);
+    registry_->Register(
+        FunctionId(ModuleId::Current(), LocalFunctionId(functions_.size() - 1)),
+        &f);
+    return f;
+  }
+
  private:
   static Entry const DefaultEntry;
 
   absl::flat_hash_map<uint32_t, Entry> entries_;
   IrFunction initializer_{0, 0};
+  std::vector<IrFunction> functions_;
+  GlobalFunctionRegistry* registry_;
 };
-
 
 }  // namespace ic
 
