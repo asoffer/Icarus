@@ -17,6 +17,9 @@ nth::NoDestructor<nth::flyweight_set<std::vector<Type>>> returns;
 nth::NoDestructor<nth::flyweight_set<std::pair<ParametersType, uint64_t>>>
     functions;
 nth::NoDestructor<nth::flyweight_set<Type>> slice_element_types;
+nth::NoDestructor<nth::flyweight_set<Type>> pointee_types;
+nth::NoDestructor<nth::flyweight_set<Type>> buffer_pointee_types;
+nth::NoDestructor<nth::flyweight_set<Type>> pattern_types;
 
 }  // namespace
 
@@ -64,8 +67,31 @@ SliceType Slice(Type t) {
       slice_element_types->index(slice_element_types->insert(t).first));
 }
 
+PointerType Ptr(Type t) {
+  return PointerType(pointee_types->index(pointee_types->insert(t).first));
+}
+
+BufferPointerType BufPtr(Type t) {
+  return BufferPointerType(
+      buffer_pointee_types->index(buffer_pointee_types->insert(t).first));
+}
+
+PatternType Pattern(Type t) {
+  return PatternType(pattern_types->index(pattern_types->insert(t).first));
+}
+
 Type SliceType::element_type() const {
   return slice_element_types->from_index(data());
+}
+
+Type PatternType::match_type() const {
+  return pattern_types->from_index(data());
+}
+
+Type PointerType::pointee() const { return pointee_types->from_index(data()); }
+
+Type BufferPointerType::pointee() const {
+  return buffer_pointee_types->from_index(data());
 }
 
 ParametersType FunctionType::parameters() const {

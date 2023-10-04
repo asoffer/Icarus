@@ -108,20 +108,43 @@ struct QualifiedType {
   uint64_t data_;
 };
 
+namespace internal_type {
+
+struct BasicType {
+  explicit BasicType() = default;
+  explicit constexpr BasicType(Type::Kind k, uint64_t n)
+      : data_((static_cast<uint64_t>(k) << 48) | n) {}
+
+  friend bool operator==(BasicType, BasicType) = default;
+  friend bool operator!=(BasicType, BasicType) = default;
+
+  template <typename H>
+  friend H AbslHashValue(H h, std::derived_from<BasicType> auto t) {
+    return H::combine(std::move(h), t.data_);
+  }
+
+ protected:
+  uint64_t data() const { return data_ & uint64_t{0x0000ffff'ffffffff}; }
+
+ private:
+  friend Type;
+  uint64_t data_;
+};
+
+}  // namespace internal_type
+
 // Represents a primitive type built-in to the language.
-struct PrimitiveType {
+struct PrimitiveType : internal_type::BasicType {
   enum class Kind : uint8_t {
 #define IC_XMACRO_TOKEN_KIND_BUILTIN_TYPE(kind, symbol, spelling) kind,
 #include "lexer/token_kind.xmacro.h"
   };
 
   explicit constexpr PrimitiveType(Kind k)
-      : data_((static_cast<uint64_t>(Type::Kind::Primitive) << 48) |
-               static_cast<uint64_t>(k)) {}
+      : internal_type::BasicType(Type::Kind::Primitive,
+                                 static_cast<uint64_t>(k)) {}
 
-  friend bool operator==(PrimitiveType, PrimitiveType) = default;
-
-  Kind kind() const { return static_cast<Kind>(data_ & 0xff); }
+  Kind kind() const { return static_cast<Kind>(data() & 0xff); }
 
   friend void NthPrint(auto& p, auto& f, PrimitiveType t) {
     switch (t.kind()) {
@@ -136,12 +159,10 @@ struct PrimitiveType {
  private:
   friend Type;
   PrimitiveType() = default;
-
-  uint64_t data_;
 };
 
 // Represents a set of parameters to an invocable type.
-struct ParametersType {
+struct ParametersType : internal_type::BasicType {
   struct Parameter {
     uint64_t name;
     Type type;
@@ -154,13 +175,6 @@ struct ParametersType {
     }
   };
 
-  friend bool operator==(ParametersType, ParametersType) = default;
-
-  template <typename H>
-  friend H AbslHashValue(H h, ParametersType t) {
-    return H::combine(std::move(h), t.data_);
-  }
-
   std::vector<Parameter> const& operator*() const;
 
  private:
@@ -171,24 +185,13 @@ struct ParametersType {
 
   explicit ParametersType() = default;
   explicit constexpr ParametersType(uint64_t n)
-      : data_((static_cast<uint64_t>(Type::Kind::Parameters) << 48) | n) {}
-
-  uint64_t data() const { return data_ & uint64_t{0x0000ffff'ffffffff}; }
-
-  uint64_t data_;
+      : internal_type::BasicType(Type::Kind::Parameters, n) {}
 };
 
 ParametersType Parameters(std::vector<ParametersType::Parameter>&& p);
 ParametersType Parameters(std::vector<ParametersType::Parameter> const& p);
 
-struct FunctionType {
-  friend bool operator==(FunctionType, FunctionType) = default;
-
-  template <typename H>
-  friend H AbslHashValue(H h, FunctionType t) {
-    return H::combine(std::move(h), t.data_);
-  }
-
+struct FunctionType : internal_type::BasicType {
   ParametersType parameters() const;
   std::vector<Type> const& returns() const;
 
@@ -199,24 +202,55 @@ struct FunctionType {
 
   explicit FunctionType() = default;
   explicit constexpr FunctionType(uint64_t n)
-      : data_((static_cast<uint64_t>(Type::Kind::Function) << 48) | n) {}
-
-  uint64_t data() const { return data_ & uint64_t{0x0000ffff'ffffffff}; }
-
-  uint64_t data_;
+      : internal_type::BasicType(Type::Kind::Function, n) {}
 };
 
 FunctionType Function(ParametersType pt, std::vector<Type>&& r);
 FunctionType Function(ParametersType pt, std::vector<Type> const& r);
 
-struct SliceType {
-  friend bool operator==(SliceType, SliceType) = default;
+struct PointerType : internal_type::BasicType {
+  Type pointee() const;
 
-  template <typename H>
-  friend H AbslHashValue(H h, SliceType t) {
-    return H::combine(std::move(h), t.data_);
-  }
+ private:
+  friend Type;
+  friend PointerType Ptr(Type);
 
+  explicit PointerType() = default;
+  explicit constexpr PointerType(uint64_t n)
+      : BasicType(Type::Kind::Pointer, n) {}
+};
+
+PointerType Ptr(Type t);
+
+struct BufferPointerType : internal_type::BasicType {
+  Type pointee() const;
+
+ private:
+  friend Type;
+  friend BufferPointerType BufPtr(Type);
+
+  explicit BufferPointerType() = default;
+  explicit constexpr BufferPointerType(uint64_t n)
+      : BasicType(Type::Kind::BufferPointer, n) {}
+};
+
+BufferPointerType BufPtr(Type t);
+
+struct PatternType : internal_type::BasicType {
+  Type match_type() const;
+
+ private:
+  friend Type;
+  friend PatternType Pattern(Type);
+
+  explicit PatternType() = default;
+  explicit constexpr PatternType(uint64_t n)
+      : BasicType(Type::Kind::Pattern, n) {}
+};
+
+PatternType Pattern(Type t);
+
+struct SliceType : internal_type::BasicType {
   Type element_type() const;
 
  private:
@@ -225,12 +259,9 @@ struct SliceType {
 
   explicit SliceType() = default;
   explicit constexpr SliceType(uint64_t n)
-      : data_((static_cast<uint64_t>(Type::Kind::Slice) << 48) | n) {}
-
-  uint64_t data() const { return data_ & uint64_t{0x0000ffff'ffffffff}; }
-
-  uint64_t data_;
+      : BasicType(Type::Kind::Slice, n) {}
 };
+
 
 SliceType Slice(Type t);
 

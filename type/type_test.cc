@@ -55,6 +55,32 @@ NTH_TEST("type/parameters/construction") {
              Parameters({ParametersType::Parameter{.name = 4, .type = Char}}));
 }
 
+NTH_TEST("type/pointer") {
+  NTH_EXPECT(Ptr(Char) == Ptr(Char));
+  NTH_EXPECT(Ptr(Ptr(Char)) != Ptr(Char));
+  NTH_EXPECT(Ptr(Ptr(Char)).pointee() == Ptr(Char));
+  NTH_EXPECT(Ptr(Ptr(Char)).pointee().AsPointer().pointee() == Char);
+}
+
+NTH_TEST("type/buffer-pointer") {
+  NTH_EXPECT(BufPtr(Char) == BufPtr(Char));
+  NTH_EXPECT(BufPtr(Ptr(Char)) != Ptr(Char));
+  NTH_EXPECT(BufPtr(Ptr(Char)).pointee() == Ptr(Char));
+  NTH_EXPECT(BufPtr(Ptr(Char)).pointee().AsPointer().pointee() == Char);
+  NTH_EXPECT(BufPtr(BufPtr(Char)) != BufPtr(Char));
+  NTH_EXPECT(BufPtr(BufPtr(Char)).pointee() == BufPtr(Char));
+  NTH_EXPECT(BufPtr(BufPtr(Char)).pointee().AsBufferPointer().pointee() ==
+             Char);
+}
+
+NTH_TEST("type/pattern") {
+  NTH_EXPECT(Pattern(Char) == Pattern(Char));
+  NTH_EXPECT(Pattern(Pattern(Char)) != Pattern(Char));
+  NTH_EXPECT(Pattern(Pattern(Char)).match_type() == Pattern(Char));
+  NTH_EXPECT(Pattern(Pattern(Char)).match_type().AsPattern().match_type() ==
+             Char);
+}
+
 NTH_TEST("type/slice") {
   NTH_EXPECT(Slice(Char) == Slice(Char));
   NTH_EXPECT(Slice(Slice(Char)) != Slice(Char));
