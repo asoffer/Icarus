@@ -39,11 +39,6 @@ Type::Kind Type::kind() const {
   return static_cast<Kind>((data_ >> 48) & 0xff);
 }
 
-size_t Size(Type t) {
-  // TODO: This is not correct.
-  return 1;
-}
-
 ParametersType Parameters(std::vector<ParametersType::Parameter> const& p) {
   return ParametersType(parameters->index(parameters->insert(p).first));
 }
@@ -105,6 +100,18 @@ std::vector<ParametersType::Parameter> const& ParametersType::operator*()
 
 std::vector<Type> const& FunctionType::returns() const {
   return ic::type::returns->from_index(functions->from_index(data()).second);
+}
+
+size_t JasminSize(Type t) {
+  switch (t.kind()) {
+    case Type::Kind::Primitive: return 1;
+    case Type::Kind::Parameters: NTH_UNREACHABLE("{}") <<= {t};
+    case Type::Kind::Function: return 1;
+    case Type::Kind::Slice: return 2;
+    case Type::Kind::Pointer: return 1;
+    case Type::Kind::BufferPointer: return 1;
+    case Type::Kind::Pattern: return 1;
+  }
 }
 
 }  // namespace ic::type

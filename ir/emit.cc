@@ -56,7 +56,7 @@ void HandleParseTreeNodeStatementSequence(ParseTree::Node::Index index,
   auto iter = context.statement_qualified_type.find(node);
   NTH_REQUIRE(iter != context.statement_qualified_type.end());
   context.function_stack.back()->append<jasmin::Drop>(
-      type::Size(iter->second.type()));
+      type::JasminSize(iter->second.type()));
 }
 
 void HandleParseTreeNodeIdentifier(ParseTree::Node::Index index,

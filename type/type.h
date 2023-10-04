@@ -79,6 +79,10 @@ struct Qualifier {
     H::combine(std::move(h), q.data_);
   }
 
+  friend void NthPrint(auto& p, auto&, Qualifier q) {
+    if (q.data_ == 1) { p.write("c"); }
+  }
+
  private:
   friend struct QualifiedType;
   explicit constexpr Qualifier(uint8_t data) : data_(data) {}
@@ -92,11 +96,18 @@ struct QualifiedType {
   constexpr explicit QualifiedType(Qualifier q, Type t)
       : data_(static_cast<uint64_t>(q.data_) << 56 | t.data_) {}
 
-  friend bool operator==(QualifiedType,QualifiedType) = default;
+  friend bool operator==(QualifiedType, QualifiedType) = default;
 
   template <typename H>
   friend H AbslHashValue(H h, QualifiedType q) {
     return H::combine(std::move(h), q.data_);
+  }
+
+  friend void NthPrint(auto& p, auto& f, QualifiedType qt) {
+    f(p, qt.qualifier());
+    p.write(".(");
+    f(p, qt.type());
+    p.write(")");
   }
 
   constexpr Qualifier qualifier() const { return Qualifier(data_ >> 56); }
@@ -211,6 +222,11 @@ FunctionType Function(ParametersType pt, std::vector<Type> const& r);
 struct PointerType : internal_type::BasicType {
   Type pointee() const;
 
+  friend void NthPrint(auto& p, auto& f, PointerType ptr) {
+    p.write("*");
+    f(p, ptr.pointee());
+  }
+
  private:
   friend Type;
   friend PointerType Ptr(Type);
@@ -224,6 +240,11 @@ PointerType Ptr(Type t);
 
 struct BufferPointerType : internal_type::BasicType {
   Type pointee() const;
+
+  friend void NthPrint(auto& p, auto& f, BufferPointerType ptr) {
+    p.write("[*]");
+    f(p, ptr.pointee());
+  }
 
  private:
   friend Type;
@@ -253,6 +274,11 @@ PatternType Pattern(Type t);
 struct SliceType : internal_type::BasicType {
   Type element_type() const;
 
+  friend void NthPrint(auto& p, auto& f, SliceType s) {
+    p.write("[]");
+    f(p, s.element_type());
+  }
+
  private:
   friend Type;
   friend SliceType Slice(Type);
@@ -261,7 +287,6 @@ struct SliceType : internal_type::BasicType {
   explicit constexpr SliceType(uint64_t n)
       : BasicType(Type::Kind::Slice, n) {}
 };
-
 
 SliceType Slice(Type t);
 
@@ -283,7 +308,9 @@ void NthPrint(auto& p, auto& f, Type t) {
   }
 }
 
-size_t Size(Type t);
+// Returns the number of `jasmin::Value`s required to hold a value of the given
+// type `t`.
+size_t JasminSize(Type t);
 
 }  // namespace ic::type
 
