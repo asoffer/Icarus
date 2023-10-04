@@ -2,7 +2,7 @@
 
 #include <string_view>
 
-#include "lexer/token_buffer.h"
+#include "common/resources.h"
 #include "nth/utility/no_destructor.h"
 
 namespace ic {
@@ -15,12 +15,11 @@ nth::NoDestructor<IrFunction> Print([] {
   return f;
 }());
 
-Module BuiltinModule(TokenBuffer& token_buffer,
-                     GlobalFunctionRegistry& registry) {
+Module BuiltinModule(GlobalFunctionRegistry& registry) {
   uint32_t next_id = 0;
 
   Module m(registry);
-  m.Insert(token_buffer.IdentifierIndex("hello_world"),
+  m.Insert(resources.IdentifierIndex("hello_world"),
            {.qualified_type = type::QualifiedType(
                 type::Qualifier::Constant(),
                 type::Function(type::Parameters({}), {type::Bool})),

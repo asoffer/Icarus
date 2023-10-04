@@ -25,3 +25,8 @@ cc_library(
     ],
 )
 
+cc_library(
+    name = "resources",
+    hdrs = ["resources.h"],
+    deps = [],
+)

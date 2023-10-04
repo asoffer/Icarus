@@ -4,7 +4,7 @@
 #include "lexer/token_matchers.h"
 #include "nth/test/test.h"
 
-namespace ic {
+namespace ic::lex {
 namespace {
 
 using ::ic::testing::HasImmediateIntegerValue;
@@ -161,4 +161,4 @@ NTH_INVOKE_TEST("lex/string-literal") {
 }
 
 }  // namespace
-}  // namespace ic
+}  // namespace ic::lex

@@ -20,10 +20,6 @@ struct TokenBuffer {
   void AppendStringLiteral(std::string s, uint32_t offset);
   void AppendKeywordOrIdentifier(std::string_view identifier, uint32_t offset);
 
-  uint32_t IdentifierIndex(std::string_view identifier);
-
-  std::string_view StringLiteral(uint32_t index) const;
-
   Token operator[](size_t index) const { return tokens_[index]; }
   size_t size() const { return tokens_.size(); }
 
@@ -36,9 +32,6 @@ struct TokenBuffer {
   friend TokenBuffer Lex(std::string_view source,
                          diag::DiagnosticConsumer& diagnostic_consumer);
 
-  nth::flyweight_set<std::string> strings_;
-  nth::flyweight_set<std::string_view> identifiers_;
-  nth::flyweight_set<uint64_t> integers_;
   std::vector<Token> tokens_;
 };
 

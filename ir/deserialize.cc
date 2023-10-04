@@ -71,7 +71,7 @@ bool Deserializer::DeserializeDependentModules(
     std::span<ModuleProto const> protos, DependentModules& dm) {
   NTH_REQUIRE(dm.count() == 0);
   dm.modules_.reserve(protos.size() + 1);
-  dm.modules_.emplace_back(BuiltinModule(token_buffer_, registry_));
+  dm.modules_.emplace_back(BuiltinModule(registry_));
   builtin_module_ = &dm.modules_[0];
   for (auto const& proto : protos) {
     if (not Deserialize(proto, dm.modules_.emplace_back(registry_))) {

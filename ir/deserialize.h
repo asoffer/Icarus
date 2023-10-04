@@ -4,15 +4,13 @@
 #include "ir/dependent_modules.h"
 #include "ir/module.h"
 #include "ir/module.pb.h"
-#include "lexer/token_buffer.h"
 #include "nth/base/attributes.h"
 
 namespace ic {
 
 struct Deserializer {
-  explicit Deserializer(TokenBuffer& token_buffer,
-                        GlobalFunctionRegistry& registry)
-      : token_buffer_(token_buffer), registry_(registry) {}
+  explicit Deserializer(GlobalFunctionRegistry& registry)
+      : registry_(registry) {}
 
   bool Deserialize(ModuleProto const& proto, Module& module);
   bool DeserializeFunction(FunctionProto const& proto, IrFunction& f);
@@ -25,7 +23,6 @@ struct Deserializer {
                                    DependentModules& dm);
 
  private:
-  TokenBuffer& token_buffer_;
   GlobalFunctionRegistry& registry_;
   Module const* builtin_module_;
 };

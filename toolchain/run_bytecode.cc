@@ -45,7 +45,7 @@ nth::exit_code Run(nth::FlagValueSet flags, std::span<std::string_view const>) {
 
   std::vector<ModuleProto> dependent_module_protos;
   DependentModules dependencies;
-  Deserializer d(token_buffer, registry);
+  Deserializer d(registry);
   if (not d.DeserializeDependentModules(dependent_module_protos,
                                         dependencies)) {
     consumer.Consume({diag::Header(diag::MessageKind::Error),

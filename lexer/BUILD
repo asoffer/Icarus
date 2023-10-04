@@ -86,19 +86,10 @@ cc_library(
     hdrs = ["token_buffer.h"],
     srcs = ["token_buffer.cc"],
     deps = [
+        "//common:resources",
         ":token",
         "//diagnostics/consumer",
         "@asoffer_nth//nth/container:flyweight_set",
         "@asoffer_nth//nth/debug",
     ],
 )
-
-# TODO
-# cc_test(
-#     name = "token_buffer_test",
-#     srcs = ["token_buffer_test.cc"],
-#     deps = [
-#         ":token_buffer",
-#         "@asoffer_nth//nth/test:main",
-#     ],
-# )

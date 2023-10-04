@@ -1,5 +1,6 @@
 #include "lexer/token_buffer.h"
 
+#include "common/resources.h"
 #include "nth/debug/log/log.h"
 
 namespace ic {
@@ -15,8 +16,8 @@ void TokenBuffer::AppendIntegerLiteral(std::string_view integer,
 
   Token::IntegerPayload payload;
   if (value >= Token::IntegerPayload::PayloadLimit) {
-    uint32_t index =
-        static_cast<uint32_t>(integers_.index(integers_.insert(value).first));
+    uint32_t index = static_cast<uint32_t>(
+        resources.integers.index(resources.integers.insert(value).first));
     payload = Token::IntegerPayload::Index(index);
   } else {
     payload = Token::IntegerPayload::Immediate(value);
@@ -24,18 +25,9 @@ void TokenBuffer::AppendIntegerLiteral(std::string_view integer,
   tokens_.push_back(Token::IntegerLiteral(offset, payload));
 }
 
-std::string_view TokenBuffer::StringLiteral(uint32_t index) const {
-  return strings_.from_index(index);
-}
-
 void TokenBuffer::AppendStringLiteral(std::string s, uint32_t offset) {
-  uint32_t index = strings_.index(strings_.insert(std::move(s)).first);
+  uint32_t index = resources.StringLiteralIndex(std::move(s));
   tokens_.push_back(Token::StringLiteral(offset, index));
-}
-
-uint32_t TokenBuffer::IdentifierIndex(std::string_view identifier) {
-  return static_cast<uint32_t>(
-      identifiers_.index(identifiers_.insert(identifier).first));
 }
 
 void TokenBuffer::AppendKeywordOrIdentifier(std::string_view identifier,
@@ -47,7 +39,8 @@ void TokenBuffer::AppendKeywordOrIdentifier(std::string_view identifier,
   }
 #include "lexer/token_kind.xmacro.h"
 
-  tokens_.push_back(Token::Identifier(offset, IdentifierIndex(identifier)));
+  tokens_.push_back(
+      Token::Identifier(offset, resources.IdentifierIndex(identifier)));
 }
 
 }  // namespace ic

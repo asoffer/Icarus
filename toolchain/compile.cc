@@ -64,7 +64,7 @@ nth::exit_code Compile(nth::FlagValueSet flags, nth::file_path const& source) {
   consumer.set_source(*content);
 
   GlobalFunctionRegistry registry;
-  TokenBuffer token_buffer = Lex(*content, consumer);
+  TokenBuffer token_buffer = lex::Lex(*content, consumer);
   if (consumer.count() != 0) { return nth::exit_code::generic_error; }
   ParseTree parse_tree = Parse(token_buffer, consumer);
   if (consumer.count() != 0) { return nth::exit_code::generic_error; }
@@ -72,7 +72,7 @@ nth::exit_code Compile(nth::FlagValueSet flags, nth::file_path const& source) {
 
   std::vector<ModuleProto> dependent_module_protos;
   DependentModules dependencies;
-  Deserializer d(token_buffer, registry);
+  Deserializer d(registry);
   if (not d.DeserializeDependentModules(dependent_module_protos,
                                         dependencies)) {
     consumer.Consume({diag::Header(diag::MessageKind::Error),
@@ -82,7 +82,7 @@ nth::exit_code Compile(nth::FlagValueSet flags, nth::file_path const& source) {
 
   Module module(registry);
   IrContext ir_context = {
-      .emit = EmitContext(parse_tree, token_buffer, dependencies, module),
+      .emit = EmitContext(parse_tree, dependencies, module),
   };
   ir_context.ProcessIr(consumer);
   if (consumer.count() != 0) { return nth::exit_code::generic_error; }

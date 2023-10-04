@@ -44,6 +44,7 @@ cc_test(
     srcs = ["parser_test.cc"],
     deps = [
         ":parser",
+        "//common:resources",
         "//diagnostics/consumer:null",
         "//lexer",
         "//lexer:token_matchers",

@@ -9,7 +9,7 @@
 #include "lexer/lex_impl.h"
 #include "nth/debug/debug.h"
 
-namespace ic {
+namespace ic::lex {
 namespace {
 
 struct Lexer {
@@ -198,4 +198,4 @@ bool Lexer::TryLexStringLiteral(std::string_view& source) {
   return false;
 }
 
-}  // namespace ic
+}  // namespace ic::lex

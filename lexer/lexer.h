@@ -6,11 +6,11 @@
 #include "diagnostics/consumer/consumer.h"
 #include "lexer/token_buffer.h"
 
-namespace ic {
+namespace ic::lex {
 
 TokenBuffer Lex(std::string_view source,
                 diag::DiagnosticConsumer& diagnostic_consumer);
 
-}  // namespace ic
+}  // namespace ic::lex
 
 #endif  // ICARUS_LEXER_LEXER_H
