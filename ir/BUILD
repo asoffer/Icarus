@@ -9,6 +9,7 @@ cc_library(
         ":module",
         ":module_id",
         "//common:resources",
+        "//type",
         "@asoffer_nth//nth/utility:no_destructor",
     ],
 )
@@ -64,9 +65,11 @@ cc_library(
     name = "function",
     hdrs = ["function.h"],
     deps = [
+        "//type",
         "@asoffer_jasmin//jasmin:function",
         "@asoffer_jasmin//jasmin:instruction",
         "@asoffer_jasmin//jasmin/instructions:core",
+        "@asoffer_jasmin//jasmin/instructions:compare",
         "@asoffer_jasmin//jasmin:value",
     ],
 )

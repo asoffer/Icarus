@@ -35,10 +35,6 @@ nth::NoDestructor<nth::flyweight_set<Type>> pattern_types;
   }
 #include "type/type_kind.xmacro.h"
 
-Type::Kind Type::kind() const {
-  return static_cast<Kind>((data_ >> 48) & 0xff);
-}
-
 ParametersType Parameters(std::vector<ParametersType::Parameter> const& p) {
   return ParametersType(parameters->index(parameters->insert(p).first));
 }

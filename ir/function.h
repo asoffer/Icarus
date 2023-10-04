@@ -6,8 +6,10 @@
 
 #include "jasmin/function.h"
 #include "jasmin/instruction.h"
+#include "jasmin/instructions/compare.h"
 #include "jasmin/instructions/core.h"
 #include "jasmin/value.h"
+#include "type/type.h"
 
 namespace ic {
 
@@ -30,13 +32,19 @@ struct PushStringLiteral : jasmin::StackMachineInstruction<PushStringLiteral> {
   }
 };
 
+struct TypeKind : jasmin::StackMachineInstruction<TypeKind> {
+  static std::string_view name() { return "type-kind"; }
+
+  static constexpr type::Type::Kind execute(type::Type t) { return t.kind(); }
+};
+
 struct PrintHelloWorld : jasmin::StackMachineInstruction<PrintHelloWorld> {
   static void execute() { std::puts("Hello, world!"); }
 };
 
-using InstructionSet =
-    jasmin::MakeInstructionSet<jasmin::Push, PushFunction, PushStringLiteral,
-                               jasmin::Drop, PrintHelloWorld>;
+using InstructionSet = jasmin::MakeInstructionSet<
+    jasmin::Push, PushFunction, PushStringLiteral, jasmin::Drop, TypeKind,
+    jasmin::Equal<type::Type::Kind>, PrintHelloWorld>;
 using IrFunction = jasmin::Function<InstructionSet>;
 
 }  // namespace ic

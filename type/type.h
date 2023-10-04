@@ -40,7 +40,9 @@ struct Type {
     }
   }
 
-  Kind kind() const;
+  constexpr Kind kind() const {
+    return static_cast<Kind>((data_ >> 48) & 0xff);
+  }
 
   friend bool operator==(Type, Type) = default;
 
