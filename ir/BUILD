@@ -156,6 +156,7 @@ cc_library(
         ":global_function_registry",
         ":module",
         ":module_cc_proto",
+        "//common:resources",
         "@asoffer_nth//nth/debug",
         "@asoffer_nth//nth/debug/log",
     ],

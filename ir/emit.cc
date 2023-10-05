@@ -137,8 +137,9 @@ void HandleParseTreeNodeMemberExpression(ParseTree::Node::Index index,
 
 void HandleParseTreeNodeCallExpression(ParseTree::Node::Index index,
                                        EmitContext& context) {
-  context.function_stack.back()->append<Rotate>(
-      context.Node(index).child_count);
+  auto iter = context.rotation_count.find(index);
+  NTH_REQUIRE((v.harden), iter != context.rotation_count.end());
+  context.function_stack.back()->append<Rotate>(iter->second + 1);
   context.function_stack.back()->append<jasmin::Call>();
 }
 

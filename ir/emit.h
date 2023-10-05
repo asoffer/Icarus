@@ -42,6 +42,7 @@ struct EmitContext {
       statement_qualified_type;
   std::vector<Token::Kind> operator_stack;
   std::vector<IrFunction*> function_stack;
+  absl::flat_hash_map<ParseTree::Node::Index, size_t> rotation_count;
 
   struct Compare {
     bool operator()(nth::interval<ParseTree::Node::Index> const& lhs,

@@ -1,5 +1,6 @@
 #include "ir/serialize.h"
 
+#include "common/resources.h"
 #include "ir/module.h"
 #include "nth/debug/debug.h"
 #include "nth/debug/log/log.h"
@@ -17,6 +18,11 @@ void SerializeContent(GlobalFunctionRegistry const& registry,
   size_t immediate_count = op_code_metadata.immediate_value_count;
   instruction.set_op_code(op_code);
   switch (op_code) {
+    case InstructionProto::PUSH_STRING_LITERAL:
+      instruction.mutable_content()->Add(resources.StringLiteralIndex(
+          std::string(immediate_values[0].as<char const*>(),
+                      immediate_values[1].as<size_t>())));
+      break;
     case InstructionProto::PUSH_FUNCTION:
       instruction.mutable_content()->Add(
           registry.id(immediate_values[0].as<IrFunction const*>()).value());
@@ -53,6 +59,7 @@ void Serializer::Serialize(Module& module, ModuleProto& proto) {
     auto& proto_fn = *proto.add_functions();
     SerializeFunction(f, proto_fn);
   }
+  for (auto const& s : resources.strings) { *proto.add_string_literals() = s; }
 }
 
 }  // namespace ic

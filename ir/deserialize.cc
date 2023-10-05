@@ -1,12 +1,14 @@
 #include "ir/deserialize.h"
 
+#include "common/resources.h"
 #include "ir/builtin_module.h"
 #include "nth/debug/debug.h"
 #include "nth/debug/log/log.h"
 
 namespace ic {
 
-bool Deserializer::DeserializeFunction(FunctionProto const& proto,
+bool Deserializer::DeserializeFunction(ModuleProto const& m,
+                                       FunctionProto const& proto,
                                        IrFunction& f) {
   for (auto const& instruction : proto.instructions()) {
     uint64_t op_code = static_cast<uint64_t>(instruction.op_code());
@@ -16,6 +18,18 @@ bool Deserializer::DeserializeFunction(FunctionProto const& proto,
         InstructionSet::InstructionFunction(op_code)));
     f.raw_append(op_code_value);
     switch (op_code) {
+      case InstructionProto::PUSH_STRING_LITERAL: {
+        auto const& string_literals = m.string_literals();
+        if (instruction.content().size() != 1) { return false; }
+        if (instruction.content()[0] >= string_literals.size()) {
+          return false;
+        }
+        std::string_view s =
+            resources.StringLiteral(resources.StringLiteralIndex(
+                string_literals[instruction.content()[0]]));
+        f.raw_append(jasmin::Value(s.data()));
+        f.raw_append(jasmin::Value(s.size()));
+      } break;
       case InstructionProto::PUSH_FUNCTION: {
         if (instruction.content().size() != 1) { return false; }
         uint64_t index                         = instruction.content()[0];
@@ -54,13 +68,13 @@ bool Deserializer::Deserialize(ModuleProto const& proto, Module& module) {
     module.add_function(function.parameters(), function.returns());
   }
 
-  if (not DeserializeFunction(proto.initializer(), module.initializer())) {
+  if (not DeserializeFunction(proto, proto.initializer(), module.initializer())) {
     return false;
   }
 
   size_t i = 0;
   for (auto const& function : proto.functions()) {
-    if (not DeserializeFunction(function, module.functions()[i++])) {
+    if (not DeserializeFunction(proto, function, module.functions()[i++])) {
       return false;
     }
   }

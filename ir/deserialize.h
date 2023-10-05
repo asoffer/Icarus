@@ -13,7 +13,8 @@ struct Deserializer {
       : registry_(registry) {}
 
   bool Deserialize(ModuleProto const& proto, Module& module);
-  bool DeserializeFunction(FunctionProto const& proto, IrFunction& f);
+  bool DeserializeFunction(ModuleProto const& m, FunctionProto const& proto,
+                           IrFunction& f);
 
   // Populates `dm` from the given collection of serialized modules. Serialized
   // modules must constitute all transitive dependencies of the

@@ -28,8 +28,8 @@ struct PushStringLiteral : jasmin::StackMachineInstruction<PushStringLiteral> {
 
   static constexpr void execute(jasmin::ValueStack& value_stack,
                                 char const* data, size_t length) {
-    value_stack.push(data);
     value_stack.push(length);
+    value_stack.push(data);
   }
 };
 
@@ -40,14 +40,18 @@ struct TypeKind : jasmin::StackMachineInstruction<TypeKind> {
 };
 
 struct Print : jasmin::StackMachineInstruction<Print> {
-  static void execute(bool b) { std::puts(b ? "true" : "false"); }
+  static void execute(char const* p, size_t length) {
+    std::printf("%*s", static_cast<int>(length), p);
+  }
 };
 
 struct Rotate : jasmin::StackMachineInstruction<Rotate> {
   static void execute(jasmin::ValueStack& value_stack, size_t n) {
     NTH_REQUIRE((v.harden), n > 1);
     std::queue<jasmin::Value> q;
-    for (size_t i = 1; i < n; ++i) { q.push(value_stack.pop_value()); }
+    for (size_t i = 1; i < n; ++i) {
+      q.push(value_stack.pop_value());
+    }
     jasmin::Value v = value_stack.pop_value();
     while (not q.empty()) {
       value_stack.push(q.front());

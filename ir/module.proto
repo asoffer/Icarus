@@ -35,4 +35,6 @@ message ModuleProto {
 
   // Subroutines defined within the module.
   repeated FunctionProto functions = 2;
+
+  repeated string string_literals = 3;
 }

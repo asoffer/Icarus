@@ -24,6 +24,11 @@ struct StrongIndexType {
 
   friend auto operator<=>(StrongIndexType, StrongIndexType) = default;
 
+  template <typename H>
+  friend H AbslHashValue(H h, StrongIndexType n) {
+    return H::combine(std::move(h), n.value_);
+  }
+
   underlying_type const &value() const & { return value_; }
   underlying_type &&value() && { return std::move(value_); }
 

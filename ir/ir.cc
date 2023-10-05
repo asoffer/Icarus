@@ -174,6 +174,7 @@ void HandleParseTreeNodeMemberExpression(ParseTree::Node::Index index,
 void HandleParseTreeNodeCallExpression(ParseTree::Node::Index index,
                                        IrContext& context,
                                        diag::DiagnosticConsumer& diag) {
+  auto& argument_width_count = context.emit.rotation_count[index];
   auto node = context.Node(index);
   auto invocable_type =
       context.type_stack[context.type_stack.size() - node.child_count];
@@ -182,6 +183,11 @@ void HandleParseTreeNodeCallExpression(ParseTree::Node::Index index,
     auto const & parameters = *fn_type.parameters();
     // TODO: Properly implement function call type-checking.
     if (parameters.size() == node.child_count - 1) {
+      auto type_iter = context.type_stack.rbegin();
+      for (size_t i = 0; i < parameters.size(); ++i) {
+        argument_width_count += type::JasminSize(type_iter->type());
+        ++type_iter;
+      }
       auto const& returns = fn_type.returns();
       context.type_stack.resize(context.type_stack.size() - node.child_count);
       for (type::Type r : returns) {
