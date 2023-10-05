@@ -135,8 +135,10 @@ void HandleParseTreeNodeMemberExpression(ParseTree::Node::Index index,
   }
 }
 
-void HandleParseTreeNodeCallExpression(ParseTree::Node::Index,
+void HandleParseTreeNodeCallExpression(ParseTree::Node::Index index,
                                        EmitContext& context) {
+  context.function_stack.back()->append<Rotate>(
+      context.Node(index).child_count);
   context.function_stack.back()->append<jasmin::Call>();
 }
 

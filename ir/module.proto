@@ -16,7 +16,8 @@ message InstructionProto {
     DROP = 7;
     TYPE_KIND = 8;
     TYPE_KIND_EQUALS = 9;
-    PRINT_HELLO_WORLD = 10;
+    PRINT = 10;
+    ROTATE = 11;
   }
   OpCode op_code = 1;
   repeated uint64 content = 2;

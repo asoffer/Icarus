@@ -2,6 +2,7 @@
 #define ICARUS_IR_FUNCTION_H
 
 #include <cstdio>
+#include <queue>
 #include <string_view>
 
 #include "jasmin/function.h"
@@ -38,13 +39,28 @@ struct TypeKind : jasmin::StackMachineInstruction<TypeKind> {
   static constexpr type::Type::Kind execute(type::Type t) { return t.kind(); }
 };
 
-struct PrintHelloWorld : jasmin::StackMachineInstruction<PrintHelloWorld> {
-  static void execute() { std::puts("Hello, world!"); }
+struct Print : jasmin::StackMachineInstruction<Print> {
+  static void execute(bool b) { std::puts(b ? "true" : "false"); }
 };
 
-using InstructionSet = jasmin::MakeInstructionSet<
-    jasmin::Push, PushFunction, PushStringLiteral, jasmin::Drop, TypeKind,
-    jasmin::Equal<type::Type::Kind>, PrintHelloWorld>;
+struct Rotate : jasmin::StackMachineInstruction<Rotate> {
+  static void execute(jasmin::ValueStack& value_stack, size_t n) {
+    NTH_REQUIRE((v.harden), n > 1);
+    std::queue<jasmin::Value> q;
+    for (size_t i = 1; i < n; ++i) { q.push(value_stack.pop_value()); }
+    jasmin::Value v = value_stack.pop_value();
+    while (not q.empty()) {
+      value_stack.push(q.front());
+      q.pop();
+    }
+    value_stack.push(v);
+  }
+};
+
+using InstructionSet =
+    jasmin::MakeInstructionSet<jasmin::Push, PushFunction, PushStringLiteral,
+                               jasmin::Drop, TypeKind,
+                               jasmin::Equal<type::Type::Kind>, Print, Rotate>;
 using IrFunction = jasmin::Function<InstructionSet>;
 
 }  // namespace ic

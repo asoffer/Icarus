@@ -8,9 +8,9 @@
 
 namespace ic {
 
-nth::NoDestructor<IrFunction> Print([] {
-  IrFunction f(0, 1);
-  f.append<PrintHelloWorld>();
+nth::NoDestructor<IrFunction> PrintFn([] {
+  IrFunction f(2, 1);
+  f.append<Print>();
   f.append<jasmin::Push>(true);
   f.append<jasmin::Return>();
   return f;
@@ -29,13 +29,20 @@ Module BuiltinModule(GlobalFunctionRegistry& registry) {
   uint32_t next_id = 0;
 
   Module m(registry);
-  m.Insert(resources.IdentifierIndex("hello_world"),
-           {.qualified_type = type::QualifiedType(
-                type::Qualifier::Constant(),
-                type::Function(type::Parameters({}), {type::Bool})),
-            .value = {jasmin::Value(&*Print)}});
+  m.Insert(
+      resources.IdentifierIndex("print"),
+      {.qualified_type = type::QualifiedType(
+           type::Qualifier::Constant(),
+           type::Function(
+               type::Parameters(std::vector<type::ParametersType::Parameter>{
+                   type::ParametersType::Parameter{
+                       .name = resources.IdentifierIndex(""),
+                       .type = type::Slice(type::Char)},
+               }),
+               {type::Bool})),
+       .value = {jasmin::Value(&*PrintFn)}});
   registry.Register(FunctionId(ModuleId::Builtin(), LocalFunctionId(next_id++)),
-                    &*Print);
+                    &*PrintFn);
 
   m.Insert(resources.IdentifierIndex("function"),
            {.qualified_type = type::QualifiedType(type::Qualifier::Constant(),
