@@ -69,6 +69,13 @@ struct Parser {
     return state;
   }
 
+  void IgnoreAnyNewlines() {
+    while (current_token().kind() != Token::Kind::Eof and
+           current_token().kind() == Token::Kind::Newline) {
+      ++iterator_;
+    }
+  }
+
   void ExpandState(auto... states) {
     auto state = pop_state();
     int dummy;
@@ -147,11 +154,8 @@ ParseTree Parse(TokenBuffer const& token_buffer,
 #include "parser/parse_state.xmacro.h"
 
 void Parser::HandleNewlines(ParseTree& tree) {
-  pop_and_discard_state(); 
-  while (current_token().kind() != Token::Kind::Eof and
-         current_token().kind() == Token::Kind::Newline) {
-    ++iterator_;
-  }
+  pop_and_discard_state();
+  IgnoreAnyNewlines();
 }
 
 void Parser::HandleModule(ParseTree& tree) {
@@ -229,7 +233,7 @@ void Parser::HandleResolveUninferredTypeDeclaration(ParseTree& tree) {
               .subtree_start = tree.size(),
           });
       break;
-    default: 
+    default:
       ++iterator_;
       ExpandState(
           State{
@@ -272,11 +276,34 @@ void Parser::HandleExpressionClosing(ParseTree& tree) {
 
 void Parser::HandleMaybeCallTermSuffix(ParseTree& tree) {
   if (current_token().kind() == Token::Kind::LeftParen) {
-    ExpandState(State::Kind::ResolveParameters);
     ++iterator_;
+    IgnoreAnyNewlines();
+    if (current_token().kind() == Token::Kind::RightParen) {
+      ExpandState(State::Kind::ResolveInvocationArgumentSequence);
+    } else {
+      ExpandState(State::Kind::Expression,
+                  State::Kind::InvocationArgumentSequence);
+    }
+    tree.append(ParseTree::Node::Kind::InvocationArgumentStart, current_token(),
+                state().back().subtree_start);
     return;
   }
   pop_and_discard_state();
+}
+
+void Parser::HandleInvocationArgumentSequence(ParseTree& tree) {
+  IgnoreAnyNewlines();
+  if (current_token().kind() == Token::Kind::RightParen) {
+    ExpandState(State::Kind::ResolveInvocationArgumentSequence);
+    return;
+  } else if (current_token().kind() == Token::Kind::Comma) {
+    ++iterator_;
+    IgnoreAnyNewlines();
+    ExpandState(State::Kind::Expression,
+                State::Kind::InvocationArgumentSequence);
+  } else {
+    NTH_UNREACHABLE("{}") <<= {current_token().kind()};
+  }
 }
 
 void Parser::HandleMaybeMemberTermSuffix(ParseTree& tree) {
@@ -324,8 +351,7 @@ void Parser::HandleAtomicTerm(ParseTree& tree) {
   pop_and_discard_state();
 }
 
-
-void Parser::HandleResolveParameters(ParseTree& tree) {
+void Parser::HandleResolveInvocationArgumentSequence(ParseTree& tree) {
   NTH_REQUIRE(current_token().kind() == Token::Kind::RightParen);
   tree.append(ParseTree::Node::Kind::CallExpression, current_token(),
               state().back().subtree_start);

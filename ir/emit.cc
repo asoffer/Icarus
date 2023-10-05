@@ -140,6 +140,9 @@ void HandleParseTreeNodeCallExpression(ParseTree::Node::Index,
   context.function_stack.back()->append<jasmin::Call>();
 }
 
+void HandleParseTreeNodeInvocationArgumentStart(ParseTree::Node::Index index,
+                                                EmitContext& context) {}
+
 void EmitNonConstant(nth::interval<ParseTree::Node::Index> node_range,
                      EmitContext& context) {
   if (node_range.empty()) { return; }

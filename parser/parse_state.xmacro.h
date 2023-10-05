@@ -16,6 +16,9 @@ IC_XMACRO_PARSER_STATE(Module)
 IC_XMACRO_PARSER_STATE(Statement)
 IC_XMACRO_PARSER_STATE_SEQUENCE(Statement, Newlines)
 
+IC_XMACRO_PARSER_STATE(InvocationArgumentSequence)
+IC_XMACRO_PARSER_STATE(ResolveInvocationArgumentSequence)
+
 IC_XMACRO_PARSER_STATE(Declaration)
 IC_XMACRO_PARSER_STATE(DeclaredSymbol)
 IC_XMACRO_PARSER_STATE(ResolveInferredTypeDeclaration)
@@ -28,7 +31,6 @@ IC_XMACRO_PARSER_STATE(MaybeMemberTermSuffix)
 IC_XMACRO_PARSER_STATE(ResolveMemberTerm)
 IC_XMACRO_PARSER_STATE(AtomicTerm)
 
-IC_XMACRO_PARSER_STATE(ResolveParameters)
 IC_XMACRO_PARSER_STATE(ResolveUnaryExpression)
 
 IC_XMACRO_PARSER_STATE(MaybeInfix)

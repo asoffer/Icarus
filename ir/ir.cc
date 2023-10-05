@@ -202,6 +202,10 @@ void HandleParseTreeNodeDeclaredIdentifier(ParseTree::Node::Index index,
   NTH_UNIMPLEMENTED("{}") <<= {context.Node(index)};
 }
 
+void HandleParseTreeNodeInvocationArgumentStart(
+    ParseTree::Node::Index index, IrContext& context,
+    diag::DiagnosticConsumer& diag) {}
+
 }  // namespace
 
 void IrContext::ProcessIr(diag::DiagnosticConsumer& diag) {
