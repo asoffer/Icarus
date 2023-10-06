@@ -3,6 +3,9 @@
 
 #include <cstdint>
 #include <cstring>
+#include <span>
+#include <string_view>
+#include <utility>
 #include <vector>
 
 namespace ic::type {
@@ -208,6 +211,24 @@ struct FunctionType : internal_type::BasicType {
   ParametersType parameters() const;
   std::vector<Type> const& returns() const;
 
+  friend void NthPrint(auto& p, auto&fmt, FunctionType f) {
+    std::string_view separator = "(";
+    for (auto const& param : *f.parameters()) {
+      p.write(std::exchange(separator, ", "));
+      fmt(p, param.name);
+      p.write(": ");
+      fmt(p, param.type);
+    }
+    std::span returns = f.returns();
+    p.write(returns.size() != 1 ? ") -> (" : ") -> ");
+    separator = "";
+    for (auto const& r: f.returns()) {
+      p.write(std::exchange(separator, ", "));
+      fmt(p, r);
+    }
+    if (returns.size() != 1) { p.write(")"); }
+  }
+
  private:
   friend Type;
   friend FunctionType Function(ParametersType, std::vector<Type>&&);
@@ -293,6 +314,8 @@ struct SliceType : internal_type::BasicType {
 SliceType Slice(Type t);
 
 struct GenericFunctionType : internal_type::BasicType {
+  void const* data() const;
+
  private:
   friend Type;
   friend GenericFunctionType GenericFunction(void const* fn);

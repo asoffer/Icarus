@@ -2,6 +2,7 @@
 
 #include "common/string.h"
 #include "ir/module_id.h"
+#include "jasmin/execute.h"
 #include "nth/debug/debug.h"
 #include "nth/debug/log/log.h"
 #include "type/type.h"
@@ -199,6 +200,22 @@ void HandleParseTreeNodeCallExpression(ParseTree::Node::Index index,
     } else {
       NTH_UNIMPLEMENTED();
     }
+  } else if (invocable_type.type().kind() ==
+             type::Type::Kind::GenericFunction) {
+    jasmin::ValueStack value_stack;
+    for (auto iter = context.ChildIndices(index).begin();
+         context.Node(*iter).kind !=
+         ParseTree::Node::Kind::InvocationArgumentStart;
+         ++iter) {
+      context.emit.Evaluate(context.emit.tree.subtree_range(*iter),
+                            value_stack);
+    }
+
+    jasmin::Execute(*static_cast<IrFunction const*>(
+                        invocable_type.type().AsGenericFunction().data()),
+                    value_stack);
+    context.type_stack.push_back(type::QualifiedType(
+        type::Qualifier::Constant(), value_stack.pop<type::Type>()));
   } else {
     NTH_UNIMPLEMENTED("{}") <<= {node};
   }

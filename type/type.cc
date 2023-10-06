@@ -104,6 +104,10 @@ std::vector<Type> const& FunctionType::returns() const {
   return ic::type::returns->from_index(functions->from_index(data()).second);
 }
 
+void const* GenericFunctionType::data() const {
+  return generic_function_types->from_index(BasicType::data());
+}
+
 size_t JasminSize(Type t) {
   switch (t.kind()) {
     case Type::Kind::Primitive: return 1;

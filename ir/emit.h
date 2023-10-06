@@ -32,6 +32,9 @@ struct EmitContext {
 
   void Push(jasmin::Value v, type::Type);
 
+  void Evaluate(nth::interval<ParseTree::Node::Index> subtree,
+                jasmin::ValueStack& value_stack);
+
   ParseTree::Node const& Node(ParseTree::Node::Index index) {
     return tree[index];
   }
@@ -68,11 +71,6 @@ struct EmitContext {
 
 void EmitIr(nth::interval<ParseTree::Node::Index> node_range,
             EmitContext& context);
-
-void Evaluate(nth::interval<ParseTree::Node::Index> subtree,
-              ParseTree const& tree,
-              DependentModules const& modules NTH_ATTRIBUTE(lifetimebound),
-              jasmin::ValueStack& value_stack);
 
 }  // namespace ic
 

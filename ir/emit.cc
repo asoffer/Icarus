@@ -179,6 +179,7 @@ void EmitContext::Push(jasmin::Value v, type::Type t) {
 void EmitIr(nth::interval<ParseTree::Node::Index> node_range, EmitContext& context) {
   ParseTree::Node::Index start = node_range.lower_bound();
   for (auto const& [range, value_stack] : context.constants) {
+    if (range.lower_bound() < start) { continue; }
     EmitNonConstant(nth::interval(start, range.lower_bound()), context);
     // TODO: This type is wrong.
     for (jasmin::Value const& v : value_stack) { context.Push(v, type::Bool); }
@@ -188,15 +189,14 @@ void EmitIr(nth::interval<ParseTree::Node::Index> node_range, EmitContext& conte
   context.function_stack.back()->append<jasmin::Return>();
 }
 
-void Evaluate(nth::interval<ParseTree::Node::Index> subtree,
-              ParseTree const& tree,
-              DependentModules const& modules NTH_ATTRIBUTE(lifetimebound),
-              jasmin::ValueStack& value_stack) {
+void EmitContext::Evaluate(nth::interval<ParseTree::Node::Index> subtree,
+                           jasmin::ValueStack& value_stack) {
   IrFunction f(0, 1);
-  EmitContext context(tree, modules, f);
-  EmitIr(subtree, context);
-  context.function_stack.back()->append<jasmin::Return>();
+  function_stack.push_back(&f);
+  EmitIr(subtree, *this);
+  f.append<jasmin::Return>();
   jasmin::Execute(f, value_stack);
+  function_stack.pop_back();
 }
 
 }  // namespace ic

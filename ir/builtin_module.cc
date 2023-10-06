@@ -30,6 +30,12 @@ nth::NoDestructor<IrFunction> Foreign([] {
   return f;
 }());
 
+nth::NoDestructor<IrFunction> ForeignType([] {
+  IrFunction f(1, 1);
+  f.append<jasmin::Return>();
+  return f;
+}());
+
 Module BuiltinModule(GlobalFunctionRegistry& registry) {
   uint32_t next_id = 0;
 
@@ -47,10 +53,11 @@ Module BuiltinModule(GlobalFunctionRegistry& registry) {
   registry.Register(FunctionId(ModuleId::Builtin(), LocalFunctionId(next_id++)),
                     &*PrintFn);
 
-  m.Insert(resources.IdentifierIndex("foreign"),
-           {.qualified_type = type::QualifiedType(
-                type::Qualifier::Constant(), type::GenericFunction(nullptr)),
-            .value = {}});
+  m.Insert(
+      resources.IdentifierIndex("foreign"),
+      {.qualified_type = type::QualifiedType(
+           type::Qualifier::Constant(), type::GenericFunction(&*ForeignType)),
+       .value = {}});
   registry.Register(FunctionId(ModuleId::Builtin(), LocalFunctionId(next_id++)),
                     &*Foreign);
 

@@ -21,6 +21,9 @@ struct IrContext {
     return emit.tree[index];
   }
 
+  auto ChildIndices(ParseTree::Node::Index index) {
+    return emit.tree.child_indices(index);
+  }
   auto Children(ParseTree::Node::Index index) {
     return emit.tree.children(index);
   }
@@ -31,12 +34,12 @@ struct IrContext {
   std::optional<T> EvaluateAs(ParseTree::Node::Index subtree_root_index) {
     T result;
     nth::interval range   = emit.tree.subtree_range(subtree_root_index);
-    auto [iter, inserted] = emit.constants.try_emplace(range);
+    jasmin::ValueStack value_stack;
+    emit.Evaluate(range, value_stack);
+    auto [iter, inserted] = emit.constants.try_emplace(range, std::move(value_stack));
     NTH_REQUIRE((v.harden), inserted);
-    jasmin::ValueStack& value_stack = iter->second;
-    Evaluate(range, emit.tree, emit.modules, value_stack);
     if (IcarusDeserializeValue(
-            std::span(value_stack.begin(), value_stack.end()), result)) {
+            std::span(iter->second.begin(), iter->second.end()), result)) {
       return result;
     } else {
       return std::nullopt;

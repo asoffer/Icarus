@@ -1,0 +1,30 @@
+syntax = "proto3";
+
+package type;
+
+message TypeProto {
+  enum Kind {
+    UNKNOWN = 0;
+    PRIMITIVE = 1;
+    POINTER = 2;
+    BUFFER_POINTER = 3;
+    SLICE = 4;
+    FUNCTION = 5;
+    PATTERN = 6;
+  }
+  Kind kind = 1;
+  uint32 index = 2;
+}
+
+message ParameterTypeProto {
+  TypeProto type = 1;
+}
+
+message FunctionTypeProto {
+  repeated ParameterTypeProto parameters = 1;
+  repeated TypeProto returns = 2;
+}
+
+message TypeSystem {
+  repeated FunctionTypeProto functions = 1;
+}

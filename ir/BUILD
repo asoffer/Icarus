@@ -105,6 +105,7 @@ cc_library(
         "//parser:parse_tree",
         "//parser:parse_tree_node_kind_xmacro",
         "//type",
+        "@asoffer_jasmin//jasmin:execute",
         "@asoffer_jasmin//jasmin:value_stack",
         "@asoffer_nth//nth/debug",
         "@asoffer_nth//nth/debug/log",
