@@ -108,7 +108,11 @@ ParseTree Parse(TokenBuffer const& token_buffer,
   Parser p(token_buffer, diagnostic_consumer);
 
   while (not p.state().empty()) {
-    NTH_LOG((v.when(false)), "\n{}:\t{}") <<= {p.current_token(), p.state()};
+    if (tree.size() != 0) {
+      NTH_REQUIRE((v.debug), tree.back().subtree_size > 0);
+    }
+    NTH_LOG((v.when(true)), "\n{} {}:\t{}") <<=
+        {p.current_token(), p.state().back().subtree_start, p.state()};
     switch (p.state().back().kind) {
 #define IC_XMACRO_PARSER_STATE(state)                                          \
   case Parser::State::Kind::state:                                             \
@@ -260,8 +264,7 @@ void Parser::HandleDeclaredSymbol(ParseTree& tree) {
 }
 
 void Parser::HandleExpression(ParseTree& tree) {
-  ExpandState(State::Kind::AtomicTerm, State::Kind::MaybeMemberTermSuffix,
-              State::Kind::MaybeCallTermSuffix, State::Kind::MaybeInfix);
+  ExpandState(State::Kind::AtomicTerm, State::Kind::ExpressionSuffix);
 }
 
 void Parser::HandleExpressionClosing(ParseTree& tree) {
@@ -272,23 +275,6 @@ void Parser::HandleExpressionClosing(ParseTree& tree) {
   tree.append(
       ParseTree::Node::Kind::ExpressionGroup, *iterator_++,
       state.subtree_start - tree.nodes()[state.subtree_start].subtree_size - 1);
-}
-
-void Parser::HandleMaybeCallTermSuffix(ParseTree& tree) {
-  if (current_token().kind() == Token::Kind::LeftParen) {
-    ++iterator_;
-    IgnoreAnyNewlines();
-    if (current_token().kind() == Token::Kind::RightParen) {
-      ExpandState(State::Kind::ResolveInvocationArgumentSequence);
-    } else {
-      ExpandState(State::Kind::Expression,
-                  State::Kind::InvocationArgumentSequence);
-    }
-    tree.append(ParseTree::Node::Kind::InvocationArgumentStart, current_token(),
-                state().back().subtree_start);
-    return;
-  }
-  pop_and_discard_state();
 }
 
 void Parser::HandleInvocationArgumentSequence(ParseTree& tree) {
@@ -303,15 +289,6 @@ void Parser::HandleInvocationArgumentSequence(ParseTree& tree) {
                 State::Kind::InvocationArgumentSequence);
   } else {
     NTH_UNREACHABLE("{}") <<= {current_token().kind()};
-  }
-}
-
-void Parser::HandleMaybeMemberTermSuffix(ParseTree& tree) {
-  if (current_token().kind() == Token::Kind::Period) {
-    ++iterator_;
-    ExpandState(State::Kind::ResolveMemberTerm);
-  } else {
-    pop_and_discard_state();
   }
 }
 
@@ -360,7 +337,7 @@ void Parser::HandleResolveInvocationArgumentSequence(ParseTree& tree) {
   pop_and_discard_state();
 }
 
-void Parser::HandleMaybeInfix(ParseTree& tree) {
+void Parser::HandleExpressionSuffix(ParseTree& tree) {
   Precedence p = Precedence::Loosest();
   switch (current_token().kind()) {
     case Token::Kind::Newline:
@@ -374,10 +351,31 @@ void Parser::HandleMaybeInfix(ParseTree& tree) {
 
 #include "lexer/token_kind.xmacro.h"
     case Token::Kind::Star: p = Precedence::MultiplyDivide(); break;
-    default:
-      ExpandState(State::Kind::MaybeMemberTermSuffix,
-                  State::Kind::MaybeCallTermSuffix);
+    case Token::Kind::LeftParen: {
+      ++iterator_;
+      IgnoreAnyNewlines();
+      if (current_token().kind() == Token::Kind::RightParen) {
+        ExpandState(State::Kind::ResolveInvocationArgumentSequence,
+                    State::Kind::ExpressionSuffix);
+      } else {
+        ExpandState(State::Kind::Expression,
+                    State::Kind::InvocationArgumentSequence,
+                    State::Kind::ExpressionSuffix);
+      }
+      tree.append(ParseTree::Node::Kind::InvocationArgumentStart,
+                  current_token(), state().back().subtree_start);
       return;
+    } break;
+    case Token::Kind::Period: {
+      ++iterator_;
+      ExpandState(
+          State{.kind          = State::Kind::ResolveMemberTerm,
+                .subtree_start = tree.size() - tree.back().subtree_size},
+          State{.kind          = State::Kind::ExpressionSuffix,
+                .subtree_start = tree.size() - tree.back().subtree_size});
+      return;
+    } break;
+    default: pop_and_discard_state(); return;
   }
   uint32_t subtree_start;
   State state = pop_state();

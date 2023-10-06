@@ -26,14 +26,12 @@ IC_XMACRO_PARSER_STATE(ResolveUninferredTypeDeclaration)
 IC_XMACRO_PARSER_STATE(ResolveDefaultedDeclaration)
 
 IC_XMACRO_PARSER_STATE(Expression)
-IC_XMACRO_PARSER_STATE(MaybeCallTermSuffix)
-IC_XMACRO_PARSER_STATE(MaybeMemberTermSuffix)
+IC_XMACRO_PARSER_STATE(ExpressionSuffix)
 IC_XMACRO_PARSER_STATE(ResolveMemberTerm)
 IC_XMACRO_PARSER_STATE(AtomicTerm)
 
 IC_XMACRO_PARSER_STATE(ResolveUnaryExpression)
 
-IC_XMACRO_PARSER_STATE(MaybeInfix)
 IC_XMACRO_PARSER_STATE(ResolveExpressionGroup)
 IC_XMACRO_PARSER_STATE(ExpressionClosing)
 

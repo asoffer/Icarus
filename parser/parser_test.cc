@@ -297,4 +297,14 @@ NTH_TEST("parser/invoke/multiple-positional-newline") {
                  HasSubtreeSize(7)));
 }
 
+NTH_TEST("parser/invoke/access-call") {
+  diag::NullConsumer d;
+  TokenBuffer buffer = lex::Lex(R"(a.b(c.d))", d);
+  auto tree          = Parse(buffer, d);
+  NTH_EXPECT(tree.nodes() >>= ElementsAreSequentially(
+                 IdentifierToken("a"), MemberExpression() and HasSubtreeSize(2),
+                 InvocationArgumentStart(), IdentifierToken("c"),
+                 MemberExpression() and HasSubtreeSize(2),
+                 CallExpression() and HasSubtreeSize(6), HasSubtreeSize(7)));
+}
 }  // namespace ic
