@@ -249,39 +249,63 @@ struct ParseTree {
   Node &back() { return nodes_.back(); }
   Node const &back() const { return nodes_.back(); }
 
-  struct sibling_iterator {
-    sibling_iterator &operator++() {
+  struct sibling_iterator_base {
+    sibling_iterator_base &operator++() {
       node_ -= node_->subtree_size;
       return *this;
     }
 
-    sibling_iterator operator++(int) {
+    sibling_iterator_base operator++(int) {
       auto copy = *this;
       ++*this;
       return copy;
     }
 
-    sibling_iterator &operator--() {
+    sibling_iterator_base &operator--() {
       node_ += node_->subtree_size;
       return *this;
     }
 
-    sibling_iterator operator--(int) {
+    sibling_iterator_base operator--(int) {
       auto copy = *this;
       --*this;
       return copy;
     }
 
-    Node const &operator*() { return *node_; }
-    Node const *operator->() { return node_; }
-
-    friend auto operator<=>(sibling_iterator, sibling_iterator) = default;
+    friend auto operator<=>(sibling_iterator_base,
+                            sibling_iterator_base) = default;
 
    private:
     friend ParseTree;
-    sibling_iterator(Node const *node) : node_(node) {}
+    explicit sibling_iterator_base(Node const *node) : node_(node) {}
     Node const *node_;
   };
+
+  struct sibling_index_iterator : sibling_iterator_base {
+    Node::Index operator*() const { return Node::Index{node_ - start_}; }
+
+   private:
+    friend ParseTree;
+    explicit sibling_index_iterator(Node const *start, Node const *node)
+        : sibling_iterator_base(node), start_(start) {}
+    Node const * start_;
+  };
+
+  struct sibling_iterator : sibling_iterator_base {
+    Node const &operator*() { return *node_; }
+    Node const *operator->() { return node_; }
+
+   private:
+    friend ParseTree;
+    using sibling_iterator_base::sibling_iterator_base;
+  };
+
+  auto child_indices(Node::Index node_index) const {
+    auto *p = &nodes_[node_index.value()];
+    return nth::iterator_range(
+        sibling_index_iterator(&nodes_[0], p - 1),
+        sibling_index_iterator(&nodes_[0], p - p->subtree_size));
+  }
 
   auto children(Node::Index node_index) const {
     auto *p = &nodes_[node_index.value()];

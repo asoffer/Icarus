@@ -307,4 +307,5 @@ NTH_TEST("parser/invoke/access-call") {
                  MemberExpression() and HasSubtreeSize(2),
                  CallExpression() and HasSubtreeSize(6), HasSubtreeSize(7)));
 }
+
 }  // namespace ic

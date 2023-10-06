@@ -57,6 +57,8 @@ void HandleParseTreeNodeExpressionPrecedenceGroup(
     case Token::Kind::MinusGreater: {
       auto node = context.Node(index);
       if (node.child_count != 2) {
+        for (auto const& c : context.Children(index)) { NTH_LOG("{}") <<= {c}; }
+        NTH_LOG("{}")<<={node.child_count};
         NTH_REQUIRE(node.child_count != -1);
         diag.Consume({
             diag::Header(diag::MessageKind::Error),
@@ -198,7 +200,7 @@ void HandleParseTreeNodeCallExpression(ParseTree::Node::Index index,
       NTH_UNIMPLEMENTED();
     }
   } else {
-    NTH_UNIMPLEMENTED();
+    NTH_UNIMPLEMENTED("{}") <<= {node};
   }
 }
 

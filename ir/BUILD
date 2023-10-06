@@ -139,7 +139,9 @@ cc_library(
 proto_library(
     name = "module_proto",
     srcs = ["module.proto"],
-    deps = [],
+    deps = [
+        "//type:type_system_proto",
+    ],
 )
 
 cc_proto_library(

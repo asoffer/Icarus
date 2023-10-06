@@ -292,6 +292,18 @@ struct SliceType : internal_type::BasicType {
 
 SliceType Slice(Type t);
 
+struct GenericFunctionType : internal_type::BasicType {
+ private:
+  friend Type;
+  friend GenericFunctionType GenericFunction(void const* fn);
+
+  explicit GenericFunctionType() = default;
+  explicit constexpr GenericFunctionType(uint64_t n)
+      : BasicType(Type::Kind::GenericFunction, n) {}
+};
+
+GenericFunctionType GenericFunction(void const* fn);
+
 #define IC_XMACRO_TYPE_KIND(kind)                                              \
   inline constexpr Type::Type(kind##Type t) : data_(t.data_) {}
 #include "type/type_kind.xmacro.h"

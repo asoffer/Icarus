@@ -18,6 +18,17 @@ cc_library(
     ],
 )
 
+proto_library(
+    name = "type_system_proto",
+    srcs = ["type_system.proto"],
+    deps = [],
+)
+
+cc_proto_library(
+    name = "type_system_cc_proto",
+    deps = [":type_system_proto"],
+)
+
 cc_test(
     name = "type_test",
     srcs = ["type_test.cc"],

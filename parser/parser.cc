@@ -111,7 +111,7 @@ ParseTree Parse(TokenBuffer const& token_buffer,
     if (tree.size() != 0) {
       NTH_REQUIRE((v.debug), tree.back().subtree_size > 0);
     }
-    NTH_LOG((v.when(true)), "\n{} {}:\t{}") <<=
+    NTH_LOG((v.when(false)), "\n{} {}:\t{}") <<=
         {p.current_token(), p.state().back().subtree_start, p.state()};
     switch (p.state().back().kind) {
 #define IC_XMACRO_PARSER_STATE(state)                                          \

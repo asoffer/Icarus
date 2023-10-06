@@ -6,6 +6,7 @@
 #include <string_view>
 
 #include "nth/container/flyweight_set.h"
+#include "type/type.h"
 
 namespace ic {
 
@@ -35,6 +36,9 @@ struct Resources {
   // Values of all identifiers in the program. Identifier content must outlive
   // any access to this member.
   nth::flyweight_set<std::string_view> identifiers;
+
+  nth::flyweight_set<std::pair<std::string_view, type::FunctionType>>
+      foreign_functions;
 };
 
 inline Resources resources;

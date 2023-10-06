@@ -25,6 +25,11 @@ nth::NoDestructor<IrFunction> Function([] {
   return f;
 }());
 
+nth::NoDestructor<IrFunction> Foreign([] {
+  IrFunction f(2, 1);
+  return f;
+}());
+
 Module BuiltinModule(GlobalFunctionRegistry& registry) {
   uint32_t next_id = 0;
 
@@ -41,6 +46,22 @@ Module BuiltinModule(GlobalFunctionRegistry& registry) {
             .value = {jasmin::Value(&*PrintFn)}});
   registry.Register(FunctionId(ModuleId::Builtin(), LocalFunctionId(next_id++)),
                     &*PrintFn);
+
+  m.Insert(resources.IdentifierIndex("foreign"),
+           {.qualified_type = type::QualifiedType(
+                type::Qualifier::Constant(), type::GenericFunction(nullptr)),
+            .value = {}});
+  registry.Register(FunctionId(ModuleId::Builtin(), LocalFunctionId(next_id++)),
+                    &*Foreign);
+
+  m.Insert(
+      resources.IdentifierIndex("b2b"),
+      {.qualified_type =
+           type::QualifiedType(type::Qualifier::Constant(), type::Type_),
+       .value = {jasmin::Value(type::Type(type::Function(
+           type::Parameters(std::vector<type::ParametersType::Parameter>{
+               {.name = resources.IdentifierIndex(""), .type = type::Bool}}),
+           {type::Bool})))}});
 
   m.Insert(resources.IdentifierIndex("function"),
            {.qualified_type = type::QualifiedType(type::Qualifier::Constant(),

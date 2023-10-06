@@ -1,5 +1,7 @@
 syntax = "proto3";
 
+import "type/type_system.proto";
+
 package ic;
 
 message InstructionProto {
@@ -29,6 +31,10 @@ message FunctionProto {
   repeated InstructionProto instructions = 3;
 }
 
+message ForeignFunctionProto {
+  string name = 1;
+}
+
 message ModuleProto {
   // Subroutine at which to begin execution.
   FunctionProto initializer = 1;
@@ -37,4 +43,8 @@ message ModuleProto {
   repeated FunctionProto functions = 2;
 
   repeated string string_literals = 3;
+
+  repeated ForeignFunctionProto foreign_functions = 4;
+
+  type.TypeSystem type_system = 5;
 }

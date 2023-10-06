@@ -20,6 +20,7 @@ nth::NoDestructor<nth::flyweight_set<Type>> slice_element_types;
 nth::NoDestructor<nth::flyweight_set<Type>> pointee_types;
 nth::NoDestructor<nth::flyweight_set<Type>> buffer_pointee_types;
 nth::NoDestructor<nth::flyweight_set<Type>> pattern_types;
+nth::NoDestructor<nth::flyweight_set<void const*>> generic_function_types;
 
 }  // namespace
 
@@ -71,6 +72,11 @@ PatternType Pattern(Type t) {
   return PatternType(pattern_types->index(pattern_types->insert(t).first));
 }
 
+GenericFunctionType GenericFunction(void const* fn) {
+  return GenericFunctionType(
+      generic_function_types->index(generic_function_types->insert(fn).first));
+}
+
 Type SliceType::element_type() const {
   return slice_element_types->from_index(data());
 }
@@ -107,6 +113,7 @@ size_t JasminSize(Type t) {
     case Type::Kind::Pointer: return 1;
     case Type::Kind::BufferPointer: return 1;
     case Type::Kind::Pattern: return 1;
+    case Type::Kind::GenericFunction: return 1;
   }
 }
 
