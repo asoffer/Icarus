@@ -41,39 +41,35 @@ Module BuiltinModule(GlobalFunctionRegistry& registry) {
 
   Module m(registry);
   m.Insert(resources.IdentifierIndex("print"),
-           {.qualified_type = type::QualifiedType(
-                type::Qualifier::Constant(),
-                type::Function(type::Parameters(
-                                   std::vector<type::ParametersType::Parameter>{
-                                       {.name = resources.IdentifierIndex(""),
-                                        .type = type::Slice(type::Char)},
-                                   }),
-                               {type::Bool})),
-            .value = {jasmin::Value(&*PrintFn)}});
+           {.qualified_type = type::QualifiedType::Constant(type::Function(
+                type::Parameters(std::vector<type::ParametersType::Parameter>{
+                    {.name = resources.IdentifierIndex(""),
+                     .type = type::Slice(type::Char)},
+                }),
+                {type::Bool})),
+            .value          = {jasmin::Value(&*PrintFn)}});
   registry.Register(FunctionId(ModuleId::Builtin(), LocalFunctionId(next_id++)),
                     &*PrintFn);
 
-  m.Insert(
-      resources.IdentifierIndex("foreign"),
-      {.qualified_type = type::QualifiedType(
-           type::Qualifier::Constant(), type::GenericFunction(&*ForeignType)),
-       .value = {}});
+  m.Insert(resources.IdentifierIndex("foreign"),
+           {.qualified_type = type::QualifiedType::Constant(
+                type::GenericFunction(&*ForeignType)),
+            .value = {}});
   registry.Register(FunctionId(ModuleId::Builtin(), LocalFunctionId(next_id++)),
                     &*Foreign);
 
   m.Insert(
       resources.IdentifierIndex("b2b"),
-      {.qualified_type =
-           type::QualifiedType(type::Qualifier::Constant(), type::Type_),
-       .value = {jasmin::Value(type::Type(type::Function(
-           type::Parameters(std::vector<type::ParametersType::Parameter>{
-               {.name = resources.IdentifierIndex(""), .type = type::Bool}}),
-           {type::Bool})))}});
+      {.qualified_type = type::QualifiedType::Constant(type::Type_),
+       .value          = {jasmin::Value(type::Type(type::Function(
+                    type::Parameters(std::vector<type::ParametersType::Parameter>{
+                        {.name = resources.IdentifierIndex(""), .type = type::Bool}}),
+                    {type::Bool})))}});
 
   m.Insert(resources.IdentifierIndex("function"),
-           {.qualified_type = type::QualifiedType(type::Qualifier::Constant(),
-                                                  type::Pattern(type::Type_)),
-            .value          = {jasmin::Value(&*Function)}});
+           {.qualified_type =
+                type::QualifiedType::Constant(type::Pattern(type::Type_)),
+            .value = {jasmin::Value(&*Function)}});
   registry.Register(FunctionId(ModuleId::Builtin(), LocalFunctionId(next_id++)),
                     &*Function);
 

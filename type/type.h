@@ -98,6 +98,14 @@ struct Qualifier {
 struct QualifiedType {
   constexpr explicit QualifiedType() = default;
 
+  static constexpr QualifiedType Unqualified(Type t) {
+    return QualifiedType(Qualifier::Unqualified(), t);
+  }
+
+  static constexpr QualifiedType Constant(Type t) {
+    return QualifiedType(Qualifier::Constant(), t);
+  }
+
   constexpr explicit QualifiedType(Qualifier q, Type t)
       : data_(static_cast<uint64_t>(q.data_) << 56 | t.data_) {}
 

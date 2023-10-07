@@ -214,8 +214,8 @@ void HandleParseTreeNodeCallExpression(ParseTree::Node::Index index,
     jasmin::Execute(*static_cast<IrFunction const*>(
                         invocable_type.type().AsGenericFunction().data()),
                     value_stack);
-    context.type_stack.push_back(type::QualifiedType(
-        type::Qualifier::Constant(), value_stack.pop<type::Type>()));
+    context.type_stack.push_back(
+        type::QualifiedType::Constant(value_stack.pop<type::Type>()));
   } else {
     NTH_UNIMPLEMENTED("{}") <<= {node};
   }
