@@ -46,5 +46,7 @@ cc_binary(
         "@asoffer_nth//nth/io:file",
         "@asoffer_nth//nth/io:file_path",
         "@asoffer_nth//nth/process:exit_code",
+        "@com_google_absl//absl/debugging:failure_signal_handler",
+        "@com_google_absl//absl/debugging:symbolize",
     ],
 )

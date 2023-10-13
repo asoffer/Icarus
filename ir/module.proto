@@ -7,7 +7,7 @@ package ic;
 message InstructionProto {
   enum OpCode {
     // Note: This needs to be kept in sync with the `jasmin::InstructionSet`
-    // defined in "ir/module.h"
+    // defined in "ir/function.h"
     CALL = 0;
     JUMP = 1;
     JUMP_IF = 2;
@@ -47,4 +47,6 @@ message ModuleProto {
   repeated ForeignFunctionProto foreign_functions = 4;
 
   type.TypeSystem type_system = 5;
+
+  map<uint32, string> identifiers = 6;
 }

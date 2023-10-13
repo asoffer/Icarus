@@ -77,7 +77,14 @@ struct Qualifier {
   static constexpr Qualifier Constant() { return Qualifier(1); }
   static constexpr Qualifier Unqualified() { return Qualifier(0); }
 
-  friend bool operator==(Qualifier, Qualifier) = default;
+  friend constexpr bool operator==(Qualifier, Qualifier) = default;
+  friend constexpr bool operator!=(Qualifier, Qualifier) = default;
+  friend constexpr bool operator<=(Qualifier lhs, Qualifier rhs) {
+    return (lhs.data_ & rhs.data_) == lhs.data_;
+  }
+  friend constexpr bool operator>=(Qualifier lhs, Qualifier rhs) {
+    return rhs <= lhs;
+  }
 
   template <typename H>
   friend H AbslHashValue(H h, Qualifier q) {
@@ -110,6 +117,8 @@ struct QualifiedType {
       : data_(static_cast<uint64_t>(q.data_) << 56 | t.data_) {}
 
   friend bool operator==(QualifiedType, QualifiedType) = default;
+
+  bool constant() const { return qualifier() >= Qualifier::Constant(); }
 
   template <typename H>
   friend H AbslHashValue(H h, QualifiedType q) {
@@ -321,19 +330,22 @@ struct SliceType : internal_type::BasicType {
 
 SliceType Slice(Type t);
 
+enum Evaluation { CompileTime, Runtime };
+
 struct GenericFunctionType : internal_type::BasicType {
+  Evaluation evaluation() const;
   void const* data() const;
 
  private:
   friend Type;
-  friend GenericFunctionType GenericFunction(void const* fn);
+  friend GenericFunctionType GenericFunction(Evaluation e, void const* fn);
 
   explicit GenericFunctionType() = default;
   explicit constexpr GenericFunctionType(uint64_t n)
       : BasicType(Type::Kind::GenericFunction, n) {}
 };
 
-GenericFunctionType GenericFunction(void const* fn);
+GenericFunctionType GenericFunction(Evaluation e, void const* fn);
 
 #define IC_XMACRO_TYPE_KIND(kind)                                              \
   inline constexpr Type::Type(kind##Type t) : data_(t.data_) {}

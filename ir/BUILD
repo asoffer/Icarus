@@ -55,7 +55,7 @@ cc_library(
         "@asoffer_jasmin//jasmin:execute",
         "@asoffer_nth//nth/debug",
         "@asoffer_nth//nth/debug/log",
-        "@asoffer_nth//nth/container:interval_set",
+        "@asoffer_nth//nth/container:interval_map",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/container:btree",
     ],

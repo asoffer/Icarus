@@ -34,9 +34,11 @@ void HandleParseTreeNodeTypeLiteral(ParseTree::Node::Index index,
                                     EmitContext& context) {
   auto node = context.Node(index);
   switch (node.token.kind()) {
-    case Token::Kind::Bool:
-      context.function_stack.back()->append<jasmin::Push>(type::Bool);
-      break;
+#define IC_XMACRO_TOKEN_KIND_BUILTIN_TYPE(kind, symbol, spelling)              \
+  case Token::Kind::kind:                                                      \
+    context.function_stack.back()->append<jasmin::Push>(type::symbol);         \
+    break;
+#include "lexer/token_kind.xmacro.h"
     default: NTH_UNREACHABLE();
   }
 }
@@ -113,19 +115,13 @@ void HandleParseTreeNodeExpressionGroup(ParseTree::Node::Index, EmitContext&) {
 
 void HandleParseTreeNodeMemberExpression(ParseTree::Node::Index index,
                                          EmitContext& context) {
-  // TODO: Once we have interval_map this will be easier.
-  jasmin::ValueStack const* vs = nullptr;
-  for (auto const& [range, value_stack] : context.constants) {
-    if (range.upper_bound() == index) {
-      vs = &value_stack;
-      break;
-    }
-  }
-  NTH_REQUIRE((v.harden), vs != nullptr);
+  auto const* mapped_range = context.constants.mapped_range(index);
+  NTH_REQUIRE((v.harden), mapped_range != nullptr);
+  context.function_stack.back()->append<jasmin::Drop>(1);
 
   ModuleId module_id;
   bool successfully_deserialized =
-      IcarusDeserializeValue(std::span(vs->begin(), vs->end()), module_id);
+      IcarusDeserializeValue(mapped_range->second.value_span(), module_id);
   NTH_REQUIRE((v.harden), successfully_deserialized);
 
   auto symbol = context.module(module_id).Lookup(
@@ -167,6 +163,7 @@ void EmitNonConstant(nth::interval<ParseTree::Node::Index> node_range,
 
 void EmitContext::Push(jasmin::Value v, type::Type t) {
   switch (t.kind()) {
+    case type::Type::Kind::GenericFunction:
     case type::Type::Kind::Function: {
       function_stack.back()->append<PushFunction>(v);
     } break;
@@ -178,11 +175,13 @@ void EmitContext::Push(jasmin::Value v, type::Type t) {
 
 void EmitIr(nth::interval<ParseTree::Node::Index> node_range, EmitContext& context) {
   ParseTree::Node::Index start = node_range.lower_bound();
-  for (auto const& [range, value_stack] : context.constants) {
+  for (auto const& [range, constant] : context.constants.mapped_intervals()) {
     if (range.lower_bound() < start) { continue; }
     EmitNonConstant(nth::interval(start, range.lower_bound()), context);
     // TODO: This type is wrong.
-    for (jasmin::Value const& v : value_stack) { context.Push(v, type::Bool); }
+    for (jasmin::Value const& v : constant.value_span()) {
+      context.Push(v, type::Bool);
+    }
     start = range.upper_bound();
   }
   EmitNonConstant(nth::interval(start, node_range.upper_bound()), context);
@@ -191,11 +190,15 @@ void EmitIr(nth::interval<ParseTree::Node::Index> node_range, EmitContext& conte
 
 void EmitContext::Evaluate(nth::interval<ParseTree::Node::Index> subtree,
                            jasmin::ValueStack& value_stack) {
+  jasmin::ValueStack vs;
   IrFunction f(0, 1);
   function_stack.push_back(&f);
   EmitIr(subtree, *this);
   f.append<jasmin::Return>();
-  jasmin::Execute(f, value_stack);
+  jasmin::Execute(f, vs);
+  for (jasmin::Value v : vs) { value_stack.push(v); }
+  constants.insert_or_assign(
+      subtree, ComputedConstant(subtree.upper_bound() - 1, std::move(vs)));
   function_stack.pop_back();
 }
 

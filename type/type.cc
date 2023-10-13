@@ -20,7 +20,8 @@ nth::NoDestructor<nth::flyweight_set<Type>> slice_element_types;
 nth::NoDestructor<nth::flyweight_set<Type>> pointee_types;
 nth::NoDestructor<nth::flyweight_set<Type>> buffer_pointee_types;
 nth::NoDestructor<nth::flyweight_set<Type>> pattern_types;
-nth::NoDestructor<nth::flyweight_set<void const*>> generic_function_types;
+nth::NoDestructor<nth::flyweight_set<std::pair<void const*, Evaluation>>>
+    generic_function_types;
 
 }  // namespace
 
@@ -72,9 +73,9 @@ PatternType Pattern(Type t) {
   return PatternType(pattern_types->index(pattern_types->insert(t).first));
 }
 
-GenericFunctionType GenericFunction(void const* fn) {
+GenericFunctionType GenericFunction(Evaluation e, void const* fn) {
   return GenericFunctionType(
-      generic_function_types->index(generic_function_types->insert(fn).first));
+      generic_function_types->index(generic_function_types->insert(std::pair(fn, e)).first));
 }
 
 Type SliceType::element_type() const {
@@ -105,7 +106,11 @@ std::vector<Type> const& FunctionType::returns() const {
 }
 
 void const* GenericFunctionType::data() const {
-  return generic_function_types->from_index(BasicType::data());
+  return generic_function_types->from_index(BasicType::data()).first;
+}
+
+Evaluation GenericFunctionType::evaluation() const {
+  return generic_function_types->from_index(BasicType::data()).second;
 }
 
 size_t JasminSize(Type t) {

@@ -58,8 +58,6 @@ void HandleParseTreeNodeExpressionPrecedenceGroup(
     case Token::Kind::MinusGreater: {
       auto node = context.Node(index);
       if (node.child_count != 2) {
-        for (auto const& c : context.Children(index)) { NTH_LOG("{}") <<= {c}; }
-        NTH_LOG("{}")<<={node.child_count};
         NTH_REQUIRE(node.child_count != -1);
         diag.Consume({
             diag::Header(diag::MessageKind::Error),
@@ -177,7 +175,6 @@ void HandleParseTreeNodeMemberExpression(ParseTree::Node::Index index,
 void HandleParseTreeNodeCallExpression(ParseTree::Node::Index index,
                                        IrContext& context,
                                        diag::DiagnosticConsumer& diag) {
-  auto& argument_width_count = context.emit.rotation_count[index];
   auto node = context.Node(index);
   auto invocable_type =
       context.type_stack[context.type_stack.size() - node.child_count];
@@ -187,6 +184,7 @@ void HandleParseTreeNodeCallExpression(ParseTree::Node::Index index,
     // TODO: Properly implement function call type-checking.
     if (parameters.size() == node.child_count - 1) {
       auto type_iter = context.type_stack.rbegin();
+      auto& argument_width_count = context.emit.rotation_count[index];
       for (size_t i = 0; i < parameters.size(); ++i) {
         argument_width_count += type::JasminSize(type_iter->type());
         ++type_iter;
@@ -207,15 +205,20 @@ void HandleParseTreeNodeCallExpression(ParseTree::Node::Index index,
          context.Node(*iter).kind !=
          ParseTree::Node::Kind::InvocationArgumentStart;
          ++iter) {
-      context.emit.Evaluate(context.emit.tree.subtree_range(*iter),
-                            value_stack);
+      nth::interval range = context.emit.tree.subtree_range(*iter);
+      context.emit.Evaluate(range, value_stack);
     }
-
-    jasmin::Execute(*static_cast<IrFunction const*>(
-                        invocable_type.type().AsGenericFunction().data()),
-                    value_stack);
-    context.type_stack.push_back(
-        type::QualifiedType::Constant(value_stack.pop<type::Type>()));
+    auto g = invocable_type.type().AsGenericFunction();
+    jasmin::Execute(*static_cast<IrFunction const*>(g.data()), value_stack);
+    auto t = value_stack.pop<type::Type>();
+    context.type_stack.push_back(type::QualifiedType::Constant(t));
+    if (g.evaluation() == type::Evaluation::CompileTime) {
+      jasmin::ValueStack value_stack;
+      value_stack.push(t);
+      context.emit.constants.insert_or_assign(
+          context.emit.tree.subtree_range(index),
+          EmitContext::ComputedConstant(index, std::move(value_stack)));
+    }
   } else {
     NTH_UNIMPLEMENTED("{}") <<= {node};
   }

@@ -27,6 +27,10 @@ struct Resources {
     return identifiers.index(identifiers.insert(s).first);
   }
 
+  std::string_view Identifier(size_t index) {
+    return identifiers.from_index(index);
+  }
+
   // Values of string literals used in the program.
   nth::flyweight_set<std::string> strings;
 

@@ -11,6 +11,7 @@
 #include "ir/module_id.h"
 #include "jasmin/value_stack.h"
 #include "nth/base/attributes.h"
+#include "nth/container/interval_map.h"
 #include "parser/parse_tree.h"
 #include "type/type.h"
 
@@ -47,25 +48,34 @@ struct EmitContext {
   std::vector<IrFunction*> function_stack;
   absl::flat_hash_map<ParseTree::Node::Index, size_t> rotation_count;
 
-  struct Compare {
-    bool operator()(nth::interval<ParseTree::Node::Index> const& lhs,
-                    nth::interval<ParseTree::Node::Index> const& rhs) const {
-      auto const& [lhs_l, lhs_u] = lhs;
-      auto const& [rhs_l, rhs_u] = rhs;
-      if (lhs_l < rhs_l) { return true; }
-      if (lhs_l > rhs_l) { return false; }
-      return lhs_u < rhs_u;
+  struct ComputedConstant {
+    explicit ComputedConstant(ParseTree::Node::Index index,
+                              jasmin::ValueStack value)
+        : index_(index), value_(std::move(value)) {}
+
+    friend bool operator==(ComputedConstant const& lhs,
+                           ComputedConstant const& rhs) {
+      return lhs.index_ == rhs.index_;
     }
+
+    friend bool operator!=(ComputedConstant const& lhs,
+                           ComputedConstant const& rhs) {
+      return not(lhs == rhs);
+    }
+
+    std::span<jasmin::Value const> value_span() const {
+      return std::span<jasmin::Value const>(value_.begin(), value_.end());
+    }
+
+   private:
+    ParseTree::Node::Index index_;
+    jasmin::ValueStack value_;
   };
 
-  // Indices covering subtree roots which were required to be constant evaluated
-  // in order to type-check their parent, mapped to their corresponding constant
-  // value.
-  //
-  // TODO: This should really be it's own interval map type.
-  absl::btree_map<nth::interval<ParseTree::Node::Index>, jasmin::ValueStack,
-                  Compare>
-      constants;
+  // Maps node indices to the constant value associated with the computation for
+  // the largest subtree containing it whose constant value has been computed
+  // thus far.
+  nth::interval_map<ParseTree::Node::Index, ComputedConstant> constants;
   DependentModules const& modules;
 };
 

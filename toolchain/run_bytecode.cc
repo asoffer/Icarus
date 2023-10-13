@@ -3,6 +3,8 @@
 #include <optional>
 #include <string>
 
+#include "absl/debugging/failure_signal_handler.h"
+#include "absl/debugging/symbolize.h"
 #include "common/string.h"
 #include "diagnostics/consumer/streaming.h"
 #include "diagnostics/message.h"
@@ -23,6 +25,10 @@ namespace ic {
 namespace {
 
 nth::exit_code Run(nth::FlagValueSet flags, std::span<std::string_view const>) {
+  absl::InitializeSymbolizer("");
+  absl::FailureSignalHandlerOptions opts;
+  absl::InstallFailureSignalHandler(opts);
+
   auto const& input = flags.get<nth::file_path>("input");
   std::ifstream in(input.path());
 
@@ -54,14 +60,16 @@ nth::exit_code Run(nth::FlagValueSet flags, std::span<std::string_view const>) {
   }
 
   if (not proto.ParseFromIstream(&in) or not d.Deserialize(proto, module)) {
+    NTH_LOG((v.debug), "{}") <<= {proto.DebugString()};
     consumer.Consume({
         diag::Header(diag::MessageKind::Error),
         diag::Text(
-            InterpolateString<"Failed to parse the moudle content from {}.">(
+            InterpolateString<"Failed to parse the module content from {}.">(
                 input)),
     });
     return nth::exit_code::generic_error;
   }
+  NTH_LOG((v.debug), "{}") <<= {proto.DebugString()};
 
   jasmin::ValueStack value_stack;
   jasmin::Execute(module.initializer(), value_stack);

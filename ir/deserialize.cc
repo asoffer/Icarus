@@ -68,7 +68,8 @@ bool Deserializer::Deserialize(ModuleProto const& proto, Module& module) {
     module.add_function(function.parameters(), function.returns());
   }
 
-  if (not DeserializeFunction(proto, proto.initializer(), module.initializer())) {
+  if (not DeserializeFunction(proto, proto.initializer(),
+                              module.initializer())) {
     return false;
   }
 

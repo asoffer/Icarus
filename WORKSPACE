@@ -3,9 +3,9 @@ load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
 http_archive(
   name = "asoffer_nth",
-  urls = ["https://github.com/asoffer/nth/archive/1dece678fc9a4a4b4e1ea82dc71370482c2c5fcb.zip"],
-  strip_prefix = "nth-1dece678fc9a4a4b4e1ea82dc71370482c2c5fcb",
-  sha256 = "4a698880fab2a1533ccf8c031bf47a07e0da14e04e6f8782c6a9e306de04efaa",
+  urls = ["https://github.com/asoffer/nth/archive/c1b12edeb31d8732e76811e081d7cba3afdadcf4.zip"],
+  strip_prefix = "nth-c1b12edeb31d8732e76811e081d7cba3afdadcf4",
+  sha256 = "1673c58d3a553f76eed0816681f21ac88e5b09af98c6f042ef4cb6d155860e97",
 )
 
 http_archive(
