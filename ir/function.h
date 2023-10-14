@@ -34,6 +34,14 @@ struct PushStringLiteral : jasmin::StackMachineInstruction<PushStringLiteral> {
   }
 };
 
+struct PushType : jasmin::StackMachineInstruction<PushType> {
+  static std::string_view name() { return "push-type"; }
+
+  static constexpr void execute(jasmin::ValueStack& value_stack, type::Type t) {
+    value_stack.push(t);
+  }
+};
+
 struct TypeKind : jasmin::StackMachineInstruction<TypeKind> {
   static std::string_view name() { return "type-kind"; }
 
@@ -55,7 +63,7 @@ struct ConstructFunctionType
 
 struct Print : jasmin::StackMachineInstruction<Print> {
   static void execute(char const* p, size_t length) {
-    std::printf("%*s", static_cast<int>(length), p);
+    std::fprintf(stderr, "%*s", static_cast<int>(length), p);
   }
 };
 
@@ -75,9 +83,11 @@ struct Rotate : jasmin::StackMachineInstruction<Rotate> {
   }
 };
 
-using InstructionSet = jasmin::MakeInstructionSet<
-    jasmin::Push, PushFunction, PushStringLiteral, jasmin::Drop, TypeKind,
-    jasmin::Equal<type::Type::Kind>, Print, Rotate, ConstructFunctionType>;
+using InstructionSet =
+    jasmin::MakeInstructionSet<jasmin::Push, PushFunction, PushStringLiteral,
+                               PushType, jasmin::Drop, TypeKind,
+                               jasmin::Equal<type::Type::Kind>, Print, Rotate,
+                               ConstructFunctionType, jasmin::Swap>;
 using IrFunction = jasmin::Function<InstructionSet>;
 
 }  // namespace ic

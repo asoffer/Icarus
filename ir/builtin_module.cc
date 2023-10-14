@@ -27,6 +27,8 @@ nth::NoDestructor<IrFunction> Function([] {
 
 nth::NoDestructor<IrFunction> Foreign([] {
   IrFunction f(1, 1);
+  f.append<jasmin::Drop>(1);
+  f.append<PushFunction>(&*PrintFn);
   f.append<jasmin::Return>();
   return f;
 }());

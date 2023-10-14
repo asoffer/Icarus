@@ -15,12 +15,14 @@ message InstructionProto {
     PUSH = 4;
     PUSH_FUNCTION = 5;
     PUSH_STRING_LITERAL = 6;
-    DROP = 7;
-    TYPE_KIND = 8;
-    TYPE_KIND_EQUALS = 9;
-    PRINT = 10;
-    ROTATE = 11;
-    CONSTRUCT_FUNCTION = 12;
+    PUSH_TYPE = 7;
+    DROP = 8;
+    TYPE_KIND = 9;
+    TYPE_KIND_EQUALS = 10;
+    PRINT = 11;
+    ROTATE = 12;
+    CONSTRUCT_FUNCTION = 13;
+    SWAP = 14;
   }
   OpCode op_code = 1;
   repeated uint64 content = 2;

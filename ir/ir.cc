@@ -14,9 +14,8 @@ namespace {
   void HandleParseTreeNode##name(ParseTree::Node::Index index,                 \
                                  IrContext& context,                           \
                                  diag::DiagnosticConsumer& diag) {             \
-    context.type_stack.push_back(                                              \
-        type::QualifiedType(type::Qualifier::Constant(), t));                  \
- }
+    context.type_stack.push_back(type::QualifiedType::Constant(t));            \
+  }
 #include "parser/parse_tree_node_kind.xmacro.h"
 
 void HandleParseTreeNodeDeclaration(ParseTree::Node::Index index, IrContext& context,
@@ -141,7 +140,7 @@ void HandleParseTreeNodeMemberExpression(ParseTree::Node::Index index,
   auto node = context.Node(index);
   NTH_REQUIRE(not context.type_stack.empty());
   if (context.type_stack.back() ==
-      type::QualifiedType(type::Qualifier::Constant(), type::Module)) {
+      type::QualifiedType::Constant(type::Module)) {
     auto module_id = context.EvaluateAs<ModuleId>(index - 1);
     NTH_REQUIRE(module_id.has_value());
     context.type_stack.back() = context.emit.module(*module_id)
@@ -153,7 +152,7 @@ void HandleParseTreeNodeMemberExpression(ParseTree::Node::Index index,
           diag::Text(
               InterpolateString<"No symbol named '{}' in the given module.">(
                   diag.Symbol(context.Node(index).token))),
-          diag::SourceQuote(context.Node(index - 2).token),
+          diag::SourceQuote(context.Node(index - 1).token),
       });
     }
   } else if (context.type_stack.back().type() == type::Type_) {
@@ -171,10 +170,26 @@ void HandleParseTreeNodeMemberExpression(ParseTree::Node::Index index,
   }
 }
 
+#define IC_PROPAGATE_ERRORS(context, node)                                     \
+  do {                                                                         \
+    auto&& c = (context);                                                      \
+    auto&& n = (node);                                                         \
+    for (auto const* p = &c.type_stack[c.type_stack.size() - n.child_count];   \
+         p != &c.type_stack.back(); ++p) {                                     \
+      if (p->type() == type::Error) {                                          \
+        c.type_stack.resize(c.type_stack.size() - n.child_count + 1);          \
+        c.type_stack.back() = type::QualifiedType::Constant(type::Error);      \
+        return;                                                                \
+      }                                                                        \
+    }                                                                          \
+  } while (false);
+
 void HandleParseTreeNodeCallExpression(ParseTree::Node::Index index,
                                        IrContext& context,
                                        diag::DiagnosticConsumer& diag) {
   auto node = context.Node(index);
+  IC_PROPAGATE_ERRORS(context, node);
+
   auto invocable_type =
       context.type_stack[context.type_stack.size() - node.child_count];
   if (invocable_type.type().kind() == type::Type::Kind::Function) {
@@ -211,12 +226,19 @@ void HandleParseTreeNodeCallExpression(ParseTree::Node::Index index,
     jasmin::Execute(*static_cast<IrFunction const*>(g.data()), value_stack);
     auto t = value_stack.pop<type::Type>();
     context.type_stack.push_back(type::QualifiedType::Constant(t));
+    NTH_REQUIRE((v.debug), t.kind() == type::Type::Kind::Function);
+
+    auto& parameters_size = context.emit.rotation_count[index];
+    NTH_REQUIRE((v.debug), parameters_size == 0);
+    for (auto const& parameter : *t.AsFunction().parameters()) {
+      parameters_size += type::JasminSize(parameter.type);
+    }
+
     if (g.evaluation() == type::Evaluation::CompileTime) {
       jasmin::ValueStack value_stack;
-      value_stack.push(t);
-      context.emit.constants.insert_or_assign(
-          context.emit.tree.subtree_range(index),
-          EmitContext::ComputedConstant(index, std::move(value_stack)));
+      context.emit.Evaluate(context.emit.tree.subtree_range(index),
+                            value_stack);
+      NTH_LOG("{} {}") <<= {t, value_stack.size()};
     }
   } else {
     NTH_UNIMPLEMENTED("{}") <<= {node};
@@ -242,7 +264,7 @@ void IrContext::ProcessIr(diag::DiagnosticConsumer& diag) {
     switch (node.kind) {
 #define IC_XMACRO_PARSE_TREE_NODE_KIND(kind)                                   \
   case ParseTree::Node::Kind::kind:                                            \
-    NTH_LOG((v.when(not false)), "Parse node {}") <<= {#kind};                     \
+    NTH_LOG((v.when(false)), "Process node {}") <<= {#kind};               \
     HandleParseTreeNode##kind(ParseTree::Node::Index(i), *this, diag);         \
     break;
 #include "parser/parse_tree_node_kind.xmacro.h"

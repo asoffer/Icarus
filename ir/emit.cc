@@ -36,7 +36,7 @@ void HandleParseTreeNodeTypeLiteral(ParseTree::Node::Index index,
   switch (node.token.kind()) {
 #define IC_XMACRO_PRIMITIVE_TYPE(kind, symbol, spelling)                       \
   case Token::Kind::kind:                                                      \
-    context.function_stack.back()->append<jasmin::Push>(type::symbol);         \
+    context.function_stack.back()->append<PushType>(type::symbol);             \
     break;
 #include "common/language/primitive_types.xmacro.h"
     default: NTH_UNREACHABLE();
@@ -123,7 +123,7 @@ void HandleParseTreeNodeExpressionGroup(ParseTree::Node::Index, EmitContext&) {
 
 void HandleParseTreeNodeMemberExpression(ParseTree::Node::Index index,
                                          EmitContext& context) {
-  auto const* mapped_range = context.constants.mapped_range(index);
+  auto const* mapped_range = context.constants.mapped_range(index - 1);
   NTH_REQUIRE((v.harden), mapped_range != nullptr);
   context.function_stack.back()->append<jasmin::Drop>(1);
 
@@ -152,6 +152,7 @@ void HandleParseTreeNodeInvocationArgumentStart(ParseTree::Node::Index index,
 
 void EmitNonConstant(nth::interval<ParseTree::Node::Index> node_range,
                      EmitContext& context) {
+  NTH_LOG("{}") <<={node_range};
   if (node_range.empty()) { return; }
   auto* node = &context.tree[node_range.lower_bound()];
   for (auto index = node_range.lower_bound(); index < node_range.upper_bound();
@@ -159,7 +160,7 @@ void EmitNonConstant(nth::interval<ParseTree::Node::Index> node_range,
     switch (node->kind) {
 #define IC_XMACRO_PARSE_TREE_NODE_KIND(kind)                                   \
   case ParseTree::Node::Kind::kind:                                            \
-    NTH_LOG((v.when(false)), "Emit node {}") <<= {#kind};                      \
+    NTH_LOG((v.when(not false)), "Emit node {}") <<= {#kind};                  \
     HandleParseTreeNode##kind(index, context);                                 \
     break;
 #include "parser/parse_tree_node_kind.xmacro.h"
@@ -170,6 +171,10 @@ void EmitNonConstant(nth::interval<ParseTree::Node::Index> node_range,
 }  // namespace
 
 void EmitContext::Push(jasmin::Value v, type::Type t) {
+  if (t == type::Type_) {
+    function_stack.back()->append<PushType>(v.as<type::Type>());
+    return;
+  }
   switch (t.kind()) {
     case type::Type::Kind::GenericFunction:
     case type::Type::Kind::Function: {
@@ -186,9 +191,14 @@ void EmitIr(nth::interval<ParseTree::Node::Index> node_range, EmitContext& conte
   for (auto const& [range, constant] : context.constants.mapped_intervals()) {
     if (range.lower_bound() < start) { continue; }
     EmitNonConstant(nth::interval(start, range.lower_bound()), context);
-    // TODO: This type is wrong.
     for (jasmin::Value const& v : constant.value_span()) {
-      context.Push(v, type::Bool);
+      context.Push(
+          v, type::Function(
+                 type::Parameters(std::vector<type::ParametersType::Parameter>{
+                     {.name = resources.IdentifierIndex(""),
+                      .type = type::Slice(type::Char)},
+                 }),
+                 {type::Bool}));
     }
     start = range.upper_bound();
   }

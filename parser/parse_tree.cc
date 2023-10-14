@@ -25,10 +25,8 @@ void ParseTree::append(Node::Kind kind, Token token, int subtree_start) {
 void ParseTree::set_back_child_count() {
   int16_t count = 0;
   for (auto const& unused : children(Node::Index(nodes_.size() - 1))) {
-    NTH_LOG("{}") <<= {&unused - nodes_.data()};
     ++count;
   }
-  NTH_LOG("Setting child count of {} to {}") <<= {nodes_.size() - 1, count};
   nodes_.back().child_count = count;
 }
 
