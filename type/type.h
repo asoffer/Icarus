@@ -11,13 +11,13 @@
 namespace ic::type {
 
 // All types definable within the type-system can be categorized by "kind" and
-// fit into one of the kinds specified in "type/type_kind.xmacro.h". Each such
-// type must be precisely 64-bits wide, and must reserve have the
+// fit into one of the kinds specified in "common/language/type_kind.xmacro.h".
+// Each such type must be precisely 64-bits wide, and must reserve have the
 // most-significant 8 bytes be unset in any valid representation. Furthermore,
 // the second-most-significant 8 bytes must be filled with a representation of
 // the corresponding `Type::Kind` defined below.
 #define IC_XMACRO_TYPE_KIND(kind) struct kind##Type;
-#include "type/type_kind.xmacro.h"
+#include "common/language/type_kind.xmacro.h"
 
 // Objects of type `Type` represent types within the modeled type-system. The
 // type `Type` is regular (i.e., can be safely copied, compared for equality,
@@ -29,7 +29,7 @@ struct Type {
 
   enum class Kind : uint8_t {
 #define IC_XMACRO_TYPE_KIND(kind) kind,
-#include "type/type_kind.xmacro.h"
+#include "common/language/type_kind.xmacro.h"
   };
 
   friend void NthPrint(auto& p, auto&, Kind k) {
@@ -39,7 +39,7 @@ struct Type {
     p.write("Type::Kind::");                                                   \
     p.write(#kind);                                                            \
     break;
-#include "type/type_kind.xmacro.h"
+#include "common/language/type_kind.xmacro.h"
     }
   }
 
@@ -61,7 +61,7 @@ struct Type {
 #define IC_XMACRO_TYPE_KIND(kind)                                              \
   constexpr Type(kind##Type t);                                                \
   kind##Type As##kind() const;
-#include "type/type_kind.xmacro.h"
+#include "common/language/type_kind.xmacro.h"
 
   friend void NthPrint(auto& p, auto& f, Type t);
 
@@ -169,8 +169,8 @@ struct BasicType {
 // Represents a primitive type built-in to the language.
 struct PrimitiveType : internal_type::BasicType {
   enum class Kind : uint8_t {
-#define IC_XMACRO_TOKEN_KIND_BUILTIN_TYPE(kind, symbol, spelling) kind,
-#include "lexer/token_kind.xmacro.h"
+#define IC_XMACRO_PRIMITIVE_TYPE(kind, symbol, spelling) kind,
+#include "common/language/primitive_types.xmacro.h"
   };
 
   explicit constexpr PrimitiveType(Kind k)
@@ -181,11 +181,11 @@ struct PrimitiveType : internal_type::BasicType {
 
   friend void NthPrint(auto& p, auto& f, PrimitiveType t) {
     switch (t.kind()) {
-#define IC_XMACRO_TOKEN_KIND_BUILTIN_TYPE(kind, symbol, spelling)              \
+#define IC_XMACRO_PRIMITIVE_TYPE(kind, symbol, spelling)                       \
   case Kind::kind:                                                             \
     p.write(spelling);                                                         \
     return;
-#include "lexer/token_kind.xmacro.h"
+#include "common/language/primitive_types.xmacro.h"
     }
   }
 
@@ -228,7 +228,7 @@ struct FunctionType : internal_type::BasicType {
   ParametersType parameters() const;
   std::vector<Type> const& returns() const;
 
-  friend void NthPrint(auto& p, auto&fmt, FunctionType f) {
+  friend void NthPrint(auto& p, auto& fmt, FunctionType f) {
     std::string_view separator = "(";
     for (auto const& param : *f.parameters()) {
       p.write(std::exchange(separator, ", "));
@@ -239,7 +239,7 @@ struct FunctionType : internal_type::BasicType {
     std::span returns = f.returns();
     p.write(returns.size() != 1 ? ") -> (" : ") -> ");
     separator = "";
-    for (auto const& r: f.returns()) {
+    for (auto const& r : f.returns()) {
       p.write(std::exchange(separator, ", "));
       fmt(p, r);
     }
@@ -324,8 +324,7 @@ struct SliceType : internal_type::BasicType {
   friend SliceType Slice(Type);
 
   explicit SliceType() = default;
-  explicit constexpr SliceType(uint64_t n)
-      : BasicType(Type::Kind::Slice, n) {}
+  explicit constexpr SliceType(uint64_t n) : BasicType(Type::Kind::Slice, n) {}
 };
 
 SliceType Slice(Type t);
@@ -349,11 +348,11 @@ GenericFunctionType GenericFunction(Evaluation e, void const* fn);
 
 #define IC_XMACRO_TYPE_KIND(kind)                                              \
   inline constexpr Type::Type(kind##Type t) : data_(t.data_) {}
-#include "type/type_kind.xmacro.h"
+#include "common/language/type_kind.xmacro.h"
 
-#define IC_XMACRO_TOKEN_KIND_BUILTIN_TYPE(kind, symbol, spelling)              \
+#define IC_XMACRO_PRIMITIVE_TYPE(kind, symbol, spelling)                       \
   inline constexpr Type symbol = PrimitiveType(PrimitiveType::Kind::kind);
-#include "lexer/token_kind.xmacro.h"
+#include "common/language/primitive_types.xmacro.h"
 
 void NthPrint(auto& p, auto& f, Type t) {
   switch (t.kind()) {
@@ -361,7 +360,7 @@ void NthPrint(auto& p, auto& f, Type t) {
   case Type::Kind::kind:                                                       \
     f(p, t.As##kind());                                                        \
     return;
-#include "type/type_kind.xmacro.h"
+#include "common/language/type_kind.xmacro.h"
   }
 }
 

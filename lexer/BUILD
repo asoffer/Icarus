@@ -44,6 +44,9 @@ cc_test(
 cc_library(
     name = "token_kind_xmacro",
     textual_hdrs = ["token_kind.xmacro.h"],
+    deps = [
+        "//common/language:primitive_types",
+    ],
 )
 
 cc_library(

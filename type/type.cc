@@ -35,7 +35,7 @@ nth::NoDestructor<nth::flyweight_set<std::pair<void const*, Evaluation>>>
     std::memcpy(&t, this, sizeof(Type));                                       \
     return t;                                                                  \
   }
-#include "type/type_kind.xmacro.h"
+#include "common/language/type_kind.xmacro.h"
 
 ParametersType Parameters(std::vector<ParametersType::Parameter> const& p) {
   return ParametersType(parameters->index(parameters->insert(p).first));

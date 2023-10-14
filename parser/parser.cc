@@ -316,9 +316,9 @@ void Parser::HandleAtomicTerm(ParseTree& tree) {
       break;
     case Token::Kind::Identifier: k = ParseTree::Node::Kind::Identifier; break;
 
-#define IC_XMACRO_TOKEN_KIND_BUILTIN_TYPE(kind, symbol, spelling)              \
+#define IC_XMACRO_PRIMITIVE_TYPE(kind, symbol, spelling)              \
   case Token::Kind::kind:
-#include "lexer/token_kind.xmacro.h"
+#include "common/language/primitive_types.xmacro.h"
       k = ParseTree::Node::Kind::TypeLiteral;
       break;
     default: NTH_UNIMPLEMENTED("Token: {}") <<= {current_token()};

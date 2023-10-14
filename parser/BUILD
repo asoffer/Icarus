@@ -32,6 +32,7 @@ cc_library(
         ":parse_state_xmacro",
         ":parse_tree",
         ":precedence",
+        "//common/language:primitive_types",
         "//diagnostics/consumer",
         "//lexer:token",
         "//lexer:token_buffer",

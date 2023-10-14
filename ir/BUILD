@@ -48,6 +48,7 @@ cc_library(
         ":dependent_modules",
         ":module",
         ":module_id",
+        "//common/language:primitive_types",
         "//common:resources",
         "//parser:parse_tree",
         "//parser:parse_tree_node_kind_xmacro",

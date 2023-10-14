@@ -34,11 +34,11 @@ void HandleParseTreeNodeTypeLiteral(ParseTree::Node::Index index,
                                     EmitContext& context) {
   auto node = context.Node(index);
   switch (node.token.kind()) {
-#define IC_XMACRO_TOKEN_KIND_BUILTIN_TYPE(kind, symbol, spelling)              \
+#define IC_XMACRO_PRIMITIVE_TYPE(kind, symbol, spelling)                       \
   case Token::Kind::kind:                                                      \
     context.function_stack.back()->append<jasmin::Push>(type::symbol);         \
     break;
-#include "lexer/token_kind.xmacro.h"
+#include "common/language/primitive_types.xmacro.h"
     default: NTH_UNREACHABLE();
   }
 }
