@@ -384,6 +384,7 @@ void Parser::HandleExpressionSuffix(ParseTree& tree) {
       NTH_REQUIRE(state_.back().kind == State::Kind::ResolveExpressionGroup);
       tree.append(ParseTree::Node::Kind::ExpressionPrecedenceGroup,
                   Token::Invalid(), state_.back().subtree_start);
+      tree.set_back_child_count();
       subtree_start = state.subtree_start;
       break;
     case Priority::Same:
@@ -416,6 +417,7 @@ void Parser::HandleResolveExpressionGroup(ParseTree& tree) {
   auto state = pop_state();
   tree.append(ParseTree::Node::Kind::ExpressionPrecedenceGroup,
               Token::Invalid(), state.subtree_start);
+  tree.set_back_child_count();
 }
 
 void Parser::HandleResolveUnaryExpression(ParseTree& tree) {

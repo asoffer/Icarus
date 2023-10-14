@@ -82,7 +82,15 @@ void HandleParseTreeNodeInfixOperator(ParseTree::Node::Index index,
 
 void HandleParseTreeNodeExpressionPrecedenceGroup(ParseTree::Node::Index index,
                                                   EmitContext& context) {
-  NTH_UNIMPLEMENTED();
+  auto iter = context.tree.children(index).begin();
+  ++iter;
+  auto node = *iter;
+  switch (node.token.kind()) {
+    case Token::Kind::MinusGreater: {
+      context.function_stack.back()->append<ConstructFunctionType>();
+    } break;
+    default: NTH_UNIMPLEMENTED();
+  }
 }
 
 void HandleParseTreeNodeLet(ParseTree::Node::Index, EmitContext&) {

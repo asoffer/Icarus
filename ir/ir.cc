@@ -57,8 +57,7 @@ void HandleParseTreeNodeExpressionPrecedenceGroup(
     case Token::Kind::Period: break;
     case Token::Kind::MinusGreater: {
       auto node = context.Node(index);
-      if (node.child_count != 2) {
-        NTH_REQUIRE(node.child_count != -1);
+      if (node.child_count != 3) {
         diag.Consume({
             diag::Header(diag::MessageKind::Error),
             diag::Text(

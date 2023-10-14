@@ -5,6 +5,7 @@
 #include <queue>
 #include <string_view>
 
+#include "common/resources.h"
 #include "jasmin/function.h"
 #include "jasmin/instruction.h"
 #include "jasmin/instructions/compare.h"
@@ -39,6 +40,19 @@ struct TypeKind : jasmin::StackMachineInstruction<TypeKind> {
   static constexpr type::Type::Kind execute(type::Type t) { return t.kind(); }
 };
 
+struct ConstructFunctionType
+    : jasmin::StackMachineInstruction<ConstructFunctionType> {
+  static std::string_view name() { return "construct-function-type"; }
+
+  static type::Type execute(type::Type parameter, type::Type return_type) {
+    return type::Function(
+        type::Parameters(std::vector<type::ParametersType::Parameter>{
+            {.name = resources.IdentifierIndex(""), .type = parameter}}),
+        std::vector{return_type});
+  }
+};
+
+
 struct Print : jasmin::StackMachineInstruction<Print> {
   static void execute(char const* p, size_t length) {
     std::printf("%*s", static_cast<int>(length), p);
@@ -61,10 +75,9 @@ struct Rotate : jasmin::StackMachineInstruction<Rotate> {
   }
 };
 
-using InstructionSet =
-    jasmin::MakeInstructionSet<jasmin::Push, PushFunction, PushStringLiteral,
-                               jasmin::Drop, TypeKind,
-                               jasmin::Equal<type::Type::Kind>, Print, Rotate>;
+using InstructionSet = jasmin::MakeInstructionSet<
+    jasmin::Push, PushFunction, PushStringLiteral, jasmin::Drop, TypeKind,
+    jasmin::Equal<type::Type::Kind>, Print, Rotate, ConstructFunctionType>;
 using IrFunction = jasmin::Function<InstructionSet>;
 
 }  // namespace ic

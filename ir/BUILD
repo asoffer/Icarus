@@ -65,6 +65,7 @@ cc_library(
     name = "function",
     hdrs = ["function.h"],
     deps = [
+        "//common:resources",
         "//type",
         "@asoffer_jasmin//jasmin:function",
         "@asoffer_jasmin//jasmin:instruction",

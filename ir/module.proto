@@ -20,6 +20,7 @@ message InstructionProto {
     TYPE_KIND_EQUALS = 9;
     PRINT = 10;
     ROTATE = 11;
+    CONSTRUCT_FUNCTION = 12;
   }
   OpCode op_code = 1;
   repeated uint64 content = 2;
