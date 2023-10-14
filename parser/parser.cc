@@ -100,6 +100,15 @@ struct Parser {
   diag::DiagnosticConsumer& diagnostic_consumer_;
 };
 
+  struct DebugView {
+    friend void NthPrint(auto& p, auto& f, DebugView const view) {
+      for (auto iter = view.state.rbegin(); iter != view.state.rend(); ++iter) {
+        nth::Interpolate<"    {}\n">(p, f, *iter);
+      }
+    }
+    std::span<Parser::State const> state;
+  };
+
 }  // namespace
 
 ParseTree Parse(TokenBuffer const& token_buffer,
@@ -111,8 +120,9 @@ ParseTree Parse(TokenBuffer const& token_buffer,
     if (tree.size() != 0) {
       NTH_REQUIRE((v.debug), tree.back().subtree_size > 0);
     }
-    NTH_LOG((v.when(false)), "\n{} {}:\t{}") <<=
-        {p.current_token(), p.state().back().subtree_start, p.state()};
+    NTH_LOG((v.when(false)), "{} {}:\n{}") <<=
+        {p.current_token(), p.state().back().subtree_start,
+         DebugView{.state = p.state()}};
     switch (p.state().back().kind) {
 #define IC_XMACRO_PARSER_STATE(state)                                          \
   case Parser::State::Kind::state:                                             \
@@ -305,22 +315,11 @@ void Parser::HandleResolveMemberTerm(ParseTree& tree) {
 void Parser::HandleAtomicTerm(ParseTree& tree) {
   ParseTree::Node::Kind k;
   switch (current_token().kind()) {
-    case Token::Kind::Builtin: k = ParseTree::Node::Kind::BuiltinLiteral; break;
-    case Token::Kind::True:
-    case Token::Kind::False: k = ParseTree::Node::Kind::BooleanLiteral; break;
-    case Token::Kind::StringLiteral:
-      k = ParseTree::Node::Kind::StringLiteral;
-      break;
-    case Token::Kind::IntegerLiteral:
-      k = ParseTree::Node::Kind::IntegerLiteral;
-      break;
-    case Token::Kind::Identifier: k = ParseTree::Node::Kind::Identifier; break;
-
-#define IC_XMACRO_PRIMITIVE_TYPE(kind, symbol, spelling)              \
-  case Token::Kind::kind:
-#include "common/language/primitive_types.xmacro.h"
-      k = ParseTree::Node::Kind::TypeLiteral;
-      break;
+#define IC_XMACRO_ATOM(token_kind, parse_node_kind)                            \
+  case Token::Kind::token_kind:                                                \
+    k = ParseTree::Node::Kind::parse_node_kind;                                \
+    break;
+#include "common/language/atoms.xmacro.h"
     default: NTH_UNIMPLEMENTED("Token: {}") <<= {current_token()};
   }
 
@@ -354,16 +353,17 @@ void Parser::HandleExpressionSuffix(ParseTree& tree) {
     case Token::Kind::LeftParen: {
       ++iterator_;
       IgnoreAnyNewlines();
+      tree.append(ParseTree::Node::Kind::InvocationArgumentStart,
+                  current_token(), state().back().subtree_start);
       if (current_token().kind() == Token::Kind::RightParen) {
         ExpandState(State::Kind::ResolveInvocationArgumentSequence,
                     State::Kind::ExpressionSuffix);
       } else {
-        ExpandState(State::Kind::Expression,
+        ExpandState(State{.kind          = State::Kind::Expression,
+                          .subtree_start = tree.size()},
                     State::Kind::InvocationArgumentSequence,
                     State::Kind::ExpressionSuffix);
       }
-      tree.append(ParseTree::Node::Kind::InvocationArgumentStart,
-                  current_token(), state().back().subtree_start);
       return;
     } break;
     case Token::Kind::Period: {
