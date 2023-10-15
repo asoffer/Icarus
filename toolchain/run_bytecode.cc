@@ -43,15 +43,14 @@ nth::exit_code Run(nth::FlagValueSet flags, std::span<std::string_view const>) {
     return nth::exit_code::generic_error;
   }
 
-  GlobalFunctionRegistry registry;
   ModuleProto proto;
-  Module module(registry);
+  Module module;
 
   TokenBuffer token_buffer;
 
   std::vector<ModuleProto> dependent_module_protos;
   DependentModules dependencies;
-  Deserializer d(registry);
+  Deserializer d;
   if (not d.DeserializeDependentModules(dependent_module_protos,
                                         dependencies)) {
     consumer.Consume({diag::Header(diag::MessageKind::Error),

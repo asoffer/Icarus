@@ -2,7 +2,7 @@
 #define ICARUS_IR_MODULE_H
 
 #include <cstdint>
-#include <span>
+#include <deque>
 
 #include "absl/container/flat_hash_map.h"
 #include "absl/container/inlined_vector.h"
@@ -14,7 +14,7 @@
 namespace ic {
 
 struct Module {
-  explicit Module(GlobalFunctionRegistry& registry) : registry_(&registry) {}
+  explicit Module() {}
 
   struct Entry {
     type::QualifiedType qualified_type =
@@ -27,12 +27,14 @@ struct Module {
   constexpr IrFunction& initializer() { return initializer_; }
   constexpr IrFunction const& initializer() const { return initializer_; }
 
-  constexpr std::span<IrFunction> functions() { return functions_; }
-  constexpr std::span<IrFunction const> functions() const { return functions_; }
+  constexpr std::deque<IrFunction>& functions() { return functions_; }
+  constexpr std::deque<IrFunction> const& functions() const {
+    return functions_;
+  }
 
   IrFunction& add_function(size_t parameters, size_t returns) {
     auto& f = functions_.emplace_back(parameters, returns);
-    registry_->Register(
+    global_function_registry.Register(
         FunctionId(ModuleId::Current(), LocalFunctionId(functions_.size() - 1)),
         &f);
     return f;
@@ -43,8 +45,7 @@ struct Module {
 
   absl::flat_hash_map<uint32_t, Entry> entries_;
   IrFunction initializer_{0, 0};
-  std::vector<IrFunction> functions_;
-  GlobalFunctionRegistry* registry_;
+  std::deque<IrFunction> functions_;
 };
 
 }  // namespace ic

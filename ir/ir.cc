@@ -214,13 +214,18 @@ void HandleParseTreeNodeCallExpression(ParseTree::Node::Index index,
     }
   } else if (invocable_type.type().kind() ==
              type::Type::Kind::GenericFunction) {
+    auto& rotation_count    = context.emit.rotation_count[index];
+    size_t type_stack_index = context.type_stack.size() - 1;
     jasmin::ValueStack value_stack;
     for (auto iter = context.ChildIndices(index).begin();
          context.Node(*iter).kind !=
          ParseTree::Node::Kind::InvocationArgumentStart;
          ++iter) {
+      auto t              = context.type_stack[type_stack_index].type();
       nth::interval range = context.emit.tree.subtree_range(*iter);
-      context.emit.Evaluate(range, value_stack);
+      context.emit.Evaluate(range, value_stack, {t});
+      rotation_count += type::JasminSize(t);
+      --type_stack_index;
     }
     auto g = invocable_type.type().AsGenericFunction();
     jasmin::Execute(*static_cast<IrFunction const*>(g.data()), value_stack);
@@ -228,17 +233,10 @@ void HandleParseTreeNodeCallExpression(ParseTree::Node::Index index,
     context.type_stack.push_back(type::QualifiedType::Constant(t));
     NTH_REQUIRE((v.debug), t.kind() == type::Type::Kind::Function);
 
-    auto& parameters_size = context.emit.rotation_count[index];
-    NTH_REQUIRE((v.debug), parameters_size == 0);
-    for (auto const& parameter : *t.AsFunction().parameters()) {
-      parameters_size += type::JasminSize(parameter.type);
-    }
-
     if (g.evaluation() == type::Evaluation::CompileTime) {
       jasmin::ValueStack value_stack;
-      context.emit.Evaluate(context.emit.tree.subtree_range(index),
-                            value_stack);
-      NTH_LOG("{} {}") <<= {t, value_stack.size()};
+      context.emit.Evaluate(context.emit.tree.subtree_range(index), value_stack,
+                            {t});
     }
   } else {
     NTH_UNIMPLEMENTED("{}") <<= {node};
@@ -264,7 +262,7 @@ void IrContext::ProcessIr(diag::DiagnosticConsumer& diag) {
     switch (node.kind) {
 #define IC_XMACRO_PARSE_TREE_NODE_KIND(kind)                                   \
   case ParseTree::Node::Kind::kind:                                            \
-    NTH_LOG((v.when(false)), "Process node {}") <<= {#kind};               \
+    NTH_LOG((v.when(false)), "Process node {}") <<= {#kind};                   \
     HandleParseTreeNode##kind(ParseTree::Node::Index(i), *this, diag);         \
     break;
 #include "parser/parse_tree_node_kind.xmacro.h"

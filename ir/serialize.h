@@ -8,13 +8,8 @@
 namespace ic {
 
 struct Serializer {
-  explicit Serializer(GlobalFunctionRegistry const& registry)
-      : registry_(registry) {}
   void Serialize(Module& module, ModuleProto& proto);
   void SerializeFunction(IrFunction const& function, FunctionProto& proto);
-
- private:
-  GlobalFunctionRegistry const& registry_;
 };
 
 }  // namespace ic

@@ -3,6 +3,7 @@
 #include <string_view>
 
 #include "common/resources.h"
+#include "ir/global_function_registry.h"
 #include "nth/utility/no_destructor.h"
 #include "type/type.h"
 
@@ -26,23 +27,26 @@ nth::NoDestructor<IrFunction> Function([] {
 }());
 
 nth::NoDestructor<IrFunction> Foreign([] {
-  IrFunction f(1, 1);
-  f.append<jasmin::Drop>(1);
-  f.append<PushFunction>(&*PrintFn);
+  IrFunction f(3, 1);
+  f.append<RegisterForeignFunction>();
   f.append<jasmin::Return>();
   return f;
 }());
 
 nth::NoDestructor<IrFunction> ForeignType([] {
-  IrFunction f(1, 1);
+  IrFunction f(3, 1);
+  f.append<jasmin::Swap>();
+  f.append<jasmin::Drop>(1);
+  f.append<jasmin::Swap>();
+  f.append<jasmin::Drop>(1);
   f.append<jasmin::Return>();
   return f;
 }());
 
-Module BuiltinModule(GlobalFunctionRegistry& registry) {
+Module BuiltinModule() {
   uint32_t next_id = 0;
 
-  Module m(registry);
+  Module m;
   m.Insert(resources.IdentifierIndex("print"),
            {.qualified_type = type::QualifiedType::Constant(type::Function(
                 type::Parameters(std::vector<type::ParametersType::Parameter>{
@@ -51,25 +55,26 @@ Module BuiltinModule(GlobalFunctionRegistry& registry) {
                 }),
                 {type::Bool})),
             .value          = {jasmin::Value(&*PrintFn)}});
-  registry.Register(FunctionId(ModuleId::Builtin(), LocalFunctionId(next_id++)),
-                    &*PrintFn);
+  global_function_registry.Register(
+      FunctionId(ModuleId::Builtin(), LocalFunctionId(next_id++)), &*PrintFn);
 
   m.Insert(
       resources.IdentifierIndex("foreign"),
       {.qualified_type = type::QualifiedType::Constant(
            type::GenericFunction(type::Evaluation::CompileTime, &*ForeignType)),
        .value = {&*Foreign}});
-  registry.Register(FunctionId(ModuleId::Builtin(), LocalFunctionId(next_id++)),
-                    &*ForeignType);
-  registry.Register(FunctionId(ModuleId::Builtin(), LocalFunctionId(next_id++)),
-                    &*Foreign);
+  global_function_registry.Register(
+      FunctionId(ModuleId::Builtin(), LocalFunctionId(next_id++)),
+      &*ForeignType);
+  global_function_registry.Register(
+      FunctionId(ModuleId::Builtin(), LocalFunctionId(next_id++)), &*Foreign);
 
   m.Insert(resources.IdentifierIndex("function"),
            {.qualified_type =
                 type::QualifiedType::Constant(type::Pattern(type::Type_)),
             .value = {jasmin::Value(&*Function)}});
-  registry.Register(FunctionId(ModuleId::Builtin(), LocalFunctionId(next_id++)),
-                    &*Function);
+  global_function_registry.Register(
+      FunctionId(ModuleId::Builtin(), LocalFunctionId(next_id++)), &*Function);
 
   return m;
 }

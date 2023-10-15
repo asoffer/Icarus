@@ -17,6 +17,9 @@ struct ModuleId {
     return ModuleId(std::numeric_limits<uint32_t>::max());
   }
   static constexpr ModuleId Builtin() { return ModuleId(0); }
+  static constexpr ModuleId Foreign() {
+    return ModuleId(std::numeric_limits<uint32_t>::max() - 2);
+  }
   static constexpr ModuleId Current() {
     return ModuleId(std::numeric_limits<uint32_t>::max() - 1);
   }

@@ -47,6 +47,8 @@ struct Type {
     return static_cast<Kind>((data_ >> 48) & 0xff);
   }
 
+  uint64_t index() const { return data_ & uint64_t{0x0000'ffff'ffff'ffff}; }
+
   friend bool operator==(Type, Type) = default;
 
   template <typename H>

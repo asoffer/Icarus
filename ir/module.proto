@@ -23,6 +23,7 @@ message InstructionProto {
     ROTATE = 12;
     CONSTRUCT_FUNCTION = 13;
     SWAP = 14;
+    REGISTER_FOREIGN_FUNCTION = 15;
   }
   OpCode op_code = 1;
   repeated uint64 content = 2;
@@ -35,7 +36,8 @@ message FunctionProto {
 }
 
 message ForeignFunctionProto {
-  string name = 1;
+  uint32 name = 1;
+  type.FunctionTypeProto type = 2;
 }
 
 message ModuleProto {

@@ -63,7 +63,6 @@ nth::exit_code Compile(nth::FlagValueSet flags, nth::file_path const& source) {
 
   consumer.set_source(*content);
 
-  GlobalFunctionRegistry registry;
   TokenBuffer token_buffer = lex::Lex(*content, consumer);
   if (consumer.count() != 0) { return nth::exit_code::generic_error; }
   ParseTree parse_tree = Parse(token_buffer, consumer);
@@ -72,7 +71,7 @@ nth::exit_code Compile(nth::FlagValueSet flags, nth::file_path const& source) {
 
   std::vector<ModuleProto> dependent_module_protos;
   DependentModules dependencies;
-  Deserializer d(registry);
+  Deserializer d;
   if (not d.DeserializeDependentModules(dependent_module_protos,
                                         dependencies)) {
     consumer.Consume({diag::Header(diag::MessageKind::Error),
@@ -80,7 +79,7 @@ nth::exit_code Compile(nth::FlagValueSet flags, nth::file_path const& source) {
     return nth::exit_code::generic_error;
   }
 
-  Module module(registry);
+  Module module;
   IrContext ir_context = {
       .emit = EmitContext(parse_tree, dependencies, module),
   };
@@ -88,7 +87,7 @@ nth::exit_code Compile(nth::FlagValueSet flags, nth::file_path const& source) {
   if (consumer.count() != 0) { return nth::exit_code::generic_error; }
   EmitIr(parse_tree.node_range(), ir_context.emit);
   ModuleProto module_proto;
-  Serializer s(registry);
+  Serializer s;
   s.Serialize(module, module_proto);
 
   std::ofstream out(output_path.path());

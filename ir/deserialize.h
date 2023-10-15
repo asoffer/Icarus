@@ -1,5 +1,5 @@
-#ifndef ICARUS_IR_EXECUTE_H
-#define ICARUS_IR_EXECUTE_H
+#ifndef ICARUS_IR_DESERIALIZE_H
+#define ICARUS_IR_DESERIALIZE_H
 
 #include "ir/dependent_modules.h"
 #include "ir/module.h"
@@ -9,9 +9,6 @@
 namespace ic {
 
 struct Deserializer {
-  explicit Deserializer(GlobalFunctionRegistry& registry)
-      : registry_(registry) {}
-
   bool Deserialize(ModuleProto const& proto, Module& module);
   bool DeserializeFunction(ModuleProto const& m, FunctionProto const& proto,
                            IrFunction& f);
@@ -24,10 +21,9 @@ struct Deserializer {
                                    DependentModules& dm);
 
  private:
-  GlobalFunctionRegistry& registry_;
   Module const* builtin_module_;
 };
 
 }  // namespace ic
 
-#endif  // ICARUS_IR_EXECUTE_H
+#endif  // ICARUS_IR_DESERIALIZE_H

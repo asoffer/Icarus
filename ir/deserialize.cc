@@ -1,6 +1,7 @@
 #include "ir/deserialize.h"
 
 #include "common/resources.h"
+#include "type/deserialize.h"
 #include "ir/builtin_module.h"
 #include "nth/debug/debug.h"
 #include "nth/debug/log/log.h"
@@ -32,14 +33,23 @@ bool Deserializer::DeserializeFunction(ModuleProto const& m,
       } break;
       case InstructionProto::PUSH_FUNCTION: {
         if (instruction.content().size() != 1) { return false; }
-        uint64_t index                         = instruction.content()[0];
-        [[maybe_unused]] uint32_t module_index = index >> 32;
-        uint32_t function_index                = index & uint32_t{0xffffffff};
-        NTH_REQUIRE(builtin_module_ != nullptr);
-        auto entry = builtin_module_->Lookup(function_index);
-        if (entry.qualified_type.type() == type::Error) { return false; }
-        if (entry.value.size() != 1) { return false; }
-        f.raw_append(entry.value[0]);
+        uint64_t index = instruction.content()[0];
+        FunctionId function_id(ModuleId(index >> 32),
+                               LocalFunctionId(index & uint32_t{0xffffffff}));
+        if (function_id.module() == ModuleId::Builtin()) {
+          NTH_REQUIRE((v.debug), builtin_module_ != nullptr);
+          // TODO: Are local functions the same as module symbols?
+          auto entry =
+              builtin_module_->Lookup(function_id.local_function().value());
+          if (entry.qualified_type.type() == type::Error) { return false; }
+          if (entry.value.size() != 1) { return false; }
+          f.raw_append(entry.value[0]);
+        } else if (function_id.module() == ModuleId::Foreign()) {
+          f.raw_append(
+              &ForeignFunctions()[function_id.local_function().value()].second);
+        } else {
+          NTH_UNIMPLEMENTED();
+        }
       } break;
       default: {
         auto op_code_metadata = InstructionSet::OpCodeMetadata(op_code_value);
@@ -73,6 +83,38 @@ bool Deserializer::Deserialize(ModuleProto const& proto, Module& module) {
     return false;
   }
 
+  for (std::string const& s : proto.string_literals()) {
+    resources.StringLiteralIndex(s);
+  }
+  for (auto const& f : proto.foreign_functions()) {
+    std::vector<type::ParametersType::Parameter> parameters;
+    std::vector<type::Type> return_types;
+    parameters.reserve(f.type().parameters().size());
+    for (type::ParameterTypeProto const& p : f.type().parameters()) {
+      parameters.push_back(
+          {.name = p.name(), .type = type::Deserialize(p.type())});
+    }
+    return_types.reserve(f.type().returns().size());
+    for (type::TypeProto const& t : f.type().returns()) {
+      return_types.push_back(type::Deserialize(t));
+    }
+    auto fn_type = type::Function(type::Parameters(std::move(parameters)),
+                                  std::move(return_types));
+    resources.ForeignFunctionIndex(proto.string_literals()[f.name()], fn_type);
+    // TODO: This breaks down when coalescing needs to happen.
+    ForeignFunctions().emplace_back(
+        std::piecewise_construct, std::forward_as_tuple(fn_type),
+        std::forward_as_tuple(f.type().parameters().size(),
+                              f.type().returns().size()));
+    auto& fn = ForeignFunctions().back().second;
+
+    // TODO: Implement. This is just for testing.
+    std::string_view s = "hello there\n";
+    fn.append<PushStringLiteral>(s.data(), s.length());
+    fn.append<Print>();
+    fn.append<jasmin::Return>();
+  }
+
   size_t i = 0;
   for (auto const& function : proto.functions()) {
     if (not DeserializeFunction(proto, function, module.functions()[i++])) {
@@ -86,12 +128,10 @@ bool Deserializer::DeserializeDependentModules(
     std::span<ModuleProto const> protos, DependentModules& dm) {
   NTH_REQUIRE(dm.count() == 0);
   dm.modules_.reserve(protos.size() + 1);
-  dm.modules_.emplace_back(BuiltinModule(registry_));
+  dm.modules_.emplace_back(BuiltinModule());
   builtin_module_ = &dm.modules_[0];
   for (auto const& proto : protos) {
-    if (not Deserialize(proto, dm.modules_.emplace_back(registry_))) {
-      return false;
-    }
+    if (not Deserialize(proto, dm.modules_.emplace_back())) { return false; }
   }
   return true;
 }

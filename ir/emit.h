@@ -31,10 +31,10 @@ struct EmitContext {
 
   Module const& module(ModuleId id) const { return modules[id]; }
 
-  void Push(jasmin::Value v, type::Type);
+  void Push(std::span<jasmin::Value const>, type::Type);
 
   void Evaluate(nth::interval<ParseTree::Node::Index> subtree,
-                jasmin::ValueStack& value_stack);
+                jasmin::ValueStack& value_stack, std::vector<type::Type> types);
 
   ParseTree::Node const& Node(ParseTree::Node::Index index) {
     return tree[index];
@@ -48,21 +48,17 @@ struct EmitContext {
   std::vector<IrFunction*> function_stack;
   absl::flat_hash_map<ParseTree::Node::Index, size_t> rotation_count;
 
-  struct ComputedConstant {
-    explicit ComputedConstant(ParseTree::Node::Index index,
-                              jasmin::ValueStack value)
-        : index_(index), value_(std::move(value)) {}
+  struct ComputedConstants {
+    explicit ComputedConstants(ParseTree::Node::Index index,
+                               jasmin::ValueStack value, std::vector<type::Type> types)
+        : index_(index), value_(std::move(value)), types_(std::move(types)) {}
 
-    friend bool operator==(ComputedConstant const& lhs,
-                           ComputedConstant const& rhs) {
+    friend bool operator==(ComputedConstants const& lhs,
+                           ComputedConstants const& rhs) {
       return lhs.index_ == rhs.index_;
     }
 
-    friend bool operator!=(ComputedConstant const& lhs,
-                           ComputedConstant const& rhs) {
-      return not(lhs == rhs);
-    }
-
+    std::span<type::Type const> types() const { return types_; }
     std::span<jasmin::Value const> value_span() const {
       return std::span<jasmin::Value const>(value_.begin(), value_.end());
     }
@@ -70,12 +66,13 @@ struct EmitContext {
    private:
     ParseTree::Node::Index index_;
     jasmin::ValueStack value_;
+    std::vector<type::Type> types_;
   };
 
   // Maps node indices to the constant value associated with the computation for
   // the largest subtree containing it whose constant value has been computed
   // thus far.
-  nth::interval_map<ParseTree::Node::Index, ComputedConstant> constants;
+  nth::interval_map<ParseTree::Node::Index, ComputedConstants> constants;
   DependentModules const& modules;
 };
 

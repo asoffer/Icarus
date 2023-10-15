@@ -22,13 +22,15 @@ struct GlobalFunctionRegistry {
 
   FunctionId id(IrFunction const *f) const {
     auto iter = functions_by_ptr_.find(f);
-    NTH_REQUIRE(iter != functions_by_ptr_.end());
+    NTH_REQUIRE(iter != functions_by_ptr_.end())
+        .Log<"Failed to find function {}">(f);
     return iter->second;
   }
 
   IrFunction const &function(FunctionId id) const {
     auto iter = functions_by_id_.find(id);
-    NTH_REQUIRE(iter != functions_by_id_.end());
+    NTH_REQUIRE(iter != functions_by_id_.end())
+        .Log<"Failed to find function by id {}">(id);
     return *iter->second;
   }
 
@@ -36,6 +38,8 @@ struct GlobalFunctionRegistry {
   absl::flat_hash_map<IrFunction const *, FunctionId> functions_by_ptr_;
   absl::flat_hash_map<FunctionId, IrFunction const *> functions_by_id_;
 };
+
+inline GlobalFunctionRegistry global_function_registry;
 
 }  // namespace ic
 

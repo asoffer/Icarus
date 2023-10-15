@@ -35,7 +35,7 @@ struct IrContext {
     T result;
     nth::interval range = emit.tree.subtree_range(subtree_root_index);
     jasmin::ValueStack value_stack;
-    emit.Evaluate(range, value_stack);
+    emit.Evaluate(range, value_stack, {FromConstant<T>()});
     if (IcarusDeserializeValue(
             std::span(value_stack.begin(), value_stack.end()), result)) {
       return result;
@@ -48,6 +48,17 @@ struct IrContext {
   std::vector<type::QualifiedType> type_stack;
   std::vector<Token::Kind> operator_stack;
   EmitContext emit;
+
+ private:
+  template <typename T>
+  static type::Type FromConstant() {
+    auto t = nth::type<T>;
+    if constexpr (t == nth::type<ModuleId>) {
+      return type::Module;
+    } else {
+      NTH_UNREACHABLE("No specified `type::Type` associated with `{}`") <<= {t};
+    }
+  }
 };
 
 }  // namespace ic

@@ -1,6 +1,16 @@
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
+    name = "deserialize",
+    hdrs = ["deserialize.h"],
+    srcs = ["deserialize.cc"],
+    deps = [
+        ":type",
+        ":type_system_cc_proto",
+    ],
+)
+
+cc_library(
     name = "type",
     hdrs = ["type.h"],
     srcs = ["type.cc"],

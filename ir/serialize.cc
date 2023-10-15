@@ -8,8 +8,7 @@
 namespace ic {
 namespace {
 
-void SerializeContent(GlobalFunctionRegistry const& registry,
-                      jasmin::Value op_code_value,
+void SerializeContent(jasmin::Value op_code_value,
                       InstructionProto& instruction,
                       std::span<jasmin::Value const>& immediate_values) {
   auto op_code_metadata = InstructionSet::OpCodeMetadata(op_code_value);
@@ -25,7 +24,9 @@ void SerializeContent(GlobalFunctionRegistry const& registry,
       break;
     case InstructionProto::PUSH_FUNCTION:
       instruction.mutable_content()->Add(
-          registry.id(immediate_values[0].as<IrFunction const*>()).value());
+          global_function_registry
+              .id(immediate_values[0].as<IrFunction const*>())
+              .value());
       break;
     default: {
       for (size_t i = 0; i < immediate_count; ++i) {
@@ -34,6 +35,24 @@ void SerializeContent(GlobalFunctionRegistry const& registry,
     };
   }
   immediate_values = immediate_values.subspan(immediate_count);
+}
+
+// TODO: Move to //type/
+void SerializeType(type::Type type, type::TypeProto& proto) {
+  proto.set_kind(static_cast<type::TypeProto::Kind>(
+      static_cast<uint8_t>(type.kind()) + 1));
+  proto.set_index(type.index());
+}
+
+void SerializeFunctionType(type::FunctionType type,
+                           type::FunctionTypeProto& proto) {
+  auto& parameters = *proto.mutable_parameters();
+  for (auto const& parameter : *type.parameters()) {
+    SerializeType(parameter.type, *parameters.Add()->mutable_type());
+  }
+
+  auto& returns = *proto.mutable_returns();
+  for (type::Type t : type.returns()) { SerializeType(t, *returns.Add()); }
 }
 
 }  // namespace
@@ -45,7 +64,7 @@ void Serializer::SerializeFunction(IrFunction const& function,
   while (not raw_instructions.empty()) {
     jasmin::Value op_code = raw_instructions.front();
     raw_instructions      = raw_instructions.subspan(1);
-    SerializeContent(registry_, op_code, *instructions.Add(), raw_instructions);
+    SerializeContent(op_code, *instructions.Add(), raw_instructions);
   }
 }
 
@@ -55,11 +74,16 @@ void Serializer::Serialize(Module& module, ModuleProto& proto) {
   initializer.set_returns(0);
   auto& instructions = *initializer.mutable_instructions();
   SerializeFunction(module.initializer(), initializer);
-  for (auto const & f : module.functions()) {
+  for (auto const& f : module.functions()) {
     auto& proto_fn = *proto.add_functions();
     SerializeFunction(f, proto_fn);
   }
   for (auto const& s : resources.strings) { *proto.add_string_literals() = s; }
+  for (auto const& [name, type] : resources.foreign_functions) {
+    auto& f = *proto.add_foreign_functions();
+    f.set_name(name);
+    SerializeFunctionType(type, *f.mutable_type());
+  }
 }
 
 }  // namespace ic

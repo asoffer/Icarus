@@ -16,6 +16,9 @@ struct DependentModules {
   // Returns a reference to the builtin module.
   Module const &builtin_module() const { return modules_[0]; }
 
+  Module &foreign_module() { return foreign_; }
+  Module const &foreign_module() const { return foreign_; }
+
   size_t count() const { return modules_.size(); }
 
  private:
@@ -26,6 +29,7 @@ struct DependentModules {
   // transitively. Modules are ordered according to some topological sorting
   // so that if `b` depends on `a`, then `a` appears before `b`.
   std::vector<Module> modules_;
+  Module foreign_;
 };
 
 }  // namespace ir

@@ -17,6 +17,9 @@ struct Resources {
   size_t StringLiteralIndex(std::string const &s) {
     return strings.index(strings.insert(s).first);
   }
+  size_t StringLiteralIndex(std::string_view s) {
+    return strings.index(strings.insert(std::string(s)).first);
+  }
   size_t StringLiteralIndex(char const *s) {
     return strings.index(strings.insert(s).first);
   }
@@ -31,6 +34,12 @@ struct Resources {
     return identifiers.from_index(index);
   }
 
+  size_t ForeignFunctionIndex(std::string_view name, type::FunctionType t) {
+    return foreign_functions.index(
+        foreign_functions.insert(std::make_pair(StringLiteralIndex(name), t))
+            .first);
+  }
+
   // Values of string literals used in the program.
   nth::flyweight_set<std::string> strings;
 
@@ -41,8 +50,7 @@ struct Resources {
   // any access to this member.
   nth::flyweight_set<std::string_view> identifiers;
 
-  nth::flyweight_set<std::pair<std::string_view, type::FunctionType>>
-      foreign_functions;
+  nth::flyweight_set<std::pair<size_t, type::FunctionType>> foreign_functions;
 };
 
 inline Resources resources;

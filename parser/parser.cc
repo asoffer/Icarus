@@ -295,8 +295,9 @@ void Parser::HandleInvocationArgumentSequence(ParseTree& tree) {
   } else if (current_token().kind() == Token::Kind::Comma) {
     ++iterator_;
     IgnoreAnyNewlines();
-    ExpandState(State::Kind::Expression,
-                State::Kind::InvocationArgumentSequence);
+    ExpandState(
+        State{.kind = State::Kind::Expression, .subtree_start = tree.size()},
+        State::Kind::InvocationArgumentSequence);
   } else {
     NTH_UNREACHABLE("{}") <<= {current_token().kind()};
   }

@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package type;
+package ic.type;
 
 message TypeProto {
   enum Kind {
@@ -17,7 +17,8 @@ message TypeProto {
 }
 
 message ParameterTypeProto {
-  TypeProto type = 1;
+  uint32 name = 1;
+  TypeProto type = 2;
 }
 
 message FunctionTypeProto {
