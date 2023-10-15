@@ -49,6 +49,15 @@ struct RegisterForeignFunction
   static void execute(jasmin::ValueStack& value_stack);
 };
 
+
+struct InvokeForeignFunction
+    : jasmin::StackMachineInstruction<InvokeForeignFunction> {
+  static std::string_view name() { return "invoke-foreign-function"; }
+
+  static void execute(jasmin::ValueStack& value_stack, type::FunctionType type,
+                      void const* fn_ptr);
+};
+
 struct TypeKind : jasmin::StackMachineInstruction<TypeKind> {
   static std::string_view name() { return "type-kind"; }
 
@@ -87,10 +96,12 @@ struct Rotate : jasmin::StackMachineInstruction<Rotate> {
   }
 };
 
-using InstructionSet = jasmin::MakeInstructionSet<
-    jasmin::Push, PushFunction, PushStringLiteral, PushType, jasmin::Drop,
-    TypeKind, jasmin::Equal<type::Type::Kind>, Print, Rotate,
-    ConstructFunctionType, jasmin::Swap, RegisterForeignFunction>;
+using InstructionSet =
+    jasmin::MakeInstructionSet<jasmin::Push, PushFunction, PushStringLiteral,
+                               PushType, jasmin::Drop, TypeKind,
+                               jasmin::Equal<type::Type::Kind>, Print, Rotate,
+                               ConstructFunctionType, jasmin::Swap,
+                               RegisterForeignFunction, InvokeForeignFunction>;
 using IrFunction = jasmin::Function<InstructionSet>;
 
 std::deque<std::pair<type::FunctionType, IrFunction>>& ForeignFunctions();

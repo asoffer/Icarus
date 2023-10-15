@@ -24,6 +24,7 @@ message InstructionProto {
     CONSTRUCT_FUNCTION = 13;
     SWAP = 14;
     REGISTER_FOREIGN_FUNCTION = 15;
+    INVOKE_FOREIGN_FUNCTION = 16;
   }
   OpCode op_code = 1;
   repeated uint64 content = 2;

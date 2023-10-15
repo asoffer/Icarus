@@ -32,6 +32,7 @@ cc_library(
     deps = [
         ":builtin_module",
         ":dependent_modules",
+        ":foreign_function",
         ":module",
         ":module_cc_proto",
         "//type:deserialize",
@@ -61,6 +62,17 @@ cc_library(
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/container:btree",
     ],
+)
+
+cc_library(
+    name = "foreign_function",
+    hdrs = ["foreign_function.h"],
+    srcs = ["foreign_function.cc"],
+    deps = [
+        ":function",
+        "//common:resources",
+        "//type",
+    ]
 )
 
 cc_library(

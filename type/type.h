@@ -210,6 +210,7 @@ struct ParametersType : internal_type::BasicType {
     }
   };
 
+  size_t size() const;
   std::vector<Parameter> const& operator*() const;
 
  private:
@@ -227,6 +228,8 @@ ParametersType Parameters(std::vector<ParametersType::Parameter>&& p);
 ParametersType Parameters(std::vector<ParametersType::Parameter> const& p);
 
 struct FunctionType : internal_type::BasicType {
+  explicit FunctionType() = default;
+
   ParametersType parameters() const;
   std::vector<Type> const& returns() const;
 
@@ -253,7 +256,6 @@ struct FunctionType : internal_type::BasicType {
   friend FunctionType Function(ParametersType, std::vector<Type>&&);
   friend FunctionType Function(ParametersType, std::vector<Type> const&);
 
-  explicit FunctionType() = default;
   explicit constexpr FunctionType(uint64_t n)
       : internal_type::BasicType(Type::Kind::Function, n) {}
 };

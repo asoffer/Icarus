@@ -101,6 +101,10 @@ std::vector<ParametersType::Parameter> const& ParametersType::operator*()
   return parameters->from_index(data());
 }
 
+size_t ParametersType::size() const {
+  return parameters->from_index(data()).size();
+}
+
 std::vector<Type> const& FunctionType::returns() const {
   return ic::type::returns->from_index(functions->from_index(data()).second);
 }

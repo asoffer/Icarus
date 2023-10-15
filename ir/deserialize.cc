@@ -1,10 +1,11 @@
 #include "ir/deserialize.h"
 
 #include "common/resources.h"
-#include "type/deserialize.h"
 #include "ir/builtin_module.h"
+#include "ir/foreign_function.h"
 #include "nth/debug/debug.h"
 #include "nth/debug/log/log.h"
+#include "type/deserialize.h"
 
 namespace ic {
 
@@ -102,17 +103,10 @@ bool Deserializer::Deserialize(ModuleProto const& proto, Module& module) {
                                   std::move(return_types));
     resources.ForeignFunctionIndex(proto.string_literals()[f.name()], fn_type);
     // TODO: This breaks down when coalescing needs to happen.
-    ForeignFunctions().emplace_back(
-        std::piecewise_construct, std::forward_as_tuple(fn_type),
-        std::forward_as_tuple(f.type().parameters().size(),
-                              f.type().returns().size()));
-    auto& fn = ForeignFunctions().back().second;
-
-    // TODO: Implement. This is just for testing.
-    std::string_view s = "hello there\n";
-    fn.append<PushStringLiteral>(s.data(), s.length());
-    fn.append<Print>();
-    fn.append<jasmin::Return>();
+    IrFunction const* fn =
+        ForeignFunction(proto.string_literals()[f.name()], fn_type);
+    // TODO: Handle errors.
+    NTH_REQUIRE(fn != nullptr);
   }
 
   size_t i = 0;
