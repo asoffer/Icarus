@@ -6,7 +6,6 @@
 #include <vector>
 
 #include "absl/container/flat_hash_map.h"
-#include "absl/container/inlined_vector.h"
 #include "diagnostics/consumer/consumer.h"
 #include "ir/emit.h"
 #include "jasmin/value_stack.h"
@@ -44,7 +43,7 @@ struct IrContext {
     }
   }
 
-  absl::flat_hash_map<uint32_t, type::QualifiedType> identifiers;
+  std::vector<DeclarationInfo> declaration_stack;
   std::vector<type::QualifiedType> type_stack;
   std::vector<Token::Kind> operator_stack;
   EmitContext emit;

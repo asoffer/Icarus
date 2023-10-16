@@ -17,6 +17,11 @@
 
 namespace ic {
 
+struct DeclarationInfo {
+  Token::Kind kind             = Token::Kind::Invalid;
+  ParseTree::Node::Index index = ParseTree::Node::Index::Invalid();
+};
+
 struct EmitContext {
   explicit EmitContext(ParseTree const& tree NTH_ATTRIBUTE(lifetimebound),
                        DependentModules const& modules
@@ -31,26 +36,10 @@ struct EmitContext {
 
   Module const& module(ModuleId id) const { return modules[id]; }
 
-  void Push(std::span<jasmin::Value const>, type::Type);
-
-  void Evaluate(nth::interval<ParseTree::Node::Index> subtree,
-                jasmin::ValueStack& value_stack, std::vector<type::Type> types);
-
-  ParseTree::Node const& Node(ParseTree::Node::Index index) {
-    return tree[index];
-  }
-
-  ParseTree const& tree;
-
-  absl::flat_hash_map<ParseTree::Node, type::QualifiedType>
-      statement_qualified_type;
-  std::vector<Token::Kind> operator_stack;
-  std::vector<IrFunction*> function_stack;
-  absl::flat_hash_map<ParseTree::Node::Index, size_t> rotation_count;
-
   struct ComputedConstants {
     explicit ComputedConstants(ParseTree::Node::Index index,
-                               jasmin::ValueStack value, std::vector<type::Type> types)
+                               jasmin::ValueStack value,
+                               std::vector<type::Type> types)
         : index_(index), value_(std::move(value)), types_(std::move(types)) {}
 
     friend bool operator==(ComputedConstants const& lhs,
@@ -68,6 +57,33 @@ struct EmitContext {
     jasmin::ValueStack value_;
     std::vector<type::Type> types_;
   };
+
+  void Push(std::span<jasmin::Value const>, type::Type);
+  void Push(std::span<jasmin::Value const>, std::span<type::Type const>);
+  void Push(ComputedConstants const& c);
+
+  void Evaluate(nth::interval<ParseTree::Node::Index> subtree,
+                jasmin::ValueStack& value_stack, std::vector<type::Type> types);
+
+  ParseTree::Node const& Node(ParseTree::Node::Index index) {
+    return tree[index];
+  }
+
+  ParseTree const& tree;
+
+  absl::flat_hash_map<ParseTree::Node, type::QualifiedType>
+      statement_qualified_type;
+
+  std::vector<std::unique_ptr<IrFunction>> temporary_functions;
+  std::vector<DeclarationInfo> declaration_stack;
+  std::vector<Token::Kind> operator_stack;
+  std::vector<IrFunction*> function_stack;
+  absl::flat_hash_map<ParseTree::Node::Index, size_t> rotation_count;
+  absl::flat_hash_map<ParseTree::Node::Index, ParseTree::Node::Index>
+      declarator;
+  absl::flat_hash_map<uint32_t,
+                      std::pair<ParseTree::Node::Index, type::QualifiedType>>
+      identifiers;
 
   // Maps node indices to the constant value associated with the computation for
   // the largest subtree containing it whose constant value has been computed

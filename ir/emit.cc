@@ -57,7 +57,32 @@ void HandleParseTreeNodeBuiltinLiteral(ParseTree::Node::Index index,
 
 void HandleParseTreeNodeDeclaration(ParseTree::Node::Index index,
                                     EmitContext& context) {
-  NTH_UNIMPLEMENTED();
+  auto const & decl_info = context.declaration_stack.back();
+  switch (decl_info.kind) {
+    case Token::Kind::ColonColonEqual: {
+      auto& f = *context.temporary_functions.back();
+      f.append<jasmin::Return>();
+      jasmin::ValueStack value_stack;
+      jasmin::Execute(f, value_stack);
+      auto iter = context.identifiers.find(
+          context.Node(decl_info.index).token.IdentifierIndex());
+      NTH_REQUIRE(iter != context.identifiers.end());
+
+      // TODO: Insert types!
+      context.constants.insert_or_assign(
+          context.tree.subtree_range(index),
+          EmitContext::ComputedConstants(decl_info.index,
+                                         std::move(value_stack),
+                                         {iter->second.second.type()}));
+
+      NTH_REQUIRE(context.temporary_functions.back().get() ==
+                  context.function_stack.back());
+      context.temporary_functions.pop_back();
+      context.function_stack.pop_back();
+
+    } break;
+    default: NTH_UNIMPLEMENTED();
+  }
 }
 
 void HandleParseTreeNodeStatementSequence(ParseTree::Node::Index index,
@@ -71,14 +96,17 @@ void HandleParseTreeNodeStatementSequence(ParseTree::Node::Index index,
 
 void HandleParseTreeNodeIdentifier(ParseTree::Node::Index index,
                                    EmitContext& context) {
-  auto node = context.Node(index);
-  NTH_UNIMPLEMENTED("{}") <<= {node};
+  auto decl_index = context.declarator.at(index);
+  // TODO: The declarator that this identifier is mapped to may be a constant we
+  // can look up, but it may not be the right one!
+
+  auto const& constant = context.constants.at(decl_index);
+  context.Push(constant);
 }
 
 void HandleParseTreeNodeDeclaredIdentifier(ParseTree::Node::Index index,
                                            EmitContext& context) {
-  auto node = context.Node(index);
-  NTH_UNIMPLEMENTED("{}") <<= {node};
+  context.declaration_stack.back().index = index;
 }
 
 void HandleParseTreeNodeInfixOperator(ParseTree::Node::Index index,
@@ -100,27 +128,42 @@ void HandleParseTreeNodeExpressionPrecedenceGroup(ParseTree::Node::Index index,
   }
 }
 
-void HandleParseTreeNodeLet(ParseTree::Node::Index, EmitContext&) {
+void HandleParseTreeNodeLet(ParseTree::Node::Index, EmitContext& context) {
+  context.declaration_stack.emplace_back();
+}
+
+void HandleParseTreeNodeVar(ParseTree::Node::Index, EmitContext& context) {
+  context.declaration_stack.emplace_back();
+}
+
+void HandleParseTreeNodeColonColonEqual(ParseTree::Node::Index,
+                                        EmitContext& context) {
+  context.declaration_stack.back().kind = Token::Kind::ColonColonEqual;
+  // TODO: The value 1 is potentially wrong here.
+  auto* f = context.temporary_functions
+                .emplace_back(std::make_unique<IrFunction>(0, 1))
+                .get();
+  context.function_stack.push_back(f);
+}
+
+void HandleParseTreeNodeColonEqual(ParseTree::Node::Index,
+                                   EmitContext& context) {
+  context.declaration_stack.back().kind = Token::Kind::ColonColonEqual;
   NTH_UNIMPLEMENTED();
 }
 
-void HandleParseTreeNodeVar(ParseTree::Node::Index, EmitContext&) {
-  NTH_UNIMPLEMENTED();
+void HandleParseTreeNodeColonColon(ParseTree::Node::Index,
+                                   EmitContext& context) {
+  context.declaration_stack.back().kind = Token::Kind::ColonColonEqual;
+  // TODO: The value 1 is potentially wrong here.
+  auto* f = context.temporary_functions
+                .emplace_back(std::make_unique<IrFunction>(0, 1))
+                .get();
+  context.function_stack.push_back(f);
 }
 
-void HandleParseTreeNodeColonColonEqual(ParseTree::Node::Index, EmitContext&) {
-  NTH_UNIMPLEMENTED();
-}
-
-void HandleParseTreeNodeColonEqual(ParseTree::Node::Index, EmitContext&) {
-  NTH_UNIMPLEMENTED();
-}
-
-void HandleParseTreeNodeColonColon(ParseTree::Node::Index, EmitContext&) {
-  NTH_UNIMPLEMENTED();
-}
-
-void HandleParseTreeNodeColon(ParseTree::Node::Index, EmitContext&) {
+void HandleParseTreeNodeColon(ParseTree::Node::Index, EmitContext& context) {
+  context.declaration_stack.back().kind = Token::Kind::ColonColonEqual;
   NTH_UNIMPLEMENTED();
 }
 
@@ -164,7 +207,10 @@ void EmitNonConstant(nth::interval<ParseTree::Node::Index> node_range,
     switch (node->kind) {
 #define IC_XMACRO_PARSE_TREE_NODE_KIND(kind)                                   \
   case ParseTree::Node::Kind::kind:                                            \
-    NTH_LOG((v.when(false)), "Emit node {}") <<= {#kind};                      \
+    NTH_LOG((v.when(false)), "Emit node {} {} {}") <<=                         \
+        {#kind, context.function_stack.size(),                                 \
+         context.function_stack.empty() ? nullptr                              \
+                                        : context.function_stack.back()};      \
     HandleParseTreeNode##kind(index, context);                                 \
     break;
 #include "parser/parse_tree_node_kind.xmacro.h"
@@ -202,17 +248,26 @@ void EmitContext::Push(std::span<jasmin::Value const> vs, type::Type t) {
   }
 }
 
-void EmitIr(nth::interval<ParseTree::Node::Index> node_range, EmitContext& context) {
+void EmitContext::Push(std::span<jasmin::Value const> vs,
+                       std::span<type::Type const> ts) {
+  for (type::Type t : ts) {
+    size_t width = type::JasminSize(t);
+    Push(vs.subspan(0, width), t);
+    vs.subspan(width);
+  }
+}
+
+void EmitContext::Push(EmitContext::ComputedConstants const& c) {
+  Push(c.value_span(), c.types());
+}
+
+void EmitIr(nth::interval<ParseTree::Node::Index> node_range,
+            EmitContext& context) {
   ParseTree::Node::Index start = node_range.lower_bound();
   for (auto const& [range, constant] : context.constants.mapped_intervals()) {
     if (range.lower_bound() < start) { continue; }
     EmitNonConstant(nth::interval(start, range.lower_bound()), context);
-    std::span values = constant.value_span();
-    for (type::Type t : constant.types()) {
-      size_t width = type::JasminSize(t);
-      context.Push(values.subspan(0, width), t);
-      values.subspan(width);
-    }
+    context.Push(constant);
     start = range.upper_bound();
   }
   if (start < node_range.upper_bound()) {
@@ -222,8 +277,11 @@ void EmitIr(nth::interval<ParseTree::Node::Index> node_range, EmitContext& conte
 }
 
 void EmitContext::Evaluate(nth::interval<ParseTree::Node::Index> subtree,
-                           jasmin::ValueStack& value_stack, std::vector<type::Type> types) {
+                           jasmin::ValueStack& value_stack,
+                           std::vector<type::Type> types) {
   jasmin::ValueStack vs;
+  // TODO: The size here is potentially wrong. We should compute it based on
+  // `types`.
   IrFunction f(0, 1);
   function_stack.push_back(&f);
   EmitIr(subtree, *this);

@@ -17,6 +17,9 @@ struct StrongIndexType {
   using underlying_type = RepType;
   using difference_type = DiffType;
 
+  explicit constexpr StrongIndexType() requires(
+      std::is_constructible_v<underlying_type>) = default;
+
   explicit constexpr StrongIndexType(underlying_type const &value)
       : value_(value) {}
   explicit constexpr StrongIndexType(underlying_type &&value)
@@ -207,6 +210,10 @@ struct ParseTree {
   struct Node {
     struct Index : StrongIndexType<Index, uint32_t, int32_t> {
       using StrongIndexType::StrongIndexType;
+      static constexpr Index Invalid() {
+        return Index(
+            std::numeric_limits<StrongIndexType::underlying_type>::max());
+      }
     };
 
     enum class Kind : uint8_t {
