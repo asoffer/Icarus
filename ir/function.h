@@ -76,12 +76,6 @@ struct ConstructFunctionType
   }
 };
 
-struct ResolveModuleName : jasmin::StackMachineInstruction<ResolveModuleName> {
-  static ModuleId execute(size_t length, char const* p) {
-    return resources.module_map[std::string_view(p, length)];
-  }
-};
-
 struct Print : jasmin::StackMachineInstruction<Print> {
   static void execute(size_t length, char const* p) {
     std::fprintf(stderr, "%*s", static_cast<int>(length), p);
@@ -106,7 +100,7 @@ using InstructionSet = jasmin::MakeInstructionSet<
     jasmin::Push, PushFunction, PushStringLiteral, PushType, jasmin::Drop,
     TypeKind, jasmin::Equal<type::Type::Kind>, Print, Rotate,
     ConstructFunctionType, jasmin::Swap, RegisterForeignFunction,
-    InvokeForeignFunction, ResolveModuleName>;
+    InvokeForeignFunction>;
 using IrFunction = jasmin::Function<InstructionSet>;
 
 std::deque<std::pair<type::FunctionType, IrFunction>>& ForeignFunctions();

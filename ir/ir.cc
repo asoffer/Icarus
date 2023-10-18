@@ -295,6 +295,28 @@ void HandleParseTreeNodeInvocationArgumentStart(
     ParseTree::Node::Index index, IrContext& context,
     diag::DiagnosticConsumer& diag) {}
 
+void HandleParseTreeNodeImport(ParseTree::Node::Index index, IrContext& context,
+                               diag::DiagnosticConsumer& diag) {
+  std::string_view path = *context.EvaluateAs<std::string_view>(index - 1);
+  ModuleId id           = resources.module_map[path];
+  nth::interval range   = context.emit.tree.subtree_range(index);
+  context.emit.constants.insert_or_assign(
+      range, EmitContext::ComputedConstants(index, {id}, {type::Module}));
+
+  if (id == ModuleId::Invalid()) {
+    diag.Consume({
+        diag::Header(diag::MessageKind::Error),
+        diag::Text(
+            InterpolateString<"Could not find a module named \"{}\".">(path)),
+        diag::SourceQuote(context.Node(index - 1).token),
+    });
+    context.type_stack.back() = type::QualifiedType::Constant(type::Error);
+    return;
+  }
+
+  context.type_stack.back() = type::QualifiedType::Constant(type::Module);
+}
+
 }  // namespace
 
 void IrContext::ProcessIr(diag::DiagnosticConsumer& diag) {

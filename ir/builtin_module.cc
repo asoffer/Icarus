@@ -9,13 +9,6 @@
 
 namespace ic {
 
-nth::NoDestructor<IrFunction> ImportFn([] {
-  IrFunction f(2, 1);
-  f.append<ResolveModuleName>();
-  f.append<jasmin::Return>();
-  return f;
-}());
-
 nth::NoDestructor<IrFunction> PrintFn([] {
   IrFunction f(2, 1);
   f.append<Print>();
@@ -82,17 +75,6 @@ Module BuiltinModule() {
             .value = {jasmin::Value(&*Function)}});
   global_function_registry.Register(
       FunctionId(ModuleId::Builtin(), LocalFunctionId(next_id++)), &*Function);
-
-  m.Insert(resources.IdentifierIndex("import"),
-           {.qualified_type = type::QualifiedType::Constant(type::Function(
-                type::Parameters(std::vector<type::ParametersType::Parameter>{
-                    {.name = resources.IdentifierIndex(""),
-                     .type = type::Slice(type::Char)},
-                }),
-                {type::Module}, type::Evaluation::RequireCompileTime)),
-            .value          = {jasmin::Value(&*ImportFn)}});
-  global_function_registry.Register(
-      FunctionId(ModuleId::Builtin(), LocalFunctionId(next_id++)), &*ImportFn);
 
   return m;
 }

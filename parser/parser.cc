@@ -316,6 +316,10 @@ void Parser::HandleResolveMemberTerm(ParseTree& tree) {
 void Parser::HandleAtomicTerm(ParseTree& tree) {
   ParseTree::Node::Kind k;
   switch (current_token().kind()) {
+    case Token::Kind::Import:
+      ++iterator_;
+      ExpandState(State::Kind::Expression, State::Kind::ResolveImport);
+      return;
 #define IC_XMACRO_ATOM(token_kind, parse_node_kind)                            \
   case Token::Kind::token_kind:                                                \
     k = ParseTree::Node::Kind::parse_node_kind;                                \
@@ -326,6 +330,13 @@ void Parser::HandleAtomicTerm(ParseTree& tree) {
 
   tree.append_leaf(k, *iterator_++);
   pop_and_discard_state();
+}
+
+void Parser::HandleResolveImport(ParseTree& tree) {
+  tree.append(ParseTree::Node::Kind::Import, current_token(),
+              state().back().subtree_start);
+  pop_and_discard_state();
+  ++iterator_;
 }
 
 void Parser::HandleResolveInvocationArgumentSequence(ParseTree& tree) {

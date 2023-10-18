@@ -31,6 +31,7 @@ IC_XMACRO_PARSER_STATE(ResolveMemberTerm)
 IC_XMACRO_PARSER_STATE(AtomicTerm)
 
 IC_XMACRO_PARSER_STATE(ResolveUnaryExpression)
+IC_XMACRO_PARSER_STATE(ResolveImport)
 
 IC_XMACRO_PARSER_STATE(ResolveExpressionGroup)
 IC_XMACRO_PARSER_STATE(ExpressionClosing)

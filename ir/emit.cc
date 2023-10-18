@@ -198,6 +198,12 @@ void HandleParseTreeNodeCallExpression(ParseTree::Node::Index index,
 void HandleParseTreeNodeInvocationArgumentStart(ParseTree::Node::Index index,
                                                 EmitContext& context) {}
 
+void HandleParseTreeNodeImport(ParseTree::Node::Index index,
+                              EmitContext& context) {
+  context.function_stack.back()->append<jasmin::Push>(
+      context.constants.at(index).value_span()[0]);
+}
+
 void EmitNonConstant(nth::interval<ParseTree::Node::Index> node_range,
                      EmitContext& context) {
   if (node_range.empty()) { return; }
