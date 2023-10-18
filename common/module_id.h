@@ -1,5 +1,5 @@
-#ifndef ICARUS_IR_MODULE_ID_H
-#define ICARUS_IR_MODULE_ID_H
+#ifndef ICARUS_COMMON_MODULE_ID_H
+#define ICARUS_COMMON_MODULE_ID_H
 
 #include <cstdint>
 #include <span>
@@ -25,7 +25,6 @@ struct ModuleId {
   }
 
   friend constexpr bool operator==(ModuleId, ModuleId) = default;
-  friend constexpr bool operator!=(ModuleId, ModuleId) = default;
 
   constexpr uint32_t value() const { return id_; }
 
@@ -47,4 +46,4 @@ struct ModuleId {
 
 }  // namespace ic
 
-#endif  // ICARUS_IR_MODULE_ID_H
+#endif  // ICARUS_COMMON_MODULE_ID_H

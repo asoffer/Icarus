@@ -6,9 +6,9 @@
 
 #include "absl/container/btree_map.h"
 #include "absl/container/flat_hash_map.h"
+#include "common/module_id.h"
 #include "ir/dependent_modules.h"
 #include "ir/module.h"
-#include "ir/module_id.h"
 #include "jasmin/value_stack.h"
 #include "nth/base/attributes.h"
 #include "nth/container/interval_map.h"

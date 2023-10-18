@@ -35,8 +35,12 @@ struct IrContext {
     nth::interval range = emit.tree.subtree_range(subtree_root_index);
     jasmin::ValueStack value_stack;
     emit.Evaluate(range, value_stack, {FromConstant<T>()});
-    if (IcarusDeserializeValue(
-            std::span(value_stack.begin(), value_stack.end()), result)) {
+    if constexpr (nth::type<T> == nth::type<std::string_view>) {
+      size_t length   = value_stack.pop<size_t>();
+      char const* ptr = value_stack.pop<char const*>();
+      return std::string_view(ptr, length);
+    } else if (IcarusDeserializeValue(
+                   std::span(value_stack.begin(), value_stack.end()), result)) {
       return result;
     } else {
       return std::nullopt;
@@ -54,6 +58,8 @@ struct IrContext {
     auto t = nth::type<T>;
     if constexpr (t == nth::type<ModuleId>) {
       return type::Module;
+    } else if constexpr (t == nth::type<std::string_view>) {
+      return type::Slice(type::Char);
     } else {
       NTH_UNREACHABLE("No specified `type::Type` associated with `{}`") <<= {t};
     }

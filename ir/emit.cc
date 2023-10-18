@@ -1,7 +1,7 @@
 #include "ir/emit.h"
 
+#include "common/module_id.h"
 #include "common/resources.h"
-#include "ir/module_id.h"
 #include "jasmin/execute.h"
 #include "nth/debug/debug.h"
 #include "nth/debug/log/log.h"

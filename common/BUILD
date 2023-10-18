@@ -16,6 +16,24 @@ cc_test(
 )
 
 cc_library(
+    name = "module_id",
+    hdrs = ["module_id.h"],
+    deps = [
+        "@asoffer_jasmin//jasmin:value",
+    ],
+)
+
+cc_library(
+    name = "module_map",
+    hdrs = ["module_map.h"],
+    srcs = ["module_map.cc"],
+    deps = [
+        ":module_id",
+        "@asoffer_nth//nth/container:flyweight_set",
+    ],
+)
+
+cc_library(
     name = "string",
     hdrs = ["string.h"],
     deps = [
@@ -29,6 +47,7 @@ cc_library(
     name = "resources",
     hdrs = ["resources.h"],
     deps = [
+        ":module_map",
         "//type",
     ],
 )

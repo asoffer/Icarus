@@ -5,8 +5,8 @@
 #include <span>
 #include <vector>
 
+#include "common/module_id.h"
 #include "ir/module.h"
-#include "ir/module_id.h"
 
 namespace ic {
 

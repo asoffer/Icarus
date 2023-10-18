@@ -4,7 +4,7 @@
 #include <cstdint>
 #include <utility>
 
-#include "ir/module_id.h"
+#include "common/module_id.h"
 #include "nth/strings/interpolate.h"
 
 namespace ic {

@@ -1,7 +1,7 @@
 #include "ir/ir.h"
 
+#include "common/module_id.h"
 #include "common/string.h"
-#include "ir/module_id.h"
 #include "jasmin/execute.h"
 #include "nth/debug/debug.h"
 #include "nth/debug/log/log.h"
@@ -228,6 +228,28 @@ void HandleParseTreeNodeCallExpression(ParseTree::Node::Index index,
         context.type_stack.push_back(
             type::QualifiedType(type::Qualifier::Unqualified(), r));
       }
+
+      switch (fn_type.evaluation()) {
+        case type::Evaluation::PreferCompileTime: NTH_UNIMPLEMENTED();
+        case type::Evaluation::RequireCompileTime: {
+          nth::interval range = context.emit.tree.subtree_range(index);
+          jasmin::ValueStack value_stack;
+          context.emit.Evaluate(range, value_stack, returns);
+          for (auto v : value_stack) { NTH_LOG("{}") <<= {v}; }
+          // auto module_id = context.EvaluateAs<ModuleId>(index);
+          // if (module_id == ModuleId::Invalid()) {
+          //   diag.Consume({
+          //       diag::Header(diag::MessageKind::Error),
+          //       diag::Text(InterpolateString<"No module found named \"{}\"">(
+          //           *context.EvaluateAs<std::string_view>(index - 1))),
+          //   });
+          //   return;
+          // }
+          // NTH_LOG("{}") <<= {*module_id};
+        } break;
+        case type::Evaluation::PreferRuntime:
+        case type::Evaluation::RequireRuntime: break;
+      }
     } else {
       NTH_UNIMPLEMENTED();
     }
@@ -252,7 +274,8 @@ void HandleParseTreeNodeCallExpression(ParseTree::Node::Index index,
     context.type_stack.push_back(type::QualifiedType::Constant(t));
     NTH_REQUIRE((v.debug), t.kind() == type::Type::Kind::Function);
 
-    if (g.evaluation() == type::Evaluation::CompileTime) {
+    if (g.evaluation() == type::Evaluation::PreferCompileTime or
+        g.evaluation() == type::Evaluation::RequireCompileTime) {
       jasmin::ValueStack value_stack;
       context.emit.Evaluate(context.emit.tree.subtree_range(index), value_stack,
                             {t});

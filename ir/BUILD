@@ -7,7 +7,7 @@ cc_library(
     deps = [
         ":function",
         ":module",
-        ":module_id",
+        "//common:module_id",
         "//common:resources",
         "//type",
         "@asoffer_nth//nth/utility:no_destructor",
@@ -20,7 +20,7 @@ cc_library(
     srcs = ["dependent_modules.cc"],
     deps = [
         ":module",
-        ":module_id",
+        "//common:module_id",
         "@asoffer_nth//nth/debug",
     ],
 )
@@ -49,7 +49,7 @@ cc_library(
     deps = [
         ":dependent_modules",
         ":module",
-        ":module_id",
+        "//common:module_id",
         "//common/language:primitive_types",
         "//common:resources",
         "//parser:parse_tree",
@@ -84,7 +84,7 @@ cc_library(
     srcs = ["function.cc"],
     deps = [
         ":function_id",
-        ":module_id",
+        "//common:module_id",
         "//common:resources",
         "//type",
         "@asoffer_jasmin//jasmin:function",
@@ -101,7 +101,7 @@ cc_library(
     name = "function_id",
     hdrs = ["function_id.h"],
     deps = [
-        ":module_id",
+        "//common:module_id",
         "@asoffer_nth//nth/strings:interpolate",
     ],
 )
@@ -112,7 +112,7 @@ cc_library(
     srcs = ["ir.cc"],
     deps = [
         ":emit",
-        ":module_id",
+        "//common:module_id",
         "//common:string",
         "//diagnostics/consumer",
         "//parser:parse_tree",
@@ -123,14 +123,6 @@ cc_library(
         "@asoffer_nth//nth/debug",
         "@asoffer_nth//nth/debug/log",
         "@com_google_absl//absl/container:flat_hash_map",
-    ],
-)
-
-cc_library(
-    name = "module_id",
-    hdrs = ["module_id.h"],
-    deps = [
-        "@asoffer_jasmin//jasmin:value",
     ],
 )
 

@@ -5,6 +5,7 @@
 #include <string>
 #include <string_view>
 
+#include "common/module_map.h"
 #include "nth/container/flyweight_set.h"
 #include "type/type.h"
 
@@ -51,6 +52,8 @@ struct Resources {
   nth::flyweight_set<std::string_view> identifiers;
 
   nth::flyweight_set<std::pair<size_t, type::FunctionType>> foreign_functions;
+
+  ModuleMap module_map;
 };
 
 inline Resources resources;

@@ -14,7 +14,8 @@ namespace {
 nth::NoDestructor<nth::flyweight_set<std::vector<ParametersType::Parameter>>>
     parameters;
 nth::NoDestructor<nth::flyweight_set<std::vector<Type>>> returns;
-nth::NoDestructor<nth::flyweight_set<std::pair<ParametersType, uint64_t>>>
+nth::NoDestructor<
+    nth::flyweight_set<std::tuple<ParametersType, uint64_t, Evaluation>>>
     functions;
 nth::NoDestructor<nth::flyweight_set<Type>> slice_element_types;
 nth::NoDestructor<nth::flyweight_set<Type>> pointee_types;
@@ -45,14 +46,14 @@ ParametersType Parameters(std::vector<ParametersType::Parameter>&& p) {
       parameters->index(parameters->insert(std::move(p)).first));
 }
 
-FunctionType Function(ParametersType pt, std::vector<Type>&& r) {
+FunctionType Function(ParametersType pt, std::vector<Type>&& r, Evaluation e) {
   uint64_t rt = returns->index(returns->insert(std::move(r)).first);
-  return FunctionType(functions->index(functions->insert({pt, rt}).first));
+  return FunctionType(functions->index(functions->insert({pt, rt, e}).first));
 }
 
-FunctionType Function(ParametersType pt, std::vector<Type> const& r) {
+FunctionType Function(ParametersType pt, std::vector<Type> const& r, Evaluation e) {
   uint64_t rt = returns->index(returns->insert(r).first);
-  return FunctionType(functions->index(functions->insert({pt, rt}).first));
+  return FunctionType(functions->index(functions->insert({pt, rt, e}).first));
 }
 
 SliceType Slice(Type t) {
@@ -93,7 +94,10 @@ Type BufferPointerType::pointee() const {
 }
 
 ParametersType FunctionType::parameters() const {
-  return functions->from_index(data()).first;
+  return std::get<0>(functions->from_index(data()));
+}
+Evaluation FunctionType::evaluation() const {
+  return std::get<2>(functions->from_index(data()));
 }
 
 std::vector<ParametersType::Parameter> const& ParametersType::operator*()
@@ -106,7 +110,8 @@ size_t ParametersType::size() const {
 }
 
 std::vector<Type> const& FunctionType::returns() const {
-  return ic::type::returns->from_index(functions->from_index(data()).second);
+  return ic::type::returns->from_index(
+      std::get<1>(functions->from_index(data())));
 }
 
 void const* GenericFunctionType::data() const {
