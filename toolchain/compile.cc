@@ -5,7 +5,9 @@
 
 #include "absl/debugging/failure_signal_handler.h"
 #include "absl/debugging/symbolize.h"
+#include "absl/strings/str_split.h"
 #include "common/errno.h"
+#include "common/resources.h"
 #include "common/string.h"
 #include "diagnostics/consumer/streaming.h"
 #include "diagnostics/message.h"
@@ -43,14 +45,54 @@ std::optional<std::string> ReadFileToString(nth::file_path const& file_name) {
   return result;
 }
 
+std::optional<std::vector<ModuleProto>> PopulateModuleMap(
+    nth::file_path const& module_map_file) {
+  std::optional content = ReadFileToString(module_map_file);
+  if (not content) { return std::nullopt; }
+  std::vector<ModuleProto> dependent_module_protos;
+  for (std::string_view line : absl::StrSplit(*content, absl::ByChar('\n'))) {
+    if (line.empty()) { continue; }
+    size_t count = 0;
+    std::string_view name, location;
+    for (std::string_view chunk : absl::StrSplit(line, absl::ByChar('\t'))) {
+      switch (count++) {
+        case 0: name = chunk; break;
+        case 1: location = chunk; break;
+        default: return std::nullopt;
+      }
+    }
+    auto id = resources.module_map.add(name);
+    NTH_REQUIRE(dependent_module_protos.size() == id.value());
+
+    std::ifstream in{std::string(location)};
+    if (not in.is_open()) { NTH_UNIMPLEMENTED("{}") <<= {location}; }
+    dependent_module_protos.emplace_back().ParseFromIstream(&in);
+  }
+
+  return dependent_module_protos;
+}
+
 nth::exit_code Compile(nth::FlagValueSet flags, nth::file_path const& source) {
   absl::InitializeSymbolizer("");
   absl::FailureSignalHandlerOptions opts;
   absl::InstallFailureSignalHandler(opts);
 
-  auto const& output_path = flags.get<nth::file_path>("output");
+  auto const& output_path     = flags.get<nth::file_path>("output");
+  auto const& module_map_path = flags.get<nth::file_path>("module-map");
 
   diag::StreamingConsumer consumer;
+
+  std::optional dependent_module_protos = PopulateModuleMap(module_map_path);
+  if (not dependent_module_protos) {
+    consumer.Consume({
+        diag::Header(diag::MessageKind::Error),
+        diag::Text(InterpolateString<
+                   "Failed to load the content from the module map file {}.">(
+            module_map_path)),
+    });
+
+    return nth::exit_code::generic_error;
+  }
   std::optional content = ReadFileToString(source);
   if (not content) {
     consumer.Consume({
@@ -69,10 +111,9 @@ nth::exit_code Compile(nth::FlagValueSet flags, nth::file_path const& source) {
   if (consumer.count() != 0) { return nth::exit_code::generic_error; }
   consumer.set_parse_tree(parse_tree);
 
-  std::vector<ModuleProto> dependent_module_protos;
   DependentModules dependencies;
   Deserializer d;
-  if (not d.DeserializeDependentModules(dependent_module_protos,
+  if (not d.DeserializeDependentModules(*dependent_module_protos,
                                         dependencies)) {
     consumer.Consume({diag::Header(diag::MessageKind::Error),
                       diag::Text("Failed to deserialize dependent modules.")});
@@ -107,8 +148,12 @@ nth::Usage const nth::program_usage = {
                 .type = nth::type<nth::file_path>,
                 .description =
                     "The location at which to write the output .icm file.",
-
+            },
+            {
+                .name        = {"module-map"},
+                .type        = nth::type<nth::file_path>,
+                .description = "The location of the .icmod file defining the module mapping.",
             },
         },
-    .execute     = ic::Compile,
+    .execute = ic::Compile,
 };

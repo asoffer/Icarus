@@ -8,8 +8,15 @@ ModuleId ModuleMap::add(std::string&& module_name) {
   auto [iter, inserted] = by_name_.insert(std::move(module_name));
   return ModuleId(by_name_.index(iter));
 }
+
 ModuleId ModuleMap::add(std::string const& module_name) {
   auto [iter, inserted] = by_name_.insert(module_name);
+  return ModuleId(by_name_.index(iter));
+}
+
+ModuleId ModuleMap::add(std::string_view module_name) {
+  // TODO: Enable heterogenous lookup for `nth::flyweight_set`.
+  auto [iter, inserted] = by_name_.insert(std::string(module_name));
   return ModuleId(by_name_.index(iter));
 }
 

@@ -87,11 +87,16 @@ void HandleParseTreeNodeDeclaration(ParseTree::Node::Index index,
 
 void HandleParseTreeNodeStatementSequence(ParseTree::Node::Index index,
                                           EmitContext& context) {
-  auto node = context.Node(index);
-  auto iter = context.statement_qualified_type.find(node);
-  NTH_REQUIRE(iter != context.statement_qualified_type.end());
-  context.function_stack.back()->append<jasmin::Drop>(
-      type::JasminSize(iter->second.type()));
+  switch (context.Node(index - 1).kind) {
+    case ParseTree::Node::Kind::Declaration: return;
+    default: {
+      auto node = context.Node(index);
+      auto iter = context.statement_qualified_type.find(node);
+      NTH_REQUIRE(iter != context.statement_qualified_type.end());
+      context.function_stack.back()->append<jasmin::Drop>(
+          type::JasminSize(iter->second.type()));
+    } break;
+  }
 }
 
 void HandleParseTreeNodeIdentifier(ParseTree::Node::Index index,

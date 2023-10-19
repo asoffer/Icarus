@@ -41,10 +41,14 @@ void HandleParseTreeNodeDeclaration(ParseTree::Node::Index index,
 void HandleParseTreeNodeStatementSequence(ParseTree::Node::Index index,
                                           IrContext& context,
                                           diag::DiagnosticConsumer& diag) {
-  NTH_REQUIRE(not context.type_stack.empty());
-  auto node = context.Node(index);
-  context.emit.statement_qualified_type.emplace(node,
-                                                context.type_stack.back());
+  switch (context.Node(index - 1).kind) {
+    case ParseTree::Node::Kind::Declaration: return;
+    default:
+      NTH_REQUIRE(not context.type_stack.empty());
+      auto node = context.Node(index);
+      context.emit.statement_qualified_type.emplace(node,
+                                                    context.type_stack.back());
+  }
 }
 
 void HandleParseTreeNodeIdentifier(ParseTree::Node::Index index,
@@ -52,7 +56,9 @@ void HandleParseTreeNodeIdentifier(ParseTree::Node::Index index,
                                    diag::DiagnosticConsumer& diag) {
   auto iter = context.emit.identifiers.find(
       context.Node(index).token.IdentifierIndex());
-  if (iter == context.emit.identifiers.end()) { NTH_UNIMPLEMENTED(); }
+  if (iter == context.emit.identifiers.end()) {
+    NTH_UNIMPLEMENTED("{}") <<= {context.Node(index).token};
+  }
   auto const& [decl_index, decl_qt] = iter->second;
   context.emit.declarator.emplace(index, decl_index);
   context.type_stack.push_back(decl_qt);

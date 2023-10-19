@@ -12,6 +12,7 @@ namespace ic {
 struct ModuleMap {
   ModuleId add(std::string const& module_name);
   ModuleId add(std::string&& module_name);
+  ModuleId add(std::string_view module_name);
 
   ModuleId operator[](std::string_view module_name) const;
 
