@@ -226,17 +226,14 @@ struct ParseTree {
                                             n.token);
     }
 
-    template <typename H>
-    friend H AbslHashValue(H h, Node n) {
-      return H::combine(std::move(h), n.kind, n.subtree_size, n.token);
-    }
-    friend bool operator==(Node const&, Node const &) = default;
-    friend bool operator!=(Node const&, Node const &) = default;
-
     Kind kind;
     // Note: This field may not be populated on all node kinds.
     int16_t child_count = -1;
-    uint32_t subtree_size;
+
+    union {
+      uint32_t subtree_size;
+      Index next_sibling_index;
+    };
     Token token = Token::Invalid();
   };
   static_assert(sizeof(Node) == 16);

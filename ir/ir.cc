@@ -46,7 +46,7 @@ void HandleParseTreeNodeStatementSequence(ParseTree::Node::Index index,
     default:
       NTH_REQUIRE(not context.type_stack.empty());
       auto node = context.Node(index);
-      context.emit.statement_qualified_type.emplace(node,
+      context.emit.statement_qualified_type.emplace(index,
                                                     context.type_stack.back());
   }
 }
@@ -241,7 +241,6 @@ void HandleParseTreeNodeCallExpression(ParseTree::Node::Index index,
           nth::interval range = context.emit.tree.subtree_range(index);
           jasmin::ValueStack value_stack;
           context.emit.Evaluate(range, value_stack, returns);
-          for (auto v : value_stack) { NTH_LOG("{}") <<= {v}; }
           // auto module_id = context.EvaluateAs<ModuleId>(index);
           // if (module_id == ModuleId::Invalid()) {
           //   diag.Consume({
@@ -262,17 +261,22 @@ void HandleParseTreeNodeCallExpression(ParseTree::Node::Index index,
   } else if (invocable_type.type().kind() ==
              type::Type::Kind::GenericFunction) {
     auto& rotation_count    = context.emit.rotation_count[index];
-    size_t type_stack_index = context.type_stack.size() - 1;
-    jasmin::ValueStack value_stack;
+    std::vector<ParseTree::Node::Index> indices;
     for (auto iter = context.ChildIndices(index).begin();
          context.Node(*iter).kind !=
          ParseTree::Node::Kind::InvocationArgumentStart;
          ++iter) {
-      auto t              = context.type_stack[type_stack_index].type();
-      nth::interval range = context.emit.tree.subtree_range(*iter);
+      indices.push_back(*iter);
+    }
+    size_t type_stack_index = context.type_stack.size() - indices.size();
+    std::reverse(indices.begin(), indices.end());
+    jasmin::ValueStack value_stack;
+    for (auto index : indices) {
+      auto t = context.type_stack[type_stack_index].type();
+      nth::interval range = context.emit.tree.subtree_range(index);
       context.emit.Evaluate(range, value_stack, {t});
       rotation_count += type::JasminSize(t);
-      --type_stack_index;
+      ++type_stack_index;
     }
     auto g = invocable_type.type().AsGenericFunction();
     jasmin::Execute(*static_cast<IrFunction const*>(g.data()), value_stack);
@@ -322,6 +326,10 @@ void HandleParseTreeNodeImport(ParseTree::Node::Index index, IrContext& context,
 
   context.type_stack.back() = type::QualifiedType::Constant(type::Module);
 }
+
+void HandleParseTreeNodeScopeStart(ParseTree::Node::Index index,
+                                   IrContext& context,
+                                   diag::DiagnosticConsumer& diag) {}
 
 }  // namespace
 

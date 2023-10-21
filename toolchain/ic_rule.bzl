@@ -59,6 +59,9 @@ def _ic_library_impl(ctx):
     (icm_file, mod_file, icm_deps) = _ic_compile_impl(ctx)
 
     return [
+        DefaultInfo(
+            files = depset([icm_file]),
+        ),
         IcarusInfo(
             icm = icm_file,
             icm_deps = icm_deps,

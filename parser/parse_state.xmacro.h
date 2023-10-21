@@ -2,19 +2,14 @@
 #error `IC_XMACRO_PARSER_STATE` must be defined.
 #endif
 
-#if not defined(IC_XMACRO_PARSER_STATE_SEQUENCE)
-#define IC_XMACRO_PARSER_STATE_SEQUENCE(kind, separator)                       \
-  IC_XMACRO_PARSER_STATE(kind##Sequence)                                       \
-  IC_XMACRO_PARSER_STATE(Resolve##kind##Sequence)                              \
-  IC_XMACRO_PARSER_STATE(Subsequent##kind##Sequence)
-#endif
-
 IC_XMACRO_PARSER_STATE(Newlines)
 
 IC_XMACRO_PARSER_STATE(Module)
 
 IC_XMACRO_PARSER_STATE(Statement)
-IC_XMACRO_PARSER_STATE_SEQUENCE(Statement, Newlines)
+IC_XMACRO_PARSER_STATE(StatementSequence)
+IC_XMACRO_PARSER_STATE(ResolveStatementSequence)
+IC_XMACRO_PARSER_STATE(SubsequentStatementSequence)
 
 IC_XMACRO_PARSER_STATE(InvocationArgumentSequence)
 IC_XMACRO_PARSER_STATE(ResolveInvocationArgumentSequence)

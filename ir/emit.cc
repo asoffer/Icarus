@@ -68,12 +68,11 @@ void HandleParseTreeNodeDeclaration(ParseTree::Node::Index index,
           context.Node(decl_info.index).token.IdentifierIndex());
       NTH_REQUIRE(iter != context.identifiers.end());
 
-      // TODO: Insert types!
+      // TODO: Store values of identifiers bound to the constants.
       context.constants.insert_or_assign(
           context.tree.subtree_range(index),
-          EmitContext::ComputedConstants(decl_info.index,
-                                         std::move(value_stack),
-                                         {iter->second.second.type()}));
+          EmitContext::ComputedConstants(decl_info.index, jasmin::ValueStack{},
+                                         {}));
 
       NTH_REQUIRE(context.temporary_functions.back().get() ==
                   context.function_stack.back());
@@ -91,7 +90,7 @@ void HandleParseTreeNodeStatementSequence(ParseTree::Node::Index index,
     case ParseTree::Node::Kind::Declaration: return;
     default: {
       auto node = context.Node(index);
-      auto iter = context.statement_qualified_type.find(node);
+      auto iter = context.statement_qualified_type.find(index);
       NTH_REQUIRE(iter != context.statement_qualified_type.end());
       context.function_stack.back()->append<jasmin::Drop>(
           type::JasminSize(iter->second.type()));
@@ -209,13 +208,43 @@ void HandleParseTreeNodeImport(ParseTree::Node::Index index,
       context.constants.at(index).value_span()[0]);
 }
 
-void EmitNonConstant(nth::interval<ParseTree::Node::Index> node_range,
-                     EmitContext& context) {
-  if (node_range.empty()) { return; }
+ParseTree::Node::Index EmitNonConstant(
+    nth::interval<ParseTree::Node::Index> node_range, EmitContext& context) {
+  if (node_range.empty()) { return node_range.upper_bound(); }
   auto* node = &context.tree[node_range.lower_bound()];
   for (auto index = node_range.lower_bound(); index < node_range.upper_bound();
        ++index, ++node) {
     switch (node->kind) {
+      case ParseTree::Node::Kind::ScopeStart: {
+        // TODO: Neither a queue nor a stack are appropriate here. We need to be
+        // able to bounce between implementations until we've properly computed
+        // everything.
+        std::queue<nth::interval<ParseTree::Node::Index>> constant_queue;
+        for (auto i : context.tree.child_indices(
+                 context.Node(index).next_sibling_index)) {
+          if (context.Node(i).kind != ParseTree::Node::Kind::Declaration) {
+            continue;
+          }
+          auto iter = context.tree.children(i).begin();
+          ++iter;
+          switch (iter->token.kind()) {
+            case Token::Kind::ColonColonEqual:
+            case Token::Kind::ColonColon:
+              constant_queue.push(context.tree.subtree_range(i));
+              break;
+            default: continue;
+          }
+        }
+
+        while (not constant_queue.empty()) {
+          nth::interval constant_range = constant_queue.front();
+          constant_queue.pop();
+          jasmin::ValueStack value_queue;
+          context.Evaluate(constant_range, value_queue, {type::Type_});
+        }
+        return index + 1;
+      } break;
+#define IC_XMACRO_PARSE_TREE_NODE_SCOPE_START_KIND(kind)
 #define IC_XMACRO_PARSE_TREE_NODE_KIND(kind)                                   \
   case ParseTree::Node::Kind::kind:                                            \
     NTH_LOG((v.when(false)), "Emit node {} {} {}") <<=                         \
@@ -227,6 +256,8 @@ void EmitNonConstant(nth::interval<ParseTree::Node::Index> node_range,
 #include "parser/parse_tree_node_kind.xmacro.h"
     }
   }
+  return node_range.upper_bound();
+  ;
 }
 
 }  // namespace
@@ -275,14 +306,23 @@ void EmitContext::Push(EmitContext::ComputedConstants const& c) {
 void EmitIr(nth::interval<ParseTree::Node::Index> node_range,
             EmitContext& context) {
   ParseTree::Node::Index start = node_range.lower_bound();
-  for (auto const& [range, constant] : context.constants.mapped_intervals()) {
-    if (range.lower_bound() < start) { continue; }
-    EmitNonConstant(nth::interval(start, range.lower_bound()), context);
-    context.Push(constant);
-    start = range.upper_bound();
-  }
-  if (start < node_range.upper_bound()) {
-    EmitNonConstant(nth::interval(start, node_range.upper_bound()), context);
+  while (start != node_range.upper_bound()) {
+    // TODO: This approach of constantly starting over from the beginning of the
+    // mapped intervals is not great for performance.
+    for (auto const& [range, constant] : context.constants.mapped_intervals()) {
+      if (range.lower_bound() < start) { continue; }
+      if (range.lower_bound() == start) {
+        context.Push(constant);
+        start = range.upper_bound();
+      } else {
+        start =
+            EmitNonConstant(nth::interval(start, range.lower_bound()), context);
+      }
+      goto next_iteration;
+    }
+    start = EmitNonConstant(nth::interval(start, node_range.upper_bound()),
+                            context);
+  next_iteration:;
   }
   context.function_stack.back()->append<jasmin::Return>();
 }
@@ -296,7 +336,6 @@ void EmitContext::Evaluate(nth::interval<ParseTree::Node::Index> subtree,
   IrFunction f(0, 1);
   function_stack.push_back(&f);
   EmitIr(subtree, *this);
-  f.append<jasmin::Return>();
   jasmin::Execute(f, vs);
   for (jasmin::Value v : vs) { value_stack.push(v); }
   constants.insert_or_assign(

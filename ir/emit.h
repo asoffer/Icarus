@@ -71,7 +71,7 @@ struct EmitContext {
 
   ParseTree const& tree;
 
-  absl::flat_hash_map<ParseTree::Node, type::QualifiedType>
+  absl::flat_hash_map<ParseTree::Node::Index, type::QualifiedType>
       statement_qualified_type;
 
   std::vector<std::unique_ptr<IrFunction>> temporary_functions;

@@ -131,6 +131,7 @@ nth::exit_code Compile(nth::FlagValueSet flags, nth::file_path const& source) {
   Serializer s;
   s.Serialize(module, module_proto);
 
+  NTH_LOG("{}") <<= {module_proto.DebugString()};
   std::ofstream out(output_path.path());
   return module_proto.SerializeToOstream(&out) ? nth::exit_code::success
                                                : nth::exit_code::generic_error;

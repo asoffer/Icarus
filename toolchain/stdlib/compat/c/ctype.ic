@@ -1,0 +1,18 @@
+// This module provides an interface to functions in the <ctype.h> C-header
+// file.
+
+let c ::= import "std.compat.c.types"
+
+let isalnum  ::= builtin.foreign("isalnum",  i32 -> i32)
+let isalpha  ::= builtin.foreign("isalpha",  i32 -> i32)
+let iscntrl  ::= builtin.foreign("iscntrl",  i32 -> i32)
+let isdigit  ::= builtin.foreign("isdigit",  i32 -> i32)
+let isgraph  ::= builtin.foreign("isgraph",  i32 -> i32)
+let islower  ::= builtin.foreign("islower",  i32 -> i32)
+let isprint  ::= builtin.foreign("isprint",  i32 -> i32)
+let ispunct  ::= builtin.foreign("ispunct",  i32 -> i32)
+let isspace  ::= builtin.foreign("isspace",  i32 -> i32)
+let isupper  ::= builtin.foreign("isupper",  i32 -> i32)
+let isxdigit ::= builtin.foreign("isxdigit", i32 -> i32)
+let tolower  ::= builtin.foreign("tolower",  i32 -> i32)
+let toupper  ::= builtin.foreign("toupper",  i32 -> i32)

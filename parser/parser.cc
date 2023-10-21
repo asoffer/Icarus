@@ -134,39 +134,6 @@ ParseTree Parse(TokenBuffer const& token_buffer,
   return tree;
 }
 
-#define IC_XMACRO_PARSER_STATE(kind)
-#define IC_XMACRO_PARSER_STATE_SEQUENCE(state_kind, separator)                   \
-  void Parser::Handle##state_kind##Sequence(ParseTree& tree) {                   \
-    if (current_token().kind() == Token::Kind::Eof) {                            \
-      pop_and_discard_state();                                                   \
-      return;                                                                    \
-    }                                                                            \
-                                                                                 \
-    ExpandState(State::Kind::state_kind, State::Kind::separator,                 \
-                State::Kind::Subsequent##state_kind##Sequence,                   \
-                State{                                                           \
-                    .kind          = State::Kind::Resolve##state_kind##Sequence, \
-                    .subtree_start = tree.size(),                                \
-                });                                                              \
-  }                                                                              \
-                                                                                 \
-  void Parser::HandleSubsequent##state_kind##Sequence(ParseTree& tree) {         \
-    if (current_token().kind() == Token::Kind::Eof) {                            \
-      pop_and_discard_state();                                                   \
-      return;                                                                    \
-    }                                                                            \
-                                                                                 \
-    ExpandState(State::Kind::state_kind, State::Kind::separator,                 \
-                State::Kind::Subsequent##state_kind##Sequence);                  \
-  }                                                                              \
-                                                                                 \
-  void Parser::HandleResolve##state_kind##Sequence(ParseTree& tree) {            \
-    State state = pop_state();                                                   \
-    tree.append(ParseTree::Node::Kind::state_kind##Sequence, Token::Invalid(),   \
-                state.subtree_start);                                            \
-  }
-#include "parser/parse_state.xmacro.h"
-
 void Parser::HandleNewlines(ParseTree& tree) {
   pop_and_discard_state();
   IgnoreAnyNewlines();
@@ -185,9 +152,43 @@ void Parser::HandleStatement(ParseTree& tree) {
   }
 
   ExpandState(
-      State::Kind::DeclaredSymbol,
+      State{.kind = State::Kind::DeclaredSymbol, .subtree_start = tree.size()},
       State{.kind = State::Kind::Declaration, .subtree_start = tree.size()});
   tree.append_leaf(k, *++iterator_);
+}
+
+void Parser::HandleStatementSequence(ParseTree& tree) {
+  if (current_token().kind() == Token::Kind::Eof) {
+    pop_and_discard_state();
+    return;
+  }
+
+  tree.append_leaf(ParseTree::Node::Kind::ScopeStart, Token::Invalid());
+  ExpandState(State::Kind::Statement, State::Kind::Newlines,
+              State::Kind::SubsequentStatementSequence,
+              State{
+                  .kind          = State::Kind::ResolveStatementSequence,
+                  .subtree_start = tree.size(),
+              });
+}
+
+void Parser::HandleSubsequentStatementSequence(ParseTree& tree) {
+  if (current_token().kind() == Token::Kind::Eof) {
+    pop_and_discard_state();
+    return;
+  }
+
+  ExpandState(State::Kind::Statement, State::Kind::Newlines,
+              State::Kind::SubsequentStatementSequence);
+}
+
+void Parser::HandleResolveStatementSequence(ParseTree& tree) {
+  State state = pop_state();
+  auto& start = tree[ParseTree::Node::Index(state.subtree_start - 1)];
+  NTH_REQUIRE(start.kind == ParseTree::Node::Kind::ScopeStart);
+  start.next_sibling_index = ParseTree::Node::Index(tree.size());
+  tree.append(ParseTree::Node::Kind::StatementSequence, Token::Invalid(),
+              state.subtree_start);
 }
 
 void Parser::HandleDeclaration(ParseTree& tree) {
