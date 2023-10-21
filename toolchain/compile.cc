@@ -121,12 +121,10 @@ nth::exit_code Compile(nth::FlagValueSet flags, nth::file_path const& source) {
   }
 
   Module module;
-  IrContext ir_context = {
-      .emit = EmitContext(parse_tree, dependencies, module),
-  };
-  ir_context.ProcessIr(consumer);
+  EmitContext emit_context(parse_tree, dependencies, module);
+  ProcessIr(emit_context, consumer);
   if (consumer.count() != 0) { return nth::exit_code::generic_error; }
-  EmitIr(parse_tree.node_range(), ir_context.emit);
+  EmitIr(parse_tree.node_range(), emit_context);
   ModuleProto module_proto;
   Serializer s;
   s.Serialize(module, module_proto);
