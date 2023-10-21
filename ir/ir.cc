@@ -18,13 +18,45 @@ namespace {
   }
 #include "parser/parse_tree_node_kind.xmacro.h"
 
+bool RequireConstant(type::QualifiedType actual, type::Type expected,
+                     diag::DiagnosticConsumer& diag) {
+  bool ok = true;
+  if (not actual.constant()) {
+    ok = false;
+    diag.Consume({
+        diag::Header(diag::MessageKind::Error),
+        diag::Text("The given type expression must be a constant."),
+    });
+  }
+  if (actual.type() != expected) {
+    ok = false;
+    diag.Consume({
+        diag::Header(diag::MessageKind::Error),
+        diag::Text(InterpolateString<
+                   "Expected a value of type `{}` but it was actually `{}`.">(
+            expected, actual.type())),
+    });
+  }
+  return ok;
+}
+
 void HandleParseTreeNodeDeclaration(ParseTree::Node::Index index,
                                     IrContext& context,
                                     diag::DiagnosticConsumer& diag) {
   DeclarationInfo info = context.declaration_stack.back();
   context.declaration_stack.pop_back();
   switch (info.kind) {
-    case Token::Kind::Colon: NTH_UNIMPLEMENTED(); break;
+    case Token::Kind::Colon: {
+      type::QualifiedType initializer_qt = context.type_stack.back();
+      context.type_stack.pop_back();
+      type::QualifiedType type_expr_qt = context.type_stack.back();
+      if (not RequireConstant(type_expr_qt, type::Type_, diag)) { return; }
+      auto iter      = context.ChildIndices(index).begin();
+      auto expr_iter = iter;
+      auto type_iter = ++iter;
+      std::optional type = context.EvaluateAs<type::Type>(*type_iter);
+      NTH_LOG("{}") <<= {type};
+    } break;
     case Token::Kind::ColonColon: NTH_UNIMPLEMENTED(); break;
     case Token::Kind::ColonEqual: NTH_UNIMPLEMENTED(); break;
     case Token::Kind::ColonColonEqual: {
@@ -340,7 +372,7 @@ void IrContext::ProcessIr(diag::DiagnosticConsumer& diag) {
     switch (node.kind) {
 #define IC_XMACRO_PARSE_TREE_NODE_KIND(kind)                                   \
   case ParseTree::Node::Kind::kind:                                            \
-    NTH_LOG((v.when(false)), "Process node {}") <<= {#kind};                   \
+    NTH_LOG((v.when(true)), "Process node {}") <<= {#kind};                   \
     HandleParseTreeNode##kind(ParseTree::Node::Index(i), *this, diag);         \
     break;
 #include "parser/parse_tree_node_kind.xmacro.h"

@@ -57,7 +57,7 @@ void HandleParseTreeNodeBuiltinLiteral(ParseTree::Node::Index index,
 
 void HandleParseTreeNodeDeclaration(ParseTree::Node::Index index,
                                     EmitContext& context) {
-  auto const & decl_info = context.declaration_stack.back();
+  auto const& decl_info = context.declaration_stack.back();
   switch (decl_info.kind) {
     case Token::Kind::ColonColonEqual: {
       auto& f = *context.temporary_functions.back();
@@ -80,8 +80,12 @@ void HandleParseTreeNodeDeclaration(ParseTree::Node::Index index,
       context.function_stack.pop_back();
 
     } break;
+    case Token::Kind::Colon: {
+      NTH_UNIMPLEMENTED("Store in a stack-allocated variable.");
+    } break;
     default: NTH_UNIMPLEMENTED();
   }
+  context.declaration_stack.pop_back();
 }
 
 void HandleParseTreeNodeStatementSequence(ParseTree::Node::Index index,
@@ -152,13 +156,13 @@ void HandleParseTreeNodeColonColonEqual(ParseTree::Node::Index,
 
 void HandleParseTreeNodeColonEqual(ParseTree::Node::Index,
                                    EmitContext& context) {
-  context.declaration_stack.back().kind = Token::Kind::ColonColonEqual;
+  context.declaration_stack.back().kind = Token::Kind::ColonEqual;
   NTH_UNIMPLEMENTED();
 }
 
 void HandleParseTreeNodeColonColon(ParseTree::Node::Index,
                                    EmitContext& context) {
-  context.declaration_stack.back().kind = Token::Kind::ColonColonEqual;
+  context.declaration_stack.back().kind = Token::Kind::ColonColon;
   // TODO: The value 1 is potentially wrong here.
   auto* f = context.temporary_functions
                 .emplace_back(std::make_unique<IrFunction>(0, 1))
@@ -167,8 +171,8 @@ void HandleParseTreeNodeColonColon(ParseTree::Node::Index,
 }
 
 void HandleParseTreeNodeColon(ParseTree::Node::Index, EmitContext& context) {
-  context.declaration_stack.back().kind = Token::Kind::ColonColonEqual;
-  NTH_UNIMPLEMENTED();
+  context.declaration_stack.back().kind = Token::Kind::Colon;
+  // Nothing to do here. The type will have already been calculated.
 }
 
 void HandleParseTreeNodeExpressionGroup(ParseTree::Node::Index, EmitContext&) {

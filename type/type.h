@@ -8,6 +8,8 @@
 #include <utility>
 #include <vector>
 
+#include "jasmin/value.h"
+
 namespace ic::type {
 
 // All types definable within the type-system can be categorized by "kind" and
@@ -54,6 +56,13 @@ struct Type {
   template <typename H>
   friend H AbslHashValue(H h, Type t) {
     return H::combine(std::move(h), t.data_);
+  }
+
+  friend bool IcarusDeserializeValue(std::span<jasmin::Value const> values,
+                                     Type& t) {
+    if (values.size() != 1) { return false; }
+    t.data_ = values.front().as<uint64_t>();
+    return true;
   }
 
   // Defines implicit constructors from each specific type-kind, as well as

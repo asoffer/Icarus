@@ -17,6 +17,7 @@ cc_library(
     deps = [
         "//common/language:primitive_types",
         "//common/language:type_kind",
+        "@asoffer_jasmin//jasmin:value",
         "@asoffer_nth//nth/container:flyweight_set",
         "@asoffer_nth//nth/debug",
         "@asoffer_nth//nth/utility:no_destructor",

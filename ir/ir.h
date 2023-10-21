@@ -56,12 +56,15 @@ struct IrContext {
   template <typename T>
   static type::Type FromConstant() {
     auto t = nth::type<T>;
-    if constexpr (t == nth::type<ModuleId>) {
+    if constexpr (t == nth::type<type::Type>) {
+      return type::Type_;
+    } else if constexpr (t == nth::type<ModuleId>) {
       return type::Module;
     } else if constexpr (t == nth::type<std::string_view>) {
       return type::Slice(type::Char);
     } else {
-      NTH_UNREACHABLE("No specified `type::Type` associated with `{}`") <<= {t};
+      NTH_UNREACHABLE("No specified `ic::type::Type` associated with `{}`") <<=
+          {t};
     }
   }
 };

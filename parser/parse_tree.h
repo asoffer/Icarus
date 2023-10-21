@@ -254,17 +254,6 @@ struct ParseTree {
   Node const &back() const { return nodes_.back(); }
 
   struct sibling_iterator_base {
-    sibling_iterator_base &operator++() {
-      node_ -= node_->subtree_size;
-      return *this;
-    }
-
-    sibling_iterator_base operator++(int) {
-      auto copy = *this;
-      ++*this;
-      return copy;
-    }
-
     sibling_iterator_base &operator--() {
       node_ += node_->subtree_size;
       return *this;
@@ -279,14 +268,28 @@ struct ParseTree {
     friend auto operator<=>(sibling_iterator_base,
                             sibling_iterator_base) = default;
 
-   private:
-    friend ParseTree;
-    explicit sibling_iterator_base(Node const *node) : node_(node) {}
-    Node const *node_;
+    protected:
+     void increment() { node_ -= node_->subtree_size; }
+
+    private:
+     friend ParseTree;
+     explicit sibling_iterator_base(Node const *node) : node_(node) {}
+     Node const *node_;
   };
 
   struct sibling_index_iterator : sibling_iterator_base {
     Node::Index operator*() const { return Node::Index{node_ - start_}; }
+
+    sibling_index_iterator &operator++() {
+      increment();
+      return *this;
+    }
+
+    sibling_index_iterator operator++(int) {
+      auto copy = *this;
+      ++*this;
+      return copy;
+    }
 
    private:
     friend ParseTree;
@@ -298,6 +301,17 @@ struct ParseTree {
   struct sibling_iterator : sibling_iterator_base {
     Node const &operator*() { return *node_; }
     Node const *operator->() { return node_; }
+
+    sibling_iterator &operator++() {
+      increment();
+      return *this;
+    }
+
+    sibling_iterator operator++(int) {
+      auto copy = *this;
+      ++*this;
+      return copy;
+    }
 
    private:
     friend ParseTree;
