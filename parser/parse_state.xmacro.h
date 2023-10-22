@@ -7,6 +7,7 @@ IC_XMACRO_PARSER_STATE(Newlines)
 IC_XMACRO_PARSER_STATE(Module)
 
 IC_XMACRO_PARSER_STATE(Statement)
+IC_XMACRO_PARSER_STATE(ResolveStatement)
 IC_XMACRO_PARSER_STATE(StatementSequence)
 IC_XMACRO_PARSER_STATE(ResolveStatementSequence)
 IC_XMACRO_PARSER_STATE(SubsequentStatementSequence)

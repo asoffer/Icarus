@@ -6,6 +6,7 @@
 #include "absl/debugging/failure_signal_handler.h"
 #include "absl/debugging/symbolize.h"
 #include "absl/strings/str_split.h"
+#include "common/debug.h"
 #include "common/errno.h"
 #include "common/resources.h"
 #include "common/string.h"
@@ -80,6 +81,13 @@ nth::exit_code Compile(nth::FlagValueSet flags, nth::file_path const& source) {
   auto const& output_path     = flags.get<nth::file_path>("output");
   auto const& module_map_path = flags.get<nth::file_path>("module-map");
 
+  auto const* debug_parser     = flags.try_get<bool>("debug-parser");
+  auto const* debug_type_check = flags.try_get<bool>("debug-type-check");
+  auto const* debug_emit       = flags.try_get<bool>("debug-emit");
+  if (debug_parser) { ic::debug::parser = *debug_parser; }
+  if (debug_type_check) { ic::debug::type_check = *debug_type_check; }
+  if (debug_emit) { ic::debug::emit = *debug_emit; }
+
   diag::StreamingConsumer consumer;
 
   std::optional dependent_module_protos = PopulateModuleMap(module_map_path);
@@ -129,7 +137,6 @@ nth::exit_code Compile(nth::FlagValueSet flags, nth::file_path const& source) {
   Serializer s;
   s.Serialize(module, module_proto);
 
-  NTH_LOG("{}") <<= {module_proto.DebugString()};
   std::ofstream out(output_path.path());
   return module_proto.SerializeToOstream(&out) ? nth::exit_code::success
                                                : nth::exit_code::generic_error;
@@ -143,6 +150,23 @@ nth::Usage const nth::program_usage = {
     .flags =
         {
             {
+                .name = {"debug-emit"},
+                .type = nth::type<bool>,
+                .description =
+                    "Turns on debug information for byte-code emission.",
+            },
+            {
+                .name        = {"debug-parser"},
+                .type        = nth::type<bool>,
+                .description = "Turns on debug information for the parser.",
+            },
+            {
+                .name = {"debug-type-check"},
+                .type = nth::type<bool>,
+                .description =
+                    "Turns on debug information for the type-checker.",
+            },
+            {
                 .name = {"output"},
                 .type = nth::type<nth::file_path>,
                 .description =
@@ -151,7 +175,8 @@ nth::Usage const nth::program_usage = {
             {
                 .name        = {"module-map"},
                 .type        = nth::type<nth::file_path>,
-                .description = "The location of the .icmod file defining the module mapping.",
+                .description = "The location of the .icmod file defining the "
+                               "module mapping.",
             },
         },
     .execute = ic::Compile,

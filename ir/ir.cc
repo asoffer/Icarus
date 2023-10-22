@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "absl/container/flat_hash_map.h"
+#include "common/debug.h"
 #include "common/module_id.h"
 #include "common/string.h"
 #include "jasmin/execute.h"
@@ -127,18 +128,17 @@ void HandleParseTreeNodeDeclaration(ParseTree::Node::Index index,
   }
 }
 
+void HandleParseTreeNodeStatement(ParseTree::Node::Index index,
+                                  IrContext& context,
+                                  diag::DiagnosticConsumer& diag) {
+  context.emit.statement_qualified_type.emplace(index,
+                                                context.type_stack.back());
+  context.type_stack.pop_back();
+}
+
 void HandleParseTreeNodeStatementSequence(ParseTree::Node::Index index,
                                           IrContext& context,
-                                          diag::DiagnosticConsumer& diag) {
-  switch (context.Node(index - 1).kind) {
-    case ParseTree::Node::Kind::Declaration: return;
-    default:
-      NTH_REQUIRE(not context.type_stack.empty());
-      auto node = context.Node(index);
-      context.emit.statement_qualified_type.emplace(index,
-                                                    context.type_stack.back());
-  }
-}
+                                          diag::DiagnosticConsumer& diag) {}
 
 bool HandleParseTreeNodeIdentifier(ParseTree::Node::Index index,
                                    IrContext& context,

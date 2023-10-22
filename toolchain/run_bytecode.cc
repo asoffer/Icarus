@@ -68,7 +68,6 @@ nth::exit_code Run(nth::FlagValueSet flags, std::span<std::string_view const>) {
     });
     return nth::exit_code::generic_error;
   }
-  NTH_LOG((v.debug), "{}") <<= {proto.DebugString()};
 
   jasmin::ValueStack value_stack;
   jasmin::Execute(module.initializer(), value_stack);

@@ -49,6 +49,7 @@ cc_library(
     deps = [
         ":dependent_modules",
         ":module",
+        "//common:debug",
         "//common:module_id",
         "//common/language:primitive_types",
         "//common:resources",
@@ -112,6 +113,7 @@ cc_library(
     srcs = ["ir.cc"],
     deps = [
         ":emit",
+        "//common:debug",
         "//common:module_id",
         "//common:string",
         "//diagnostics/consumer",

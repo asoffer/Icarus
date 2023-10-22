@@ -4,6 +4,7 @@ cc_binary(
     name = "compile",
     srcs = ["compile.cc"],
     deps = [
+        "//common:debug",
         "//common:errno",
         "//common:string",
         "//diagnostics:message",

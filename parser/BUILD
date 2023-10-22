@@ -32,6 +32,7 @@ cc_library(
         ":parse_state_xmacro",
         ":parse_tree",
         ":precedence",
+        "//common:debug",
         "//common/language:atoms",
         "//diagnostics/consumer",
         "//lexer:token",

@@ -1,6 +1,11 @@
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
+    name = "debug",
+    hdrs = ["debug.h"],
+)
+
+cc_library(
     name = "errno",
     hdrs = ["errno.h"],
     deps = [],

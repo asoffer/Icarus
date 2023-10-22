@@ -4,6 +4,7 @@
 #include <cstring>
 #include <span>
 
+#include "common/debug.h"
 #include "diagnostics/consumer/consumer.h"
 #include "nth/debug/debug.h"
 #include "parser/parse_tree.h"
@@ -87,7 +88,7 @@ struct Parser {
     prototype.kind = kind;
     ExpandStateImpl(prototype, prototype);
   }
-  void ExpandStateImpl(State, State state) { state_.push_back(state); }
+  void ExpandStateImpl(State const&, State state) { state_.push_back(state); }
 
   std::vector<State> state_ = {
       {.kind = State::Kind::Module, .subtree_start = 0},
@@ -120,7 +121,7 @@ ParseTree Parse(TokenBuffer const& token_buffer,
     if (tree.size() != 0) {
       NTH_REQUIRE((v.debug), tree.back().subtree_size > 0);
     }
-    NTH_LOG((v.when(false)), "{} {}:\n{}") <<=
+    NTH_LOG((v.when(debug::parser)), "{} {}:\n{}") <<=
         {p.current_token(), p.state().back().subtree_start,
          DebugView{.state = p.state()}};
     switch (p.state().back().kind) {
@@ -148,13 +149,21 @@ void Parser::HandleStatement(ParseTree& tree) {
   switch (current_token().kind()) {
     case Token::Kind::Let: k = ParseTree::Node::Kind::Let; break;
     case Token::Kind::Var: k = ParseTree::Node::Kind::Var; break;
-    default: ExpandState(State::Kind::Expression); return;
+    default:
+      ExpandState(State::Kind::Expression, State::Kind::ResolveStatement);
+      return;
   }
 
   ExpandState(
       State{.kind = State::Kind::DeclaredSymbol, .subtree_start = tree.size()},
       State{.kind = State::Kind::Declaration, .subtree_start = tree.size()});
   tree.append_leaf(k, *++iterator_);
+}
+
+void Parser::HandleResolveStatement(ParseTree& tree) {
+  State state = pop_state();
+  tree.append(ParseTree::Node::Kind::Statement, Token::Invalid(),
+              state.subtree_start);
 }
 
 void Parser::HandleStatementSequence(ParseTree& tree) {
@@ -164,12 +173,10 @@ void Parser::HandleStatementSequence(ParseTree& tree) {
   }
 
   tree.append_leaf(ParseTree::Node::Kind::ScopeStart, Token::Invalid());
+  ++state().back().subtree_start;
   ExpandState(State::Kind::Statement, State::Kind::Newlines,
               State::Kind::SubsequentStatementSequence,
-              State{
-                  .kind          = State::Kind::ResolveStatementSequence,
-                  .subtree_start = tree.size(),
-              });
+              State::Kind::ResolveStatementSequence);
 }
 
 void Parser::HandleSubsequentStatementSequence(ParseTree& tree) {

@@ -1,5 +1,6 @@
 #include "ir/emit.h"
 
+#include "common/debug.h"
 #include "common/module_id.h"
 #include "common/resources.h"
 #include "jasmin/execute.h"
@@ -67,12 +68,11 @@ void HandleParseTreeNodeDeclaration(ParseTree::Node::Index index,
       auto iter = context.identifiers.find(
           context.Node(decl_info.index).token.IdentifierIndex());
       NTH_REQUIRE(iter != context.identifiers.end());
-
-      // TODO: Store values of identifiers bound to the constants.
       context.constants.insert_or_assign(
           context.tree.subtree_range(index),
-          EmitContext::ComputedConstants(decl_info.index, jasmin::ValueStack{},
-                                         {}));
+          EmitContext::ComputedConstants(decl_info.index,
+                                         std::move(value_stack),
+                                         {iter->second.second.type()}));
 
       NTH_REQUIRE(context.temporary_functions.back().get() ==
                   context.function_stack.back());
@@ -88,19 +88,16 @@ void HandleParseTreeNodeDeclaration(ParseTree::Node::Index index,
   context.declaration_stack.pop_back();
 }
 
-void HandleParseTreeNodeStatementSequence(ParseTree::Node::Index index,
-                                          EmitContext& context) {
-  switch (context.Node(index - 1).kind) {
-    case ParseTree::Node::Kind::Declaration: return;
-    default: {
-      auto node = context.Node(index);
-      auto iter = context.statement_qualified_type.find(index);
-      NTH_REQUIRE(iter != context.statement_qualified_type.end());
-      context.function_stack.back()->append<jasmin::Drop>(
-          type::JasminSize(iter->second.type()));
-    } break;
-  }
+void HandleParseTreeNodeStatement(ParseTree::Node::Index index,
+                                  EmitContext& context) {
+  auto iter = context.statement_qualified_type.find(index);
+  NTH_REQUIRE(iter != context.statement_qualified_type.end());
+  context.function_stack.back()->append<jasmin::Drop>(
+      type::JasminSize(iter->second.type()));
 }
+
+void HandleParseTreeNodeStatementSequence(ParseTree::Node::Index index,
+                                          EmitContext& context) {}
 
 void HandleParseTreeNodeIdentifier(ParseTree::Node::Index index,
                                    EmitContext& context) {
