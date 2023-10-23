@@ -98,6 +98,12 @@ void HandleParseTreeNodeDeclaration(ParseTree::Node::Index index,
     } break;
     default: NTH_UNIMPLEMENTED();
   }
+
+  if (context.queue.front().declaration_stack.size() == 1) {
+    // This is a top-level declaration, we need to export it.
+    // TODO: Actually exporting should not be the default.
+    context.declarations_to_export.insert(index);
+  }
   context.queue.front().declaration_stack.pop_back();
 }
 
@@ -364,6 +370,22 @@ void EmitContext::Evaluate(nth::interval<ParseTree::Node::Index> subtree,
       subtree, ComputedConstants(subtree.upper_bound() - 1, std::move(vs),
                                  std::move(types)));
   function_stack.pop_back();
+}
+
+void SetExported(EmitContext const& context) {
+  for (auto index : context.declarations_to_export) {
+    auto const & constant = context.constants.at(index);
+    auto iter = context.tree.child_indices(index).begin();
+    ++iter;
+    ++iter;
+    std::span types = constant.types();
+    std::span value_span = constant.value_span();
+    NTH_REQUIRE((v.harden), types.size() == 1);
+    context.current_module.Insert(
+        context.Node(*iter).token.IdentifierIndex(),
+        Module::Entry{.qualified_type = type::QualifiedType::Constant(types[0]),
+                      .value = {value_span.begin(), value_span.end()}});
+  }
 }
 
 }  // namespace ic

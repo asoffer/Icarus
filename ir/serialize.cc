@@ -85,6 +85,13 @@ void Serializer::Serialize(Module& module, ModuleProto& proto) {
     f.set_name(name);
     SerializeFunctionType(type, *f.mutable_type());
   }
+
+  for (auto const& [id, entry] : module.entries()) {
+    (*proto.mutable_identifiers())[id] = resources.identifiers.from_index(id);
+    auto& symbol = (*proto.mutable_exported_symbols())[id];
+    SerializeType(entry.qualified_type.type(), *symbol.mutable_type());
+    for (jasmin::Value v : entry.value) { symbol.add_content(v.raw_value()); }
+  }
 }
 
 }  // namespace ic

@@ -109,6 +109,22 @@ bool Deserializer::Deserialize(ModuleProto const& proto, Module& module) {
     NTH_REQUIRE(fn != nullptr);
   }
 
+    auto const & identifiers = proto.identifiers();
+  for (auto const& [id, exported_symbol] : proto.exported_symbols()) {
+    auto id_iter = identifiers.find(id);
+    if (id_iter == identifiers.end()) { return false; }
+    absl::InlinedVector<jasmin::Value, 2> value;
+    for (uint64_t n : exported_symbol.content()) {
+      jasmin::Value v = jasmin::Value::Uninitialized();
+      v.set_raw_value(n);
+      value.push_back(v);
+    }
+    module.Insert(resources.IdentifierIndex(id_iter->second),
+                  Module::Entry{.qualified_type = type::QualifiedType::Constant(
+                                    type::Deserialize(exported_symbol.type())),
+                                .value = std::move(value)});
+  }
+
   size_t i = 0;
   for (auto const& function : proto.functions()) {
     if (not DeserializeFunction(proto, function, module.functions()[i++])) {

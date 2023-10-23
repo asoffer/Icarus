@@ -40,6 +40,8 @@ struct Module {
     return f;
   }
 
+  auto const& entries() const { return entries_; }
+
  private:
   static Entry const DefaultEntry;
 

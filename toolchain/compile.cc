@@ -134,6 +134,8 @@ nth::exit_code Compile(nth::FlagValueSet flags, nth::file_path const& source) {
   if (consumer.count() != 0) { return nth::exit_code::generic_error; }
   emit_context.queue.push({.range = parse_tree.node_range()});
   EmitIr(emit_context);
+  SetExported(emit_context);
+
   ModuleProto module_proto;
   Serializer s;
   s.Serialize(module, module_proto);

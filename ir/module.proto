@@ -41,6 +41,11 @@ message ForeignFunctionProto {
   type.FunctionTypeProto type = 2;
 }
 
+message SymbolProto {
+  type.TypeProto type = 1;
+  repeated uint64 content = 2;
+}
+
 message ModuleProto {
   // Subroutine at which to begin execution.
   FunctionProto initializer = 1;
@@ -55,4 +60,5 @@ message ModuleProto {
   type.TypeSystem type_system = 5;
 
   map<uint32, string> identifiers = 6;
+  map<uint32, SymbolProto> exported_symbols = 7;
 }

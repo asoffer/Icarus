@@ -26,13 +26,11 @@ struct EmitContext {
   explicit EmitContext(ParseTree const& tree NTH_ATTRIBUTE(lifetimebound),
                        DependentModules const& modules
                            NTH_ATTRIBUTE(lifetimebound),
-                       IrFunction& f)
-      : tree(tree), function_stack{&f}, modules(modules) {}
-  explicit EmitContext(ParseTree const& tree NTH_ATTRIBUTE(lifetimebound),
-                       DependentModules const& modules
-                           NTH_ATTRIBUTE(lifetimebound),
                        Module& module)
-      : tree(tree), function_stack{&module.initializer()}, modules(modules) {}
+      : tree(tree),
+        function_stack{&module.initializer()},
+        current_module{module},
+        modules(modules) {}
 
   Module const& module(ModuleId id) const { return modules[id]; }
 
@@ -65,7 +63,7 @@ struct EmitContext {
   void Evaluate(nth::interval<ParseTree::Node::Index> subtree,
                 jasmin::ValueStack& value_stack, std::vector<type::Type> types);
 
-  ParseTree::Node const& Node(ParseTree::Node::Index index) {
+  ParseTree::Node const& Node(ParseTree::Node::Index index) const {
     return tree[index];
   }
 
@@ -85,6 +83,8 @@ struct EmitContext {
                       std::tuple<ParseTree::Node::Index, ParseTree::Node::Index,
                                  type::QualifiedType>>
       identifiers;
+  absl::flat_hash_set<ParseTree::Node::Index> declarations_to_export;
+  Module& current_module;
 
   // Maps node indices to the constant value associated with the computation for
   // the largest subtree containing it whose constant value has been computed
@@ -99,6 +99,8 @@ struct EmitContext {
 };
 
 void EmitIr(EmitContext& context);
+
+void SetExported(EmitContext const& context);
 
 }  // namespace ic
 

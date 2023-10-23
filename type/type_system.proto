@@ -6,11 +6,13 @@ message TypeProto {
   enum Kind {
     UNKNOWN = 0;
     PRIMITIVE = 1;
-    POINTER = 2;
-    BUFFER_POINTER = 3;
+    PARAMETERS = 2;
+    FUNCTION = 3;
     SLICE = 4;
-    FUNCTION = 5;
-    PATTERN = 6;
+    POINTER = 5;
+    BUFFER_POINTER = 6;
+    PATTERN = 7;
+    GENERIC_FUNCTION = 8;
   }
   Kind kind = 1;
   uint32 index = 2;
