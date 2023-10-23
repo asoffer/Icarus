@@ -11,9 +11,11 @@ ParseTree const &DiagnosticConsumer::parse_tree() const {
 }
 
 void DiagnosticConsumer::set_source(std::string_view source) {
-  source_ = source;
-  for (size_t i = 0; i < source_.size(); i = source_.find('\n', i + 1)) {
-    offsets_.push_back(i);
+  source_  = source;
+  offsets_ = {0};
+  for (size_t i = source_.find('\n'); i < source_.size();
+       i        = source_.find('\n', i + 1)) {
+    offsets_.push_back(i + 1);
   }
   offsets_.push_back(source_.size());
 }
@@ -42,7 +44,7 @@ std::string_view DiagnosticConsumer::Line(uint32_t line) const {
   NTH_REQUIRE(line > 0);
   NTH_REQUIRE(line < offsets_.size());
   return std::string_view(source_.data() + offsets_[line - 1],
-                          source_.data() + offsets_[line]);
+                          source_.data() + offsets_[line] - 1);
 }
 
 std::string_view DiagnosticConsumer::Symbol(Token token) const {

@@ -1,6 +1,6 @@
 // This module provides an interface to functions in the <stdio.h> C-header
 // file.
 
-let c ::= import "std.compat.c.types"
+// let c ::= import "std.compat.c.types"
 
 let putchar ::= builtin.foreign("putchar", i32 -> i32)

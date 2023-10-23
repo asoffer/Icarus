@@ -121,7 +121,7 @@ void HandleParseTreeNodeDeclaration(ParseTree::Node::Index index,
       type::QualifiedType qt = context.type_stack.back();
       context.emit.identifiers.emplace(
           context.Node(info.index).token.IdentifierIndex(),
-          std::pair(info.index, qt));
+          std::tuple(info.index, index, qt));
       context.type_stack.pop_back();
     } break;
     default: NTH_UNREACHABLE();
@@ -150,8 +150,8 @@ bool HandleParseTreeNodeIdentifier(ParseTree::Node::Index index,
         nth::interval(index, context.queue.front().upper_bound()));
     return false;
   }
-  auto const& [decl_index, decl_qt] = iter->second;
-  context.emit.declarator.emplace(index, decl_index);
+  auto const& [decl_id_index, decl_index, decl_qt] = iter->second;
+  context.emit.declarator.emplace(index, std::pair{decl_id_index, decl_index});
   context.type_stack.push_back(decl_qt);
   return true;
 }
@@ -449,15 +449,23 @@ constexpr bool Invoke(ParseTree::Node::Index index, IrContext& context,
 void ProcessIrImpl(IrContext& context, diag::DiagnosticConsumer& diag) {
   while (not context.queue.empty()) {
     auto [start, end] = context.queue.front();
+    NTH_LOG((v.when(debug::type_check)), "Type-checking range {}") <<=
+        {context.queue.front()};
+
     for (auto index = start; index != end; ++index) {
       auto node = context.Node(index);
       switch (node.kind) {
 #define IC_XMACRO_PARSE_TREE_NODE_KIND(kind)                                   \
   case ParseTree::Node::Kind::kind: {                                          \
-    NTH_LOG((v.when(false)), "Process node {}") <<= {#kind};                   \
+    NTH_LOG((v.when(debug::type_check)), "Process node {} ({})") <<=           \
+        {#kind, index};                                                        \
     bool should_continue =                                                     \
         Invoke<HandleParseTreeNode##kind>(index, context, diag);               \
-    if (not should_continue) { goto next_chunk; }                              \
+    if (not should_continue) {                                                 \
+      NTH_LOG((v.when(debug::type_check)), "Stopping early after {}") <<=      \
+          {index};                                                             \
+      goto next_chunk;                                                         \
+    }                                                                          \
   } break;
 #include "parser/parse_tree_node_kind.xmacro.h"
       }

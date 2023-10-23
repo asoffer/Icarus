@@ -29,6 +29,7 @@ struct DiagnosticConsumer {
 
   std::string_view Line(uint32_t line) const;
 
+  size_t lines() const { return offsets_.size() - 1; }
   size_t count() const { return count_; }
 
   virtual ~DiagnosticConsumer()                            = default;

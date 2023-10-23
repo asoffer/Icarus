@@ -63,7 +63,7 @@ std::optional<std::vector<ModuleProto>> PopulateModuleMap(
       }
     }
     auto id = resources.module_map.add(name);
-    NTH_REQUIRE(dependent_module_protos.size() == id.value());
+    NTH_REQUIRE(dependent_module_protos.size() + 1 == id.value());
 
     std::ifstream in{std::string(location)};
     if (not in.is_open()) { NTH_UNIMPLEMENTED("{}") <<= {location}; }
@@ -132,7 +132,8 @@ nth::exit_code Compile(nth::FlagValueSet flags, nth::file_path const& source) {
   EmitContext emit_context(parse_tree, dependencies, module);
   ProcessIr(emit_context, consumer);
   if (consumer.count() != 0) { return nth::exit_code::generic_error; }
-  EmitIr(parse_tree.node_range(), emit_context);
+  emit_context.queue.push({.range = parse_tree.node_range()});
+  EmitIr(emit_context);
   ModuleProto module_proto;
   Serializer s;
   s.Serialize(module, module_proto);

@@ -44,7 +44,8 @@ void StreamingConsumer::Process(MessageComponent const &component) {
   } else if (auto const *q = component.As<SourceQuote>()) {
     auto [line, column] = LineAndColumn(q->token());
 
-    DrawLineRange(*this, indentation_, std::max<uint32_t>(line - 1, 1), line + 1);
+    DrawLineRange(*this, indentation_, std::max<uint32_t>(line - 1, 1),
+                  std::min<uint32_t>(line + 2, lines() + 1));
   } else {
     NTH_UNIMPLEMENTED();
   }

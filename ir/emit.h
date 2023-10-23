@@ -75,14 +75,15 @@ struct EmitContext {
       statement_qualified_type;
 
   std::vector<std::unique_ptr<IrFunction>> temporary_functions;
-  std::vector<DeclarationInfo> declaration_stack;
   std::vector<Token::Kind> operator_stack;
   std::vector<IrFunction*> function_stack;
   absl::flat_hash_map<ParseTree::Node::Index, size_t> rotation_count;
-  absl::flat_hash_map<ParseTree::Node::Index, ParseTree::Node::Index>
+  absl::flat_hash_map<ParseTree::Node::Index,
+                      std::pair<ParseTree::Node::Index, ParseTree::Node::Index>>
       declarator;
   absl::flat_hash_map<uint32_t,
-                      std::pair<ParseTree::Node::Index, type::QualifiedType>>
+                      std::tuple<ParseTree::Node::Index, ParseTree::Node::Index,
+                                 type::QualifiedType>>
       identifiers;
 
   // Maps node indices to the constant value associated with the computation for
@@ -90,10 +91,14 @@ struct EmitContext {
   // thus far.
   nth::interval_map<ParseTree::Node::Index, ComputedConstants> constants;
   DependentModules const& modules;
+  struct WorkItem {
+    nth::interval<ParseTree::Node::Index> range;
+    std::vector<DeclarationInfo> declaration_stack;
+  };
+  std::queue<WorkItem> queue;
 };
 
-void EmitIr(nth::interval<ParseTree::Node::Index> node_range,
-            EmitContext& context);
+void EmitIr(EmitContext& context);
 
 }  // namespace ic
 

@@ -73,6 +73,7 @@ void Serializer::Serialize(Module& module, ModuleProto& proto) {
   initializer.set_parameters(0);
   initializer.set_returns(0);
   auto& instructions = *initializer.mutable_instructions();
+
   SerializeFunction(module.initializer(), initializer);
   for (auto const& f : module.functions()) {
     auto& proto_fn = *proto.add_functions();

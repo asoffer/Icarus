@@ -17,7 +17,7 @@ struct ModuleMap {
   ModuleId operator[](std::string_view module_name) const;
 
  private:
-  nth::flyweight_set<std::string> by_name_;
+  nth::flyweight_set<std::string> by_name_ = {"~builtin~"};
 };
 
 }  // namespace ic

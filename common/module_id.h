@@ -30,7 +30,8 @@ struct ModuleId {
 
   friend bool IcarusDeserializeValue(std::span<jasmin::Value const> values,
                                      ModuleId& id) {
-    if (values.size() != 1) { return false; }
+    // TODO: Deal with the fact that you write these things multiple times.
+    if (values.size() < 1) { return false; }
     id.id_ = values.front().as<uint32_t>();
     return true;
   }
