@@ -203,7 +203,15 @@ void HandleParseTreeNodeExpressionGroup(ParseTree::Node::Index, EmitContext&) {
 
 void HandleParseTreeNodeMemberExpression(ParseTree::Node::Index index,
                                          EmitContext& context) {
-  auto const* mapped_range = context.constants.mapped_range(index - 1);
+  // TODO: Fix this bug.
+  decltype(context.constants.mapped_range(index - 1)) mapped_range = nullptr;
+  for (auto const& p : context.constants.mapped_intervals()) {
+    if (p.first.contains(index - 1)) {
+      mapped_range = &p;
+      break;
+    }
+  }
+  // auto const* mapped_range = context.constants.mapped_range(index - 1);
   NTH_REQUIRE((v.harden), mapped_range != nullptr);
   context.function_stack.back()->append<jasmin::Drop>(1);
 
@@ -305,7 +313,10 @@ void EmitIr(EmitContext& context) {
         // TODO: Can you avoid the duplication here? You need this in place so
         // that when you copy the front declaration_stack you get updates from
         // this chunk.
-        for (; start < range.lower_bound(); ++start) {
+
+        NTH_LOG((v.when(debug::emit)), "Emission of [{}, {})") <<=
+            {start, range.lower_bound()};
+        for (; start < std::min(range.lower_bound(), end); ++start) {
           switch (context.Node(start).kind) {
 #define IC_XMACRO_PARSE_TREE_NODE_KIND(kind)                                   \
   case ParseTree::Node::Kind::kind: {                                          \
@@ -320,10 +331,12 @@ void EmitIr(EmitContext& context) {
           }
         }
 
-        context.queue.push(
-            {.range             = nth::interval(range.lower_bound(), end),
-             .declaration_stack = context.queue.front().declaration_stack});
-        end = range.lower_bound();
+        if (end > range.lower_bound()) {
+          context.queue.push(
+              {.range             = nth::interval(range.lower_bound(), end),
+               .declaration_stack = context.queue.front().declaration_stack});
+          end = range.lower_bound();
+        }
         break;
       }
     }
@@ -384,7 +397,8 @@ void SetExported(EmitContext const& context) {
     context.current_module.Insert(
         context.Node(*iter).token.IdentifierIndex(),
         Module::Entry{.qualified_type = type::QualifiedType::Constant(types[0]),
-                      .value = {value_span.begin(), value_span.end()}});
+                      .value          = absl::InlinedVector<jasmin::Value, 2>(
+                          value_span.begin(), value_span.end())});
   }
 }
 
