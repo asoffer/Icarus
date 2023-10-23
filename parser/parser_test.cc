@@ -1,7 +1,7 @@
 #include "parser/parser.h"
 
-#include "diagnostics/consumer/null.h"
 #include "common/resources.h"
+#include "diagnostics/consumer/null.h"
 #include "lexer/lexer.h"
 #include "lexer/token_matchers.h"
 #include "nth/test/test.h"
@@ -30,6 +30,16 @@ inline constexpr auto ExpressionPrecedenceGroup =
         [](auto const &value) {
           return value.kind == ParseTree::Node::Kind::ExpressionPrecedenceGroup;
         });
+
+inline constexpr auto Statement =
+    nth::debug::MakeProperty<"statement">([](auto const &value) {
+      return value.kind == ParseTree::Node::Kind::Statement;
+    });
+
+inline constexpr auto ScopeStart =
+    nth::debug::MakeProperty<"scope-start">([](auto const &value) {
+      return value.kind == ParseTree::Node::Kind::ScopeStart;
+    });
 
 inline constexpr auto MemberExpression =
     nth::debug::MakeProperty<"member-expression">([](auto const &value) {
@@ -98,7 +108,8 @@ NTH_TEST("parser/declaration/integer") {
   TokenBuffer buffer = lex::Lex("let x ::= 3", d);
   auto tree          = Parse(buffer, d);
   NTH_EXPECT(tree.nodes() >>= ElementsAreSequentially(
-                 Let(), DeclaredIdentifier() and IdentifierToken("x"),
+                 ScopeStart(), Let(),
+                 DeclaredIdentifier() and IdentifierToken("x"),
                  ColonColonEqual(), HasToken(HasImmediateIntegerValue(3)),
                  HasSubtreeSize(5), HasSubtreeSize(6)));
 }
@@ -108,9 +119,10 @@ NTH_TEST("parser/declaration/bool") {
   TokenBuffer buffer = lex::Lex("let x := true", d);
   auto tree          = Parse(buffer, d);
   NTH_EXPECT(tree.nodes() >>= ElementsAreSequentially(
-                 Let(), DeclaredIdentifier() and IdentifierToken("x"),
-                 ColonEqual(), HasToken(HasBooleanValue(true)),
-                 HasSubtreeSize(5), HasSubtreeSize(6)));
+                 ScopeStart(), Let(),
+                 DeclaredIdentifier() and IdentifierToken("x"), ColonEqual(),
+                 HasToken(HasBooleanValue(true)), HasSubtreeSize(5),
+                 HasSubtreeSize(6)));
 }
 
 NTH_TEST("parser/comment") {
@@ -118,7 +130,8 @@ NTH_TEST("parser/comment") {
   TokenBuffer buffer = lex::Lex("let x ::= true  // comment!", d);
   auto tree          = Parse(buffer, d);
   NTH_EXPECT(tree.nodes() >>= ElementsAreSequentially(
-                 Let(), DeclaredIdentifier() and IdentifierToken("x"),
+                 ScopeStart(), Let(),
+                 DeclaredIdentifier() and IdentifierToken("x"),
                  ColonColonEqual(), HasToken(HasBooleanValue(true)),
                  HasSubtreeSize(5), HasSubtreeSize(6)));
 }
@@ -132,7 +145,8 @@ NTH_TEST("parser/multiple-declarations-with-newlines") {
                                 d);
   auto tree          = Parse(buffer, d);
   NTH_EXPECT(tree.nodes() >>= ElementsAreSequentially(
-                 Let(), DeclaredIdentifier() and IdentifierToken("x"),
+                 ScopeStart(), Let(),
+                 DeclaredIdentifier() and IdentifierToken("x"),
                  ColonColonEqual(), HasToken(HasImmediateIntegerValue(3)),
                  HasSubtreeSize(5), Var(),
                  DeclaredIdentifier() and IdentifierToken("y"),
@@ -145,12 +159,12 @@ NTH_TEST("parser/operator-precedence/plus-times") {
   TokenBuffer buffer = lex::Lex(R"(x + y * z)", d);
   auto tree          = Parse(buffer, d);
   NTH_EXPECT(tree.nodes() >>= ElementsAreSequentially(
-                 IdentifierToken("x"), InfixOperator(Token::Kind::Plus),
-                 IdentifierToken("y"), InfixOperator(Token::Kind::Star),
-                 IdentifierToken("z"),
+                 ScopeStart(), IdentifierToken("x"),
+                 InfixOperator(Token::Kind::Plus), IdentifierToken("y"),
+                 InfixOperator(Token::Kind::Star), IdentifierToken("z"),
                  ExpressionPrecedenceGroup() and HasSubtreeSize(4),
                  ExpressionPrecedenceGroup() and HasSubtreeSize(7),
-                 HasSubtreeSize(8)));
+                 Statement() and HasSubtreeSize(8), HasSubtreeSize(9)));
 }
 
 NTH_TEST("parser/operator-precedence/times-plus") {
@@ -158,12 +172,12 @@ NTH_TEST("parser/operator-precedence/times-plus") {
   TokenBuffer buffer = lex::Lex(R"(x * y + z)", d);
   auto tree          = Parse(buffer, d);
   NTH_EXPECT(tree.nodes() >>= ElementsAreSequentially(
-                 IdentifierToken("x"), InfixOperator(Token::Kind::Star),
-                 IdentifierToken("y"),
+                 ScopeStart(), IdentifierToken("x"),
+                 InfixOperator(Token::Kind::Star), IdentifierToken("y"),
                  ExpressionPrecedenceGroup() and HasSubtreeSize(4),
                  InfixOperator(Token::Kind::Plus), IdentifierToken("z"),
                  ExpressionPrecedenceGroup() and HasSubtreeSize(7),
-                 HasSubtreeSize(8)));
+                 Statement() and HasSubtreeSize(8), HasSubtreeSize(9)));
 }
 
 NTH_TEST("parser/operator-precedence/plus-plus") {
@@ -171,11 +185,11 @@ NTH_TEST("parser/operator-precedence/plus-plus") {
   TokenBuffer buffer = lex::Lex(R"(x + y + z)", d);
   auto tree          = Parse(buffer, d);
   NTH_EXPECT(tree.nodes() >>= ElementsAreSequentially(
-                 IdentifierToken("x"), InfixOperator(Token::Kind::Plus),
-                 IdentifierToken("y"), InfixOperator(Token::Kind::Plus),
-                 IdentifierToken("z"),
+                 ScopeStart(), IdentifierToken("x"),
+                 InfixOperator(Token::Kind::Plus), IdentifierToken("y"),
+                 InfixOperator(Token::Kind::Plus), IdentifierToken("z"),
                  ExpressionPrecedenceGroup() and HasSubtreeSize(6),
-                 HasSubtreeSize(7)));
+                 Statement() and HasSubtreeSize(7), HasSubtreeSize(8)));
 }
 
 NTH_TEST("parser/access/basic") {
@@ -184,9 +198,9 @@ NTH_TEST("parser/access/basic") {
   auto tree          = Parse(buffer, d);
   NTH_EXPECT(
       tree.nodes() >>= ElementsAreSequentially(
-          IdentifierToken("a"),
+          ScopeStart(), IdentifierToken("a"),
           MemberExpression() and IdentifierToken("b") and HasSubtreeSize(2),
-          HasSubtreeSize(3)));
+          Statement() and HasSubtreeSize(3), HasSubtreeSize(4)));
 }
 
 NTH_TEST("parser/access/nested") {
@@ -195,10 +209,10 @@ NTH_TEST("parser/access/nested") {
   auto tree          = Parse(buffer, d);
   NTH_EXPECT(
       tree.nodes() >>= ElementsAreSequentially(
-          IdentifierToken("a"),
+          ScopeStart(), IdentifierToken("a"),
           MemberExpression() and IdentifierToken("b") and HasSubtreeSize(2),
           MemberExpression() and IdentifierToken("c") and HasSubtreeSize(3),
-          HasSubtreeSize(4)));
+          Statement() and HasSubtreeSize(4), HasSubtreeSize(5)));
 }
 
 NTH_TEST("parser/access/precedence") {
@@ -207,12 +221,12 @@ NTH_TEST("parser/access/precedence") {
   auto tree          = Parse(buffer, d);
   NTH_EXPECT(
       tree.nodes() >>= ElementsAreSequentially(
-          IdentifierToken("a"),
+          ScopeStart(), IdentifierToken("a"),
           MemberExpression() and IdentifierToken("b") and HasSubtreeSize(2),
           InfixOperator(Token::Kind::Star), IdentifierToken("c"),
           MemberExpression() and IdentifierToken("d") and HasSubtreeSize(2),
           ExpressionPrecedenceGroup() and HasSubtreeSize(6),
-          HasSubtreeSize(7)));
+          Statement() and HasSubtreeSize(7), HasSubtreeSize(8)));
 }
 
 NTH_TEST("parser/invoke/empty") {
@@ -220,8 +234,9 @@ NTH_TEST("parser/invoke/empty") {
   TokenBuffer buffer = lex::Lex(R"(f())", d);
   auto tree          = Parse(buffer, d);
   NTH_EXPECT(tree.nodes() >>= ElementsAreSequentially(
-                 IdentifierToken("f"), InvocationArgumentStart(),
-                 CallExpression() and HasSubtreeSize(3), HasSubtreeSize(4)));
+                 ScopeStart(), IdentifierToken("f"), InvocationArgumentStart(),
+                 CallExpression() and HasSubtreeSize(3),
+                 Statement() and HasSubtreeSize(4), HasSubtreeSize(5)));
 }
 
 NTH_TEST("parser/invoke/empty-member-call") {
@@ -230,10 +245,10 @@ NTH_TEST("parser/invoke/empty-member-call") {
   auto tree          = Parse(buffer, d);
   NTH_EXPECT(
       tree.nodes() >>= ElementsAreSequentially(
-          IdentifierToken("a"),
+          ScopeStart(), IdentifierToken("a"),
           MemberExpression() and IdentifierToken("b") and HasSubtreeSize(2),
           InvocationArgumentStart(), CallExpression() and HasSubtreeSize(4),
-          HasSubtreeSize(5)));
+          Statement() and HasSubtreeSize(5), HasSubtreeSize(6)));
 }
 
 NTH_TEST("parser/invoke/double-call") {
@@ -242,11 +257,11 @@ NTH_TEST("parser/invoke/double-call") {
   auto tree          = Parse(buffer, d);
   NTH_EXPECT(
       tree.nodes() >>= ElementsAreSequentially(
-          IdentifierToken("a"),
+          ScopeStart(), IdentifierToken("a"),
           IdentifierToken("b") and MemberExpression() and HasSubtreeSize(2),
           InvocationArgumentStart(), CallExpression() and HasSubtreeSize(4),
           InvocationArgumentStart(), CallExpression() and HasSubtreeSize(6),
-          HasSubtreeSize(7)));
+          Statement() and HasSubtreeSize(7), HasSubtreeSize(8)));
 }
 
 NTH_TEST("parser/invoke/one-positional") {
@@ -254,9 +269,9 @@ NTH_TEST("parser/invoke/one-positional") {
   TokenBuffer buffer = lex::Lex(R"(a(b))", d);
   auto tree          = Parse(buffer, d);
   NTH_EXPECT(tree.nodes() >>= ElementsAreSequentially(
-                 IdentifierToken("a"), InvocationArgumentStart(),
+                 ScopeStart(), IdentifierToken("a"), InvocationArgumentStart(),
                  IdentifierToken("b"), CallExpression() and HasSubtreeSize(4),
-                 HasSubtreeSize(5)));
+                 Statement() and HasSubtreeSize(5), HasSubtreeSize(6)));
 }
 
 NTH_TEST("parser/invoke/one-positional-newline") {
@@ -267,9 +282,9 @@ NTH_TEST("parser/invoke/one-positional-newline") {
                                 d);
   auto tree          = Parse(buffer, d);
   NTH_EXPECT(tree.nodes() >>= ElementsAreSequentially(
-                 IdentifierToken("a"), InvocationArgumentStart(),
+                 ScopeStart(), IdentifierToken("a"), InvocationArgumentStart(),
                  IdentifierToken("b"), CallExpression() and HasSubtreeSize(4),
-                 HasSubtreeSize(5)));
+                 Statement() and HasSubtreeSize(5), HasSubtreeSize(6)));
 }
 
 NTH_TEST("parser/invoke/multiple-positional") {
@@ -277,10 +292,10 @@ NTH_TEST("parser/invoke/multiple-positional") {
   TokenBuffer buffer = lex::Lex(R"(a(b, c, d))", d);
   auto tree          = Parse(buffer, d);
   NTH_EXPECT(tree.nodes() >>= ElementsAreSequentially(
-                 IdentifierToken("a"), InvocationArgumentStart(),
+                 ScopeStart(), IdentifierToken("a"), InvocationArgumentStart(),
                  IdentifierToken("b"), IdentifierToken("c"),
                  IdentifierToken("d"), CallExpression() and HasSubtreeSize(6),
-                 HasSubtreeSize(7)));
+                 Statement() and HasSubtreeSize(7), HasSubtreeSize(8)));
 }
 
 NTH_TEST("parser/invoke/multiple-positional-newline") {
@@ -291,10 +306,11 @@ NTH_TEST("parser/invoke/multiple-positional-newline") {
                                 d);
   auto tree          = Parse(buffer, d);
   NTH_EXPECT(tree.nodes() >>= ElementsAreSequentially(
-                 IdentifierToken("a"), InvocationArgumentStart(),
-                 IdentifierToken("b"), IdentifierToken("c"),
-                 IdentifierToken("d"), CallExpression() and HasSubtreeSize(6),
-                 HasSubtreeSize(7)));
+                 ScopeStart(), IdentifierToken("a"),
+                 InvocationArgumentStart(), IdentifierToken("b"),
+                 IdentifierToken("c"), IdentifierToken("d"),
+                 CallExpression() and HasSubtreeSize(6),
+                 Statement() and HasSubtreeSize(7), HasSubtreeSize(8)));
 }
 
 NTH_TEST("parser/invoke/access-call") {
@@ -302,10 +318,12 @@ NTH_TEST("parser/invoke/access-call") {
   TokenBuffer buffer = lex::Lex(R"(a.b(c.d))", d);
   auto tree          = Parse(buffer, d);
   NTH_EXPECT(tree.nodes() >>= ElementsAreSequentially(
-                 IdentifierToken("a"), MemberExpression() and HasSubtreeSize(2),
+                 ScopeStart(), IdentifierToken("a"),
+                 MemberExpression() and HasSubtreeSize(2),
                  InvocationArgumentStart(), IdentifierToken("c"),
                  MemberExpression() and HasSubtreeSize(2),
-                 CallExpression() and HasSubtreeSize(6), HasSubtreeSize(7)));
+                 CallExpression() and HasSubtreeSize(6),
+                 Statement() and HasSubtreeSize(7), HasSubtreeSize(8)));
 }
 
 }  // namespace ic
