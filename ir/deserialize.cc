@@ -70,6 +70,7 @@ bool Deserializer::DeserializeFunction(ModuleProto const& m,
 }
 
 bool Deserializer::Deserialize(ModuleProto const& proto, Module& module) {
+  type::DeserializeTypeSystem(proto.type_system());
   if (proto.initializer().parameters() != 0) { return false; }
   if (proto.initializer().returns() != 0) { return false; }
 
@@ -93,11 +94,12 @@ bool Deserializer::Deserialize(ModuleProto const& proto, Module& module) {
     parameters.reserve(f.type().parameters().size());
     for (type::ParameterTypeProto const& p : f.type().parameters()) {
       parameters.push_back(
-          {.name = p.name(), .type = type::Deserialize(p.type())});
+          {.name = p.name(),
+           .type = type::Deserialize(p.type(), proto.type_system())});
     }
     return_types.reserve(f.type().returns().size());
     for (type::TypeProto const& t : f.type().returns()) {
-      return_types.push_back(type::Deserialize(t));
+      return_types.push_back(type::Deserialize(t, proto.type_system()));
     }
     auto fn_type = type::Function(type::Parameters(std::move(parameters)),
                                   std::move(return_types));
@@ -114,15 +116,26 @@ bool Deserializer::Deserialize(ModuleProto const& proto, Module& module) {
     auto id_iter = identifiers.find(id);
     if (id_iter == identifiers.end()) { return false; }
     absl::InlinedVector<jasmin::Value, 2> value;
-    for (uint64_t n : exported_symbol.content()) {
-      jasmin::Value v = jasmin::Value::Uninitialized();
-      v.set_raw_value(n);
-      value.push_back(v);
+
+    type::Type t =
+        type::Deserialize(exported_symbol.type(), proto.type_system());
+    if (t.kind() == type::Type::Kind::Function) {
+      if (exported_symbol.content().size() != 1) { return false; }
+      uint64_t n = exported_symbol.content()[0];
+      value.push_back(&global_function_registry.function(FunctionId(
+          ModuleId(n >> 32), LocalFunctionId(n & uint64_t{0xffffffff}))));
+    } else {
+      for (uint64_t n : exported_symbol.content()) {
+        jasmin::Value v = jasmin::Value::Uninitialized();
+        v.set_raw_value(n);
+        value.push_back(v);
+      }
     }
-    module.Insert(resources.IdentifierIndex(id_iter->second),
-                  Module::Entry{.qualified_type = type::QualifiedType::Constant(
-                                    type::Deserialize(exported_symbol.type())),
-                                .value = std::move(value)});
+
+    module.Insert(
+        resources.IdentifierIndex(id_iter->second),
+        Module::Entry{.qualified_type = type::QualifiedType::Constant(t),
+                      .value          = std::move(value)});
   }
 
   size_t i = 0;

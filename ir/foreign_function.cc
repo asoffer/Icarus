@@ -4,14 +4,16 @@
 
 #include <string>
 
-#include "common/resources.h"
 #include "ir/function.h"
+#include "ir/function_id.h"
+#include "ir/global_function_registry.h"
 #include "type/type.h"
 
 namespace ic {
 
 IrFunction const* ForeignFunction(std::string const& name,
                                   type::FunctionType t) {
+  auto id = LocalFunctionId(ForeignFunctions().size());
   auto& fn =
       ForeignFunctions()
           .emplace_back(
@@ -28,6 +30,7 @@ IrFunction const* ForeignFunction(std::string const& name,
   }
   fn.append<InvokeForeignFunction>(t, result);
   fn.append<jasmin::Return>();
+  global_function_registry.Register(FunctionId(ModuleId::Foreign(), id), &fn);
   return &fn;
 }
 

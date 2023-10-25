@@ -11,10 +11,21 @@ cc_library(
 )
 
 cc_library(
+    name = "serialize",
+    hdrs = ["serialize.h"],
+    srcs = ["serialize.cc"],
+    deps = [
+        ":type",
+        ":type_system_cc_proto",
+    ],
+)
+
+cc_library(
     name = "type",
     hdrs = ["type.h"],
     srcs = ["type.cc"],
     deps = [
+        ":type_system_cc_proto",
         "//common/language:primitive_types",
         "//common/language:type_kind",
         "@asoffer_jasmin//jasmin:value",

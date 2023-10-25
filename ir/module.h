@@ -34,6 +34,7 @@ struct Module {
 
   IrFunction& add_function(size_t parameters, size_t returns) {
     auto& f = functions_.emplace_back(parameters, returns);
+    NTH_LOG("Making a function at {}") <<= {&f};
     global_function_registry.Register(
         FunctionId(ModuleId::Current(), LocalFunctionId(functions_.size() - 1)),
         &f);

@@ -4,6 +4,7 @@
 #include "ir/module.h"
 #include "nth/debug/debug.h"
 #include "nth/debug/log/log.h"
+#include "type/serialize.h"
 
 namespace ic {
 namespace {
@@ -37,24 +38,6 @@ void SerializeContent(jasmin::Value op_code_value,
   immediate_values = immediate_values.subspan(immediate_count);
 }
 
-// TODO: Move to //type/
-void SerializeType(type::Type type, type::TypeProto& proto) {
-  proto.set_kind(static_cast<type::TypeProto::Kind>(
-      static_cast<uint8_t>(type.kind()) + 1));
-  proto.set_index(type.index());
-}
-
-void SerializeFunctionType(type::FunctionType type,
-                           type::FunctionTypeProto& proto) {
-  auto& parameters = *proto.mutable_parameters();
-  for (auto const& parameter : *type.parameters()) {
-    SerializeType(parameter.type, *parameters.Add()->mutable_type());
-  }
-
-  auto& returns = *proto.mutable_returns();
-  for (type::Type t : type.returns()) { SerializeType(t, *returns.Add()); }
-}
-
 }  // namespace
 
 void Serializer::SerializeFunction(IrFunction const& function,
@@ -69,6 +52,8 @@ void Serializer::SerializeFunction(IrFunction const& function,
 }
 
 void Serializer::Serialize(Module& module, ModuleProto& proto) {
+  SerializeTypeSystem(*proto.mutable_type_system());
+
   auto& initializer = *proto.mutable_initializer();
   initializer.set_parameters(0);
   initializer.set_returns(0);
@@ -83,14 +68,23 @@ void Serializer::Serialize(Module& module, ModuleProto& proto) {
   for (auto const& [name, type] : resources.foreign_functions) {
     auto& f = *proto.add_foreign_functions();
     f.set_name(name);
-    SerializeFunctionType(type, *f.mutable_type());
+    type::SerializeFunctionType(type, *f.mutable_type());
   }
 
   for (auto const& [id, entry] : module.entries()) {
     (*proto.mutable_identifiers())[id] = resources.identifiers.from_index(id);
     auto& symbol = (*proto.mutable_exported_symbols())[id];
-    SerializeType(entry.qualified_type.type(), *symbol.mutable_type());
-    for (jasmin::Value v : entry.value) { symbol.add_content(v.raw_value()); }
+    type::Serialize(entry.qualified_type.type(), *symbol.mutable_type());
+    for (jasmin::Value v : entry.value) {
+      uint64_t raw_value;
+      if (entry.qualified_type.type().kind() == type::Type::Kind::Function) {
+        raw_value =
+            global_function_registry.id(v.as<IrFunction const*>()).value();
+      } else {
+        raw_value = v.raw_value();
+      }
+      symbol.add_content(raw_value);
+    }
   }
 }
 

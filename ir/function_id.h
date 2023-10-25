@@ -56,6 +56,8 @@ struct FunctionId {
   friend void NthPrint(auto &p, auto &f, FunctionId id) {
     if (id.module() == ModuleId::Builtin()) {
       nth::Interpolate<"fn.builtin.{}">(p, f, id.local_function().value());
+    } else if (id.module() == ModuleId::Foreign()) {
+      nth::Interpolate<"fn.foreign.{}">(p, f, id.local_function().value());
     } else if (id.module() == ModuleId::Current()) {
       nth::Interpolate<"fn.current.{}">(p, f, id.local_function().value());
     } else {

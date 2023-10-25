@@ -57,7 +57,7 @@ message ModuleProto {
 
   repeated ForeignFunctionProto foreign_functions = 4;
 
-  type.TypeSystem type_system = 5;
+  type.TypeSystemProto type_system = 5;
 
   map<uint32, string> identifiers = 6;
   map<uint32, SymbolProto> exported_symbols = 7;

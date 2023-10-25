@@ -9,6 +9,8 @@
 #include <vector>
 
 #include "jasmin/value.h"
+#include "nth/container/flyweight_set.h"
+#include "type/type_system.pb.h"
 
 namespace ic::type {
 
@@ -270,6 +272,8 @@ struct FunctionType : internal_type::BasicType {
 
  private:
   friend Type;
+  friend void SerializeTypeSystem(TypeSystemProto&);
+  friend void DeserializeTypeSystem(TypeSystemProto const&);
   friend FunctionType Function(ParametersType, std::vector<Type>&&, Evaluation);
   friend FunctionType Function(ParametersType, std::vector<Type> const&,
                                Evaluation);
@@ -345,6 +349,8 @@ struct SliceType : internal_type::BasicType {
 
  private:
   friend Type;
+  friend void SerializeTypeSystem(TypeSystemProto& );
+  friend void DeserializeTypeSystem(TypeSystemProto const& );
   friend SliceType Slice(Type);
 
   explicit SliceType() = default;
@@ -389,6 +395,21 @@ void NthPrint(auto& p, auto& f, Type t) {
 // Returns the number of `jasmin::Value`s required to hold a value of the given
 // type `t`.
 size_t JasminSize(Type t);
+
+struct TypeSystem {
+  nth::flyweight_set<std::vector<ParametersType::Parameter>> parameters;
+  nth::flyweight_set<std::vector<Type>> returns;
+
+  nth::flyweight_set<std::tuple<ParametersType, uint64_t, Evaluation>>
+      functions;
+  nth::flyweight_set<Type> slice_element_types;
+  nth::flyweight_set<Type> pointee_types;
+  nth::flyweight_set<Type> buffer_pointee_types;
+  nth::flyweight_set<Type> pattern_types;
+  nth::flyweight_set<std::pair<void const*, Evaluation>> generic_function_types;
+};
+
+TypeSystem const& GlobalTypeSystem();
 
 }  // namespace ic::type
 

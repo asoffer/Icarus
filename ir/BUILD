@@ -71,7 +71,6 @@ cc_library(
     srcs = ["foreign_function.cc"],
     deps = [
         ":function",
-        "//common:resources",
         "//type",
     ]
 )
@@ -166,6 +165,7 @@ cc_library(
         ":module",
         ":module_cc_proto",
         "//common:resources",
+        "//type:serialize",
         "@asoffer_nth//nth/debug",
         "@asoffer_nth//nth/debug/log",
     ],

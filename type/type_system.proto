@@ -28,6 +28,7 @@ message FunctionTypeProto {
   repeated TypeProto returns = 2;
 }
 
-message TypeSystem {
-  repeated FunctionTypeProto functions = 1;
+message TypeSystemProto {
+  repeated FunctionTypeProto functions = 3;
+  repeated TypeProto slices = 4;
 }
