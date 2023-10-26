@@ -27,14 +27,6 @@ struct Resources {
   std::string_view StringLiteral(size_t index) const {
     return strings.from_index(index);
   }
-  size_t IdentifierIndex(std::string_view s) {
-    return identifiers.index(identifiers.insert(s).first);
-  }
-
-  std::string_view Identifier(size_t index) {
-    return identifiers.from_index(index);
-  }
-
   size_t ForeignFunctionIndex(std::string_view name, type::FunctionType t) {
     return foreign_functions.index(
         foreign_functions.insert(std::make_pair(StringLiteralIndex(name), t))
@@ -46,10 +38,6 @@ struct Resources {
 
   // Values of integer constants used in the program.
   nth::flyweight_set<uint64_t> integers;
-
-  // Values of all identifiers in the program. Identifier content must outlive
-  // any access to this member.
-  nth::flyweight_set<std::string_view> identifiers;
 
   nth::flyweight_set<std::pair<size_t, type::FunctionType>> foreign_functions;
 

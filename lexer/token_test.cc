@@ -1,5 +1,6 @@
 #include "lexer/token.h"
 
+#include "common/identifier.h"
 #include "nth/io/string_printer.h"
 #include "nth/strings/format/universal.h"
 #include "nth/strings/interpolate.h"
@@ -25,8 +26,9 @@ NTH_TEST("token-kind/print") {
 }
 
 NTH_TEST("token/value") {
-  NTH_EXPECT(Token::Identifier(5, 3).kind() == Token::Kind::Identifier);
-  NTH_EXPECT(Token::Identifier(5, 3).offset() == 5);
+  NTH_EXPECT(Token::Identifier(5, Identifier(3)).kind() ==
+             Token::Kind::Identifier);
+  NTH_EXPECT(Token::Identifier(5, Identifier(3)).offset() == 5);
 
   NTH_EXPECT(
       Token::IntegerLiteral(5, Token::IntegerPayload::Immediate(3)).kind() ==
@@ -40,7 +42,8 @@ NTH_TEST("token/value") {
 }
 
 NTH_TEST("token/print") {
-  NTH_EXPECT(AsString(Token::Identifier(5, 3)) == "[tk.Identifier @5 #3]");
+  NTH_EXPECT(AsString(Token::Identifier(5, Identifier(3))) ==
+             "[tk.Identifier @5 #3]");
   NTH_EXPECT(
       AsString(Token::IntegerLiteral(5, Token::IntegerPayload::Index(3))) ==
       "[tk.IntegerLiteral @5 #3]");

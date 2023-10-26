@@ -7,8 +7,8 @@ cc_library(
     deps = [
         ":function",
         ":module",
+        "//common:identifier",
         "//common:module_id",
-        "//common:resources",
         "//type",
         "@asoffer_nth//nth/utility:no_destructor",
     ],
@@ -50,6 +50,7 @@ cc_library(
         ":dependent_modules",
         ":module",
         "//common:debug",
+        "//common:identifier",
         "//common:module_id",
         "//common/language:primitive_types",
         "//common:resources",
@@ -84,6 +85,7 @@ cc_library(
     srcs = ["function.cc"],
     deps = [
         ":function_id",
+        "//common:identifier",
         "//common:module_id",
         "//common:resources",
         "//type",
@@ -133,6 +135,7 @@ cc_library(
     srcs = ["module.cc"],
     deps = [
         ":function",
+        "//common:identifier",
         "//type",
         "@asoffer_jasmin//jasmin:value",
         "@asoffer_nth//nth/debug",

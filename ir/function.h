@@ -5,7 +5,7 @@
 #include <queue>
 #include <string_view>
 
-#include "common/resources.h"
+#include "common/identifier.h"
 #include "jasmin/function.h"
 #include "jasmin/instruction.h"
 #include "jasmin/instructions/compare.h"
@@ -71,7 +71,7 @@ struct ConstructFunctionType
   static type::Type execute(type::Type parameter, type::Type return_type) {
     return type::Function(
         type::Parameters(std::vector<type::ParametersType::Parameter>{
-            {.name = resources.IdentifierIndex(""), .type = parameter}}),
+            {.name = Identifier("").value(), .type = parameter}}),
         std::vector{return_type});
   }
 };

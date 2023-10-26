@@ -55,6 +55,7 @@ cc_library(
     hdrs = ["token_matchers.h"],
     deps = [
         ":token",
+        "//common:identifier",
         "@asoffer_nth//nth/debug/property",
     ],
 )
@@ -65,6 +66,7 @@ cc_library(
     srcs = ["token.cc"],
     deps = [
         ":token_kind_xmacro",
+        "//common:identifier",
         "@asoffer_nth//nth/debug",
         "@asoffer_nth//nth/io:printer",
         "@asoffer_nth//nth/strings:interpolate",

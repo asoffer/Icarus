@@ -40,8 +40,8 @@ bool Deserializer::DeserializeFunction(ModuleProto const& m,
         if (function_id.module() == ModuleId::Builtin()) {
           NTH_REQUIRE((v.debug), builtin_module_ != nullptr);
           // TODO: Are local functions the same as module symbols?
-          auto entry =
-              builtin_module_->Lookup(function_id.local_function().value());
+          auto entry = builtin_module_->Lookup(
+              Identifier(function_id.local_function().value()));
           if (entry.qualified_type.type() == type::Error) { return false; }
           if (entry.value.size() != 1) { return false; }
           f.raw_append(entry.value[0]);
@@ -133,7 +133,7 @@ bool Deserializer::Deserialize(ModuleProto const& proto, Module& module) {
     }
 
     module.Insert(
-        resources.IdentifierIndex(id_iter->second),
+        Identifier(id_iter->second),
         Module::Entry{.qualified_type = type::QualifiedType::Constant(t),
                       .value          = std::move(value)});
   }

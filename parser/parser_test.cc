@@ -89,7 +89,7 @@ inline constexpr auto ColonColonEqual =
 
 // debug::Matches an identifier token whose identifier is given by `id`.
 auto IdentifierToken(std::string_view id) {
-  return HasToken(IsIdentifier(resources.IdentifierIndex(id)));
+  return HasToken(IsIdentifier(Identifier(id)));
 }
 
 inline constexpr auto InfixOperator =

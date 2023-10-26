@@ -4,6 +4,7 @@
 
 #include <deque>
 
+#include "common/resources.h"
 #include "ir/function_id.h"
 #include "ir/global_function_registry.h"
 #include "jasmin/value.h"

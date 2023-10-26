@@ -4,6 +4,7 @@
 #include <array>
 #include <cstdint>
 
+#include "common/identifier.h"
 #include "nth/io/printer.h"
 #include "nth/strings/format/universal.h"
 #include "nth/strings/interpolate.h"
@@ -69,7 +70,7 @@ struct Token {
   static Token StringLiteral(uint32_t offset, uint32_t index);
 
   // Constructs an identifier token at the given offset.
-  static Token Identifier(uint32_t offset, uint32_t identifier_index);
+  static Token Identifier(uint32_t offset, Identifier id);
 
   // Constructs a symbol token with the given kind at the given offset.
   static Token Symbol(Kind k, uint32_t offset);
@@ -80,7 +81,7 @@ struct Token {
   // Constructs an invalid token that may not appear in a correct lex-stream.
   static Token Invalid();
 
-  uint32_t IdentifierIndex() const;
+  ic::Identifier Identifier() const;
 
 #define IC_XMACRO_TOKEN_KIND_KEYWORD(kind, keyword)                            \
   static Token Keyword##kind(uint32_t offset);

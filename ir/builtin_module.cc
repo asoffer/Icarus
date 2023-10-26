@@ -2,7 +2,7 @@
 
 #include <string_view>
 
-#include "common/resources.h"
+#include "common/identifier.h"
 #include "ir/global_function_registry.h"
 #include "nth/utility/no_destructor.h"
 #include "type/type.h"
@@ -47,11 +47,10 @@ Module BuiltinModule() {
   uint32_t next_id = 0;
 
   Module m;
-  m.Insert(resources.IdentifierIndex("print"),
+  m.Insert(Identifier("print"),
            {.qualified_type = type::QualifiedType::Constant(type::Function(
                 type::Parameters(std::vector<type::ParametersType::Parameter>{
-                    {.name = resources.IdentifierIndex(""),
-                     .type = type::Slice(type::Char)},
+                    {.name = Identifier("").value(), .type = type::Slice(type::Char)},
                 }),
                 {type::Bool})),
             .value          = {jasmin::Value(&*PrintFn)}});
@@ -59,7 +58,7 @@ Module BuiltinModule() {
       FunctionId(ModuleId::Builtin(), LocalFunctionId(next_id++)), &*PrintFn);
 
   m.Insert(
-      resources.IdentifierIndex("foreign"),
+      Identifier("foreign"),
       {.qualified_type = type::QualifiedType::Constant(type::GenericFunction(
            type::Evaluation::RequireCompileTime, &*ForeignType)),
        .value          = {&*Foreign}});
@@ -69,7 +68,7 @@ Module BuiltinModule() {
   global_function_registry.Register(
       FunctionId(ModuleId::Builtin(), LocalFunctionId(next_id++)), &*Foreign);
 
-  m.Insert(resources.IdentifierIndex("function"),
+  m.Insert(Identifier("function"),
            {.qualified_type =
                 type::QualifiedType::Constant(type::Pattern(type::Type_)),
             .value = {jasmin::Value(&*Function)}});

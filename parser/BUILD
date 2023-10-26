@@ -16,6 +16,7 @@ cc_library(
     srcs = ["parse_tree.cc"],
     deps = [
         ":parse_tree_node_kind_xmacro",
+        "//common:strong_index_type",
         "//lexer:token",
         "@asoffer_nth//nth/container:interval",
         "@asoffer_nth//nth/debug",

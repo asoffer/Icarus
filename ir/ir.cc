@@ -7,6 +7,7 @@
 #include "absl/container/flat_hash_map.h"
 #include "common/debug.h"
 #include "common/module_id.h"
+#include "common/resources.h"
 #include "common/string.h"
 #include "jasmin/execute.h"
 #include "jasmin/value_stack.h"
@@ -130,7 +131,7 @@ void HandleParseTreeNodeDeclaration(ParseTree::Node::Index index,
     case Token::Kind::ColonColonEqual: {
       type::QualifiedType qt = context.type_stack().back();
       context.emit.identifiers.emplace(
-          context.Node(info.index).token.IdentifierIndex(),
+          context.Node(info.index).token.Identifier(),
           std::tuple(info.index, index, qt));
       context.type_stack().pop_back();
     } break;
@@ -153,8 +154,8 @@ void HandleParseTreeNodeStatementSequence(ParseTree::Node::Index index,
 bool HandleParseTreeNodeIdentifier(ParseTree::Node::Index index,
                                    IrContext& context,
                                    diag::DiagnosticConsumer& diag) {
-  auto iter = context.emit.identifiers.find(
-      context.Node(index).token.IdentifierIndex());
+  auto iter =
+      context.emit.identifiers.find(context.Node(index).token.Identifier());
   if (iter == context.emit.identifiers.end()) {
     auto item     = context.queue.front();
     item.interval = nth::interval(index, item.interval.upper_bound());
@@ -272,7 +273,7 @@ void HandleParseTreeNodeMemberExpression(ParseTree::Node::Index index,
       auto module_id = context.EvaluateAs<ModuleId>(index - 1);
       NTH_REQUIRE(module_id.has_value());
       auto qt = context.emit.module(*module_id)
-                    .Lookup(node.token.IdentifierIndex())
+                    .Lookup(node.token.Identifier())
                     .qualified_type;
       context.type_stack().back() = qt;
       context.emit.SetQualifiedType(index, qt);
@@ -298,8 +299,7 @@ void HandleParseTreeNodeMemberExpression(ParseTree::Node::Index index,
     NTH_UNIMPLEMENTED("{} -> {}") <<= {context.type_stack().back(), node.token};
   } else if (context.type_stack().back().type().kind() ==
              type::Type::Kind::Slice) {
-    if (context.Node(index).token.IdentifierIndex() ==
-        resources.IdentifierIndex("data")) {
+    if (context.Node(index).token.Identifier() == Identifier("data")) {
       auto qt                     = type::QualifiedType::Unqualified(type::BufPtr(
                               context.type_stack().back().type().AsSlice().element_type()));
       context.type_stack().back() = qt;
@@ -309,8 +309,7 @@ void HandleParseTreeNodeMemberExpression(ParseTree::Node::Index index,
           diag::Header(diag::MessageKind::Error),
           diag::Text(InterpolateString<"No member named `{}` in slice type. "
                                        "Only `.data` and `.count` are valid">(
-              resources.Identifier(
-                  context.Node(index).token.IdentifierIndex()))),
+              context.Node(index).token.Identifier())),
           diag::SourceQuote(context.Node(index - 1).token),
       });
       context.type_stack().back() =

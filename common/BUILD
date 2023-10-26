@@ -8,7 +8,6 @@ cc_library(
 cc_library(
     name = "errno",
     hdrs = ["errno.h"],
-    deps = [],
 )
 
 cc_test(
@@ -18,6 +17,15 @@ cc_test(
         ":errno",
         "@asoffer_nth//nth/test:main",
     ]
+)
+
+cc_library(
+    name = "identifier",
+    hdrs = ["identifier.h"],
+    deps = [
+        ":strong_identifier_type",
+        "@asoffer_nth//nth/container:flyweight_set",
+    ],
 )
 
 cc_library(
@@ -46,6 +54,16 @@ cc_library(
         "@asoffer_nth//nth/strings:interpolate",
         "@asoffer_nth//nth/strings/format:universal",
     ],
+)
+
+cc_library(
+    name = "strong_identifier_type",
+    hdrs = ["strong_identifier_type.h"],
+)
+
+cc_library(
+    name = "strong_index_type",
+    hdrs = ["strong_index_type.h"],
 )
 
 cc_library(

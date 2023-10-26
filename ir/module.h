@@ -6,6 +6,7 @@
 
 #include "absl/container/flat_hash_map.h"
 #include "absl/container/inlined_vector.h"
+#include "common/identifier.h"
 #include "ir/function.h"
 #include "ir/global_function_registry.h"
 #include "jasmin/value.h"
@@ -21,8 +22,8 @@ struct Module {
         type::QualifiedType(type::Qualifier::Unqualified(), type::Error);
     absl::InlinedVector<jasmin::Value, 2> value;
   };
-  Entry const& Lookup(uint32_t index) const;
-  void Insert(uint32_t index, Entry e);
+  Entry const& Lookup(Identifier id) const;
+  void Insert(Identifier id, Entry e);
 
   constexpr IrFunction& initializer() { return initializer_; }
   constexpr IrFunction const& initializer() const { return initializer_; }
@@ -46,7 +47,7 @@ struct Module {
  private:
   static Entry const DefaultEntry;
 
-  absl::flat_hash_map<uint32_t, Entry> entries_;
+  absl::flat_hash_map<Identifier, Entry> entries_;
   IrFunction initializer_{0, 0};
   std::deque<IrFunction> functions_;
 };

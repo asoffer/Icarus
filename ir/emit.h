@@ -7,6 +7,7 @@
 #include "absl/container/btree_map.h"
 #include "absl/container/flat_hash_map.h"
 #include "common/module_id.h"
+#include "common/identifier.h"
 #include "ir/dependent_modules.h"
 #include "ir/module.h"
 #include "jasmin/value_stack.h"
@@ -81,7 +82,7 @@ struct EmitContext {
   absl::flat_hash_map<ParseTree::Node::Index,
                       std::pair<ParseTree::Node::Index, ParseTree::Node::Index>>
       declarator;
-  absl::flat_hash_map<uint32_t,
+  absl::flat_hash_map<Identifier,
                       std::tuple<ParseTree::Node::Index, ParseTree::Node::Index,
                                  type::QualifiedType>>
       identifiers;

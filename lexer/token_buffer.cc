@@ -39,8 +39,7 @@ void TokenBuffer::AppendKeywordOrIdentifier(std::string_view identifier,
   }
 #include "lexer/token_kind.xmacro.h"
 
-  tokens_.push_back(
-      Token::Identifier(offset, resources.IdentifierIndex(identifier)));
+  tokens_.push_back(Token::Identifier(offset, Identifier(identifier)));
 }
 
 }  // namespace ic

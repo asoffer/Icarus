@@ -1,6 +1,7 @@
 #ifndef ICARUS_LEXER_TOKEN_MATCHERS_H
 #define ICARUS_LEXER_TOKEN_MATCHERS_H
 
+#include "common/identifier.h"
 #include "lexer/token.h"
 #include "nth/debug/property/property.h"
 
@@ -8,9 +9,9 @@ namespace ic::testing {
 
 // Matches an identifier token whose identifier is given by `index`.
 inline constexpr auto IsIdentifier = nth::debug::MakeProperty<"is-identifier">(
-    [](auto const &value, uint32_t index) {
+    [](auto const &value, Identifier index) {
       return value.kind() == Token::Kind::Identifier and
-             value.IdentifierIndex() == index;
+             value.Identifier() == index;
     });
 
 // Matches a token whose kind matches `kind_matcher`.

@@ -55,13 +55,13 @@ uint32_t Token::AsStringLiteralIndex() const {
   return payload_;
 }
 
-Token Token::Identifier(uint32_t offset, uint32_t identifier_index) {
-  NTH_REQUIRE((v.debug), identifier_index < PayloadLimit);
+Token Token::Identifier(uint32_t offset, ic::Identifier identifier_index) {
+  NTH_REQUIRE((v.debug), identifier_index.value() < PayloadLimit);
 
   Token token;
   token.offset_  = offset;
   token.kind_    = static_cast<uint8_t>(Kind::Identifier);
-  token.payload_ = identifier_index;
+  token.payload_ = identifier_index.value();
   return token;
 }
 
@@ -95,9 +95,9 @@ Token Token::Invalid() {
   }
 #include "lexer/token_kind.xmacro.h"
 
-uint32_t Token::IdentifierIndex() const {
+ic::Identifier Token::Identifier() const {
   NTH_REQUIRE((v.debug), kind() == Kind::Identifier);
-  return payload_;
+  return ic::Identifier(payload_);
 }
 
 }  // namespace ic

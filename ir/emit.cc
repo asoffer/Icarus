@@ -79,7 +79,7 @@ void HandleParseTreeNodeDeclaration(ParseTree::Node::Index index,
       jasmin::ValueStack value_stack;
       jasmin::Execute(f, value_stack);
       auto iter = context.identifiers.find(
-          context.Node(decl_info.index).token.IdentifierIndex());
+          context.Node(decl_info.index).token.Identifier());
       NTH_REQUIRE(iter != context.identifiers.end());
       context.constants.insert_or_assign(
           context.tree.subtree_range(index),
@@ -204,8 +204,7 @@ void HandleParseTreeNodeExpressionGroup(ParseTree::Node::Index, EmitContext&) {
 void HandleParseTreeNodeMemberExpression(ParseTree::Node::Index index,
                                          EmitContext& context) {
   if (context.QualifiedTypeOf(index - 1).type().kind() == type::Type::Kind::Slice) {
-    if (context.Node(index).token.IdentifierIndex() ==
-        resources.IdentifierIndex("count")) {
+    if (context.Node(index).token.Identifier() == Identifier("count")) {
       context.function_stack.back()->append<jasmin::Swap>();
     }
     context.function_stack.back()->append<jasmin::Drop>(1);
@@ -228,7 +227,7 @@ void HandleParseTreeNodeMemberExpression(ParseTree::Node::Index index,
     NTH_REQUIRE((v.harden), successfully_deserialized);
 
     auto symbol = context.module(module_id).Lookup(
-        context.Node(index).token.IdentifierIndex());
+        context.Node(index).token.Identifier());
     context.Push(symbol.value, symbol.qualified_type.type());
   }
 }
@@ -418,7 +417,7 @@ void SetExported(EmitContext const& context) {
     std::span value_span = constant.value_span();
     NTH_REQUIRE((v.harden), types.size() == 1);
     context.current_module.Insert(
-        context.Node(*iter).token.IdentifierIndex(),
+        context.Node(*iter).token.Identifier(),
         Module::Entry{.qualified_type = type::QualifiedType::Constant(types[0]),
                       .value          = absl::InlinedVector<jasmin::Value, 2>(
                           value_span.begin(), value_span.end())});

@@ -72,8 +72,8 @@ void Serializer::Serialize(Module& module, ModuleProto& proto) {
   }
 
   for (auto const& [id, entry] : module.entries()) {
-    (*proto.mutable_identifiers())[id] = resources.identifiers.from_index(id);
-    auto& symbol = (*proto.mutable_exported_symbols())[id];
+    (*proto.mutable_identifiers())[id.value()] = std::string_view(id);
+    auto& symbol = (*proto.mutable_exported_symbols())[id.value()];
     type::Serialize(entry.qualified_type.type(), *symbol.mutable_type());
     for (jasmin::Value v : entry.value) {
       uint64_t raw_value;
