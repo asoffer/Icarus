@@ -81,7 +81,9 @@ struct IrContext {
   void HandleParseTreeNode##name(ParseTree::Node::Index index,                 \
                                  IrContext& context,                           \
                                  diag::DiagnosticConsumer& diag) {             \
-    context.type_stack().push_back(type::QualifiedType::Constant(t));          \
+    auto qt = type::QualifiedType::Constant(t);                                \
+    context.type_stack().push_back(qt);                                        \
+    context.emit.SetQualifiedType(index, qt);                                  \
   }
 #include "parser/parse_tree_node_kind.xmacro.h"
 
@@ -265,24 +267,55 @@ void HandleParseTreeNodeMemberExpression(ParseTree::Node::Index index,
                                          diag::DiagnosticConsumer& diag) {
   auto node = context.Node(index);
   NTH_REQUIRE(not context.type_stack().empty());
-  if (context.type_stack().back() ==
-      type::QualifiedType::Constant(type::Module)) {
-    auto module_id = context.EvaluateAs<ModuleId>(index - 1);
-    NTH_REQUIRE(module_id.has_value());
-    context.type_stack().back() = context.emit.module(*module_id)
-                                    .Lookup(node.token.IdentifierIndex())
-                                    .qualified_type;
-    if (context.type_stack().back().type() == type::Error) {
+  if (context.type_stack().back().type() == type::Module) {
+    if (context.type_stack().back().constant()) {
+      auto module_id = context.EvaluateAs<ModuleId>(index - 1);
+      NTH_REQUIRE(module_id.has_value());
+      auto qt = context.emit.module(*module_id)
+                    .Lookup(node.token.IdentifierIndex())
+                    .qualified_type;
+      context.type_stack().back() = qt;
+      context.emit.SetQualifiedType(index, qt);
+      if (context.type_stack().back().type() == type::Error) {
+        diag.Consume({
+            diag::Header(diag::MessageKind::Error),
+            diag::Text(
+                InterpolateString<"No symbol named '{}' in the given module.">(
+                    diag.Symbol(context.Node(index).token))),
+            diag::SourceQuote(context.Node(index - 1).token),
+        });
+      }
+    } else {
       diag.Consume({
           diag::Header(diag::MessageKind::Error),
-          diag::Text(
-              InterpolateString<"No symbol named '{}' in the given module.">(
-                  diag.Symbol(context.Node(index).token))),
+          diag::Text("Members may not be accessed from non-constant modules."),
           diag::SourceQuote(context.Node(index - 1).token),
       });
+      context.type_stack().back() =
+          type::QualifiedType::Unqualified(type::Error);
     }
   } else if (context.type_stack().back().type() == type::Type_) {
     NTH_UNIMPLEMENTED("{} -> {}") <<= {context.type_stack().back(), node.token};
+  } else if (context.type_stack().back().type().kind() ==
+             type::Type::Kind::Slice) {
+    if (context.Node(index).token.IdentifierIndex() ==
+        resources.IdentifierIndex("data")) {
+      auto qt                     = type::QualifiedType::Unqualified(type::BufPtr(
+                              context.type_stack().back().type().AsSlice().element_type()));
+      context.type_stack().back() = qt;
+      context.emit.SetQualifiedType(index, qt);
+    } else {
+      diag.Consume({
+          diag::Header(diag::MessageKind::Error),
+          diag::Text(InterpolateString<"No member named `{}` in slice type. "
+                                       "Only `.data` and `.count` are valid">(
+              resources.Identifier(
+                  context.Node(index).token.IdentifierIndex()))),
+          diag::SourceQuote(context.Node(index - 1).token),
+      });
+      context.type_stack().back() =
+          type::QualifiedType::Unqualified(type::Error);
+    }
   } else {
     diag.Consume({
         diag::Header(diag::MessageKind::Error),
@@ -392,7 +425,7 @@ void HandleParseTreeNodeCallExpression(ParseTree::Node::Index index,
                             {t});
     }
   } else {
-    NTH_UNIMPLEMENTED("{}") <<= {node};
+    NTH_UNIMPLEMENTED("node = {} invocable_type = {}") <<= {node, invocable_type};
   }
 }
 
@@ -405,6 +438,22 @@ void HandleParseTreeNodeDeclaredIdentifier(ParseTree::Node::Index index,
 void HandleParseTreeNodeInvocationArgumentStart(
     ParseTree::Node::Index index, IrContext& context,
     diag::DiagnosticConsumer& diag) {}
+
+void HandleParseTreeNodePointer(ParseTree::Node::Index index,
+                                IrContext& context,
+                                diag::DiagnosticConsumer& diag) {
+  if (context.type_stack().back().type() != type::Type_) {
+    NTH_UNIMPLEMENTED();
+  }
+}
+
+void HandleParseTreeNodeBufferPointer(ParseTree::Node::Index index,
+                                      IrContext& context,
+                                      diag::DiagnosticConsumer& diag) {
+  if (context.type_stack().back().type() != type::Type_) {
+    NTH_UNIMPLEMENTED();
+  }
+}
 
 void HandleParseTreeNodeImport(ParseTree::Node::Index index, IrContext& context,
                                diag::DiagnosticConsumer& diag) {

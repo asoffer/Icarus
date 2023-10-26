@@ -4,3 +4,4 @@
 let c ::= import "std.compat.c.types"
 
 let putchar ::= builtin.foreign("putchar", c.int -> c.int)
+let puts    ::= builtin.foreign("puts", [*]char -> c.int)

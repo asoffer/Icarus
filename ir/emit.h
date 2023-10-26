@@ -30,7 +30,9 @@ struct EmitContext {
       : tree(tree),
         function_stack{&module.initializer()},
         current_module{module},
-        modules(modules) {}
+        modules(modules) {
+    types_.reserve(tree.size());
+  }
 
   Module const& module(ModuleId id) const { return modules[id]; }
 
@@ -96,6 +98,16 @@ struct EmitContext {
     std::vector<DeclarationInfo> declaration_stack;
   };
   std::queue<WorkItem> queue;
+
+  void SetQualifiedType(ParseTree::Node::Index index, type::QualifiedType qt) {
+    types_[index.value()] = qt;
+  }
+  type::QualifiedType QualifiedTypeOf(ParseTree::Node::Index index) {
+    return types_[index.value()];
+  }
+
+ private:
+  std::vector<type::QualifiedType> types_;
 };
 
 void EmitIr(EmitContext& context);

@@ -31,6 +31,16 @@ inline constexpr auto ExpressionPrecedenceGroup =
           return value.kind == ParseTree::Node::Kind::ExpressionPrecedenceGroup;
         });
 
+inline constexpr auto BufferPointer =
+    nth::debug::MakeProperty<"buffer-pointer">([](auto const &value) {
+      return value.kind == ParseTree::Node::Kind::BufferPointer;
+    });
+
+inline constexpr auto Pointer =
+    nth::debug::MakeProperty<"pointer">([](auto const &value) {
+      return value.kind == ParseTree::Node::Kind::Pointer;
+    });
+
 inline constexpr auto Statement =
     nth::debug::MakeProperty<"statement">([](auto const &value) {
       return value.kind == ParseTree::Node::Kind::Statement;
@@ -324,6 +334,72 @@ NTH_TEST("parser/invoke/access-call") {
                  MemberExpression() and HasSubtreeSize(2),
                  CallExpression() and HasSubtreeSize(6),
                  Statement() and HasSubtreeSize(7), HasSubtreeSize(8)));
+}
+
+NTH_TEST("parser/invoke/pointer") {
+  diag::NullConsumer d;
+  TokenBuffer buffer = lex::Lex(R"(*a)", d);
+  auto tree          = Parse(buffer, d);
+  NTH_EXPECT(tree.nodes() >>= ElementsAreSequentially(
+                 ScopeStart(), IdentifierToken("a"),
+                 Pointer() and HasSubtreeSize(2),
+                 Statement() and HasSubtreeSize(3), HasSubtreeSize(4)));
+}
+
+NTH_TEST("parser/invoke/pointer-access") {
+  diag::NullConsumer d;
+  TokenBuffer buffer = lex::Lex(R"(*a.b)", d);
+  auto tree          = Parse(buffer, d);
+  NTH_EXPECT(tree.nodes() >>= ElementsAreSequentially(
+                 ScopeStart(), IdentifierToken("a"),
+                 MemberExpression() and HasSubtreeSize(2),
+                 Pointer() and HasSubtreeSize(3),
+                 Statement() and HasSubtreeSize(4), HasSubtreeSize(5)));
+}
+
+NTH_TEST("parser/invoke/pointer-function") {
+  diag::NullConsumer d;
+  TokenBuffer buffer = lex::Lex(R"(*a -> b)", d);
+  auto tree          = Parse(buffer, d);
+  NTH_EXPECT(tree.nodes() >>= ElementsAreSequentially(
+                 ScopeStart(), IdentifierToken("a"),
+                 Pointer() and HasSubtreeSize(2),
+                 InfixOperator(Token::Kind::MinusGreater), IdentifierToken("b"),
+                 ExpressionPrecedenceGroup() and HasSubtreeSize(5),
+                 Statement() and HasSubtreeSize(6), HasSubtreeSize(7)));
+}
+
+NTH_TEST("parser/invoke/buffer-pointer") {
+  diag::NullConsumer d;
+  TokenBuffer buffer = lex::Lex(R"([*]a)", d);
+  auto tree          = Parse(buffer, d);
+  NTH_EXPECT(tree.nodes() >>= ElementsAreSequentially(
+                 ScopeStart(), IdentifierToken("a"),
+                 BufferPointer() and HasSubtreeSize(2),
+                 Statement() and HasSubtreeSize(3), HasSubtreeSize(4)));
+}
+
+NTH_TEST("parser/invoke/buffer-pointer-access") {
+  diag::NullConsumer d;
+  TokenBuffer buffer = lex::Lex(R"([*]a.b)", d);
+  auto tree          = Parse(buffer, d);
+  NTH_EXPECT(tree.nodes() >>= ElementsAreSequentially(
+                 ScopeStart(), IdentifierToken("a"),
+                 MemberExpression() and HasSubtreeSize(2),
+                 BufferPointer() and HasSubtreeSize(3),
+                 Statement() and HasSubtreeSize(4), HasSubtreeSize(5)));
+}
+
+NTH_TEST("parser/invoke/buffer-pointer-function") {
+  diag::NullConsumer d;
+  TokenBuffer buffer = lex::Lex(R"([*]a -> b)", d);
+  auto tree          = Parse(buffer, d);
+  NTH_EXPECT(tree.nodes() >>= ElementsAreSequentially(
+                 ScopeStart(), IdentifierToken("a"),
+                 BufferPointer() and HasSubtreeSize(2),
+                 InfixOperator(Token::Kind::MinusGreater), IdentifierToken("b"),
+                 ExpressionPrecedenceGroup() and HasSubtreeSize(5),
+                 Statement() and HasSubtreeSize(6), HasSubtreeSize(7)));
 }
 
 }  // namespace ic

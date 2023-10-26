@@ -37,6 +37,16 @@ SliceType DeserializeSliceType(TypeProto const& proto,
   return Slice(Deserialize(proto, ts));
 }
 
+PointerType DeserializePointerType(TypeProto const& proto,
+                                   TypeSystemProto const& ts) {
+  return Ptr(Deserialize(proto, ts));
+}
+
+BufferPointerType DeserializeBufferPointerType(TypeProto const& proto,
+                               TypeSystemProto const& ts) {
+  return BufPtr(Deserialize(proto, ts));
+}
+
 Type Deserialize(TypeProto const& proto, TypeSystemProto const& ts) {
   switch (proto.kind()) {
     case TypeProto::PRIMITIVE:
@@ -46,6 +56,10 @@ Type Deserialize(TypeProto const& proto, TypeSystemProto const& ts) {
       return DeserializeFunctionType(ts.functions(proto.index()), ts);
     case TypeProto::SLICE:
       return DeserializeSliceType(ts.slices(proto.index()), ts);
+    case TypeProto::POINTER:
+      return DeserializePointerType(ts.pointers(proto.index()), ts);
+    case TypeProto::BUFFER_POINTER:
+      return DeserializeBufferPointerType(ts.buffer_pointers(proto.index()), ts);
     default: NTH_UNREACHABLE();
   }
 }
@@ -53,6 +67,10 @@ Type Deserialize(TypeProto const& proto, TypeSystemProto const& ts) {
 void DeserializeTypeSystem(TypeSystemProto const& proto) {
   for (auto const& f : proto.functions()) { DeserializeFunctionType(f, proto); }
   for (auto const& t : proto.slices()) { DeserializeSliceType(t, proto); }
+  for (auto const& t : proto.pointers()) { DeserializePointerType(t, proto); }
+  for (auto const& t : proto.buffer_pointers()) {
+    DeserializeBufferPointerType(t, proto);
+  }
 }
 
 }  // namespace ic::type

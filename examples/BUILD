@@ -46,12 +46,12 @@ load("//toolchain:ic_rule.bzl", "ic_binary")
 #     srcs = ["fizzbuzz.ic"],
 #     deps = ["//toolchain/stdlib:io"],
 # )
-# 
-# ic_binary(
-#     name = "foreign_function",
-#     srcs = ["foreign_function.ic"],
-# )
-# 
+
+ic_binary(
+    name = "foreign_function",
+    srcs = ["foreign_function.ic"],
+)
+
 # ic_binary(
 #     name = "function_calls",
 #     srcs = ["function_calls.ic"],

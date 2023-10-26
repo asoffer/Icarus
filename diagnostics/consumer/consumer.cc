@@ -17,7 +17,7 @@ void DiagnosticConsumer::set_source(std::string_view source) {
        i        = source_.find('\n', i + 1)) {
     offsets_.push_back(i + 1);
   }
-  offsets_.push_back(source_.size());
+  offsets_.push_back(source_.size() + 1);
 }
 
 void DiagnosticConsumer::Consume(Token location, Message const &message) {

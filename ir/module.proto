@@ -21,10 +21,12 @@ message InstructionProto {
     TYPE_KIND_EQUALS = 10;
     PRINT = 11;
     ROTATE = 12;
-    CONSTRUCT_FUNCTION = 13;
-    SWAP = 14;
-    REGISTER_FOREIGN_FUNCTION = 15;
-    INVOKE_FOREIGN_FUNCTION = 16;
+    CONSTRUCT_POINTER = 13;
+    CONSTRUCT_BUFFER_POINTER = 14;
+    CONSTRUCT_FUNCTION = 15;
+    SWAP = 16;
+    REGISTER_FOREIGN_FUNCTION = 17;
+    INVOKE_FOREIGN_FUNCTION = 18;
   }
   OpCode op_code = 1;
   repeated uint64 content = 2;

@@ -31,4 +31,6 @@ message FunctionTypeProto {
 message TypeSystemProto {
   repeated FunctionTypeProto functions = 3;
   repeated TypeProto slices = 4;
+  repeated TypeProto pointers = 5;
+  repeated TypeProto buffer_pointers = 6;
 }

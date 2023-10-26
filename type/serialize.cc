@@ -30,6 +30,16 @@ void SerializeTypeSystem(TypeSystemProto& proto) {
   auto& slices = *proto.mutable_slices();
   slices.Reserve(ts.slice_element_types.size());
   for (Type t : ts.slice_element_types) { Serialize(t, *slices.Add()); }
+
+  auto& pointers = *proto.mutable_pointers();
+  pointers.Reserve(ts.pointee_types.size());
+  for (Type t : ts.pointee_types) { Serialize(t, *pointers.Add()); }
+
+  auto& buffer_pointers = *proto.mutable_buffer_pointers();
+  buffer_pointers.Reserve(ts.buffer_pointee_types.size());
+  for (Type t : ts.buffer_pointee_types) {
+    Serialize(t, *buffer_pointers.Add());
+  }
 }
 
 }  // namespace ic::type

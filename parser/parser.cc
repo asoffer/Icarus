@@ -282,12 +282,37 @@ void Parser::HandleDeclaredSymbol(ParseTree& tree) {
 }
 
 void Parser::HandleExpression(ParseTree& tree) {
-  ExpandState(State::Kind::AtomicTerm, State::Kind::ExpressionSuffix);
+  switch (current_token().kind()) {
+    case Token::Kind::Star:
+      ++iterator_;
+      ExpandState(
+          State{
+              .kind               = State::Kind::Expression,
+              .ambient_precedence = Precedence::TightUnary(),
+              .token              = current_token(),
+              .subtree_start      = tree.size(),
+          },
+          State::Kind::ResolvePointerType);
+      return;
+    case Token::Kind::BracketedStar:
+      ++iterator_;
+      ExpandState(
+          State{
+              .kind               = State::Kind::Expression,
+              .ambient_precedence = Precedence::TightUnary(),
+              .token              = current_token(),
+              .subtree_start      = tree.size(),
+          },
+          State::Kind::ResolveBufferPointerType);
+      return;
+    default:
+      ExpandState(State::Kind::AtomicTerm, State::Kind::ExpressionSuffix);
+  }
 }
 
 void Parser::HandleExpressionClosing(ParseTree& tree) {
   NTH_REQUIRE(current_token().kind() == Token::Kind::RightParen or
-              current_token().kind() == Token::Kind::RightBracket or
+              // current_token().kind() == Token::Kind::RightBracket or
               current_token().kind() == Token::Kind::RightBrace);
   State state = pop_state();
   tree.append(
@@ -401,11 +426,18 @@ void Parser::HandleExpressionSuffix(ParseTree& tree) {
   State state = pop_state();
   switch (Precedence::Priority(state.ambient_precedence, p)) {
     case Priority::Left:
-      NTH_REQUIRE(state_.back().kind == State::Kind::ResolveExpressionGroup);
-      tree.append(ParseTree::Node::Kind::ExpressionPrecedenceGroup,
-                  Token::Invalid(), state_.back().subtree_start);
-      tree.set_back_child_count();
-      subtree_start = state.subtree_start;
+      if (state_.back().kind == State::Kind::ResolveExpressionGroup) {
+        tree.append(ParseTree::Node::Kind::ExpressionPrecedenceGroup,
+                    Token::Invalid(), state_.back().subtree_start);
+        tree.set_back_child_count();
+        subtree_start = state.subtree_start;
+      } else {
+        auto next_state = state_.back();
+        state.ambient_precedence =
+            std::next(this->state().rbegin())->ambient_precedence;
+        ExpandState(next_state, state);
+        return;
+      }
       break;
     case Priority::Same:
       NTH_REQUIRE(state_.back().kind == State::Kind::ResolveExpressionGroup);
@@ -440,9 +472,16 @@ void Parser::HandleResolveExpressionGroup(ParseTree& tree) {
   tree.set_back_child_count();
 }
 
-void Parser::HandleResolveUnaryExpression(ParseTree& tree) {
-  auto t = pop_state().token;
-  NTH_LOG((v.debug), "Token: {}") <<= {t};
+void Parser::HandleResolvePointerType(ParseTree& tree) {
+  auto state = pop_state();
+  tree.append(ParseTree::Node::Kind::Pointer,
+              Token::Invalid(), state.subtree_start);
+}
+
+void Parser::HandleResolveBufferPointerType(ParseTree& tree) {
+  auto state = pop_state();
+  tree.append(ParseTree::Node::Kind::BufferPointer,
+              Token::Invalid(), state.subtree_start);
 }
 
 }  // namespace ic

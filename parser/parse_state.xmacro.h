@@ -26,7 +26,8 @@ IC_XMACRO_PARSER_STATE(ExpressionSuffix)
 IC_XMACRO_PARSER_STATE(ResolveMemberTerm)
 IC_XMACRO_PARSER_STATE(AtomicTerm)
 
-IC_XMACRO_PARSER_STATE(ResolveUnaryExpression)
+IC_XMACRO_PARSER_STATE(ResolvePointerType)
+IC_XMACRO_PARSER_STATE(ResolveBufferPointerType)
 IC_XMACRO_PARSER_STATE(ResolveImport)
 
 IC_XMACRO_PARSER_STATE(ResolveExpressionGroup)
