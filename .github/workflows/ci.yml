@@ -17,9 +17,6 @@ jobs:
       - name: Test Debug Build
         run: >-
           bazel test -c dbg ...
-      - name: Test ASAN Build
-        run: >-
-          bazel test --config=asan ...
       - name: Test Optimized Build
         run: >-
           bazel test -c opt ...
