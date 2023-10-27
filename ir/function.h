@@ -76,11 +76,20 @@ struct ConstructFunctionType
   }
 };
 
+struct ConstructOpaqueType
+    : jasmin::StackMachineInstruction<ConstructOpaqueType> {
+  static std::string_view name() { return "construct-opaque-type"; }
+
+  static type::Type execute() { return type::Opaque(); }
+};
+
 struct ConstructPointerType
     : jasmin::StackMachineInstruction<ConstructPointerType> {
   static std::string_view name() { return "construct-pointer-type"; }
 
-  static type::Type execute(type::Type pointee) { return type::Ptr(pointee); }
+  static type::Type execute(type::Type pointee) {
+    return type::Ptr(pointee);
+  }
 };
 
 struct ConstructBufferPointerType
@@ -92,15 +101,9 @@ struct ConstructBufferPointerType
   }
 };
 
-struct Print : jasmin::StackMachineInstruction<Print> {
-  static void execute(size_t length, char const* p) {
-    std::fprintf(stderr, "%*s", static_cast<int>(length), p);
-  }
-};
-
 struct Rotate : jasmin::StackMachineInstruction<Rotate> {
   static void execute(jasmin::ValueStack& value_stack, size_t n) {
-    NTH_REQUIRE((v.harden), n > 1);
+    NTH_REQUIRE((v.harden), n >= 1);
     std::queue<jasmin::Value> q;
     for (size_t i = 1; i < n; ++i) { q.push(value_stack.pop_value()); }
     jasmin::Value v = value_stack.pop_value();
@@ -114,7 +117,7 @@ struct Rotate : jasmin::StackMachineInstruction<Rotate> {
 
 using InstructionSet = jasmin::MakeInstructionSet<
     jasmin::Push, PushFunction, PushStringLiteral, PushType, jasmin::Drop,
-    TypeKind, jasmin::Equal<type::Type::Kind>, Print, Rotate,
+    TypeKind, jasmin::Equal<type::Type::Kind>, Rotate, ConstructOpaqueType,
     ConstructPointerType, ConstructBufferPointerType, ConstructFunctionType,
     jasmin::Swap, RegisterForeignFunction, InvokeForeignFunction>;
 using IrFunction = jasmin::Function<InstructionSet>;

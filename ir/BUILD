@@ -49,6 +49,7 @@ cc_library(
     deps = [
         ":dependent_modules",
         ":module",
+        ":serialize",
         "//common:debug",
         "//common:identifier",
         "//common:module_id",

@@ -19,8 +19,8 @@ message InstructionProto {
     DROP = 8;
     TYPE_KIND = 9;
     TYPE_KIND_EQUALS = 10;
-    PRINT = 11;
-    ROTATE = 12;
+    ROTATE = 11;
+    CONSTRUCT_OPAQUE_TYPE = 12;
     CONSTRUCT_POINTER = 13;
     CONSTRUCT_BUFFER_POINTER = 14;
     CONSTRUCT_FUNCTION = 15;

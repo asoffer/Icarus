@@ -49,6 +49,7 @@ void RegisterForeignFunction::execute(jasmin::ValueStack& value_stack) {
   char const* data = value_stack.pop<char const*>();
   size_t length    = value_stack.pop<size_t>();
   type::Type t     = value_stack.pop<type::Type>();
+
   size_t foreign_function_count = resources.foreign_functions.size();
   size_t index = resources.ForeignFunctionIndex(std::string_view(data, length),
                                                 t.AsFunction());

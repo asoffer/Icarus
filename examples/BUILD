@@ -50,6 +50,9 @@ load("//toolchain:ic_rule.bzl", "ic_binary")
 ic_binary(
     name = "foreign_function",
     srcs = ["foreign_function.ic"],
+    deps = [
+        "//toolchain/stdlib/compat/c:stdio",
+        ],
 )
 
 # ic_binary(

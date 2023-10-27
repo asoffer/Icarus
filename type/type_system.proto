@@ -13,6 +13,7 @@ message TypeProto {
     BUFFER_POINTER = 6;
     PATTERN = 7;
     GENERIC_FUNCTION = 8;
+    OPAQUE = 9;
   }
   Kind kind = 1;
   uint32 index = 2;

@@ -374,6 +374,20 @@ struct GenericFunctionType : internal_type::BasicType {
 
 GenericFunctionType GenericFunction(Evaluation e, void const* fn);
 
+struct OpaqueType : internal_type::BasicType {
+ private:
+  friend Type;
+  friend void Serialize(Type type, TypeProto& proto);
+  friend Type Deserialize(TypeProto const&, TypeSystemProto const&);
+  friend OpaqueType Opaque();
+
+  explicit OpaqueType() = default;
+  explicit constexpr OpaqueType(uint64_t n)
+      : BasicType(Type::Kind::Opaque, n) {}
+};
+
+OpaqueType Opaque();
+
 #define IC_XMACRO_TYPE_KIND(kind)                                              \
   inline constexpr Type::Type(kind##Type t) : data_(t.data_) {}
 #include "common/language/type_kind.xmacro.h"

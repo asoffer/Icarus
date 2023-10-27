@@ -60,6 +60,7 @@ Type Deserialize(TypeProto const& proto, TypeSystemProto const& ts) {
       return DeserializePointerType(ts.pointers(proto.index()), ts);
     case TypeProto::BUFFER_POINTER:
       return DeserializeBufferPointerType(ts.buffer_pointers(proto.index()), ts);
+    case TypeProto::OPAQUE: return OpaqueType(proto.index());
     default: NTH_UNREACHABLE();
   }
 }

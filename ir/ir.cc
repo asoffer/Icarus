@@ -332,11 +332,12 @@ void HandleParseTreeNodeMemberExpression(ParseTree::Node::Index index,
   do {                                                                         \
     auto&& c = (context);                                                      \
     auto&& n = (node);                                                         \
-    for (auto const* p = &c.type_stack()[c.type_stack().size() - n.child_count]; \
-         p != &c.type_stack().back(); ++p) {                                     \
+    for (auto const* p =                                                       \
+             &c.type_stack()[c.type_stack().size() - n.child_count];           \
+         p != &c.type_stack().back(); ++p) {                                   \
       if (p->type() == type::Error) {                                          \
-        c.type_stack().resize(c.type_stack().size() - n.child_count + 1);          \
-        c.type_stack().back() = type::QualifiedType::Constant(type::Error);      \
+        c.type_stack().resize(c.type_stack().size() - n.child_count + 1);      \
+        c.type_stack().back() = type::QualifiedType::Constant(type::Error);    \
         return;                                                                \
       }                                                                        \
     }                                                                          \
@@ -389,7 +390,7 @@ void HandleParseTreeNodeCallExpression(ParseTree::Node::Index index,
         case type::Evaluation::RequireRuntime: break;
       }
     } else {
-      NTH_UNIMPLEMENTED();
+      NTH_UNIMPLEMENTED("{} {}") <<= {parameters.size(), node.child_count - 1};
     }
   } else if (invocable_type.type().kind() ==
              type::Type::Kind::GenericFunction) {

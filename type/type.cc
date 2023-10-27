@@ -12,6 +12,8 @@ namespace {
 
 nth::NoDestructor<TypeSystem> type_system;
 
+uint64_t opaque_count = 0;
+
 }  // namespace
 
 TypeSystem const& GlobalTypeSystem() { return *type_system; }
@@ -124,6 +126,8 @@ Evaluation GenericFunctionType::evaluation() const {
       .second;
 }
 
+OpaqueType Opaque() { return OpaqueType(opaque_count++); }
+
 size_t JasminSize(Type t) {
   switch (t.kind()) {
     case Type::Kind::Primitive: return 1;
@@ -134,6 +138,7 @@ size_t JasminSize(Type t) {
     case Type::Kind::BufferPointer: return 1;
     case Type::Kind::Pattern: return 1;
     case Type::Kind::GenericFunction: return 1;
+    case Type::Kind::Opaque: NTH_UNREACHABLE("{}") <<= {t};
   }
 }
 

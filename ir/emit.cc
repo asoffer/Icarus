@@ -3,6 +3,7 @@
 #include "common/debug.h"
 #include "common/module_id.h"
 #include "common/resources.h"
+#include "ir/serialize.h"
 #include "jasmin/execute.h"
 #include "nth/debug/debug.h"
 #include "nth/debug/log/log.h"
@@ -400,6 +401,9 @@ void EmitContext::Evaluate(nth::interval<ParseTree::Node::Index> subtree,
   EmitIr(*this);
 
   jasmin::Execute(f, vs);
+  FunctionProto proto;
+  Serializer s;
+  s.SerializeFunction(f, proto);
   for (jasmin::Value v : vs) { value_stack.push(v); }
   constants.insert_or_assign(
       subtree, ComputedConstants(subtree.upper_bound() - 1, std::move(vs),
