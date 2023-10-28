@@ -28,10 +28,7 @@ struct EmitContext {
                        DependentModules const& modules
                            NTH_ATTRIBUTE(lifetimebound),
                        Module& module)
-      : tree(tree),
-        function_stack{&module.initializer()},
-        current_module{module},
-        modules(modules) {
+      : tree(tree), current_module{module}, modules(modules) {
     types_.reserve(tree.size());
   }
 
@@ -75,9 +72,7 @@ struct EmitContext {
   absl::flat_hash_map<ParseTree::Node::Index, type::QualifiedType>
       statement_qualified_type;
 
-  std::vector<std::unique_ptr<IrFunction>> temporary_functions;
   std::vector<Token::Kind> operator_stack;
-  std::vector<IrFunction*> function_stack;
   absl::flat_hash_map<ParseTree::Node::Index, size_t> rotation_count;
   absl::flat_hash_map<ParseTree::Node::Index,
                       std::pair<ParseTree::Node::Index, ParseTree::Node::Index>>
@@ -89,12 +84,24 @@ struct EmitContext {
   absl::flat_hash_set<ParseTree::Node::Index> declarations_to_export;
   Module& current_module;
 
+  void set_current_function(IrFunction& f) {
+    NTH_REQUIRE((v.debug), not queue.empty());
+    queue.front().function = &f;
+  }
+
+  IrFunction& current_function() {
+    NTH_REQUIRE((v.debug), not queue.empty());
+    NTH_REQUIRE((v.debug), queue.front().function != nullptr);
+    return *queue.front().function;
+  }
+
   // Maps node indices to the constant value associated with the computation for
   // the largest subtree containing it whose constant value has been computed
   // thus far.
   nth::interval_map<ParseTree::Node::Index, ComputedConstants> constants;
   DependentModules const& modules;
   struct WorkItem {
+    IrFunction* function = nullptr;
     nth::interval<ParseTree::Node::Index> range;
     std::vector<DeclarationInfo> declaration_stack;
   };

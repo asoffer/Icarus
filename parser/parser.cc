@@ -238,6 +238,10 @@ void Parser::HandleResolveInferredTypeDeclaration(ParseTree& tree) {
   State state = pop_state();
   tree.append(ParseTree::Node::Kind::Declaration, state.token,
               state.subtree_start);
+  ParseTree::Node::Index index(tree.size() - 1);
+  auto iter = tree.child_indices(index).begin();
+  ++iter;
+  tree[*iter].declaration = index;
 }
 
 void Parser::HandleResolveUninferredTypeDeclaration(ParseTree& tree) {

@@ -45,6 +45,7 @@ struct ParseTree {
     union {
       uint32_t subtree_size;
       Index next_sibling_index;
+      Index declaration;
     };
     Token token = Token::Invalid();
   };
