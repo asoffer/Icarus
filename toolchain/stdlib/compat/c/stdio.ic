@@ -3,5 +3,43 @@
 
 let c ::= import "std.compat.c.types"
 
-let putchar ::= builtin.foreign("putchar", c.int -> c.int)
-let puts    ::= builtin.foreign("puts", [*]char -> c.int)
+let FILE   ::= builtin.opaque()
+let fpos_t ::= builtin.opaque()
+
+
+// let fopen    ::= builtin.foreign("fopen", ([*]char, [*]char) -> *FILE)
+// let freopen  ::= builtin.foreign("freopen", ([*]char, [*]char, *FILE) -> *FILE)
+let fclose   ::= builtin.foreign("fclose", *FILE -> c.int)
+let fflush   ::= builtin.foreign("fflush", *FILE -> c.int)
+// let setbuf   ::= builtin.foreign("setbuf", (*FILE, [*]char) -> ())
+// let setvbuf  ::= builtin.foreign("setvbuf", (*FILE, [*]char, c.int, c.size_t) -> c.int)
+
+// let fread    ::= builtin.foreign("fread", ([*]byte, c.size_t, c.size_t, *FILE) -> c.size_t)
+// let fwrite   ::= builtin.foreign("fwrite", ([*]byte, c.size_t, c.size_t, *FILE) -> c.size_t)
+
+let fgetc    ::= builtin.foreign("fgetc", *FILE -> c.int)
+let getc     ::= builtin.foreign("getc", *FILE -> c.int)
+// let fgets    ::= builtin.foreign("fgets", ([*]char, c.int, *FILE) -> [*]char)
+// let fputc    ::= builtin.foreign("fputc", (c.int, *FILE) -> c.int)
+// let putc     ::= builtin.foreign("putc", (c.int, *FILE) -> c.int)
+// let fputs    ::= builtin.foreign("fputs", ([*]char, *FILE) -> c.int)
+let getchar  ::= builtin.foreign("getchar", () -> c.int)
+let putchar  ::= builtin.foreign("putchar", c.int -> c.int)
+let puts     ::= builtin.foreign("puts", [*]char -> c.int)
+// let ungetc   ::= builtin.foreign("ungetc", (c.int, *FILE) -> c.int)
+
+let ftell    ::= builtin.foreign("ftell", *FILE -> c.long)
+// let fgetpos  ::= builtin.foreign("fgetpos", (*FILE, *fpos_t) -> c.int)
+// let fseek    ::= builtin.foreign("fseek", (*FILE, c.long, c.int) -> c.int)
+// let fsetpos  ::= builtin.foreign("fsetpos", (*FILE, *fpos_t) -> c.int)
+let rewind   ::= builtin.foreign("rewind", *FILE -> c.int)
+
+// let clearerr ::= builtin.foreign("clearerr", *FILE -> ())
+let feof     ::= builtin.foreign("feof", *FILE -> c.int)
+// let ferror   ::= builtin.foreign("ferror", *FILE -> ())
+let perror   ::= builtin.foreign("perror", [*]char -> c.int)
+
+let remove   ::= builtin.foreign("remove", [*]char -> c.int)
+// let rename   ::= builtin.foreign("rename", ([*]char, [*]char) -> c.int)
+let tmpfile  ::= builtin.foreign("tmpfile", () -> *FILE)
+let tmpnam   ::= builtin.foreign("tmpnam", [*]char -> [*]char)

@@ -253,7 +253,8 @@ struct FunctionType : internal_type::BasicType {
   std::vector<Type> const& returns() const;
 
   friend void NthPrint(auto& p, auto& fmt, FunctionType f) {
-    std::string_view separator = "(";
+    std::string_view separator = "";
+    p.write("(");
     for (auto const& param : *f.parameters()) {
       p.write(std::exchange(separator, ", "));
       fmt(p, param.name);
@@ -375,6 +376,12 @@ struct GenericFunctionType : internal_type::BasicType {
 GenericFunctionType GenericFunction(Evaluation e, void const* fn);
 
 struct OpaqueType : internal_type::BasicType {
+
+  friend void NthPrint(auto& p, auto& fmt, OpaqueType o) {
+    p.write("opaque.");
+    fmt(p, type::Type(o).index());
+  }
+
  private:
   friend Type;
   friend void Serialize(Type type, TypeProto& proto);

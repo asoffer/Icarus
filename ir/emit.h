@@ -72,7 +72,6 @@ struct EmitContext {
   absl::flat_hash_map<ParseTree::Node::Index, type::QualifiedType>
       statement_qualified_type;
 
-  std::vector<Token::Kind> operator_stack;
   absl::flat_hash_map<ParseTree::Node::Index, size_t> rotation_count;
   absl::flat_hash_map<ParseTree::Node::Index,
                       std::pair<ParseTree::Node::Index, ParseTree::Node::Index>>

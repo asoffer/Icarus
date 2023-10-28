@@ -64,15 +64,27 @@ struct TypeKind : jasmin::StackMachineInstruction<TypeKind> {
   static type::Type::Kind execute(type::Type t) { return t.kind(); }
 };
 
+struct ConstructParametersType
+    : jasmin::StackMachineInstruction<ConstructParametersType> {
+  static std::string_view name() { return "construct-parameters-type"; }
+
+  static void execute(jasmin::ValueStack& value_stack, size_t count) {
+    std::vector<type::ParametersType::Parameter> parameters;
+    parameters.resize(count,
+                      {.name = Identifier("").value(), .type = type::Error});
+    for (int32_t i = count - 1; i >= 0; --i) {
+      parameters[i].type = value_stack.pop<type::Type>();
+    }
+    value_stack.push(type::Type(type::Parameters(std::move(parameters))));
+  }
+};
+
 struct ConstructFunctionType
     : jasmin::StackMachineInstruction<ConstructFunctionType> {
   static std::string_view name() { return "construct-function-type"; }
 
   static type::Type execute(type::Type parameter, type::Type return_type) {
-    return type::Function(
-        type::Parameters(std::vector<type::ParametersType::Parameter>{
-            {.name = Identifier("").value(), .type = parameter}}),
-        std::vector{return_type});
+    return type::Function(parameter.AsParameters(), std::vector{return_type});
   }
 };
 
@@ -119,7 +131,8 @@ using InstructionSet = jasmin::MakeInstructionSet<
     jasmin::Push, PushFunction, PushStringLiteral, PushType, jasmin::Drop,
     TypeKind, jasmin::Equal<type::Type::Kind>, Rotate, ConstructOpaqueType,
     ConstructPointerType, ConstructBufferPointerType, ConstructFunctionType,
-    jasmin::Swap, RegisterForeignFunction, InvokeForeignFunction>;
+    ConstructParametersType, jasmin::Swap, RegisterForeignFunction,
+    InvokeForeignFunction>;
 using IrFunction = jasmin::Function<InstructionSet>;
 
 std::deque<std::pair<type::FunctionType, IrFunction>>& ForeignFunctions();

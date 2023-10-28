@@ -353,6 +353,14 @@ void Parser::HandleResolveMemberTerm(ParseTree& tree) {
 void Parser::HandleAtomicTerm(ParseTree& tree) {
   ParseTree::Node::Kind k;
   switch (current_token().kind()) {
+    case Token::Kind::LeftParen:
+      ++iterator_;
+      if (current_token().kind() == Token::Kind::RightParen) {
+        k = ParseTree::Node::Kind::EmptyParameters;
+      } else {
+        NTH_UNIMPLEMENTED();
+      }
+      break;
     case Token::Kind::Import:
       ++iterator_;
       ExpandState(State::Kind::Expression, State::Kind::ResolveImport);

@@ -79,12 +79,16 @@ void HandleParseTreeNodeDeclaration(ParseTree::Node::Index index,
       auto iter = context.identifiers.find(
           context.Node(decl_info.index).token.Identifier());
       NTH_REQUIRE(iter != context.identifiers.end());
+      auto vs_iter    = value_stack.begin();
+      auto& prev_func = *(vs_iter++)->as<IrFunction*>();
+      jasmin::ValueStack vs;
+      for (; vs_iter != value_stack.end(); ++vs_iter) { vs.push(*vs_iter); }
       context.constants.insert_or_assign(
           context.tree.subtree_range(index),
-          EmitContext::ComputedConstants(decl_info.index,
-                                         std::move(value_stack),
+          EmitContext::ComputedConstants(decl_info.index, std::move(vs),
                                          {std::get<2>(iter->second).type()}));
       delete &f;
+      context.set_current_function(prev_func);
     } break;
     case Token::Kind::Colon: {
       NTH_UNIMPLEMENTED("Store in a stack-allocated variable.");
@@ -134,7 +138,18 @@ void HandleParseTreeNodeDeclaredIdentifier(ParseTree::Node::Index index,
 void HandleParseTreeNodeInfixOperator(ParseTree::Node::Index index,
                                       EmitContext& context) {
   auto node = context.Node(index);
-  context.operator_stack.push_back(node.token.kind());
+  switch (node.token.kind()) {
+    case Token::Kind::MinusGreater: {
+      size_t parameter_count = 0;
+      if (context.Node(index - 1).kind !=
+          ParseTree::Node::Kind::EmptyParameters) {
+        parameter_count = 1;
+      }
+      context.current_function().append<ConstructParametersType>(
+          parameter_count);
+    } break;
+    default: NTH_UNIMPLEMENTED();
+  }
 }
 
 void HandleParseTreeNodeExpressionPrecedenceGroup(ParseTree::Node::Index index,
@@ -162,8 +177,14 @@ Iteration HandleParseTreeNodeColonColonEqual(ParseTree::Node::Index index,
                                         EmitContext& context) {
   context.queue.front().declaration_stack.back().kind =
       Token::Kind::ColonColonEqual;
-  // TODO: The value 1 is potentially wrong here.
-  context.set_current_function(*new IrFunction(0, 1));
+  // We need somewhere to stash the value of the current function so we can
+  // resume it. To do this, we push the current function as the very first
+  // argument (and therefore first return value).
+  // TODO: Note 2 here because it's 1 for the current function and 1 for the
+  // return. The return might actually be wider and we need to handle that.
+  auto& f = *new IrFunction(0, 2);
+  f.append<PushFunction>(&context.current_function());
+  context.set_current_function(f);
   return Iteration::PauseMoveOn;
 }
 
@@ -246,6 +267,9 @@ void HandleParseTreeNodeImport(ParseTree::Node::Index index,
       context.constants.at(index).value_span()[0]);
 }
 
+void HandleParseTreeNodeEmptyParameters(ParseTree::Node::Index index,
+                                        EmitContext& context) {}
+
 template <auto F>
 constexpr Iteration Invoke(ParseTree::Node::Index index, EmitContext& context) {
   constexpr auto return_type = nth::type<
@@ -307,6 +331,7 @@ void EmitIr(EmitContext& context) {
     auto [start, end] = context.queue.front().range;
     NTH_LOG((v.when(debug::emit)), "Starting emission of [{}, {}) @ {}") <<=
         {start, end, &context.current_function()};
+  emit_constant:
     for (auto const& [original_range, constant] :
          context.constants.mapped_intervals()) {
       // It is important to make a copy of this range because we may end up
@@ -315,7 +340,6 @@ void EmitIr(EmitContext& context) {
       if (range.lower_bound() < start) {
         continue;
       } else if (range.lower_bound() == start) {
-      emit_constant:
         if (context.Node(range.upper_bound() - 1).kind !=
             ParseTree::Node::Kind::Declaration) {
           context.Push(constant);
