@@ -46,8 +46,11 @@ bool Deserializer::DeserializeFunction(ModuleProto const& m,
           if (entry.value.size() != 1) { return false; }
           f.raw_append(entry.value[0]);
         } else if (function_id.module() == ModuleId::Foreign()) {
+          NTH_LOG("{} {}") <<=
+              {function_id.local_function().value(),
+               &LookupForeignFunction(function_id.local_function()).second};
           f.raw_append(
-              &ForeignFunctions()[function_id.local_function().value()].second);
+              &LookupForeignFunction(function_id.local_function()).second);
         } else {
           NTH_UNIMPLEMENTED();
         }
@@ -80,11 +83,6 @@ bool Deserializer::Deserialize(ModuleProto const& proto, Module& module) {
     module.add_function(function.parameters(), function.returns());
   }
 
-  if (not DeserializeFunction(proto, proto.initializer(),
-                              module.initializer())) {
-    return false;
-  }
-
   for (std::string const& s : proto.string_literals()) {
     resources.StringLiteralIndex(s);
   }
@@ -111,7 +109,7 @@ bool Deserializer::Deserialize(ModuleProto const& proto, Module& module) {
     NTH_REQUIRE(fn != nullptr);
   }
 
-    auto const & identifiers = proto.identifiers();
+  auto const& identifiers = proto.identifiers();
   for (auto const& [id, exported_symbol] : proto.exported_symbols()) {
     auto id_iter = identifiers.find(id);
     if (id_iter == identifiers.end()) { return false; }
@@ -144,6 +142,12 @@ bool Deserializer::Deserialize(ModuleProto const& proto, Module& module) {
       return false;
     }
   }
+
+  if (not DeserializeFunction(proto, proto.initializer(),
+                              module.initializer())) {
+    return false;
+  }
+
   return true;
 }
 

@@ -63,6 +63,9 @@ struct Token {
 
   constexpr uint32_t offset() const { return offset_; }
 
+  constexpr void set_payload(uint32_t payload) { payload_ = payload; }
+  constexpr uint32_t payload() const { return payload_; }
+
   // Constructs an integer token at the given offset.
   static Token IntegerLiteral(uint32_t offset, IntegerPayload payload);
 
@@ -72,8 +75,13 @@ struct Token {
   // Constructs an identifier token at the given offset.
   static Token Identifier(uint32_t offset, Identifier id);
 
-  // Constructs a symbol token with the given kind at the given offset.
+  // Constructs a symbol token with the given kind at the given `offset`.
   static Token Symbol(Kind k, uint32_t offset);
+
+  // Constructs a closing-symbol (e.g `]` or `}`) at the given `offset` for a
+  // corresponding open-symbol whose token index is given by `open_index`
+  static Token CloseSymbol(Token::Kind token, uint32_t open_index,
+                           uint32_t offset);
 
   // Constructs a token representing the end of the lex-stream.
   static Token Eof();

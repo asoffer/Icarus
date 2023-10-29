@@ -136,21 +136,7 @@ void HandleParseTreeNodeDeclaredIdentifier(ParseTree::Node::Index index,
 }
 
 void HandleParseTreeNodeInfixOperator(ParseTree::Node::Index index,
-                                      EmitContext& context) {
-  auto node = context.Node(index);
-  switch (node.token.kind()) {
-    case Token::Kind::MinusGreater: {
-      size_t parameter_count = 0;
-      if (context.Node(index - 1).kind !=
-          ParseTree::Node::Kind::EmptyParameters) {
-        parameter_count = 1;
-      }
-      context.current_function().append<ConstructParametersType>(
-          parameter_count);
-    } break;
-    default: NTH_UNIMPLEMENTED();
-  }
-}
+                                      EmitContext& context) {}
 
 void HandleParseTreeNodeExpressionPrecedenceGroup(ParseTree::Node::Index index,
                                                   EmitContext& context) {
@@ -267,8 +253,11 @@ void HandleParseTreeNodeImport(ParseTree::Node::Index index,
       context.constants.at(index).value_span()[0]);
 }
 
-void HandleParseTreeNodeEmptyParameters(ParseTree::Node::Index index,
-                                        EmitContext& context) {}
+void HandleParseTreeNodeFunctionTypeParameters(ParseTree::Node::Index index,
+                                               EmitContext& context) {
+  context.current_function().append<ConstructParametersType>(
+      context.Node(index).child_count);
+}
 
 template <auto F>
 constexpr Iteration Invoke(ParseTree::Node::Index index, EmitContext& context) {

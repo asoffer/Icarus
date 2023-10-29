@@ -42,4 +42,10 @@ void TokenBuffer::AppendKeywordOrIdentifier(std::string_view identifier,
   tokens_.push_back(Token::Identifier(offset, Identifier(identifier)));
 }
 
+void TokenBuffer::AppendClose(Token::Kind kind, uint32_t open_index,
+                              uint32_t offset) {
+  tokens_[open_index].set_payload(tokens_.size());
+  tokens_.push_back(Token::CloseSymbol(kind, open_index, offset));
+}
+
 }  // namespace ic

@@ -100,4 +100,13 @@ ic::Identifier Token::Identifier() const {
   return ic::Identifier(payload_);
 }
 
+Token Token::CloseSymbol(Token::Kind kind, uint32_t open_index,
+                         uint32_t offset) {
+  Token token;
+  token.kind_    = static_cast<uint8_t>(kind);
+  token.offset_  = offset;
+  token.payload_ = open_index;
+  return token;
+}
+
 }  // namespace ic

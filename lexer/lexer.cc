@@ -25,9 +25,26 @@ struct Lexer {
   uint32_t StartIndex(std::string_view s) const { return s.data() - start_; }
   uint32_t StartIndex(char const* s) const { return s - start_; }
 
+  void PushOpen(Token::Kind k) { opens_.emplace_back(k, token_buffer_.size()); }
+
+  uint32_t PairClose(Token::Kind k) {
+    // TODO: Emit a diagnostic.
+    NTH_REQUIRE((v.always), not opens_.empty());
+    NTH_REQUIRE((v.always), k == ClosingPairFor(opens_.back().first));
+    uint32_t n = opens_.back().second;
+    opens_.pop_back();
+    return n;
+  }
+
  private:
+  static constexpr Token::Kind ClosingPairFor(Token::Kind k) {
+    return static_cast<Token::Kind>(
+        static_cast<std::underlying_type_t<Token::Kind>>(k) + 1);
+  }
+
   TokenBuffer& token_buffer_;
   char const* start_;
+  std::vector<std::pair<Token::Kind, uint32_t>> opens_;
 };
 
 constexpr bool LeadingIdentifierCharacter(char c) {
@@ -56,6 +73,18 @@ TokenBuffer Lex(std::string_view source,
     if (source.empty()) { break; }
 
     switch (source.front()) {
+#define IC_XMACRO_TOKEN_KIND_OPEN(kind, symbol)                                \
+  case symbol:                                                                 \
+    lexer.PushOpen(Token::Kind::kind);                                         \
+    buffer.Append(Token::Symbol(Token::Kind::kind, lexer.StartIndex(source))); \
+    source.remove_prefix(1);                                                   \
+    continue;
+#define IC_XMACRO_TOKEN_KIND_CLOSE(kind, symbol)                               \
+  case symbol:                                                                 \
+    buffer.AppendClose(Token::Kind::kind, lexer.PairClose(Token::Kind::kind),  \
+                       lexer.StartIndex(source));                              \
+    source.remove_prefix(1);                                                   \
+    continue;
 #define IC_XMACRO_TOKEN_KIND_ONE_CHARACTER_TOKEN(kind, symbol)                 \
   case symbol:                                                                 \
     buffer.Append(Token::Symbol(Token::Kind::kind, lexer.StartIndex(source))); \

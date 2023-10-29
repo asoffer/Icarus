@@ -45,6 +45,12 @@ std::deque<std::pair<type::FunctionType, IrFunction>>& ForeignFunctions() {
   return foreign_functions;
 }
 
+std::pair<type::FunctionType, IrFunction> const& LookupForeignFunction(
+    LocalFunctionId id) {
+  NTH_REQUIRE(id.value() < ForeignFunctions().size());
+  return ForeignFunctions()[id.value()];
+}
+
 void RegisterForeignFunction::execute(jasmin::ValueStack& value_stack) {
   char const* data = value_stack.pop<char const*>();
   size_t length    = value_stack.pop<size_t>();

@@ -82,12 +82,14 @@ IC_XMACRO_TOKEN_KIND_OPERATOR(Period, ".")
 IC_XMACRO_TOKEN_KIND_ONE_CHARACTER_TOKEN(Comma, ',')
 IC_XMACRO_TOKEN_KIND_ONE_CHARACTER_TOKEN(Semicolon, ';')
 
+// NOTE: The relationship between these is important. We rely on the fact that
+// open/close-pairs are enumerated adjacent to one another.
 IC_XMACRO_TOKEN_KIND_OPEN(LeftParen, '(')
-// IC_XMACRO_TOKEN_KIND_OPEN(LeftBracket, '[')
-IC_XMACRO_TOKEN_KIND_OPEN(LeftBrace, '{')
 IC_XMACRO_TOKEN_KIND_CLOSE(RightParen, ')')
-// IC_XMACRO_TOKEN_KIND_CLOSE(RightBracket, ']')
+IC_XMACRO_TOKEN_KIND_OPEN(LeftBrace, '{')
 IC_XMACRO_TOKEN_KIND_CLOSE(RightBrace, '}')
+// IC_XMACRO_TOKEN_KIND_OPEN(LeftBracket, '[')
+// IC_XMACRO_TOKEN_KIND_CLOSE(RightBracket, ']')
 
 #undef IC_XMACRO_TOKEN_KIND
 #undef IC_XMACRO_TOKEN_KIND_KEYWORD

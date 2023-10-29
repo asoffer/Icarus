@@ -15,6 +15,7 @@ struct TokenBuffer {
   using const_iterator = std::vector<Token>::const_iterator;
 
   void Append(Token token) { tokens_.push_back(token); }
+  void AppendClose(Token::Kind kind, uint32_t open_index, uint32_t offset);
 
   void AppendIntegerLiteral(std::string_view integer, uint32_t offset);
   void AppendStringLiteral(std::string s, uint32_t offset);
@@ -37,7 +38,7 @@ struct TokenBuffer {
 
 void NthPrint(auto& printer, TokenBuffer const& token_buffer) {
   nth::universal_formatter f({
-      .depth    = 3,
+      .depth    = 5,
       .fallback = "...",
   });
 

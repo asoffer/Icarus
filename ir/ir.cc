@@ -152,7 +152,9 @@ void HandleParseTreeNodeDeclaration(ParseTree::Node::Index index,
     case Token::Kind::ColonColon: NTH_UNIMPLEMENTED(); break;
     case Token::Kind::ColonEqual: NTH_UNIMPLEMENTED(); break;
     case Token::Kind::ColonColonEqual: {
-      type::QualifiedType qt = context.type_stack().back();
+      // TODO: Other qualifiers?
+      type::QualifiedType qt =
+          type::QualifiedType::Constant(context.type_stack().back().type());
       context.emit.identifiers.emplace(
           context.Node(info.index).token.Identifier(),
           std::tuple(info.index, index, qt));
@@ -488,12 +490,6 @@ void HandleParseTreeNodeImport(ParseTree::Node::Index index, IrContext& context,
   context.type_stack().back() = type::QualifiedType::Constant(type::Module);
 }
 
-void HandleParseTreeNodeEmptyParameters(ParseTree::Node::Index index,
-                                        IrContext& context,
-                                        diag::DiagnosticConsumer& diag) {
-  context.type_stack().push_back(type::QualifiedType::Constant(type::Type_));
-}
-
 bool HandleParseTreeNodeScopeStart(ParseTree::Node::Index index,
                                    IrContext& context,
                                    diag::DiagnosticConsumer& diag) {
@@ -507,6 +503,19 @@ bool HandleParseTreeNodeScopeStart(ParseTree::Node::Index index,
   }
 
   return false;
+}
+
+void HandleParseTreeNodeFunctionTypeParameters(ParseTree::Node::Index index,
+                                               IrContext& context,
+                                               diag::DiagnosticConsumer& diag) {
+  for (size_t i = 0; i < context.emit.Node(index).child_count; ++i) {
+    if (context.type_stack().back() !=
+        type::QualifiedType::Constant(type::Type_)) {
+      NTH_UNIMPLEMENTED("{}") <<={context.type_stack()};
+    }
+    context.type_stack().pop_back();
+  }
+  context.type_stack().push_back(type::QualifiedType::Constant(type::Type_));
 }
 
 template <auto F>

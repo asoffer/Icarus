@@ -84,6 +84,23 @@ struct Parser {
   }
 
  private:
+  void HandleParenthesizedCommaSeparatedSequenceOf(State::Kind one_state,
+                                                   State::Kind repeat_state,
+                                                   ParseTree& tree) {
+    IgnoreAnyNewlines();
+    if (current_token().kind() == Token::Kind::RightParen) {
+      pop_and_discard_state();
+      return;
+    } else if (current_token().kind() == Token::Kind::Comma) {
+      ++iterator_;
+      IgnoreAnyNewlines();
+      ExpandState(State{.kind = one_state, .subtree_start = tree.size()},
+                  repeat_state);
+    } else {
+      NTH_UNREACHABLE("{}") <<= {current_token().kind()};
+    }
+  }
+
   void ExpandStateImpl(State prototype, State::Kind kind) {
     prototype.kind = kind;
     ExpandStateImpl(prototype, prototype);
@@ -340,6 +357,20 @@ void Parser::HandleInvocationArgumentSequence(ParseTree& tree) {
   }
 }
 
+void Parser::HandleCommaSeparatedExpressionSequence(ParseTree& tree) {
+  HandleParenthesizedCommaSeparatedSequenceOf(
+      State::Kind::Expression, State::Kind::CommaSeparatedExpressionSequence,
+      tree);
+}
+
+void Parser::HandleResolveFunctionTypeParameters(ParseTree& tree) {
+  tree.append(ParseTree::Node::Kind::FunctionTypeParameters, current_token(),
+              state().back().subtree_start);
+  tree.set_back_child_count();
+  ++iterator_;
+  pop_and_discard_state();
+}
+
 void Parser::HandleResolveMemberTerm(ParseTree& tree) {
   if (current_token().kind() != Token::Kind::Identifier) {
     NTH_UNIMPLEMENTED("{}") <<= {current_token()};
@@ -353,14 +384,23 @@ void Parser::HandleResolveMemberTerm(ParseTree& tree) {
 void Parser::HandleAtomicTerm(ParseTree& tree) {
   ParseTree::Node::Kind k;
   switch (current_token().kind()) {
-    case Token::Kind::LeftParen:
-      ++iterator_;
-      if (current_token().kind() == Token::Kind::RightParen) {
-        k = ParseTree::Node::Kind::EmptyParameters;
+    case Token::Kind::LeftParen: {
+      size_t paren_gap      = iterator_->payload();
+      auto kind_after_paren = token_buffer_[paren_gap + 1].kind();
+      if (kind_after_paren == Token::Kind::MinusGreater) {
+        ++iterator_;
+        if (std::distance(token_buffer_.begin(), iterator_) == paren_gap) {
+          ExpandState(State::Kind::ResolveFunctionTypeParameters);
+        } else {
+          ExpandState(State::Kind::Expression,
+                      State::Kind::CommaSeparatedExpressionSequence,
+                      State::Kind::ResolveFunctionTypeParameters);
+        }
+        return;
       } else {
         NTH_UNIMPLEMENTED();
       }
-      break;
+    } break;
     case Token::Kind::Import:
       ++iterator_;
       ExpandState(State::Kind::Expression, State::Kind::ResolveImport);

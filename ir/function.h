@@ -6,6 +6,7 @@
 #include <string_view>
 
 #include "common/identifier.h"
+#include "ir/function_id.h"
 #include "jasmin/function.h"
 #include "jasmin/instruction.h"
 #include "jasmin/instructions/compare.h"
@@ -70,8 +71,7 @@ struct ConstructParametersType
 
   static void execute(jasmin::ValueStack& value_stack, size_t count) {
     std::vector<type::ParametersType::Parameter> parameters;
-    parameters.resize(count,
-                      {.name = Identifier("").value(), .type = type::Error});
+    parameters.resize(count, {.name = Identifier("").value()});
     for (int32_t i = count - 1; i >= 0; --i) {
       parameters[i].type = value_stack.pop<type::Type>();
     }
@@ -84,7 +84,13 @@ struct ConstructFunctionType
   static std::string_view name() { return "construct-function-type"; }
 
   static type::Type execute(type::Type parameter, type::Type return_type) {
-    return type::Function(parameter.AsParameters(), std::vector{return_type});
+    if (parameter.kind() == type::Type::Kind::Parameters) {
+      return type::Function(parameter.AsParameters(), std::vector{return_type});
+    } else {
+      return type::Function(type::Parameters({{.name = Identifier("").value(),
+                                               .type = parameter}}),
+                            std::vector{return_type});
+    }
   }
 };
 
@@ -136,6 +142,9 @@ using InstructionSet = jasmin::MakeInstructionSet<
 using IrFunction = jasmin::Function<InstructionSet>;
 
 std::deque<std::pair<type::FunctionType, IrFunction>>& ForeignFunctions();
+
+std::pair<type::FunctionType, IrFunction> const& LookupForeignFunction(
+    LocalFunctionId id);
 
 }  // namespace ic
 
