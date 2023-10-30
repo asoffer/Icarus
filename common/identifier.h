@@ -14,7 +14,7 @@ inline nth::flyweight_set<std::string_view> identifiers;
 }  // namespace internal_identifier
 
 // Represents an identifier in a program.
-struct Identifier : StrongIdentifierType<Identifier, uint32_t, int32_t> {
+struct Identifier : StrongIdentifierType<Identifier, uint32_t> {
   explicit Identifier(uint32_t n) : StrongIdentifierType(n) {}
 
   explicit Identifier(std::string_view identifier)

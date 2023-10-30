@@ -6,10 +6,11 @@
 
 #include "absl/container/btree_map.h"
 #include "absl/container/flat_hash_map.h"
-#include "common/module_id.h"
 #include "common/identifier.h"
+#include "common/module_id.h"
 #include "ir/dependent_modules.h"
 #include "ir/module.h"
+#include "ir/scope.h"
 #include "jasmin/value_stack.h"
 #include "nth/base/attributes.h"
 #include "nth/container/interval_map.h"
@@ -27,8 +28,8 @@ struct EmitContext {
   explicit EmitContext(ParseTree const& tree NTH_ATTRIBUTE(lifetimebound),
                        DependentModules const& modules
                            NTH_ATTRIBUTE(lifetimebound),
-                       Module& module)
-      : tree(tree), current_module{module}, modules(modules) {
+                       ScopeTree& scopes, Module& module)
+      : tree(tree), scopes(scopes), current_module{module}, modules(modules) {
     types_.reserve(tree.size());
   }
 
@@ -80,6 +81,8 @@ struct EmitContext {
                       std::tuple<ParseTree::Node::Index, ParseTree::Node::Index,
                                  type::QualifiedType>>
       identifiers;
+
+  ScopeTree& scopes;
   absl::flat_hash_set<ParseTree::Node::Index> declarations_to_export;
   Module& current_module;
 

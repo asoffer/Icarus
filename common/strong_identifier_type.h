@@ -6,10 +6,9 @@
 
 namespace ic {
 
-template <typename T, typename RepType, typename DiffType>
+template <typename T, typename RepType>
 struct StrongIdentifierType {
   using underlying_type = RepType;
-  using difference_type = DiffType;
 
   explicit constexpr StrongIdentifierType() requires(
       std::is_constructible_v<underlying_type>) = default;

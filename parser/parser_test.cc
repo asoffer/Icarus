@@ -102,7 +102,7 @@ inline constexpr auto InfixOperator =
 NTH_TEST("parser/empty", std::string_view content) {
   diag::NullConsumer d;
   TokenBuffer buffer = lex::Lex(content, d);
-  auto tree          = Parse(buffer, d);
+  auto tree          = Parse(buffer, d).parse_tree;
   NTH_EXPECT(tree.nodes() >>= ElementsAreSequentially());
 }
 
@@ -116,7 +116,7 @@ NTH_INVOKE_TEST("parser/empty") {
 NTH_TEST("parser/declaration/integer") {
   diag::NullConsumer d;
   TokenBuffer buffer = lex::Lex("let x ::= 3", d);
-  auto tree          = Parse(buffer, d);
+  auto tree          = Parse(buffer, d).parse_tree;
   NTH_EXPECT(tree.nodes() >>= ElementsAreSequentially(
                  ScopeStart(), Let(),
                  DeclaredIdentifier() and IdentifierToken("x"),
@@ -127,7 +127,7 @@ NTH_TEST("parser/declaration/integer") {
 NTH_TEST("parser/declaration/bool") {
   diag::NullConsumer d;
   TokenBuffer buffer = lex::Lex("let x := true", d);
-  auto tree          = Parse(buffer, d);
+  auto tree          = Parse(buffer, d).parse_tree;
   NTH_EXPECT(tree.nodes() >>= ElementsAreSequentially(
                  ScopeStart(), Let(),
                  DeclaredIdentifier() and IdentifierToken("x"), ColonEqual(),
@@ -138,7 +138,7 @@ NTH_TEST("parser/declaration/bool") {
 NTH_TEST("parser/comment") {
   diag::NullConsumer d;
   TokenBuffer buffer = lex::Lex("let x ::= true  // comment!", d);
-  auto tree          = Parse(buffer, d);
+  auto tree          = Parse(buffer, d).parse_tree;
   NTH_EXPECT(tree.nodes() >>= ElementsAreSequentially(
                  ScopeStart(), Let(),
                  DeclaredIdentifier() and IdentifierToken("x"),
@@ -153,7 +153,7 @@ NTH_TEST("parser/multiple-declarations-with-newlines") {
   var y ::= 4
   )",
                                 d);
-  auto tree          = Parse(buffer, d);
+  auto tree          = Parse(buffer, d).parse_tree;
   NTH_EXPECT(tree.nodes() >>= ElementsAreSequentially(
                  ScopeStart(), Let(),
                  DeclaredIdentifier() and IdentifierToken("x"),
@@ -167,7 +167,7 @@ NTH_TEST("parser/multiple-declarations-with-newlines") {
 NTH_TEST("parser/operator-precedence/plus-times") {
   diag::NullConsumer d;
   TokenBuffer buffer = lex::Lex(R"(x + y * z)", d);
-  auto tree          = Parse(buffer, d);
+  auto tree          = Parse(buffer, d).parse_tree;
   NTH_EXPECT(tree.nodes() >>= ElementsAreSequentially(
                  ScopeStart(), IdentifierToken("x"),
                  InfixOperator(Token::Kind::Plus), IdentifierToken("y"),
@@ -180,7 +180,7 @@ NTH_TEST("parser/operator-precedence/plus-times") {
 NTH_TEST("parser/operator-precedence/times-plus") {
   diag::NullConsumer d;
   TokenBuffer buffer = lex::Lex(R"(x * y + z)", d);
-  auto tree          = Parse(buffer, d);
+  auto tree          = Parse(buffer, d).parse_tree;
   NTH_EXPECT(tree.nodes() >>= ElementsAreSequentially(
                  ScopeStart(), IdentifierToken("x"),
                  InfixOperator(Token::Kind::Star), IdentifierToken("y"),
@@ -193,7 +193,7 @@ NTH_TEST("parser/operator-precedence/times-plus") {
 NTH_TEST("parser/operator-precedence/plus-plus") {
   diag::NullConsumer d;
   TokenBuffer buffer = lex::Lex(R"(x + y + z)", d);
-  auto tree          = Parse(buffer, d);
+  auto tree          = Parse(buffer, d).parse_tree;
   NTH_EXPECT(tree.nodes() >>= ElementsAreSequentially(
                  ScopeStart(), IdentifierToken("x"),
                  InfixOperator(Token::Kind::Plus), IdentifierToken("y"),
@@ -205,7 +205,7 @@ NTH_TEST("parser/operator-precedence/plus-plus") {
 NTH_TEST("parser/access/basic") {
   diag::NullConsumer d;
   TokenBuffer buffer = lex::Lex(R"(a.b)", d);
-  auto tree          = Parse(buffer, d);
+  auto tree          = Parse(buffer, d).parse_tree;
   NTH_EXPECT(
       tree.nodes() >>= ElementsAreSequentially(
           ScopeStart(), IdentifierToken("a"),
@@ -216,7 +216,7 @@ NTH_TEST("parser/access/basic") {
 NTH_TEST("parser/access/nested") {
   diag::NullConsumer d;
   TokenBuffer buffer = lex::Lex(R"(a.b.c)", d);
-  auto tree          = Parse(buffer, d);
+  auto tree          = Parse(buffer, d).parse_tree;
   NTH_EXPECT(
       tree.nodes() >>= ElementsAreSequentially(
           ScopeStart(), IdentifierToken("a"),
@@ -228,7 +228,7 @@ NTH_TEST("parser/access/nested") {
 NTH_TEST("parser/access/precedence") {
   diag::NullConsumer d;
   TokenBuffer buffer = lex::Lex(R"(a.b * c.d)", d);
-  auto tree          = Parse(buffer, d);
+  auto tree          = Parse(buffer, d).parse_tree;
   NTH_EXPECT(
       tree.nodes() >>= ElementsAreSequentially(
           ScopeStart(), IdentifierToken("a"),
@@ -242,7 +242,7 @@ NTH_TEST("parser/access/precedence") {
 NTH_TEST("parser/invoke/empty") {
   diag::NullConsumer d;
   TokenBuffer buffer = lex::Lex(R"(f())", d);
-  auto tree          = Parse(buffer, d);
+  auto tree          = Parse(buffer, d).parse_tree;
   NTH_EXPECT(tree.nodes() >>= ElementsAreSequentially(
                  ScopeStart(), IdentifierToken("f"), InvocationArgumentStart(),
                  CallExpression() and HasSubtreeSize(3),
@@ -252,7 +252,7 @@ NTH_TEST("parser/invoke/empty") {
 NTH_TEST("parser/invoke/empty-member-call") {
   diag::NullConsumer d;
   TokenBuffer buffer = lex::Lex(R"(a.b())", d);
-  auto tree          = Parse(buffer, d);
+  auto tree          = Parse(buffer, d).parse_tree;
   NTH_EXPECT(
       tree.nodes() >>= ElementsAreSequentially(
           ScopeStart(), IdentifierToken("a"),
@@ -264,7 +264,7 @@ NTH_TEST("parser/invoke/empty-member-call") {
 NTH_TEST("parser/invoke/double-call") {
   diag::NullConsumer d;
   TokenBuffer buffer = lex::Lex(R"(a.b()())", d);
-  auto tree          = Parse(buffer, d);
+  auto tree          = Parse(buffer, d).parse_tree;
   NTH_EXPECT(
       tree.nodes() >>= ElementsAreSequentially(
           ScopeStart(), IdentifierToken("a"),
@@ -277,7 +277,7 @@ NTH_TEST("parser/invoke/double-call") {
 NTH_TEST("parser/invoke/one-positional") {
   diag::NullConsumer d;
   TokenBuffer buffer = lex::Lex(R"(a(b))", d);
-  auto tree          = Parse(buffer, d);
+  auto tree          = Parse(buffer, d).parse_tree;
   NTH_EXPECT(tree.nodes() >>= ElementsAreSequentially(
                  ScopeStart(), IdentifierToken("a"), InvocationArgumentStart(),
                  IdentifierToken("b"), CallExpression() and HasSubtreeSize(4),
@@ -290,7 +290,7 @@ NTH_TEST("parser/invoke/one-positional-newline") {
   b
   ))",
                                 d);
-  auto tree          = Parse(buffer, d);
+  auto tree          = Parse(buffer, d).parse_tree;
   NTH_EXPECT(tree.nodes() >>= ElementsAreSequentially(
                  ScopeStart(), IdentifierToken("a"), InvocationArgumentStart(),
                  IdentifierToken("b"), CallExpression() and HasSubtreeSize(4),
@@ -300,7 +300,7 @@ NTH_TEST("parser/invoke/one-positional-newline") {
 NTH_TEST("parser/invoke/multiple-positional") {
   diag::NullConsumer d;
   TokenBuffer buffer = lex::Lex(R"(a(b, c, d))", d);
-  auto tree          = Parse(buffer, d);
+  auto tree          = Parse(buffer, d).parse_tree;
   NTH_EXPECT(tree.nodes() >>= ElementsAreSequentially(
                  ScopeStart(), IdentifierToken("a"), InvocationArgumentStart(),
                  IdentifierToken("b"), IdentifierToken("c"),
@@ -314,7 +314,7 @@ NTH_TEST("parser/invoke/multiple-positional-newline") {
   a(b, c,
     d))",
                                 d);
-  auto tree          = Parse(buffer, d);
+  auto tree          = Parse(buffer, d).parse_tree;
   NTH_EXPECT(tree.nodes() >>= ElementsAreSequentially(
                  ScopeStart(), IdentifierToken("a"),
                  InvocationArgumentStart(), IdentifierToken("b"),
@@ -326,7 +326,7 @@ NTH_TEST("parser/invoke/multiple-positional-newline") {
 NTH_TEST("parser/invoke/access-call") {
   diag::NullConsumer d;
   TokenBuffer buffer = lex::Lex(R"(a.b(c.d))", d);
-  auto tree          = Parse(buffer, d);
+  auto tree          = Parse(buffer, d).parse_tree;
   NTH_EXPECT(tree.nodes() >>= ElementsAreSequentially(
                  ScopeStart(), IdentifierToken("a"),
                  MemberExpression() and HasSubtreeSize(2),
@@ -339,7 +339,7 @@ NTH_TEST("parser/invoke/access-call") {
 NTH_TEST("parser/invoke/pointer") {
   diag::NullConsumer d;
   TokenBuffer buffer = lex::Lex(R"(*a)", d);
-  auto tree          = Parse(buffer, d);
+  auto tree          = Parse(buffer, d).parse_tree;
   NTH_EXPECT(tree.nodes() >>= ElementsAreSequentially(
                  ScopeStart(), IdentifierToken("a"),
                  Pointer() and HasSubtreeSize(2),
@@ -349,7 +349,7 @@ NTH_TEST("parser/invoke/pointer") {
 NTH_TEST("parser/invoke/pointer-access") {
   diag::NullConsumer d;
   TokenBuffer buffer = lex::Lex(R"(*a.b)", d);
-  auto tree          = Parse(buffer, d);
+  auto tree          = Parse(buffer, d).parse_tree;
   NTH_EXPECT(tree.nodes() >>= ElementsAreSequentially(
                  ScopeStart(), IdentifierToken("a"),
                  MemberExpression() and HasSubtreeSize(2),
@@ -360,7 +360,7 @@ NTH_TEST("parser/invoke/pointer-access") {
 NTH_TEST("parser/invoke/pointer-function") {
   diag::NullConsumer d;
   TokenBuffer buffer = lex::Lex(R"(*a -> b)", d);
-  auto tree          = Parse(buffer, d);
+  auto tree          = Parse(buffer, d).parse_tree;
   NTH_EXPECT(tree.nodes() >>= ElementsAreSequentially(
                  ScopeStart(), IdentifierToken("a"),
                  Pointer() and HasSubtreeSize(2),
@@ -372,7 +372,7 @@ NTH_TEST("parser/invoke/pointer-function") {
 NTH_TEST("parser/invoke/buffer-pointer") {
   diag::NullConsumer d;
   TokenBuffer buffer = lex::Lex(R"([*]a)", d);
-  auto tree          = Parse(buffer, d);
+  auto tree          = Parse(buffer, d).parse_tree;
   NTH_EXPECT(tree.nodes() >>= ElementsAreSequentially(
                  ScopeStart(), IdentifierToken("a"),
                  BufferPointer() and HasSubtreeSize(2),
@@ -382,7 +382,7 @@ NTH_TEST("parser/invoke/buffer-pointer") {
 NTH_TEST("parser/invoke/buffer-pointer-access") {
   diag::NullConsumer d;
   TokenBuffer buffer = lex::Lex(R"([*]a.b)", d);
-  auto tree          = Parse(buffer, d);
+  auto tree          = Parse(buffer, d).parse_tree;
   NTH_EXPECT(tree.nodes() >>= ElementsAreSequentially(
                  ScopeStart(), IdentifierToken("a"),
                  MemberExpression() and HasSubtreeSize(2),
@@ -393,7 +393,7 @@ NTH_TEST("parser/invoke/buffer-pointer-access") {
 NTH_TEST("parser/invoke/buffer-pointer-function") {
   diag::NullConsumer d;
   TokenBuffer buffer = lex::Lex(R"([*]a -> b)", d);
-  auto tree          = Parse(buffer, d);
+  auto tree          = Parse(buffer, d).parse_tree;
   NTH_EXPECT(tree.nodes() >>= ElementsAreSequentially(
                  ScopeStart(), IdentifierToken("a"),
                  BufferPointer() and HasSubtreeSize(2),

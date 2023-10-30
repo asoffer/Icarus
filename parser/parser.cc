@@ -14,10 +14,11 @@ namespace ic {
 namespace {
 
 struct Parser {
-  explicit Parser(TokenBuffer const& token_buffer,
+  explicit Parser(TokenBuffer const& token_buffer, ScopeTree& scope_tree,
                   diag::DiagnosticConsumer& diagnostic_consumer)
       : iterator_(token_buffer.begin()),
         token_buffer_(token_buffer),
+        scope_tree_(scope_tree),
         diagnostic_consumer_(diagnostic_consumer) {}
 
   Token current_token() const {
@@ -101,6 +102,17 @@ struct Parser {
     }
   }
 
+  Scope::Index PushScope() {
+    NTH_REQUIRE(not scope_indices_.empty());
+    return scope_indices_.emplace_back(
+        scope_tree_.insert_child(scope_indices_.back()));
+  }
+
+  void PopScope() {
+    NTH_REQUIRE(not scope_indices_.empty());
+    scope_indices_.pop_back();
+  }
+
   void ExpandStateImpl(State prototype, State::Kind kind) {
     prototype.kind = kind;
     ExpandStateImpl(prototype, prototype);
@@ -115,6 +127,8 @@ struct Parser {
   TokenBuffer::const_iterator iterator_;
 
   TokenBuffer const& token_buffer_;
+  ScopeTree& scope_tree_;
+  std::vector<Scope::Index> scope_indices_ = {Scope::Index::Root()};
   diag::DiagnosticConsumer& diagnostic_consumer_;
 };
 
@@ -129,14 +143,14 @@ struct Parser {
 
 }  // namespace
 
-ParseTree Parse(TokenBuffer const& token_buffer,
-                diag::DiagnosticConsumer& diagnostic_consumer) {
-  ParseTree tree;
-  Parser p(token_buffer, diagnostic_consumer);
+ParseResult Parse(TokenBuffer const& token_buffer,
+                  diag::DiagnosticConsumer& diagnostic_consumer) {
+  ParseResult result;
+  Parser p(token_buffer, result.scope_tree, diagnostic_consumer);
 
   while (not p.state().empty()) {
-    if (tree.size() != 0) {
-      NTH_REQUIRE((v.debug), tree.back().subtree_size > 0);
+    if (result.parse_tree.size() != 0) {
+      NTH_REQUIRE((v.debug), result.parse_tree.back().subtree_size > 0);
     }
     NTH_LOG((v.when(debug::parser)), "{} {}:\n{}") <<=
         {p.current_token(), p.state().back().subtree_start,
@@ -144,12 +158,12 @@ ParseTree Parse(TokenBuffer const& token_buffer,
     switch (p.state().back().kind) {
 #define IC_XMACRO_PARSER_STATE(state)                                          \
   case Parser::State::Kind::state:                                             \
-    p.Handle##state(tree);                                                     \
+    p.Handle##state(result.parse_tree);                                        \
     break;
 #include "parser/parse_state.xmacro.h"
     }
   }
-  return tree;
+  return result;
 }
 
 void Parser::HandleNewlines(ParseTree& tree) {
@@ -192,10 +206,12 @@ void Parser::HandleStatement(ParseTree& tree) {
 void Parser::HandleBeginIfStatementTrueBranch(ParseTree& tree) {
   tree.append_leaf(ParseTree::Node::Kind::BeginIfStatementTrueBranch,
                    *iterator_);
+  PushScope();
   pop_and_discard_state();
 }
 
 void Parser::HandleResolveIfStatement(ParseTree& tree) {
+  PopScope();
   auto state = pop_state();
   tree.append(ParseTree::Node::Kind::IfStatement, state.token,
               state.subtree_start);

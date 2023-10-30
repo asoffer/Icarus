@@ -49,6 +49,7 @@ cc_library(
     deps = [
         ":dependent_modules",
         ":module",
+        ":scope",
         ":serialize",
         "//common:debug",
         "//common:identifier",
@@ -159,6 +160,20 @@ cc_proto_library(
     name = "module_cc_proto",
     visibility = ["//visibility:public"],
     deps = [":module_proto"],
+)
+
+cc_library(
+    name = "scope",
+    hdrs = ["scope.h"],
+    srcs = ["scope.cc"],
+    deps = [
+        "//common:identifier",
+        "//common:strong_identifier_type",
+        "//parser:parse_tree",
+        "//type",
+        "@asoffer_nth//nth/debug",
+        "@com_google_absl//absl/container:flat_hash_map",
+    ]
 )
 
 cc_library(

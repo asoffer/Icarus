@@ -36,6 +36,7 @@ cc_library(
         "//common:debug",
         "//common/language:atoms",
         "//diagnostics/consumer",
+        "//ir:scope",
         "//lexer:token",
         "//lexer:token_buffer",
         "@asoffer_nth//nth/debug",

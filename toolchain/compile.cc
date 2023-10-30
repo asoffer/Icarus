@@ -115,7 +115,7 @@ nth::exit_code Compile(nth::FlagValueSet flags, nth::file_path const& source) {
 
   TokenBuffer token_buffer = lex::Lex(*content, consumer);
   if (consumer.count() != 0) { return nth::exit_code::generic_error; }
-  ParseTree parse_tree = Parse(token_buffer, consumer);
+  auto [parse_tree, scope_tree] = Parse(token_buffer, consumer);
   if (consumer.count() != 0) { return nth::exit_code::generic_error; }
   consumer.set_parse_tree(parse_tree);
 
@@ -129,7 +129,7 @@ nth::exit_code Compile(nth::FlagValueSet flags, nth::file_path const& source) {
   }
 
   Module module;
-  EmitContext emit_context(parse_tree, dependencies, module);
+  EmitContext emit_context(parse_tree, dependencies, scope_tree, module);
   ProcessIr(emit_context, consumer);
   if (consumer.count() != 0) { return nth::exit_code::generic_error; }
   emit_context.queue.push(
