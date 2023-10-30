@@ -8,9 +8,9 @@
 namespace ic {
 namespace {
 
-constexpr size_t PrecedenceGroupCount = (0
+constexpr size_t PrecedenceGroupCount = (1  // For `Loosest`
 #define IC_XMACRO_PRECEDENCE_GROUP(group) +1
-#include "parse/precedence_groups.xmacro.h"
+#include "common/language/precedence.xmacro.h"
 );
 
 struct PrecedenceTable {
@@ -36,14 +36,9 @@ constexpr PrecedenceTable MakePrecedenceTable() {
   // Loosest should be less than everything.
 #define IC_XMACRO_PRECEDENCE_GROUP(group)                                      \
   result(Precedence::Loosest(), Precedence::group()) = Priority::Right;
-#include "parse/precedence_groups.xmacro.h"
-
-  result(Precedence::Comparison(), Precedence::PlusMinus()) = Priority::Right;
-  result(Precedence::PlusMinus(), Precedence::MultiplyDivide()) =
-      Priority::Right;
-  result(Precedence::Function(), Precedence::TightUnary()) = Priority::Right;
-  result(Precedence::MultiplyDivide(), Precedence::TightUnary()) =
-      Priority::Right;
+#define IC_XMACRO_PRECEDENCE_ORDER(lower, higher)                              \
+  result(Precedence::lower(), Precedence::higher()) = Priority::Right;
+#include "common/language/precedence.xmacro.h"
 
   bool changed = false;
   while (not changed) {

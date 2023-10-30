@@ -7,6 +7,11 @@ cc_library(
 )
 
 cc_library(
+    name = "precedence",
+    textual_hdrs = ["precedence.xmacro.h"],
+)
+
+cc_library(
     name = "primitive_types",
     textual_hdrs = ["primitive_types.xmacro.h"],
 )

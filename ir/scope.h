@@ -6,7 +6,7 @@
 #include "absl/container/flat_hash_map.h"
 #include "common/identifier.h"
 #include "common/strong_identifier_type.h"
-#include "parse/parse_tree.h"
+#include "parse/node.h"
 #include "type/type.h"
 
 namespace ic {
@@ -24,8 +24,8 @@ struct Scope {
   Index parent() const;
 
   struct DeclarationInfo {
-    ParseTree::Node::Index declaration;
-    ParseTree::Node::Index identifier;
+    ParseNode::Index declaration;
+    ParseNode::Index identifier;
     type::QualifiedType qualified_type;
   };
 

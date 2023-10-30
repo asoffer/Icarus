@@ -24,8 +24,9 @@ enum class Priority : int8_t {
 
 struct Precedence {
   enum class Kind : uint8_t {
+    Loosest,
 #define IC_XMACRO_PRECEDENCE_GROUP(group) group,
-#include "parse/precedence_groups.xmacro.h"
+#include "common/language/precedence.xmacro.h"
   };
 
   constexpr Kind kind() const { return kind_; }
@@ -35,15 +36,16 @@ struct Precedence {
   friend bool operator==(Precedence, Precedence) = default;
   friend bool operator!=(Precedence, Precedence) = default;
 
+  static constexpr Precedence Loosest() { return Precedence(Kind::Loosest); }
 #define IC_XMACRO_PRECEDENCE_GROUP(group)                                      \
   static constexpr Precedence group() { return Precedence(Kind::group); }
-#include "parse/precedence_groups.xmacro.h"
+#include "common/language/precedence.xmacro.h"
 
-
-  friend void NthPrint(auto& printer, auto& , Precedence p) {
+  friend void NthPrint(auto& printer, auto&, Precedence p) {
     static constexpr std::string_view PrecedenceStrings[] = {
+        "Loosest",
 #define IC_XMACRO_PRECEDENCE_GROUP(group) #group,
-#include "parse/precedence_groups.xmacro.h"
+#include "common/language/precedence.xmacro.h"
     };
     printer.write(PrecedenceStrings[static_cast<uint8_t>(p.kind_)]);
   }

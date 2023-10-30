@@ -14,14 +14,14 @@
 #include "jasmin/value_stack.h"
 #include "nth/base/attributes.h"
 #include "nth/container/interval_map.h"
-#include "parse/parse_tree.h"
+#include "parse/tree.h"
 #include "type/type.h"
 
 namespace ic {
 
 struct DeclarationInfo {
-  Token::Kind kind             = Token::Kind::Invalid;
-  ParseTree::Node::Index index = ParseTree::Node::Index::Invalid();
+  Token::Kind kind       = Token::Kind::Invalid;
+  ParseNode::Index index = ParseNode::Index::Invalid();
 };
 
 struct EmitContext {
@@ -36,8 +36,7 @@ struct EmitContext {
   Module const& module(ModuleId id) const { return modules[id]; }
 
   struct ComputedConstants {
-    explicit ComputedConstants(ParseTree::Node::Index index,
-                               jasmin::ValueStack value,
+    explicit ComputedConstants(ParseNode::Index index, jasmin::ValueStack value,
                                std::vector<type::Type> types)
         : index_(index), value_(std::move(value)), types_(std::move(types)) {}
 
@@ -52,7 +51,7 @@ struct EmitContext {
     }
 
    private:
-    ParseTree::Node::Index index_;
+    ParseNode::Index index_;
     jasmin::ValueStack value_;
     std::vector<type::Type> types_;
   };
@@ -61,29 +60,26 @@ struct EmitContext {
   void Push(std::span<jasmin::Value const>, std::span<type::Type const>);
   void Push(ComputedConstants const& c);
 
-  void Evaluate(nth::interval<ParseTree::Node::Index> subtree,
+  void Evaluate(nth::interval<ParseNode::Index> subtree,
                 jasmin::ValueStack& value_stack, std::vector<type::Type> types);
 
-  ParseTree::Node const& Node(ParseTree::Node::Index index) const {
-    return tree[index];
-  }
+  ParseNode const& Node(ParseNode::Index index) const { return tree[index]; }
 
   ParseTree const& tree;
 
-  absl::flat_hash_map<ParseTree::Node::Index, type::QualifiedType>
+  absl::flat_hash_map<ParseNode::Index, type::QualifiedType>
       statement_qualified_type;
 
-  absl::flat_hash_map<ParseTree::Node::Index, size_t> rotation_count;
-  absl::flat_hash_map<ParseTree::Node::Index,
-                      std::pair<ParseTree::Node::Index, ParseTree::Node::Index>>
+  absl::flat_hash_map<ParseNode::Index, size_t> rotation_count;
+  absl::flat_hash_map<ParseNode::Index,
+                      std::pair<ParseNode::Index, ParseNode::Index>>
       declarator;
-  absl::flat_hash_map<Identifier,
-                      std::tuple<ParseTree::Node::Index, ParseTree::Node::Index,
-                                 type::QualifiedType>>
+  absl::flat_hash_map<Identifier, std::tuple<ParseNode::Index, ParseNode::Index,
+                                             type::QualifiedType>>
       identifiers;
 
   ScopeTree& scopes;
-  absl::flat_hash_set<ParseTree::Node::Index> declarations_to_export;
+  absl::flat_hash_set<ParseNode::Index> declarations_to_export;
   Module& current_module;
 
   void set_current_function(IrFunction& f) {
@@ -100,20 +96,20 @@ struct EmitContext {
   // Maps node indices to the constant value associated with the computation for
   // the largest subtree containing it whose constant value has been computed
   // thus far.
-  nth::interval_map<ParseTree::Node::Index, ComputedConstants> constants;
+  nth::interval_map<ParseNode::Index, ComputedConstants> constants;
   DependentModules const& modules;
   struct WorkItem {
     IrFunction* function = nullptr;
-    nth::interval<ParseTree::Node::Index> range;
+    nth::interval<ParseNode::Index> range;
     std::vector<DeclarationInfo> declaration_stack;
     std::vector<jasmin::OpCodeRange> branches;
   };
   std::queue<WorkItem> queue;
 
-  void SetQualifiedType(ParseTree::Node::Index index, type::QualifiedType qt) {
+  void SetQualifiedType(ParseNode::Index index, type::QualifiedType qt) {
     types_[index.value()] = qt;
   }
-  type::QualifiedType QualifiedTypeOf(ParseTree::Node::Index index) {
+  type::QualifiedType QualifiedTypeOf(ParseNode::Index index) {
     return types_[index.value()];
   }
 

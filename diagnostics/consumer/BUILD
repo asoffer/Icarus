@@ -7,7 +7,7 @@ cc_library(
     deps = [
         "//lexer:lex",
         "//lexer:token",
-        "//parse:parse_tree",
+        "//parse:tree",
         "//diagnostics:message",
         "@asoffer_nth//nth/base:attributes",
         "@asoffer_nth//nth/debug",

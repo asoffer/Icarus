@@ -6,8 +6,7 @@
 // Two arguments are provided to each macro invocation.
 //
 // Argument 1: The token representing the enumerator in the `Token::Kind`
-// Argument 2: The token representing the enumerator in the
-//             `ParseTree::Node::Kind`
+// Argument 2: The token representing the enumerator in the `ParseNode::Kind`
 
 IC_XMACRO_ATOM(Builtin, BuiltinLiteral)
 IC_XMACRO_ATOM(True, BooleanLiteral)

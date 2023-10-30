@@ -1,38 +1,30 @@
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
-    name = "parse_tree_node_kind_xmacro",
-    textual_hdrs = ["parse_tree_node_kind.xmacro.h"],
-)
-
-cc_library(
-    name = "parse_state_xmacro",
-    textual_hdrs = ["parse_state.xmacro.h"],
-)
-
-cc_library(
-    name = "parse_tree",
-    hdrs = ["parse_tree.h"],
-    srcs = ["parse_tree.cc"],
+    name = "node",
+    hdrs = ["node.h"],
+    srcs = ["node.cc"],
     deps = [
-        ":parse_tree_node_kind_xmacro",
+        ":node_xmacro",
         "//common:strong_index_type",
         "//lexer:token",
-        "@asoffer_nth//nth/container:interval",
-        "@asoffer_nth//nth/debug",
         "@asoffer_nth//nth/strings:interpolate",
-        "@asoffer_nth//nth/utility:iterator_range",
     ],
+)
+
+cc_library(
+    name = "node_xmacro",
+    textual_hdrs = ["node.xmacro.h"],
 )
 
 cc_library(
     name = "parser",
     hdrs = ["parser.h"],
     srcs = ["parser.cc"],
+    textual_hdrs = ["state.xmacro.h"],
     deps = [
-        ":parse_state_xmacro",
-        ":parse_tree",
         ":precedence",
+        ":tree",
         "//common:debug",
         "//common/language:atoms",
         "//diagnostics/consumer",
@@ -57,16 +49,23 @@ cc_test(
 )
 
 cc_library(
-    name = "precedence_groups_xmacro",
-    textual_hdrs = ["precedence_groups.xmacro.h"],
-)
-
-cc_library(
     name = "precedence",
     hdrs = ["precedence.h"],
     srcs = ["precedence.cc"],
     deps = [
-        ":precedence_groups_xmacro",
+        "//common/language:precedence",
         "@asoffer_nth//nth/debug",
+    ],
+)
+
+cc_library(
+    name = "tree",
+    hdrs = ["tree.h"],
+    srcs = ["tree.cc"],
+    deps = [
+        ":node",
+        "@asoffer_nth//nth/container:interval",
+        "@asoffer_nth//nth/debug",
+        "@asoffer_nth//nth/utility:iterator_range",
     ],
 )

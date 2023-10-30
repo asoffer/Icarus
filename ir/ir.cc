@@ -12,7 +12,7 @@
 #include "jasmin/execute.h"
 #include "jasmin/value_stack.h"
 #include "nth/debug/debug.h"
-#include "parse/parse_tree.h"
+#include "parse/tree.h"
 #include "type/type.h"
 
 namespace ic {
@@ -49,19 +49,15 @@ type::Type FromConstant() {
 }
 
 struct IrContext {
-  ParseTree::Node const& Node(ParseTree::Node::Index index) {
-    return emit.tree[index];
-  }
+  ParseNode const& Node(ParseNode::Index index) { return emit.tree[index]; }
 
-  auto ChildIndices(ParseTree::Node::Index index) {
+  auto ChildIndices(ParseNode::Index index) {
     return emit.tree.child_indices(index);
   }
-  auto Children(ParseTree::Node::Index index) {
-    return emit.tree.children(index);
-  }
+  auto Children(ParseNode::Index index) { return emit.tree.children(index); }
 
   template <typename T>
-  std::optional<T> EvaluateAs(ParseTree::Node::Index subtree_root_index) {
+  std::optional<T> EvaluateAs(ParseNode::Index subtree_root_index) {
     T result;
     nth::interval range = emit.tree.subtree_range(subtree_root_index);
     jasmin::ValueStack value_stack;
@@ -91,7 +87,7 @@ struct IrContext {
   }
 
   struct WorkItem {
-    nth::interval<ParseTree::Node::Index> interval;
+    nth::interval<ParseNode::Index> interval;
     std::vector<type::QualifiedType> type_stack;
     std::vector<Token::Kind> operator_stack;
     std::vector<DeclarationInfo> declaration_stack;
@@ -102,15 +98,14 @@ struct IrContext {
   EmitContext& emit;
 };
 
-#define IC_XMACRO_PARSE_TREE_NODE_CONSTANT_KIND(name, t)                       \
-  void HandleParseTreeNode##name(ParseTree::Node::Index index,                 \
-                                 IrContext& context,                           \
+#define IC_XMACRO_PARSE_NODE_CONSTANT(name, t)                                 \
+  void HandleParseTreeNode##name(ParseNode::Index index, IrContext& context,   \
                                  diag::DiagnosticConsumer& diag) {             \
     auto qt = type::QualifiedType::Constant(t);                                \
     context.type_stack().push_back(qt);                                        \
     context.emit.SetQualifiedType(index, qt);                                  \
   }
-#include "parse/parse_tree_node_kind.xmacro.h"
+#include "parse/node.xmacro.h"
 
 bool RequireConstant(type::QualifiedType actual, type::Type expected,
                      diag::DiagnosticConsumer& diag) {
@@ -134,8 +129,7 @@ bool RequireConstant(type::QualifiedType actual, type::Type expected,
   return ok;
 }
 
-void HandleParseTreeNodeDeclaration(ParseTree::Node::Index index,
-                                    IrContext& context,
+void HandleParseTreeNodeDeclaration(ParseNode::Index index, IrContext& context,
                                     diag::DiagnosticConsumer& diag) {
   DeclarationInfo info = context.declaration_stack().back();
   context.declaration_stack().pop_back();
@@ -165,23 +159,21 @@ void HandleParseTreeNodeDeclaration(ParseTree::Node::Index index,
   }
 }
 
-void HandleParseTreeNodeStatement(ParseTree::Node::Index index,
-                                  IrContext& context,
+void HandleParseTreeNodeStatement(ParseNode::Index index, IrContext& context,
                                   diag::DiagnosticConsumer& diag) {
   context.emit.statement_qualified_type.emplace(index,
                                                 context.type_stack().back());
   context.type_stack().pop_back();
 }
 
-void HandleParseTreeNodeStatementSequence(ParseTree::Node::Index index,
+void HandleParseTreeNodeStatementSequence(ParseNode::Index index,
                                           IrContext& context,
                                           diag::DiagnosticConsumer& diag) {}
 
-bool HandleParseTreeNodeIdentifier(ParseTree::Node::Index index,
-                                   IrContext& context,
+bool HandleParseTreeNodeIdentifier(ParseNode::Index index, IrContext& context,
                                    diag::DiagnosticConsumer& diag) {
   auto token = context.Node(index).token;
-  auto id = token.Identifier();
+  auto id    = token.Identifier();
   if (context.identifier_repetition_counter > context.queue.size()) {
     diag.Consume({
         diag::Header(diag::MessageKind::Error),
@@ -208,7 +200,7 @@ bool HandleParseTreeNodeIdentifier(ParseTree::Node::Index index,
   return true;
 }
 
-void HandleParseTreeNodeInfixOperator(ParseTree::Node::Index index,
+void HandleParseTreeNodeInfixOperator(ParseNode::Index index,
                                       IrContext& context,
                                       diag::DiagnosticConsumer& diag) {
   auto node = context.Node(index);
@@ -216,7 +208,7 @@ void HandleParseTreeNodeInfixOperator(ParseTree::Node::Index index,
 }
 
 void HandleParseTreeNodeExpressionPrecedenceGroup(
-    ParseTree::Node::Index index, IrContext& context,
+    ParseNode::Index index, IrContext& context,
     diag::DiagnosticConsumer& diag) {
   Token::Kind kind = context.operator_stack().back();
   context.operator_stack().pop_back();
@@ -266,44 +258,43 @@ void HandleParseTreeNodeExpressionPrecedenceGroup(
   }
 }
 
-void HandleParseTreeNodeLet(ParseTree::Node::Index, IrContext& context,
+void HandleParseTreeNodeLet(ParseNode::Index, IrContext& context,
                             diag::DiagnosticConsumer&) {
   context.declaration_stack().emplace_back();
 }
 
-void HandleParseTreeNodeVar(ParseTree::Node::Index, IrContext& context,
+void HandleParseTreeNodeVar(ParseNode::Index, IrContext& context,
                             diag::DiagnosticConsumer&) {
   context.declaration_stack().emplace_back();
 }
 
-void HandleParseTreeNodeColonColonEqual(ParseTree::Node::Index,
-                                        IrContext& context,
+void HandleParseTreeNodeColonColonEqual(ParseNode::Index, IrContext& context,
                                         diag::DiagnosticConsumer&) {
   context.declaration_stack().back().kind = Token::Kind::ColonColonEqual;
 }
 
-void HandleParseTreeNodeColonEqual(ParseTree::Node::Index, IrContext& context,
+void HandleParseTreeNodeColonEqual(ParseNode::Index, IrContext& context,
                                    diag::DiagnosticConsumer&) {
   context.declaration_stack().back().kind = Token::Kind::ColonEqual;
 }
 
-void HandleParseTreeNodeColonColon(ParseTree::Node::Index, IrContext& context,
+void HandleParseTreeNodeColonColon(ParseNode::Index, IrContext& context,
                                    diag::DiagnosticConsumer&) {
   context.declaration_stack().back().kind = Token::Kind::ColonColon;
 }
 
-void HandleParseTreeNodeColon(ParseTree::Node::Index, IrContext& context,
+void HandleParseTreeNodeColon(ParseNode::Index, IrContext& context,
                               diag::DiagnosticConsumer&) {
   context.declaration_stack().back().kind = Token::Kind::Colon;
 }
 
-void HandleParseTreeNodeExpressionGroup(ParseTree::Node::Index index,
+void HandleParseTreeNodeExpressionGroup(ParseNode::Index index,
                                         IrContext& context,
                                         diag::DiagnosticConsumer& diag) {
   // Nothing to do here.
 }
 
-void HandleParseTreeNodeMemberExpression(ParseTree::Node::Index index,
+void HandleParseTreeNodeMemberExpression(ParseNode::Index index,
                                          IrContext& context,
                                          diag::DiagnosticConsumer& diag) {
   auto node = context.Node(index);
@@ -369,7 +360,7 @@ void HandleParseTreeNodeMemberExpression(ParseTree::Node::Index index,
   }
 }
 
-void HandleParseTreeNodeCallExpression(ParseTree::Node::Index index,
+void HandleParseTreeNodeCallExpression(ParseNode::Index index,
                                        IrContext& context,
                                        diag::DiagnosticConsumer& diag) {
   auto node = context.Node(index);
@@ -422,10 +413,9 @@ void HandleParseTreeNodeCallExpression(ParseTree::Node::Index index,
   } else if (invocable_type.type().kind() ==
              type::Type::Kind::GenericFunction) {
     auto& rotation_count = context.emit.rotation_count[index];
-    std::vector<ParseTree::Node::Index> indices;
+    std::vector<ParseNode::Index> indices;
     for (auto iter = context.ChildIndices(index).begin();
-         context.Node(*iter).kind !=
-         ParseTree::Node::Kind::InvocationArgumentStart;
+         context.Node(*iter).kind != ParseNode::Kind::InvocationArgumentStart;
          ++iter) {
       indices.push_back(*iter);
     }
@@ -457,25 +447,24 @@ void HandleParseTreeNodeCallExpression(ParseTree::Node::Index index,
   }
 }
 
-void HandleParseTreeNodeDeclaredIdentifier(ParseTree::Node::Index index,
+void HandleParseTreeNodeDeclaredIdentifier(ParseNode::Index index,
                                            IrContext& context,
                                            diag::DiagnosticConsumer& diag) {
   context.declaration_stack().back().index = index;
 }
 
 void HandleParseTreeNodeInvocationArgumentStart(
-    ParseTree::Node::Index index, IrContext& context,
+    ParseNode::Index index, IrContext& context,
     diag::DiagnosticConsumer& diag) {}
 
-void HandleParseTreeNodePointer(ParseTree::Node::Index index,
-                                IrContext& context,
+void HandleParseTreeNodePointer(ParseNode::Index index, IrContext& context,
                                 diag::DiagnosticConsumer& diag) {
   if (context.type_stack().back().type() != type::Type_) {
     NTH_UNIMPLEMENTED();
   }
 }
 
-void HandleParseTreeNodeBufferPointer(ParseTree::Node::Index index,
+void HandleParseTreeNodeBufferPointer(ParseNode::Index index,
                                       IrContext& context,
                                       diag::DiagnosticConsumer& diag) {
   if (context.type_stack().back().type() != type::Type_) {
@@ -483,7 +472,7 @@ void HandleParseTreeNodeBufferPointer(ParseTree::Node::Index index,
   }
 }
 
-void HandleParseTreeNodeImport(ParseTree::Node::Index index, IrContext& context,
+void HandleParseTreeNodeImport(ParseNode::Index index, IrContext& context,
                                diag::DiagnosticConsumer& diag) {
   std::string_view path = *context.EvaluateAs<std::string_view>(index - 1);
   ModuleId id           = resources.module_map[path];
@@ -505,8 +494,7 @@ void HandleParseTreeNodeImport(ParseTree::Node::Index index, IrContext& context,
   context.type_stack().back() = type::QualifiedType::Constant(type::Module);
 }
 
-bool HandleParseTreeNodeScopeStart(ParseTree::Node::Index index,
-                                   IrContext& context,
+bool HandleParseTreeNodeScopeStart(ParseNode::Index index, IrContext& context,
                                    diag::DiagnosticConsumer& diag) {
   auto item         = std::move(context.queue.front());
   auto [start, end] = item.interval;
@@ -529,24 +517,22 @@ bool HandleParseTreeNodeScopeStart(ParseTree::Node::Index index,
   return false;
 }
 
-void HandleParseTreeNodeBeginIfStatementTrueBranch(ParseTree::Node::Index,
-                                                   IrContext&,
+void HandleParseTreeNodeBeginIfStatementTrueBranch(ParseNode::Index, IrContext&,
                                                    diag::DiagnosticConsumer&) {}
 
-void HandleParseTreeNodeIfStatement(ParseTree::Node::Index index,
-                                               IrContext& context,
-                                               diag::DiagnosticConsumer& diag) {
+void HandleParseTreeNodeIfStatement(ParseNode::Index index, IrContext& context,
+                                    diag::DiagnosticConsumer& diag) {
   if (context.type_stack().back().type() != type::Bool) { NTH_UNIMPLEMENTED(); }
   context.type_stack().pop_back();
 }
 
-void HandleParseTreeNodeFunctionTypeParameters(ParseTree::Node::Index index,
+void HandleParseTreeNodeFunctionTypeParameters(ParseNode::Index index,
                                                IrContext& context,
                                                diag::DiagnosticConsumer& diag) {
   for (size_t i = 0; i < context.emit.Node(index).child_count; ++i) {
     if (context.type_stack().back() !=
         type::QualifiedType::Constant(type::Type_)) {
-      NTH_UNIMPLEMENTED("{}") <<={context.type_stack()};
+      NTH_UNIMPLEMENTED("{}") <<= {context.type_stack()};
     }
     context.type_stack().pop_back();
   }
@@ -554,11 +540,11 @@ void HandleParseTreeNodeFunctionTypeParameters(ParseTree::Node::Index index,
 }
 
 template <auto F>
-constexpr bool Invoke(ParseTree::Node::Index index, IrContext& context,
+constexpr bool Invoke(ParseNode::Index index, IrContext& context,
                       diag::DiagnosticConsumer& diag) {
   constexpr auto return_type =
-      nth::type<std::invoke_result_t<decltype(F), ParseTree::Node::Index,
-                                     IrContext&, diag::DiagnosticConsumer&>>;
+      nth::type<std::invoke_result_t<decltype(F), ParseNode::Index, IrContext&,
+                                     diag::DiagnosticConsumer&>>;
   if constexpr (return_type == nth::type<bool>) {
     return F(index, context, diag);
   } else {
@@ -574,8 +560,8 @@ void ProcessIrImpl(IrContext& context, diag::DiagnosticConsumer& diag) {
     for (auto index = start; index != end; ++index) {
       auto node = context.Node(index);
       switch (node.kind) {
-#define IC_XMACRO_PARSE_TREE_NODE_KIND(kind)                                   \
-  case ParseTree::Node::Kind::kind: {                                          \
+#define IC_XMACRO_PARSE_NODE(kind)                                             \
+  case ParseNode::Kind::kind: {                                                \
     NTH_LOG((v.when(debug::type_check)), "Process node {} ({})") <<=           \
         {#kind, index};                                                        \
     bool should_continue =                                                     \
@@ -586,7 +572,7 @@ void ProcessIrImpl(IrContext& context, diag::DiagnosticConsumer& diag) {
       goto next_chunk;                                                         \
     }                                                                          \
   } break;
-#include "parse/parse_tree_node_kind.xmacro.h"
+#include "parse/node.xmacro.h"
       }
       context.identifier_repetition_counter = 0;
     }

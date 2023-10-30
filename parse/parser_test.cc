@@ -28,63 +28,59 @@ inline constexpr auto HasToken = nth::debug::MakeProperty<"has-token">(
 inline constexpr auto ExpressionPrecedenceGroup =
     nth::debug::MakeProperty<"expression-precedence-group">(
         [](auto const &value) {
-          return value.kind == ParseTree::Node::Kind::ExpressionPrecedenceGroup;
+          return value.kind == ParseNode::Kind::ExpressionPrecedenceGroup;
         });
 
 inline constexpr auto BufferPointer =
     nth::debug::MakeProperty<"buffer-pointer">([](auto const &value) {
-      return value.kind == ParseTree::Node::Kind::BufferPointer;
+      return value.kind == ParseNode::Kind::BufferPointer;
     });
 
-inline constexpr auto Pointer =
-    nth::debug::MakeProperty<"pointer">([](auto const &value) {
-      return value.kind == ParseTree::Node::Kind::Pointer;
-    });
+inline constexpr auto Pointer = nth::debug::MakeProperty<"pointer">(
+    [](auto const &value) { return value.kind == ParseNode::Kind::Pointer; });
 
-inline constexpr auto Statement =
-    nth::debug::MakeProperty<"statement">([](auto const &value) {
-      return value.kind == ParseTree::Node::Kind::Statement;
-    });
+inline constexpr auto Statement = nth::debug::MakeProperty<"statement">(
+    [](auto const &value) { return value.kind == ParseNode::Kind::Statement; });
 
 inline constexpr auto ScopeStart =
     nth::debug::MakeProperty<"scope-start">([](auto const &value) {
-      return value.kind == ParseTree::Node::Kind::ScopeStart;
+      return value.kind == ParseNode::Kind::ScopeStart;
     });
 
 inline constexpr auto MemberExpression =
     nth::debug::MakeProperty<"member-expression">([](auto const &value) {
-      return value.kind == ParseTree::Node::Kind::MemberExpression;
+      return value.kind == ParseNode::Kind::MemberExpression;
     });
 
 inline constexpr auto CallExpression =
     nth::debug::MakeProperty<"call-expression">([](auto const &value) {
-      return value.kind == ParseTree::Node::Kind::CallExpression;
+      return value.kind == ParseNode::Kind::CallExpression;
     });
 
 inline constexpr auto Let = nth::debug::MakeProperty<"`let`">(
-    [](auto const &value) { return value.kind == ParseTree::Node::Kind::Let; });
+    [](auto const &value) { return value.kind == ParseNode::Kind::Let; });
 
 inline constexpr auto Var = nth::debug::MakeProperty<"`var`">(
-    [](auto const &value) { return value.kind == ParseTree::Node::Kind::Var; });
+    [](auto const &value) { return value.kind == ParseNode::Kind::Var; });
 
 inline constexpr auto InvocationArgumentStart =
     nth::debug::MakeProperty<"invocation-start">([](auto const &value) {
-      return value.kind == ParseTree::Node::Kind::InvocationArgumentStart;
+      return value.kind == ParseNode::Kind::InvocationArgumentStart;
     });
 
 inline constexpr auto DeclaredIdentifier =
     nth::debug::MakeProperty<"declared-identifier">([](auto const &value) {
-      return value.kind == ParseTree::Node::Kind::DeclaredIdentifier;
+      return value.kind == ParseNode::Kind::DeclaredIdentifier;
     });
 
 inline constexpr auto ColonEqual =
     nth::debug::MakeProperty<"`:=`">([](auto const &value) {
-      return value.kind == ParseTree::Node::Kind::ColonEqual;
+      return value.kind == ParseNode::Kind::ColonEqual;
     });
 
 inline constexpr auto ColonColonEqual =
     nth::debug::MakeProperty<"`::=`">([](auto const &value) {
-      return value.kind == ParseTree::Node::Kind::ColonColonEqual;
+      return value.kind == ParseNode::Kind::ColonColonEqual;
     });
 
 // debug::Matches an identifier token whose identifier is given by `id`.
@@ -95,7 +91,7 @@ auto IdentifierToken(std::string_view id) {
 inline constexpr auto InfixOperator =
     nth::debug::MakeProperty<"infix-operator">(
         [](auto const &value, auto const &op_matcher) {
-          return value.kind == ParseTree::Node::Kind::InfixOperator and
+          return value.kind == ParseNode::Kind::InfixOperator and
                  nth::debug::Matches(op_matcher, value.token.kind());
         });
 
@@ -316,10 +312,9 @@ NTH_TEST("parser/invoke/multiple-positional-newline") {
                                 d);
   auto tree          = Parse(buffer, d).parse_tree;
   NTH_EXPECT(tree.nodes() >>= ElementsAreSequentially(
-                 ScopeStart(), IdentifierToken("a"),
-                 InvocationArgumentStart(), IdentifierToken("b"),
-                 IdentifierToken("c"), IdentifierToken("d"),
-                 CallExpression() and HasSubtreeSize(6),
+                 ScopeStart(), IdentifierToken("a"), InvocationArgumentStart(),
+                 IdentifierToken("b"), IdentifierToken("c"),
+                 IdentifierToken("d"), CallExpression() and HasSubtreeSize(6),
                  Statement() and HasSubtreeSize(7), HasSubtreeSize(8)));
 }
 
