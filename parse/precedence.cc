@@ -1,4 +1,4 @@
-#include "parser/precedence.h"
+#include "parse/precedence.h"
 
 #include <array>
 #include <cstddef>
@@ -10,7 +10,7 @@ namespace {
 
 constexpr size_t PrecedenceGroupCount = (0
 #define IC_XMACRO_PRECEDENCE_GROUP(group) +1
-#include "parser/precedence_groups.xmacro.h"
+#include "parse/precedence_groups.xmacro.h"
 );
 
 struct PrecedenceTable {
@@ -36,7 +36,7 @@ constexpr PrecedenceTable MakePrecedenceTable() {
   // Loosest should be less than everything.
 #define IC_XMACRO_PRECEDENCE_GROUP(group)                                      \
   result(Precedence::Loosest(), Precedence::group()) = Priority::Right;
-#include "parser/precedence_groups.xmacro.h"
+#include "parse/precedence_groups.xmacro.h"
 
   result(Precedence::Comparison(), Precedence::PlusMinus()) = Priority::Right;
   result(Precedence::PlusMinus(), Precedence::MultiplyDivide()) =

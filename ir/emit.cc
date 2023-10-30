@@ -366,7 +366,7 @@ void EmitIr(EmitContext& context) {
       case Iteration::Continue: break;                                         \
     }                                                                          \
   } break;
-#include "parser/parse_tree_node_kind.xmacro.h"
+#include "parse/parse_tree_node_kind.xmacro.h"
           }
         }
         goto emit_constant;
@@ -386,7 +386,7 @@ void EmitIr(EmitContext& context) {
       case Iteration::Continue: break;                                         \
     }                                                                          \
   } break;
-#include "parser/parse_tree_node_kind.xmacro.h"
+#include "parse/parse_tree_node_kind.xmacro.h"
       }
     }
 

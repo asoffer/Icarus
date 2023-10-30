@@ -6,7 +6,7 @@
 #include "absl/container/flat_hash_map.h"
 #include "common/identifier.h"
 #include "common/strong_identifier_type.h"
-#include "parser/parse_tree.h"
+#include "parse/parse_tree.h"
 #include "type/type.h"
 
 namespace ic {

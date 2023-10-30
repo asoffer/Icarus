@@ -1,5 +1,5 @@
-#ifndef ICARUS_PARSER_PARSE_TREE_H
-#define ICARUS_PARSER_PARSE_TREE_H
+#ifndef ICARUS_PARSE_PARSE_TREE_H
+#define ICARUS_PARSE_PARSE_TREE_H
 
 #include <cstdint>
 #include <span>
@@ -30,7 +30,7 @@ struct ParseTree {
 
     enum class Kind : uint8_t {
 #define IC_XMACRO_PARSE_TREE_NODE_KIND(kind) kind,
-#include "parser/parse_tree_node_kind.xmacro.h"
+#include "parse/parse_tree_node_kind.xmacro.h"
     };
 
     friend void NthPrint(auto& p, auto& f, Node const &n) {
@@ -159,11 +159,11 @@ struct ParseTree {
 void NthPrint(auto &p, auto &, ParseTree::Node::Kind k) {
   static constexpr std::array KindStrings{
 #define IC_XMACRO_PARSE_TREE_NODE_KIND(kind) "p." #kind,
-#include "parser/parse_tree_node_kind.xmacro.h"
+#include "parse/parse_tree_node_kind.xmacro.h"
   };
   p.write(KindStrings[static_cast<uint8_t>(k)]);
 }
 
 }  // namespace ic
 
-#endif  // ICARUS_PARSER_PARSE_TREE_H
+#endif  // ICARUS_PARSE_PARSE_TREE_H

@@ -1,4 +1,4 @@
-#include "parser/parse_tree.h"
+#include "parse/parse_tree.h"
 
 #include "nth/debug/debug.h"
 

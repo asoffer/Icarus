@@ -8,7 +8,7 @@
 #include "diagnostics/message.h"
 #include "lexer/token.h"
 #include "nth/base/attributes.h"
-#include "parser/parse_tree.h"
+#include "parse/parse_tree.h"
 
 namespace ic::diag {
 

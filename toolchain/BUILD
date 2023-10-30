@@ -17,7 +17,7 @@ cc_binary(
         "//ir:module_cc_proto",
         "//lexer",
         "//lexer:token_buffer",
-        "//parser",
+        "//parse:parser",
         "@asoffer_nth//nth/commandline:main",
         "@asoffer_nth//nth/debug/log",
         "@asoffer_nth//nth/io:file",

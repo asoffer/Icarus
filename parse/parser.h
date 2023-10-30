@@ -4,7 +4,7 @@
 #include "diagnostics/consumer/consumer.h"
 #include "ir/scope.h"
 #include "lexer/token_buffer.h"
-#include "parser/parse_tree.h"
+#include "parse/parse_tree.h"
 
 namespace ic {
 

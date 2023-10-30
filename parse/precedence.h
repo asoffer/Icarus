@@ -1,5 +1,5 @@
-#ifndef ICARUS_PARSER_PRECEDENCE_H
-#define ICARUS_PARSER_PRECEDENCE_H
+#ifndef ICARUS_PARSE_PRECEDENCE_H
+#define ICARUS_PARSE_PRECEDENCE_H
 
 #include <cstdint>
 #include <limits>
@@ -25,7 +25,7 @@ enum class Priority : int8_t {
 struct Precedence {
   enum class Kind : uint8_t {
 #define IC_XMACRO_PRECEDENCE_GROUP(group) group,
-#include "parser/precedence_groups.xmacro.h"
+#include "parse/precedence_groups.xmacro.h"
   };
 
   constexpr Kind kind() const { return kind_; }
@@ -37,13 +37,13 @@ struct Precedence {
 
 #define IC_XMACRO_PRECEDENCE_GROUP(group)                                      \
   static constexpr Precedence group() { return Precedence(Kind::group); }
-#include "parser/precedence_groups.xmacro.h"
+#include "parse/precedence_groups.xmacro.h"
 
 
   friend void NthPrint(auto& printer, auto& , Precedence p) {
     static constexpr std::string_view PrecedenceStrings[] = {
 #define IC_XMACRO_PRECEDENCE_GROUP(group) #group,
-#include "parser/precedence_groups.xmacro.h"
+#include "parse/precedence_groups.xmacro.h"
     };
     printer.write(PrecedenceStrings[static_cast<uint8_t>(p.kind_)]);
   }
@@ -56,4 +56,4 @@ struct Precedence {
 
 }  // namespace ic
 
-#endif  // ICARUS_PARSER_PRECEDENCE_H
+#endif  // ICARUS_PARSE_PRECEDENCE_H

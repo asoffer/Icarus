@@ -14,7 +14,7 @@
 #include "jasmin/value_stack.h"
 #include "nth/base/attributes.h"
 #include "nth/container/interval_map.h"
-#include "parser/parse_tree.h"
+#include "parse/parse_tree.h"
 #include "type/type.h"
 
 namespace ic {

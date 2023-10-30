@@ -1,4 +1,4 @@
-#include "parser/parser.h"
+#include "parse/parser.h"
 
 #include "common/resources.h"
 #include "diagnostics/consumer/null.h"

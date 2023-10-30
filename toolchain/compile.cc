@@ -24,7 +24,7 @@
 #include "nth/io/file.h"
 #include "nth/io/file_path.h"
 #include "nth/process/exit_code.h"
-#include "parser/parser.h"
+#include "parse/parser.h"
 
 namespace ic {
 namespace {

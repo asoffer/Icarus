@@ -12,7 +12,7 @@
 #include "jasmin/execute.h"
 #include "jasmin/value_stack.h"
 #include "nth/debug/debug.h"
-#include "parser/parse_tree.h"
+#include "parse/parse_tree.h"
 #include "type/type.h"
 
 namespace ic {
@@ -110,7 +110,7 @@ struct IrContext {
     context.type_stack().push_back(qt);                                        \
     context.emit.SetQualifiedType(index, qt);                                  \
   }
-#include "parser/parse_tree_node_kind.xmacro.h"
+#include "parse/parse_tree_node_kind.xmacro.h"
 
 bool RequireConstant(type::QualifiedType actual, type::Type expected,
                      diag::DiagnosticConsumer& diag) {
@@ -586,7 +586,7 @@ void ProcessIrImpl(IrContext& context, diag::DiagnosticConsumer& diag) {
       goto next_chunk;                                                         \
     }                                                                          \
   } break;
-#include "parser/parse_tree_node_kind.xmacro.h"
+#include "parse/parse_tree_node_kind.xmacro.h"
       }
       context.identifier_repetition_counter = 0;
     }
