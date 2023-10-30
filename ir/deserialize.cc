@@ -46,9 +46,6 @@ bool Deserializer::DeserializeFunction(ModuleProto const& m,
           if (entry.value.size() != 1) { return false; }
           f.raw_append(entry.value[0]);
         } else if (function_id.module() == ModuleId::Foreign()) {
-          NTH_LOG("{} {}") <<=
-              {function_id.local_function().value(),
-               &LookupForeignFunction(function_id.local_function()).second};
           f.raw_append(
               &LookupForeignFunction(function_id.local_function()).second);
         } else {

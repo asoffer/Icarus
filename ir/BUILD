@@ -92,6 +92,7 @@ cc_library(
         "//type",
         "@asoffer_jasmin//jasmin:function",
         "@asoffer_jasmin//jasmin:instruction",
+        "@asoffer_jasmin//jasmin/instructions:bool",
         "@asoffer_jasmin//jasmin/instructions:core",
         "@asoffer_jasmin//jasmin/instructions:compare",
         "@asoffer_jasmin//jasmin:value",

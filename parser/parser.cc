@@ -166,6 +166,18 @@ void Parser::HandleStatement(ParseTree& tree) {
   switch (current_token().kind()) {
     case Token::Kind::Let: k = ParseTree::Node::Kind::Let; break;
     case Token::Kind::Var: k = ParseTree::Node::Kind::Var; break;
+    case Token::Kind::If:
+      ExpandState(State::Kind::ParenthesizedExpression,
+                  State::Kind::BeginIfStatementTrueBranch,
+                  State::Kind::BracedStatementSequence,
+                  State{
+                      .kind               = State::Kind::ResolveIfStatement,
+                      .ambient_precedence = Precedence::Loosest(),
+                      .token              = *iterator_,
+                      .subtree_start      = tree.size(),
+                  });
+      ++iterator_;
+      return;
     default:
       ExpandState(State::Kind::Expression, State::Kind::ResolveStatement);
       return;
@@ -177,6 +189,50 @@ void Parser::HandleStatement(ParseTree& tree) {
   tree.append_leaf(k, *++iterator_);
 }
 
+void Parser::HandleBeginIfStatementTrueBranch(ParseTree& tree) {
+  tree.append_leaf(ParseTree::Node::Kind::BeginIfStatementTrueBranch,
+                   *iterator_);
+  pop_and_discard_state();
+}
+
+void Parser::HandleResolveIfStatement(ParseTree& tree) {
+  auto state = pop_state();
+  tree.append(ParseTree::Node::Kind::IfStatement, state.token,
+              state.subtree_start);
+}
+
+void Parser::HandleParenthesizedExpression(ParseTree& tree) {
+  if (current_token().kind() == Token::Kind::LeftParen) {
+    ++iterator_;
+    IgnoreAnyNewlines();
+    ExpandState(
+        State{
+            .kind               = State::Kind::Expression,
+            .ambient_precedence = Precedence::Loosest(),
+            .subtree_start      = tree.size(),
+        },
+        State::Kind::ClosingParenthesis);
+  } else {
+    NTH_UNIMPLEMENTED();
+  }
+}
+
+void Parser::HandleBracedStatementSequence(ParseTree& tree) {
+  if (current_token().kind() == Token::Kind::LeftBrace) {
+    ++iterator_;
+    IgnoreAnyNewlines();
+    ExpandState(
+        State{
+            .kind               = State::Kind::StatementSequence,
+            .ambient_precedence = Precedence::Loosest(),
+            .subtree_start      = tree.size(),
+        },
+        State::Kind::ClosingBrace);
+  } else {
+    NTH_UNIMPLEMENTED();
+  }
+}
+
 void Parser::HandleResolveStatement(ParseTree& tree) {
   State state = pop_state();
   tree.append(ParseTree::Node::Kind::Statement, Token::Invalid(),
@@ -184,7 +240,8 @@ void Parser::HandleResolveStatement(ParseTree& tree) {
 }
 
 void Parser::HandleStatementSequence(ParseTree& tree) {
-  if (current_token().kind() == Token::Kind::Eof) {
+  if (current_token().kind() == Token::Kind::Eof or
+      current_token().kind() == Token::Kind::RightBrace) {
     pop_and_discard_state();
     return;
   }
@@ -197,7 +254,8 @@ void Parser::HandleStatementSequence(ParseTree& tree) {
 }
 
 void Parser::HandleSubsequentStatementSequence(ParseTree& tree) {
-  if (current_token().kind() == Token::Kind::Eof) {
+  if (current_token().kind() == Token::Kind::Eof or
+      current_token().kind() == Token::Kind::RightBrace) {
     pop_and_discard_state();
     return;
   }
@@ -331,14 +389,24 @@ void Parser::HandleExpression(ParseTree& tree) {
   }
 }
 
-void Parser::HandleExpressionClosing(ParseTree& tree) {
-  NTH_REQUIRE(current_token().kind() == Token::Kind::RightParen or
-              // current_token().kind() == Token::Kind::RightBracket or
-              current_token().kind() == Token::Kind::RightBrace);
-  State state = pop_state();
-  tree.append(
-      ParseTree::Node::Kind::ExpressionGroup, *iterator_++,
-      state.subtree_start - tree.nodes()[state.subtree_start].subtree_size - 1);
+void Parser::HandleClosingBrace(ParseTree& tree) {
+  IgnoreAnyNewlines();
+  if (current_token().kind() == Token::Kind::RightBrace) {
+    ++iterator_;
+    pop_and_discard_state();
+  } else {
+    NTH_UNIMPLEMENTED();
+  }
+}
+
+void Parser::HandleClosingParenthesis(ParseTree& tree) {
+  IgnoreAnyNewlines();
+  if (current_token().kind() == Token::Kind::RightParen) {
+    ++iterator_;
+    pop_and_discard_state();
+  } else {
+    NTH_UNIMPLEMENTED();
+  }
 }
 
 void Parser::HandleInvocationArgumentSequence(ParseTree& tree) {

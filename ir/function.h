@@ -9,6 +9,7 @@
 #include "ir/function_id.h"
 #include "jasmin/function.h"
 #include "jasmin/instruction.h"
+#include "jasmin/instructions/bool.h"
 #include "jasmin/instructions/compare.h"
 #include "jasmin/instructions/core.h"
 #include "jasmin/value.h"
@@ -119,6 +120,11 @@ struct ConstructBufferPointerType
   }
 };
 
+struct NoOp : jasmin::StackMachineInstruction<NoOp> {
+  static std::string_view name() { return "no-op"; }
+  static void execute(jasmin::ValueStack&) {}
+};
+
 struct Rotate : jasmin::StackMachineInstruction<Rotate> {
   static void execute(jasmin::ValueStack& value_stack, size_t n) {
     NTH_REQUIRE((v.harden), n >= 1);
@@ -138,7 +144,7 @@ using InstructionSet = jasmin::MakeInstructionSet<
     TypeKind, jasmin::Equal<type::Type::Kind>, Rotate, ConstructOpaqueType,
     ConstructPointerType, ConstructBufferPointerType, ConstructFunctionType,
     ConstructParametersType, jasmin::Swap, RegisterForeignFunction,
-    InvokeForeignFunction>;
+    InvokeForeignFunction, jasmin::Not, NoOp>;
 using IrFunction = jasmin::Function<InstructionSet>;
 
 std::deque<std::pair<type::FunctionType, IrFunction>>& ForeignFunctions();

@@ -259,6 +259,22 @@ void HandleParseTreeNodeFunctionTypeParameters(ParseTree::Node::Index index,
       context.Node(index).child_count);
 }
 
+void HandleParseTreeNodeBeginIfStatementTrueBranch(ParseTree::Node::Index index,
+                                                   EmitContext& context) {
+  context.current_function().append<jasmin::Not>();
+  context.queue.front().branches.push_back(
+      context.current_function().append_with_placeholders<jasmin::JumpIf>());
+}
+
+void HandleParseTreeNodeIfStatement(ParseTree::Node::Index index,
+                                    EmitContext& context) {
+  jasmin::OpCodeRange jump = context.queue.front().branches.back();
+  context.queue.front().branches.pop_back();
+  jasmin::OpCodeRange land = context.current_function().append<NoOp>();
+  context.current_function().set_value(
+      jump, 0, jasmin::OpCodeRange::Distance(land, jump));
+}
+
 template <auto F>
 constexpr Iteration Invoke(ParseTree::Node::Index index, EmitContext& context) {
   constexpr auto return_type = nth::type<

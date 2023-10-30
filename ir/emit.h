@@ -103,6 +103,7 @@ struct EmitContext {
     IrFunction* function = nullptr;
     nth::interval<ParseTree::Node::Index> range;
     std::vector<DeclarationInfo> declaration_stack;
+    std::vector<jasmin::OpCodeRange> branches;
   };
   std::queue<WorkItem> queue;
 

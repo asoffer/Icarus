@@ -97,6 +97,7 @@ struct IrContext {
     std::vector<DeclarationInfo> declaration_stack;
   };
 
+  size_t identifier_repetition_counter = 0;
   std::queue<WorkItem> queue;
   EmitContext& emit;
 };
@@ -179,8 +180,22 @@ void HandleParseTreeNodeStatementSequence(ParseTree::Node::Index index,
 bool HandleParseTreeNodeIdentifier(ParseTree::Node::Index index,
                                    IrContext& context,
                                    diag::DiagnosticConsumer& diag) {
-  auto iter =
-      context.emit.identifiers.find(context.Node(index).token.Identifier());
+  auto token = context.Node(index).token;
+  auto id = token.Identifier();
+  if (context.identifier_repetition_counter > context.queue.size()) {
+    diag.Consume({
+        diag::Header(diag::MessageKind::Error),
+        diag::Text(
+            InterpolateString<"Identifier `{}` has no matching declaration.">(
+                id)),
+        diag::SourceQuote(token),
+    });
+    context.type_stack().push_back(
+        type::QualifiedType::Unqualified(type::Error));
+    return true;
+  }
+
+  auto iter = context.emit.identifiers.find(id);
   if (iter == context.emit.identifiers.end()) {
     auto item     = context.queue.front();
     item.interval = nth::interval(index, item.interval.upper_bound());
@@ -495,14 +510,34 @@ bool HandleParseTreeNodeScopeStart(ParseTree::Node::Index index,
                                    diag::DiagnosticConsumer& diag) {
   auto item         = std::move(context.queue.front());
   auto [start, end] = item.interval;
-  NTH_REQUIRE((v.harden), start == index);
+  // TODO: You used to have this requirement specified:
+  //   `NTH_REQUIRE((v.harden), start == index);`
+  // It's unclear why this is necessary, and in particular breaks for
+  // if-statements.
+  auto last_end = end;
   for (auto i : context.emit.tree.child_indices(
            context.Node(index).next_sibling_index)) {
     item.interval = context.emit.tree.subtree_range(i);
     context.queue.push(item);
+    last_end = item.interval.upper_bound();
+  }
+  if (last_end != end) {
+    item.interval = nth::interval(last_end, end);
+    context.queue.push(item);
   }
 
   return false;
+}
+
+void HandleParseTreeNodeBeginIfStatementTrueBranch(ParseTree::Node::Index,
+                                                   IrContext&,
+                                                   diag::DiagnosticConsumer&) {}
+
+void HandleParseTreeNodeIfStatement(ParseTree::Node::Index index,
+                                               IrContext& context,
+                                               diag::DiagnosticConsumer& diag) {
+  if (context.type_stack().back().type() != type::Bool) { NTH_UNIMPLEMENTED(); }
+  context.type_stack().pop_back();
 }
 
 void HandleParseTreeNodeFunctionTypeParameters(ParseTree::Node::Index index,
@@ -553,8 +588,10 @@ void ProcessIrImpl(IrContext& context, diag::DiagnosticConsumer& diag) {
   } break;
 #include "parser/parse_tree_node_kind.xmacro.h"
       }
+      context.identifier_repetition_counter = 0;
     }
-  next_chunk:;
+  next_chunk:
+    ++context.identifier_repetition_counter;
     context.queue.pop();
   }
 }
