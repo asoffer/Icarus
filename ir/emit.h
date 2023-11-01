@@ -14,14 +14,15 @@
 #include "jasmin/value_stack.h"
 #include "nth/base/attributes.h"
 #include "nth/container/interval_map.h"
+#include "parse/node_index.h"
 #include "parse/tree.h"
 #include "type/type.h"
 
 namespace ic {
 
 struct DeclarationInfo {
-  Token::Kind kind       = Token::Kind::Invalid;
-  ParseNode::Index index = ParseNode::Index::Invalid();
+  Token::Kind kind     = Token::Kind::Invalid;
+  ParseNodeIndex index = ParseNodeIndex::Invalid();
 };
 
 struct EmitContext {
@@ -36,7 +37,7 @@ struct EmitContext {
   Module const& module(ModuleId id) const { return modules[id]; }
 
   struct ComputedConstants {
-    explicit ComputedConstants(ParseNode::Index index, jasmin::ValueStack value,
+    explicit ComputedConstants(ParseNodeIndex index, jasmin::ValueStack value,
                                std::vector<type::Type> types)
         : index_(index), value_(std::move(value)), types_(std::move(types)) {}
 
@@ -51,7 +52,7 @@ struct EmitContext {
     }
 
    private:
-    ParseNode::Index index_;
+    ParseNodeIndex index_;
     jasmin::ValueStack value_;
     std::vector<type::Type> types_;
   };
@@ -60,26 +61,25 @@ struct EmitContext {
   void Push(std::span<jasmin::Value const>, std::span<type::Type const>);
   void Push(ComputedConstants const& c);
 
-  void Evaluate(nth::interval<ParseNode::Index> subtree,
+  void Evaluate(nth::interval<ParseNodeIndex> subtree,
                 jasmin::ValueStack& value_stack, std::vector<type::Type> types);
 
-  ParseNode const& Node(ParseNode::Index index) const { return tree[index]; }
+  ParseNode const& Node(ParseNodeIndex index) const { return tree[index]; }
 
   ParseTree const& tree;
 
-  absl::flat_hash_map<ParseNode::Index, type::QualifiedType>
+  absl::flat_hash_map<ParseNodeIndex, type::QualifiedType>
       statement_qualified_type;
 
-  absl::flat_hash_map<ParseNode::Index, size_t> rotation_count;
-  absl::flat_hash_map<ParseNode::Index,
-                      std::pair<ParseNode::Index, ParseNode::Index>>
+  absl::flat_hash_map<ParseNodeIndex, size_t> rotation_count;
+  absl::flat_hash_map<ParseNodeIndex, std::pair<ParseNodeIndex, ParseNodeIndex>>
       declarator;
-  absl::flat_hash_map<Identifier, std::tuple<ParseNode::Index, ParseNode::Index,
+  absl::flat_hash_map<Identifier, std::tuple<ParseNodeIndex, ParseNodeIndex,
                                              type::QualifiedType>>
       identifiers;
 
   ScopeTree& scopes;
-  absl::flat_hash_set<ParseNode::Index> declarations_to_export;
+  absl::flat_hash_set<ParseNodeIndex> declarations_to_export;
   Module& current_module;
 
   void set_current_function(IrFunction& f) {
@@ -88,28 +88,41 @@ struct EmitContext {
   }
 
   IrFunction& current_function() {
-    NTH_REQUIRE((v.debug), not queue.empty());
+    NTH_REQUIRE((v.harden), not queue.empty());
     NTH_REQUIRE((v.debug), queue.front().function != nullptr);
     return *queue.front().function;
+  }
+
+  void pop_scope() {
+    NTH_REQUIRE((v.harden), not queue.empty());
+    queue.front().scopes.pop_back();
+  }
+
+  void push_scope(Scope::Index index) { queue.front().scopes.push_back(index); }
+
+  Scope::Index current_scope_index() {
+    NTH_REQUIRE((v.harden), not queue.front().scopes.empty());
+    return queue.front().scopes.back();
   }
 
   // Maps node indices to the constant value associated with the computation for
   // the largest subtree containing it whose constant value has been computed
   // thus far.
-  nth::interval_map<ParseNode::Index, ComputedConstants> constants;
+  nth::interval_map<ParseNodeIndex, ComputedConstants> constants;
   DependentModules const& modules;
   struct WorkItem {
     IrFunction* function = nullptr;
-    nth::interval<ParseNode::Index> range;
+    nth::interval<ParseNodeIndex> range;
     std::vector<DeclarationInfo> declaration_stack;
     std::vector<jasmin::OpCodeRange> branches;
+    std::vector<Scope::Index> scopes = {Scope::Index::Root()};
   };
   std::queue<WorkItem> queue;
 
-  void SetQualifiedType(ParseNode::Index index, type::QualifiedType qt) {
+  void SetQualifiedType(ParseNodeIndex index, type::QualifiedType qt) {
     types_[index.value()] = qt;
   }
-  type::QualifiedType QualifiedTypeOf(ParseNode::Index index) {
+  type::QualifiedType QualifiedTypeOf(ParseNodeIndex index) {
     return types_[index.value()];
   }
 

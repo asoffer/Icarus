@@ -3,12 +3,21 @@ package(default_visibility = ["//visibility:public"])
 cc_library(
     name = "node",
     hdrs = ["node.h"],
-    srcs = ["node.cc"],
     deps = [
+        ":node_index",
         ":node_xmacro",
-        "//common:strong_index_type",
+        "//ir:scope",
         "//lexer:token",
         "@asoffer_nth//nth/strings:interpolate",
+    ],
+)
+
+cc_library(
+    name = "node_index",
+    hdrs = ["node_index.h"],
+    srcs = ["node_index.cc"],
+    deps = [
+        "//common:strong_index_type",
     ],
 )
 
@@ -24,6 +33,7 @@ cc_library(
     textual_hdrs = ["state.xmacro.h"],
     deps = [
         ":precedence",
+        ":node_index",
         ":tree",
         "//common:debug",
         "//common/language:atoms",
@@ -64,6 +74,7 @@ cc_library(
     srcs = ["tree.cc"],
     deps = [
         ":node",
+        ":node_index",
         "@asoffer_nth//nth/container:interval",
         "@asoffer_nth//nth/debug",
         "@asoffer_nth//nth/utility:iterator_range",

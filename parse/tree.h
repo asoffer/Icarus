@@ -9,6 +9,7 @@
 #include "nth/container/interval.h"
 #include "nth/utility/iterator_range.h"
 #include "parse/node.h"
+#include "parse/node_index.h"
 
 namespace ic {
 
@@ -24,23 +25,22 @@ struct ParseTree {
 
  public:
   std::span<ParseNode const> nodes() const { return nodes_; }
-  nth::interval<ParseNode::Index> node_range() const {
-    return nth::interval(ParseNode::Index{0}, ParseNode::Index(nodes_.size()));
+  nth::interval<ParseNodeIndex> node_range() const {
+    return nth::interval(ParseNodeIndex{0}, ParseNodeIndex(nodes_.size()));
   }
   uint32_t size() const { return nodes_.size(); }
 
-  std::span<ParseNode const> subtree(ParseNode::Index node_index) const;
-  nth::interval<ParseNode::Index> subtree_range(
-      ParseNode::Index node_index) const;
+  std::span<ParseNode const> subtree(ParseNodeIndex node_index) const;
+  nth::interval<ParseNodeIndex> subtree_range(ParseNodeIndex node_index) const;
 
-  ParseNode &operator[](ParseNode::Index node_index);
-  ParseNode const &operator[](ParseNode::Index node_index) const;
+  ParseNode &operator[](ParseNodeIndex node_index);
+  ParseNode const &operator[](ParseNodeIndex node_index) const;
 
   ParseNode &back() { return nodes_.back(); }
   ParseNode const &back() const { return nodes_.back(); }
 
-  sibling_range children(ParseNode::Index node_index) const;
-  sibling_index_range child_indices(ParseNode::Index node_index) const;
+  sibling_range children(ParseNodeIndex node_index) const;
+  sibling_index_range child_indices(ParseNodeIndex node_index) const;
 
   void append(ParseNode::Kind kind, Token token, int subtree_start);
 
@@ -79,9 +79,7 @@ struct ParseTree::sibling_iterator_base {
 };
 
 struct ParseTree::sibling_index_iterator : ParseTree::sibling_iterator_base {
-  ParseNode::Index operator*() const {
-    return ParseNode::Index{node_ - start_};
-  }
+  ParseNodeIndex operator*() const { return ParseNodeIndex{node_ - start_}; }
 
   sibling_index_iterator &operator++() {
     increment();

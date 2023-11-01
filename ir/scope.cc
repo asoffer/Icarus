@@ -12,6 +12,12 @@ Scope::Index Scope::Index::Invalid() {
 
 Scope::Index Scope::parent() const { return parent_; }
 
+Scope::DeclarationInfo const *Scope::identifier(Identifier id) const {
+  auto iter = identifiers_.find(id);
+  if (iter == identifiers_.end()) { return nullptr; }
+  return &iter->second;
+}
+
 Scope::Index ScopeTree::insert_child(Scope::Index parent_index) {
   Scope::Index index(scopes_.size());
   scopes_.push_back(Scope(parent_index));
@@ -29,6 +35,17 @@ Scope &ScopeTree::operator[](Scope::Index index) {
 Scope const &ScopeTree::operator[](Scope::Index index) const {
   NTH_REQUIRE(index.value() < scopes_.size());
   return scopes_[index.value()];
+}
+
+Scope::DeclarationInfo const *ScopeTree::identifier(Scope::Index index,
+                                                    Identifier id) const {
+  while (index != Scope::Index::Invalid()) {
+    auto const &scope = scopes_[index.value()];
+    auto const *info  = scope.identifier(id);
+    if (info) { return info; }
+    index = scope.parent();
+  }
+  return nullptr;
 }
 
 }  // namespace ic

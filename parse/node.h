@@ -1,30 +1,15 @@
 #ifndef ICARUS_PARSE_NODE_H
 #define ICARUS_PARSE_NODE_H
 
-#include "common/strong_index_type.h"
+#include "ir/scope.h"
 #include "lexer/token.h"
 #include "nth/strings/interpolate.h"
+#include "parse/node_index.h"
 
 namespace ic {
 
 // Represents a node in the parse tree. 
 struct ParseNode {
-  // Represents the location of a `ParseNode` within the `ParseTree`. A
-  // `ParseTree` is layed out linearly in memory so that traversing nodes in
-  // order represents a post-order traversal of the tree. See "parse/tree.h" for
-  // more details.
-  struct Index : StrongIndexType<Index, uint32_t, int32_t> {
-    using StrongIndexType::StrongIndexType;
-
-    static Index Invalid();
-
-    friend void NthPrint(auto &p, auto &f, Index const &i) {
-      p.write("Index{");
-      f(p, i.value());
-      p.write("}");
-    }
-  };
-
   // Represents a category describing this parse tree node. Examples include
   // `IfStatement`, `Declaration` and `Import`. Note that not all categories
   // represent traditional parse-tree nodes. Because traversal is not done
@@ -49,8 +34,9 @@ struct ParseNode {
 
   union {
     uint32_t subtree_size;
-    Index next_sibling_index;
-    Index declaration;
+    ParseNodeIndex next_sibling_index;
+    ParseNodeIndex declaration;
+    Scope::Index scope_index;
   };
   Token token = Token::Invalid();
 };

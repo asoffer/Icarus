@@ -6,7 +6,8 @@
 #include "absl/container/flat_hash_map.h"
 #include "common/identifier.h"
 #include "common/strong_identifier_type.h"
-#include "parse/node.h"
+#include "nth/debug/debug.h"
+#include "parse/node_index.h"
 #include "type/type.h"
 
 namespace ic {
@@ -24,10 +25,17 @@ struct Scope {
   Index parent() const;
 
   struct DeclarationInfo {
-    ParseNode::Index declaration;
-    ParseNode::Index identifier;
+    ParseNodeIndex declaration;
+    ParseNodeIndex identifier;
     type::QualifiedType qualified_type;
   };
+
+  DeclarationInfo const *identifier(Identifier id) const;
+
+  void insert_identifier(Identifier id, DeclarationInfo const &info) {
+    [[maybe_unused]] auto [iter, inserted] = identifiers_.emplace(id, info);
+    NTH_REQUIRE((v.harden), inserted);
+  }
 
  private:
   friend struct ScopeTree;
@@ -47,6 +55,9 @@ struct ScopeTree {
 
   Scope &operator[](Scope::Index index);
   Scope const &operator[](Scope::Index index) const;
+
+  Scope::DeclarationInfo const *identifier(Scope::Index index,
+                                           Identifier id) const;
 
   ScopeTree() : scopes_(1, Scope(Scope::Index::Invalid())) {}
 

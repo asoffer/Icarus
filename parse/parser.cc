@@ -9,6 +9,7 @@
 #include "nth/debug/debug.h"
 #include "parse/precedence.h"
 #include "parse/tree.h"
+#include "parse/node_index.h"
 
 namespace ic {
 namespace {
@@ -205,7 +206,7 @@ void Parser::HandleStatement(ParseTree& tree) {
 
 void Parser::HandleBeginIfStatementTrueBranch(ParseTree& tree) {
   tree.append_leaf(ParseNode::Kind::BeginIfStatementTrueBranch, *iterator_);
-  PushScope();
+  tree.back().scope_index = PushScope();
   pop_and_discard_state();
 }
 
@@ -280,9 +281,9 @@ void Parser::HandleSubsequentStatementSequence(ParseTree& tree) {
 
 void Parser::HandleResolveStatementSequence(ParseTree& tree) {
   State state = pop_state();
-  auto& start = tree[ParseNode::Index(state.subtree_start - 1)];
+  auto& start = tree[ParseNodeIndex(state.subtree_start - 1)];
   NTH_REQUIRE(start.kind == ParseNode::Kind::ScopeStart);
-  start.next_sibling_index = ParseNode::Index(tree.size());
+  start.next_sibling_index = ParseNodeIndex(tree.size());
   tree.append(ParseNode::Kind::StatementSequence, Token::Invalid(),
               state.subtree_start);
 }
@@ -326,7 +327,7 @@ void Parser::HandleDeclaration(ParseTree& tree) {
 void Parser::HandleResolveInferredTypeDeclaration(ParseTree& tree) {
   State state = pop_state();
   tree.append(ParseNode::Kind::Declaration, state.token, state.subtree_start);
-  ParseNode::Index index(tree.size() - 1);
+  ParseNodeIndex index(tree.size() - 1);
   auto iter = tree.child_indices(index).begin();
   ++iter;
   tree[*iter].declaration = index;
