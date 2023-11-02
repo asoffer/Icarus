@@ -173,7 +173,13 @@ void Parser::HandleNewlines(ParseTree& tree) {
 }
 
 void Parser::HandleModule(ParseTree& tree) {
-  ExpandState(State::Kind::StatementSequence);
+  tree.append_leaf(ParseNode::Kind::FunctionStart, Token::Invalid());
+  ExpandState(State{
+      .kind               = State::Kind::StatementSequence,
+      .ambient_precedence = Precedence::Loosest(),
+      .token              = *iterator_,
+      .subtree_start      = tree.size(),
+  });
 }
 
 void Parser::HandleStatement(ParseTree& tree) {

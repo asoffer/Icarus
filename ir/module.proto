@@ -31,8 +31,9 @@ message InstructionProto {
     NOT = 20;
     NOOP = 21;
     STORE = 22;
-    STACK_ALLOCATE = 23;
-    STACK_OFFSET = 24;
+    LOAD = 23;
+    STACK_ALLOCATE = 24;
+    STACK_OFFSET = 25;
   }
   OpCode op_code = 1;
   repeated uint64 content = 2;

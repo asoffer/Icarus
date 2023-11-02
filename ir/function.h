@@ -154,8 +154,8 @@ using InstructionSet = jasmin::MakeInstructionSet<
     TypeKind, jasmin::Equal<type::Type::Kind>, Rotate, ConstructOpaqueType,
     ConstructPointerType, ConstructBufferPointerType, ConstructFunctionType,
     ConstructParametersType, jasmin::Swap, RegisterForeignFunction,
-    InvokeForeignFunction, jasmin::Not, NoOp, Store, jasmin::StackAllocate,
-    jasmin::StackOffset>;
+    InvokeForeignFunction, jasmin::Not, NoOp, Store, jasmin::Load,
+    jasmin::StackAllocate, jasmin::StackOffset>;
 using IrFunction = jasmin::Function<InstructionSet>;
 
 std::deque<std::pair<type::FunctionType, IrFunction>>& ForeignFunctions();

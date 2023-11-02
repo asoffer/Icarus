@@ -556,6 +556,9 @@ bool HandleParseTreeNodeScopeStart(ParseNodeIndex index, IrContext& context,
   return false;
 }
 
+void HandleParseTreeNodeFunctionStart(ParseNodeIndex index, IrContext& context,
+                                      diag::DiagnosticConsumer& diag) {}
+
 void HandleParseTreeNodeBeginIfStatementTrueBranch(ParseNodeIndex index,
                                                    IrContext& context,
                                                    diag::DiagnosticConsumer&) {

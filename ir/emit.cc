@@ -63,8 +63,10 @@ void HandleParseTreeNodeBuiltinLiteral(ParseNodeIndex index,
   context.current_function().append<jasmin::Push>(ModuleId::Builtin());
 }
 
-void HandleParseTreeNodeScopeStart(ParseNodeIndex index, EmitContext& context) {
-  // TODO: This is the wrong place to do stack allocations.
+void HandleParseTreeNodeScopeStart(ParseNodeIndex, EmitContext&) {}
+
+void HandleParseTreeNodeFunctionStart(ParseNodeIndex index,
+                                      EmitContext& context) {
   context.current_function().append<jasmin::StackAllocate>(
       context.current_storage().size().value());
 }
@@ -134,8 +136,17 @@ Iteration HandleParseTreeNodeIdentifier(ParseNodeIndex index,
   auto [decl_id_index, decl_index] = context.declarator.at(index);
   // TODO: The declarator that this identifier is mapped to may be a constant we
   // can look up, but it may not be the right one!
+  //
+  // TODO: We should know a priori if it's a constant or not.
   if (auto const* constant = context.constants.mapped_range(decl_index)) {
     context.Push(constant->second);
+    return Iteration::Continue;
+  } else if (auto offset = context.current_storage().try_offset(decl_index)) {
+    context.current_function().append<jasmin::StackOffset>(offset->value());
+    auto qt_iter = context.statement_qualified_type.find(decl_index);
+    NTH_REQUIRE((v.debug), qt_iter != context.statement_qualified_type.end());
+    context.current_function().append<jasmin::Load>(
+        type::Contour(qt_iter->second.type()).byte_width().value());
     return Iteration::Continue;
   } else {
     context.queue.emplace(context.queue.front()).range =

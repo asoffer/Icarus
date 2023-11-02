@@ -18,6 +18,12 @@ struct LocalStorage {
     width_ += contour.byte_width();
   }
 
+  std::optional<type::ByteWidth> try_offset(ParseNodeIndex node) const {
+    auto iter = locations_.find(node);
+    if (iter == locations_.end()) { return std::nullopt; }
+    return iter->second;
+  }
+
   type::ByteWidth offset(ParseNodeIndex node) const {
     auto iter = locations_.find(node);
     NTH_REQUIRE((v.debug), iter != locations_.end());
