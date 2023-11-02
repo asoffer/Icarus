@@ -116,10 +116,18 @@ void HandleParseTreeNodeDeclaration(ParseNodeIndex index,
 }
 
 void HandleParseTreeNodeStatement(ParseNodeIndex index, EmitContext& context) {
-  auto iter = context.statement_qualified_type.find(index);
-  NTH_REQUIRE(iter != context.statement_qualified_type.end());
-  context.current_function().append<jasmin::Drop>(
-      type::JasminSize(iter->second.type()));
+  switch (context.Node(context.tree.subtree_range(index).lower_bound())
+              .statement_kind) {
+    case ParseNode::StatementKind::Expression: {
+      auto iter = context.statement_qualified_type.find(index);
+      NTH_REQUIRE(iter != context.statement_qualified_type.end());
+      context.current_function().append<jasmin::Drop>(
+          type::JasminSize(iter->second.type()));
+    } break;
+    default: break;
+  }
+
+  context.queue.front().value_category_stack.pop_back();
 }
 
 void HandleParseTreeNodeStatementSequence(ParseNodeIndex index,
@@ -139,8 +147,13 @@ Iteration HandleParseTreeNodeIdentifier(ParseNodeIndex index,
     context.current_function().append<jasmin::StackOffset>(offset->value());
     auto qt_iter = context.statement_qualified_type.find(decl_index);
     NTH_REQUIRE((v.debug), qt_iter != context.statement_qualified_type.end());
-    context.current_function().append<jasmin::Load>(
-        type::Contour(qt_iter->second.type()).byte_width().value());
+    switch (context.queue.front().value_category_stack.back()) {
+      case EmitContext::ValueCategory::Value:
+        context.current_function().append<jasmin::Load>(
+            type::Contour(qt_iter->second.type()).byte_width().value());
+        break;
+      case EmitContext::ValueCategory::Reference: break;
+    }
     return Iteration::Continue;
   } else {
     context.queue.emplace(context.queue.front()).range =
@@ -290,6 +303,31 @@ void HandleParseTreeNodeIfStatement(ParseNodeIndex index,
   context.current_function().set_value(
       jump, 0, jasmin::OpCodeRange::Distance(land, jump));
   context.pop_scope();
+}
+
+void HandleParseTreeNodeStatementStart(ParseNodeIndex index,
+                                       EmitContext& context) {
+  switch (context.Node(index).statement_kind) {
+    case ParseNode::StatementKind::Assignment:
+      context.queue.front().value_category_stack.push_back(
+          EmitContext::ValueCategory::Reference);
+      break;
+    default:
+      context.queue.front().value_category_stack.push_back(
+          EmitContext::ValueCategory::Value);
+      break;
+  }
+}
+
+void HandleParseTreeNodeAssignedValueStart(ParseNodeIndex index,
+                                           EmitContext& context) {
+  context.queue.front().value_category_stack.back() =
+      EmitContext::ValueCategory::Value;
+}
+
+void HandleParseTreeNodeAssignment(ParseNodeIndex index, EmitContext& context) {
+  context.current_function().append<Rotate>(2);
+  context.current_function().append<Store>(1);
 }
 
 template <auto F>

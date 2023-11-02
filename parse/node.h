@@ -32,11 +32,18 @@ struct ParseNode {
   // Note: This field may not be populated on all node kinds.
   int16_t child_count = -1;
 
+  enum class StatementKind : uint8_t {
+    Unknown,
+    Declaration,
+    Expression,
+    Assignment
+  };
   union {
     uint32_t subtree_size;
     ParseNodeIndex next_sibling_index;
     ParseNodeIndex declaration;
     Scope::Index scope_index;
+    StatementKind statement_kind;
   };
   Token token = Token::Invalid();
 };

@@ -114,6 +114,10 @@ struct EmitContext {
   // thus far.
   nth::interval_map<ParseNodeIndex, ComputedConstants> constants;
   DependentModules const& modules;
+  enum class ValueCategory : uint8_t {
+    Value,
+    Reference,
+  };
   struct WorkItem {
     IrFunction* function = nullptr;
     nth::interval<ParseNodeIndex> range;
@@ -121,6 +125,7 @@ struct EmitContext {
     std::vector<jasmin::OpCodeRange> branches;
     std::vector<Scope::Index> scopes = {Scope::Index::Root()};
     std::vector<Scope::Index> function_stack;
+    std::vector<ValueCategory> value_category_stack;
   };
   std::queue<WorkItem> queue;
 

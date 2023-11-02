@@ -184,10 +184,19 @@ void Parser::HandleModule(ParseTree& tree) {
 
 void Parser::HandleStatement(ParseTree& tree) {
   ParseNode::Kind k;
+  tree.append_leaf(ParseNode::Kind::StatementStart, Token::Invalid());
+  state().back().subtree_start = tree.size() - 1;
   switch (current_token().kind()) {
-    case Token::Kind::Let: k = ParseNode::Kind::Let; break;
-    case Token::Kind::Var: k = ParseNode::Kind::Var; break;
+    case Token::Kind::Let:
+      k                          = ParseNode::Kind::Let;
+      tree.back().statement_kind = ParseNode::StatementKind::Declaration;
+      break;
+    case Token::Kind::Var:
+      k                          = ParseNode::Kind::Var;
+      tree.back().statement_kind = ParseNode::StatementKind::Declaration;
+      break;
     case Token::Kind::If:
+      tree.back().statement_kind = ParseNode::StatementKind::Expression;
       ExpandState(State::Kind::ParenthesizedExpression,
                   State::Kind::BeginIfStatementTrueBranch,
                   State::Kind::BracedStatementSequence,
@@ -200,13 +209,16 @@ void Parser::HandleStatement(ParseTree& tree) {
       ++iterator_;
       return;
     default:
+      tree.back().statement_kind = ParseNode::StatementKind::Expression;
       ExpandState(State::Kind::Expression, State::Kind::ResolveStatement);
       return;
   }
 
   ExpandState(
       State{.kind = State::Kind::DeclaredSymbol, .subtree_start = tree.size()},
-      State{.kind = State::Kind::Declaration, .subtree_start = tree.size()});
+      State{.kind = State::Kind::Declaration, .subtree_start = tree.size()},
+      State{.kind          = State::Kind::ResolveStatement,
+            .subtree_start = tree.size()});
   tree.append_leaf(k, *++iterator_);
 }
 
@@ -512,6 +524,14 @@ void Parser::HandleResolveImport(ParseTree& tree) {
   ++iterator_;
 }
 
+void Parser::HandleResolveAssignment(ParseTree& tree) {
+  // TODO: It'd be nice if this was just a category on statements.
+  auto s = pop_state();
+  tree[ParseNodeIndex(s.subtree_start)].statement_kind =
+      ParseNode::StatementKind::Assignment;
+  tree.append(ParseNode::Kind::Assignment, s.token, s.subtree_start);
+}
+
 void Parser::HandleResolveInvocationArgumentSequence(ParseTree& tree) {
   NTH_REQUIRE(current_token().kind() == Token::Kind::RightParen);
   tree.append(ParseNode::Kind::CallExpression, current_token(),
@@ -526,6 +546,12 @@ void Parser::HandleExpressionSuffix(ParseTree& tree) {
   switch (current_token().kind()) {
     case Token::Kind::Newline:
     case Token::Kind::Eof: pop_and_discard_state(); return;
+    case Token::Kind::Equal: 
+      ++iterator_;
+      tree.append(ParseNode::Kind::AssignedValueStart, current_token(),
+                  state().back().subtree_start);
+      ExpandState(State::Kind::Expression, State::Kind::ResolveAssignment);
+      return;
 
 #define IC_XMACRO_TOKEN_KIND_BINARY_ONLY_OPERATOR(kind, symbol,                \
                                                   precedence_group)            \

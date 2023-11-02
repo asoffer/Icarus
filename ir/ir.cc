@@ -198,9 +198,14 @@ void HandleParseTreeNodeDeclaration(ParseNodeIndex index, IrContext& context,
 
 void HandleParseTreeNodeStatement(ParseNodeIndex index, IrContext& context,
                                   diag::DiagnosticConsumer& diag) {
-  context.emit.statement_qualified_type.emplace(index,
-                                                context.type_stack().back());
-  context.type_stack().pop_back();
+  switch (context.Node(context.emit.tree.subtree_range(index).lower_bound())
+              .statement_kind) {
+    case ParseNode::StatementKind::Expression:
+      context.emit.statement_qualified_type.emplace(
+          index, context.type_stack().back());
+      context.type_stack().pop_back();
+    default: break;
+  }
 }
 
 void HandleParseTreeNodeStatementSequence(ParseNodeIndex index,
@@ -570,6 +575,29 @@ void HandleParseTreeNodeIfStatement(ParseNodeIndex index, IrContext& context,
   if (context.type_stack().back().type() != type::Bool) { NTH_UNIMPLEMENTED(); }
   context.type_stack().pop_back();
   context.pop_scope();
+}
+
+void HandleParseTreeNodeStatementStart(ParseNodeIndex index, IrContext& context,
+                                       diag::DiagnosticConsumer& diag) {}
+
+void HandleParseTreeNodeAssignedValueStart(ParseNodeIndex index,
+                                           IrContext& context,
+                                           diag::DiagnosticConsumer& diag) {}
+
+void HandleParseTreeNodeAssignment(ParseNodeIndex index, IrContext& context,
+                                   diag::DiagnosticConsumer& diag) {
+  auto rhs_qt = context.type_stack().back();
+  context.type_stack().pop_back();
+  auto lhs_qt = context.type_stack().back();
+
+  if (lhs_qt.constant()) {
+    NTH_UNIMPLEMENTED("TODO: Log error about assignign to a constant {}") <<=
+        {lhs_qt};
+  }
+  // TODO: Check for assignability?
+  if (lhs_qt.type() != rhs_qt.type()) {
+    NTH_UNIMPLEMENTED("TODO: Type-check properly with casts.");
+  }
 }
 
 void HandleParseTreeNodeFunctionTypeParameters(ParseNodeIndex index,

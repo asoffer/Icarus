@@ -30,6 +30,8 @@ IC_XMACRO_PARSER_STATE(AtomicTerm)
 IC_XMACRO_PARSER_STATE(CommaSeparatedExpressionSequence)
 IC_XMACRO_PARSER_STATE(ResolveFunctionTypeParameters)
 
+IC_XMACRO_PARSER_STATE(ResolveAssignment)
+
 IC_XMACRO_PARSER_STATE(BeginIfStatementTrueBranch)
 IC_XMACRO_PARSER_STATE(ResolveIfStatement)
 
