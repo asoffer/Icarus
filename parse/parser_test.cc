@@ -9,7 +9,7 @@
 namespace ic {
 
 using ::ic::testing::HasBooleanValue;
-using ::ic::testing::HasImmediateIntegerValue;
+using ::ic::testing::HasIntegerValue;
 using ::ic::testing::HasKind;
 using ::ic::testing::IsIdentifier;
 using ::nth::debug::ElementsAreSequentially;
@@ -121,7 +121,7 @@ NTH_TEST("parser/declaration/integer") {
   NTH_EXPECT(tree.nodes() >>= ElementsAreSequentially(
                  FunctionStart(), ScopeStart(), Let(),
                  DeclaredIdentifier() and IdentifierToken("x"),
-                 ColonColonEqual(), HasToken(HasImmediateIntegerValue(3)),
+                 ColonColonEqual(), HasToken(HasIntegerValue(3)),
                  HasSubtreeSize(5), HasSubtreeSize(6)));
 }
 
@@ -155,14 +155,13 @@ NTH_TEST("parser/multiple-declarations-with-newlines") {
   )",
                                 d);
   auto tree          = Parse(buffer, d).parse_tree;
-  NTH_EXPECT(tree.nodes() >>= ElementsAreSequentially(
-                 FunctionStart(), ScopeStart(), Let(),
-                 DeclaredIdentifier() and IdentifierToken("x"),
-                 ColonColonEqual(), HasToken(HasImmediateIntegerValue(3)),
-                 HasSubtreeSize(5), Var(),
-                 DeclaredIdentifier() and IdentifierToken("y"),
-                 ColonColonEqual(), HasToken(HasImmediateIntegerValue(4)),
-                 HasSubtreeSize(5), HasSubtreeSize(11)));
+  NTH_EXPECT(
+      tree.nodes() >>= ElementsAreSequentially(
+          FunctionStart(), ScopeStart(), Let(),
+          DeclaredIdentifier() and IdentifierToken("x"), ColonColonEqual(),
+          HasToken(HasIntegerValue(3)), HasSubtreeSize(5), Var(),
+          DeclaredIdentifier() and IdentifierToken("y"), ColonColonEqual(),
+          HasToken(HasIntegerValue(4)), HasSubtreeSize(5), HasSubtreeSize(11)));
 }
 
 NTH_TEST("parser/operator-precedence/plus-times") {

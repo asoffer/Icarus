@@ -36,9 +36,6 @@ struct Resources {
   // Values of string literals used in the program.
   nth::flyweight_set<std::string> strings;
 
-  // Values of integer constants used in the program.
-  nth::flyweight_set<uint64_t> integers;
-
   nth::flyweight_set<std::pair<size_t, type::FunctionType>> foreign_functions;
 
   ModuleMap module_map;

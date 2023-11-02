@@ -22,12 +22,11 @@ inline constexpr auto HasKind = nth::debug::MakeProperty<"has-kind">(
 
 // Matches a token representing an integer holding `number` as its immediate
 // value.
-inline constexpr auto HasImmediateIntegerValue =
-    nth::debug::MakeProperty<"has-immediate-integer-value">(
-        [](auto const &value, uint32_t number) {
+inline constexpr auto HasIntegerValue =
+    nth::debug::MakeProperty<"has-integer-value">(
+        [](auto const &value, Integer number) {
           return value.kind() == Token::Kind::IntegerLiteral and
-                 value.AsIntegerPayload() ==
-                     Token::IntegerPayload::Immediate(number);
+                 value.AsInteger() == number;
         });
 
 // Matches a token representing a boolean value holding `b`.

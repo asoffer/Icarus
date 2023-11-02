@@ -5,6 +5,7 @@
 #include <cstdint>
 
 #include "common/identifier.h"
+#include "common/integer.h"
 #include "nth/io/printer.h"
 #include "nth/strings/format/universal.h"
 #include "nth/strings/interpolate.h"
@@ -28,37 +29,6 @@ struct Token {
 #include "lexer/token_kind.xmacro.h"
   };
 
-  struct IntegerPayload {
-    explicit constexpr IntegerPayload() = default;
-
-    static constexpr uint32_t PayloadLimit = uint32_t{1}
-                                             << (Token::PayloadBits - 1);
-
-    friend bool operator==(IntegerPayload, IntegerPayload) = default;
-    friend bool operator!=(IntegerPayload, IntegerPayload) = default;
-
-    static IntegerPayload Index(uint32_t index);
-    static IntegerPayload Immediate(uint32_t value);
-
-    constexpr uint32_t value() const { return value_; };
-
-   private:
-    friend Token;
-    explicit constexpr IntegerPayload(uint32_t value) : value_(value) {}
-
-    friend void NthPrint(nth::Printer auto& p,
-                         nth::FormatterFor<IntegerPayload> auto& f,
-                         IntegerPayload payload) {
-      if (payload.value_ > PayloadLimit) {
-        nth::Interpolate<"#{}">(p, f, payload.value_ - PayloadLimit);
-      } else {
-        nth::Interpolate<"!{}">(p, f, payload.value_);
-      }
-    }
-
-    uint32_t value_;
-  };
-
   constexpr Kind kind() const { return static_cast<Kind>(kind_); }
 
   constexpr uint32_t offset() const { return offset_; }
@@ -67,7 +37,7 @@ struct Token {
   constexpr uint32_t payload() const { return payload_; }
 
   // Constructs an integer token at the given offset.
-  static Token IntegerLiteral(uint32_t offset, IntegerPayload payload);
+  static Token IntegerLiteral(uint32_t offset, Integer n);
 
   // Constructs a string-literal token at the given offset.
   static Token StringLiteral(uint32_t offset, uint32_t index);
@@ -95,7 +65,7 @@ struct Token {
   static Token Keyword##kind(uint32_t offset);
 #include "lexer/token_kind.xmacro.h"
 
-  IntegerPayload AsIntegerPayload() const;
+  Integer AsInteger() const;
   bool AsBoolean() const;
   uint32_t AsStringLiteralIndex() const;
 
@@ -105,7 +75,7 @@ struct Token {
 
     switch (t.kind()) {
       case Token::Kind::IntegerLiteral:
-        nth::Interpolate<" {}">(p, f, IntegerPayload(t.payload_));
+        nth::Interpolate<" {}">(p, f, Integer::FromRepresentation(t.payload_));
         break;
       case Token::Kind::StringLiteral:
       case Token::Kind::Identifier:

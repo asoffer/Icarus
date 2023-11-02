@@ -67,6 +67,7 @@ cc_library(
     deps = [
         ":token_kind_xmacro",
         "//common:identifier",
+        "//common:integer",
         "@asoffer_nth//nth/debug",
         "@asoffer_nth//nth/io:printer",
         "@asoffer_nth//nth/strings:interpolate",

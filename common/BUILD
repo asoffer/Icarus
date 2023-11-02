@@ -29,6 +29,24 @@ cc_library(
 )
 
 cc_library(
+    name = "integer",
+    hdrs = ["integer.h"],
+    deps = [
+        ":strong_identifier_type",
+        "@asoffer_nth//nth/container:flyweight_set",
+    ],
+)
+
+cc_test(
+    name = "integer_test",
+    srcs = ["integer_test.cc"],
+    deps = [
+        ":integer",
+        "@asoffer_nth//nth/test:main",
+    ]
+)
+
+cc_library(
     name = "module_id",
     hdrs = ["module_id.h"],
     deps = [

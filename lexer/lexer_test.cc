@@ -7,7 +7,7 @@
 namespace ic::lex {
 namespace {
 
-using ::ic::testing::HasImmediateIntegerValue;
+using ::ic::testing::HasIntegerValue;
 using ::ic::testing::HasKind;
 using ::nth::debug::ElementsAreSequentially;
 
@@ -57,9 +57,8 @@ NTH_INVOKE_TEST("lex/identifier") {
 NTH_TEST("lex/integer", std::string_view n, uint32_t expected) {
   diag::NullConsumer d;
   auto token_buffer = Lex(n, d);
-  NTH_EXPECT(token_buffer >>=
-             ElementsAreSequentially(HasImmediateIntegerValue(expected),
-                                     HasKind(Token::Kind::Eof)));
+  NTH_EXPECT(token_buffer >>= ElementsAreSequentially(
+                 HasIntegerValue(expected), HasKind(Token::Kind::Eof)));
 }
 
 NTH_INVOKE_TEST("lex/integer") {
@@ -74,8 +73,8 @@ NTH_TEST("lex/basic") {
   auto token_buffer = Lex("let x ::= 3", d);
   NTH_EXPECT(token_buffer >>= ElementsAreSequentially(
                  HasKind(Token::Kind::Let), HasKind(Token::Kind::Identifier),
-                 HasKind(Token::Kind::ColonColonEqual),
-                 HasImmediateIntegerValue(3), HasKind(Token::Kind::Eof)));
+                 HasKind(Token::Kind::ColonColonEqual), HasIntegerValue(3),
+                 HasKind(Token::Kind::Eof)));
 }
 
 NTH_TEST("lex/comment/eof") {

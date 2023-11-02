@@ -30,12 +30,8 @@ NTH_TEST("token/value") {
              Token::Kind::Identifier);
   NTH_EXPECT(Token::Identifier(5, Identifier(3)).offset() == 5);
 
-  NTH_EXPECT(
-      Token::IntegerLiteral(5, Token::IntegerPayload::Immediate(3)).kind() ==
-      Token::Kind::IntegerLiteral);
-  NTH_EXPECT(
-      Token::IntegerLiteral(5, Token::IntegerPayload::Immediate(3)).offset() ==
-      5);
+  NTH_EXPECT(Token::IntegerLiteral(5, 3).kind() == Token::Kind::IntegerLiteral);
+  NTH_EXPECT(Token::IntegerLiteral(5, 3).offset() == 5);
 
   NTH_EXPECT(Token::Symbol(Token::Kind::Colon, 4).kind() == Token::Kind::Colon);
   NTH_EXPECT(Token::Symbol(Token::Kind::Colon, 4).offset() == 4);
@@ -44,12 +40,10 @@ NTH_TEST("token/value") {
 NTH_TEST("token/print") {
   NTH_EXPECT(AsString(Token::Identifier(5, Identifier(3))) ==
              "[tk.Identifier @5 #3]");
-  NTH_EXPECT(
-      AsString(Token::IntegerLiteral(5, Token::IntegerPayload::Index(3))) ==
-      "[tk.IntegerLiteral @5 #3]");
-  NTH_EXPECT(
-      AsString(Token::IntegerLiteral(5, Token::IntegerPayload::Immediate(3))) ==
-      "[tk.IntegerLiteral @5 !3]");
+  NTH_EXPECT(AsString(Token::IntegerLiteral(5, 9'000'000'000)) ==
+             "[tk.IntegerLiteral @5 9000000000]");
+  NTH_EXPECT(AsString(Token::IntegerLiteral(5, 3)) ==
+             "[tk.IntegerLiteral @5 3]");
   NTH_EXPECT(AsString(Token::Symbol(Token::Kind::Colon, 3)) == "[tk.(:) @3]");
 }
 

@@ -14,15 +14,7 @@ void TokenBuffer::AppendIntegerLiteral(std::string_view integer,
     value = value * 10 + (c - '0');
   }
 
-  Token::IntegerPayload payload;
-  if (value >= Token::IntegerPayload::PayloadLimit) {
-    uint32_t index = static_cast<uint32_t>(
-        resources.integers.index(resources.integers.insert(value).first));
-    payload = Token::IntegerPayload::Index(index);
-  } else {
-    payload = Token::IntegerPayload::Immediate(value);
-  }
-  tokens_.push_back(Token::IntegerLiteral(offset, payload));
+  tokens_.push_back(Token::IntegerLiteral(offset, value));
 }
 
 void TokenBuffer::AppendStringLiteral(std::string s, uint32_t offset) {

@@ -28,14 +28,8 @@ void HandleParseTreeNodeBooleanLiteral(ParseNodeIndex index,
 
 void HandleParseTreeNodeIntegerLiteral(ParseNodeIndex index,
                                        EmitContext& context) {
-  uint32_t payload_value = context.Node(index).token.AsIntegerPayload().value();
-  uint64_t value;
-  if (payload_value >= Token::IntegerPayload::PayloadLimit) {
-    value = resources.integers.from_index(payload_value);
-  } else {
-    value = payload_value;
-  }
-  context.current_function().append<jasmin::Push>(value);
+  context.current_function().append<jasmin::Push>(
+      context.Node(index).token.AsInteger());
 }
 
 void HandleParseTreeNodeStringLiteral(ParseNodeIndex index,
