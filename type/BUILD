@@ -1,6 +1,38 @@
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
+    name = "alignment",
+    hdrs = ["alignment.h"],
+)
+
+cc_test(
+    name = "alignment_test",
+    srcs = ["alignment_test.cc"],
+    deps = [
+        ":alignment",
+        "@asoffer_nth//nth/test:main",
+    ]
+)
+
+cc_library(
+    name = "byte_width",
+    hdrs = ["byte_width.h"],
+    srcs = ["byte_width.cc"],
+    deps = [
+        ":alignment"
+    ],
+)
+
+cc_test(
+    name = "byte_width_test",
+    srcs = ["byte_width_test.cc"],
+    deps = [
+        ":byte_width",
+        "@asoffer_nth//nth/test:main",
+    ]
+)
+
+cc_library(
     name = "deserialize",
     hdrs = ["deserialize.h"],
     srcs = ["deserialize.cc"],
@@ -25,6 +57,9 @@ cc_library(
     hdrs = ["type.h"],
     srcs = ["type.cc"],
     deps = [
+        ":alignment",
+        ":byte_width",
+        ":type_contour",
         ":type_system_cc_proto",
         "//common/language:primitive_types",
         "//common/language:type_kind",
@@ -32,6 +67,15 @@ cc_library(
         "@asoffer_nth//nth/container:flyweight_set",
         "@asoffer_nth//nth/debug",
         "@asoffer_nth//nth/utility:no_destructor",
+    ],
+)
+
+cc_library(
+    name = "type_contour",
+    hdrs = ["type_contour.h"],
+    deps = [
+        ":alignment",
+        ":byte_width",
     ],
 )
 

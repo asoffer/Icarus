@@ -10,6 +10,7 @@
 
 #include "jasmin/value.h"
 #include "nth/container/flyweight_set.h"
+#include "type/type_contour.h"
 #include "type/type_system.pb.h"
 
 namespace ic::type {
@@ -429,6 +430,8 @@ struct TypeSystem {
   nth::flyweight_set<Type> pattern_types;
   nth::flyweight_set<std::pair<void const*, Evaluation>> generic_function_types;
 };
+
+TypeContour Contour(Type t);
 
 TypeSystem const& GlobalTypeSystem();
 

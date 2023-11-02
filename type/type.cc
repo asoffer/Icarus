@@ -142,4 +142,40 @@ size_t JasminSize(Type t) {
   }
 }
 
+TypeContour Contour(Type t) {
+  switch (t.kind()) {
+    case Type::Kind::Primitive:
+      switch (t.AsPrimitive().kind()) {
+        case PrimitiveType::Kind::Module:
+        case PrimitiveType::Kind::Type:
+        case PrimitiveType::Kind::Integer:
+        case PrimitiveType::Kind::Error: NTH_UNREACHABLE();
+        case PrimitiveType::Kind::Bool:
+        case PrimitiveType::Kind::Char:
+        case PrimitiveType::Kind::Byte:
+        case PrimitiveType::Kind::I8:
+        case PrimitiveType::Kind::U8:
+          return TypeContour(ByteWidth(1), Alignment(1));
+        case PrimitiveType::Kind::I16:
+        case PrimitiveType::Kind::U16:
+          return TypeContour(ByteWidth(2), Alignment(2));
+        case PrimitiveType::Kind::I32:
+        case PrimitiveType::Kind::U32:
+        case PrimitiveType::Kind::F32:
+          return TypeContour(ByteWidth(4), Alignment(4));
+        case PrimitiveType::Kind::I64:
+        case PrimitiveType::Kind::U64:
+        case PrimitiveType::Kind::F64:
+          return TypeContour(ByteWidth(8), Alignment(8));
+      }
+    case Type::Kind::Slice: return TypeContour(ByteWidth(16), Alignment(8));
+    case Type::Kind::Function:
+    case Type::Kind::Pointer: 
+    case Type::Kind::BufferPointer:
+      return TypeContour(ByteWidth(8), Alignment(8));
+    case Type::Kind::Opaque: NTH_UNREACHABLE("{}") <<= {t};
+    default: NTH_UNIMPLEMENTED("{}") <<= {t};
+  }
+}
+
 }  // namespace ic::type
