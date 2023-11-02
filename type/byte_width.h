@@ -19,6 +19,15 @@ struct ByteWidth {
     p.write(" bytes");
   }
 
+  ByteWidth& operator+=(ByteWidth w) {
+    width_ += w.value();
+    return *this;
+  }
+
+  friend ByteWidth operator+(ByteWidth lhs, ByteWidth rhs) {
+    return lhs += rhs;
+  }
+
   ByteWidth aligned_forward_to(Alignment a) const;
   ByteWidth aligned_backward_to(Alignment a) const;
   void align_forward_to(Alignment a);

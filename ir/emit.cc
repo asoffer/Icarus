@@ -64,6 +64,9 @@ void HandleParseTreeNodeBuiltinLiteral(ParseNodeIndex index,
 }
 
 void HandleParseTreeNodeScopeStart(ParseNodeIndex index, EmitContext& context) {
+  // TODO: This is the wrong place to do stack allocations.
+  context.current_function().append<jasmin::StackAllocate>(
+      context.current_storage().size().value());
 }
 
 void HandleParseTreeNodeDeclaration(ParseNodeIndex index,
@@ -71,6 +74,15 @@ void HandleParseTreeNodeDeclaration(ParseNodeIndex index,
   NTH_REQUIRE(not context.queue.front().declaration_stack.empty());
   auto const& decl_info = context.queue.front().declaration_stack.back();
   switch (decl_info.kind) {
+    case Token::Kind::ColonEqual: {
+      context.current_function().append<jasmin::StackOffset>(
+          context.current_storage().offset(index).value());
+
+      auto qt_iter = context.statement_qualified_type.find(index);
+      NTH_REQUIRE((v.debug), qt_iter != context.statement_qualified_type.end());
+      context.current_function().append<Store>(
+          type::Contour(qt_iter->second.type()).byte_width().value());
+    } break;
     case Token::Kind::ColonColonEqual: {
       auto& f = context.current_function();
       f.append<jasmin::Return>();
@@ -94,10 +106,12 @@ void HandleParseTreeNodeDeclaration(ParseNodeIndex index,
     case Token::Kind::Colon: {
       NTH_UNIMPLEMENTED("Store in a stack-allocated variable.");
     } break;
-    default: NTH_UNIMPLEMENTED();
+    default: NTH_UNIMPLEMENTED("{}") <<= {decl_info.kind};
   }
 
-  if (context.queue.front().declaration_stack.size() == 1) {
+  if (context.queue.front().declaration_stack.size() == 1 and
+      (decl_info.kind == Token::Kind::ColonColon or
+       decl_info.kind == Token::Kind::ColonColonEqual)) {
     // This is a top-level declaration, we need to export it.
     // TODO: Actually exporting should not be the default.
     context.declarations_to_export.insert(index);
@@ -176,7 +190,6 @@ Iteration HandleParseTreeNodeColonColonEqual(ParseNodeIndex index,
 
 void HandleParseTreeNodeColonEqual(ParseNodeIndex, EmitContext& context) {
   context.queue.front().declaration_stack.back().kind = Token::Kind::ColonEqual;
-  NTH_UNIMPLEMENTED();
 }
 
 void HandleParseTreeNodeColonColon(ParseNodeIndex, EmitContext& context) {
@@ -413,7 +426,11 @@ void EmitContext::Evaluate(nth::interval<ParseNodeIndex> subtree,
   // TODO: The size here is potentially wrong. We should compute it based on
   // `types`.
   IrFunction f(0, 1);
-  queue.push({.function = &f, .range = subtree});
+  queue.push({
+      .function       = &f,
+      .range          = subtree,
+      .function_stack = {Scope::Index::Root()},
+  });
 
   EmitIr(*this);
 

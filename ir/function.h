@@ -12,11 +12,21 @@
 #include "jasmin/instructions/bool.h"
 #include "jasmin/instructions/compare.h"
 #include "jasmin/instructions/core.h"
+#include "jasmin/instructions/stack.h"
 #include "jasmin/value.h"
 #include "jasmin/value_stack.h"
 #include "type/type.h"
 
 namespace ic {
+
+struct Store : jasmin::StackMachineInstruction<Store> {
+  static void execute(jasmin::ValueStack& value_stack, uint8_t size) {
+    void* location      = value_stack.pop<void*>();
+    jasmin::Value value = value_stack.pop_value();
+    jasmin::Value::Store(value, location, size);
+  }
+  static constexpr std::string_view debug() { return "store"; }
+};
 
 struct PushFunction : jasmin::StackMachineInstruction<PushFunction> {
   static std::string_view name() { return "push-function"; }
@@ -144,7 +154,8 @@ using InstructionSet = jasmin::MakeInstructionSet<
     TypeKind, jasmin::Equal<type::Type::Kind>, Rotate, ConstructOpaqueType,
     ConstructPointerType, ConstructBufferPointerType, ConstructFunctionType,
     ConstructParametersType, jasmin::Swap, RegisterForeignFunction,
-    InvokeForeignFunction, jasmin::Not, NoOp>;
+    InvokeForeignFunction, jasmin::Not, NoOp, Store, jasmin::StackAllocate,
+    jasmin::StackOffset>;
 using IrFunction = jasmin::Function<InstructionSet>;
 
 std::deque<std::pair<type::FunctionType, IrFunction>>& ForeignFunctions();

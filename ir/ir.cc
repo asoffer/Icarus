@@ -102,12 +102,18 @@ struct IrContext {
 
   Scope& current_scope() { return emit.scopes[current_scope_index()]; }
 
+  LocalStorage& current_storage() {
+    NTH_REQUIRE((v.harden), not queue.front().functions.empty());
+    return emit.storage[queue.front().functions.back()];
+  }
+
   struct WorkItem {
     nth::interval<ParseNodeIndex> interval;
     std::vector<type::QualifiedType> type_stack;
     std::vector<Token::Kind> operator_stack;
     std::vector<DeclarationInfo> declaration_stack;
-    std::vector<Scope::Index> scopes = {Scope::Index::Root()};
+    std::vector<Scope::Index> scopes    = {Scope::Index::Root()};
+    std::vector<Scope::Index> functions = {Scope::Index::Root()};
   };
 
   size_t identifier_repetition_counter = 0;
@@ -150,6 +156,7 @@ void HandleParseTreeNodeDeclaration(ParseNodeIndex index, IrContext& context,
                                     diag::DiagnosticConsumer& diag) {
   DeclarationInfo info = context.declaration_stack().back();
   context.declaration_stack().pop_back();
+  type::QualifiedType qt;
   switch (info.kind) {
     case Token::Kind::Colon: {
       type::QualifiedType initializer_qt = context.type_stack().back();
@@ -160,13 +167,21 @@ void HandleParseTreeNodeDeclaration(ParseNodeIndex index, IrContext& context,
       auto expr_iter     = iter;
       auto type_iter     = ++iter;
       std::optional type = context.EvaluateAs<type::Type>(*type_iter);
+      if (not type) { NTH_UNIMPLEMENTED(); }
+      qt = type::QualifiedType::Unqualified(*type);
+      context.current_storage().insert(index, qt.type());
     } break;
     case Token::Kind::ColonColon: NTH_UNIMPLEMENTED(); break;
-    case Token::Kind::ColonEqual: NTH_UNIMPLEMENTED(); break;
-    case Token::Kind::ColonColonEqual: {
+    case Token::Kind::ColonEqual:
       // TODO: Other qualifiers?
-      type::QualifiedType qt =
-          type::QualifiedType::Constant(context.type_stack().back().type());
+      qt = type::QualifiedType::Unqualified(context.type_stack().back().type());
+      context.current_storage().insert(index, qt.type());
+      goto initializer;
+    case Token::Kind::ColonColonEqual:
+      // TODO: Other qualifiers?
+      qt = type::QualifiedType::Constant(context.type_stack().back().type());
+      goto initializer;
+    initializer:
       context.current_scope().insert_identifier(
           context.Node(info.index).token.Identifier(),
           {
@@ -175,9 +190,10 @@ void HandleParseTreeNodeDeclaration(ParseNodeIndex index, IrContext& context,
               .qualified_type = qt,
           });
       context.type_stack().pop_back();
-    } break;
+      break;
     default: NTH_UNREACHABLE();
   }
+  context.emit.statement_qualified_type.emplace(index, qt);
 }
 
 void HandleParseTreeNodeStatement(ParseNodeIndex index, IrContext& context,
@@ -358,6 +374,8 @@ void HandleParseTreeNodeMemberExpression(ParseNodeIndex index,
           context.type_stack().back().type().AsSlice().element_type()));
       context.type_stack().back() = qt;
       context.emit.SetQualifiedType(index, qt);
+    } else if (context.Node(index).token.Identifier() == Identifier("count")) {
+      NTH_UNIMPLEMENTED();
     } else {
       diag.Consume({
           diag::Header(diag::MessageKind::Error),
@@ -538,7 +556,8 @@ bool HandleParseTreeNodeScopeStart(ParseNodeIndex index, IrContext& context,
   return false;
 }
 
-void HandleParseTreeNodeBeginIfStatementTrueBranch(ParseNodeIndex index, IrContext& context,
+void HandleParseTreeNodeBeginIfStatementTrueBranch(ParseNodeIndex index,
+                                                   IrContext& context,
                                                    diag::DiagnosticConsumer&) {
   context.push_scope(context.Node(index).scope_index);
 }

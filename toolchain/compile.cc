@@ -132,8 +132,11 @@ nth::exit_code Compile(nth::FlagValueSet flags, nth::file_path const& source) {
   EmitContext emit_context(parse_tree, dependencies, scope_tree, module);
   ProcessIr(emit_context, consumer);
   if (consumer.count() != 0) { return nth::exit_code::generic_error; }
-  emit_context.queue.push(
-      {.function = &module.initializer(), .range = parse_tree.node_range()});
+  emit_context.queue.push({
+      .function       = &module.initializer(),
+      .range          = parse_tree.node_range(),
+      .function_stack = {Scope::Index::Root()},
+  });
   EmitIr(emit_context);
   SetExported(emit_context);
 

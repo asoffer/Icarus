@@ -9,6 +9,7 @@
 #include "common/identifier.h"
 #include "common/module_id.h"
 #include "ir/dependent_modules.h"
+#include "ir/local_storage.h"
 #include "ir/module.h"
 #include "ir/scope.h"
 #include "jasmin/value_stack.h"
@@ -74,12 +75,10 @@ struct EmitContext {
   absl::flat_hash_map<ParseNodeIndex, size_t> rotation_count;
   absl::flat_hash_map<ParseNodeIndex, std::pair<ParseNodeIndex, ParseNodeIndex>>
       declarator;
-  absl::flat_hash_map<Identifier, std::tuple<ParseNodeIndex, ParseNodeIndex,
-                                             type::QualifiedType>>
-      identifiers;
 
   ScopeTree& scopes;
   absl::flat_hash_set<ParseNodeIndex> declarations_to_export;
+  absl::flat_hash_map<Scope::Index, LocalStorage> storage;
   Module& current_module;
 
   void set_current_function(IrFunction& f) {
@@ -105,6 +104,11 @@ struct EmitContext {
     return queue.front().scopes.back();
   }
 
+  LocalStorage &current_storage() {
+    NTH_REQUIRE((v.harden), not queue.front().function_stack.empty());
+    return storage[queue.front().function_stack.back()];
+  }
+
   // Maps node indices to the constant value associated with the computation for
   // the largest subtree containing it whose constant value has been computed
   // thus far.
@@ -116,6 +120,7 @@ struct EmitContext {
     std::vector<DeclarationInfo> declaration_stack;
     std::vector<jasmin::OpCodeRange> branches;
     std::vector<Scope::Index> scopes = {Scope::Index::Root()};
+    std::vector<Scope::Index> function_stack;
   };
   std::queue<WorkItem> queue;
 

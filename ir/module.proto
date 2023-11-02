@@ -30,6 +30,9 @@ message InstructionProto {
     INVOKE_FOREIGN_FUNCTION = 19;
     NOT = 20;
     NOOP = 21;
+    STORE = 22;
+    STACK_ALLOCATE = 23;
+    STACK_OFFSET = 24;
   }
   OpCode op_code = 1;
   repeated uint64 content = 2;

@@ -48,6 +48,7 @@ cc_library(
     srcs = ["emit.cc"],
     deps = [
         ":dependent_modules",
+        ":local_storage",
         ":module",
         ":scope",
         ":serialize",
@@ -97,6 +98,7 @@ cc_library(
         "@asoffer_jasmin//jasmin/instructions:bool",
         "@asoffer_jasmin//jasmin/instructions:core",
         "@asoffer_jasmin//jasmin/instructions:compare",
+        "@asoffer_jasmin//jasmin/instructions:stack",
         "@asoffer_jasmin//jasmin:value",
         "@asoffer_jasmin//jasmin:value_stack",
         "@com_google_absl//absl/container:flat_hash_map",
@@ -131,6 +133,20 @@ cc_library(
         "@asoffer_jasmin//jasmin:value_stack",
         "@asoffer_nth//nth/debug",
         "@asoffer_nth//nth/debug/log",
+        "@com_google_absl//absl/container:flat_hash_map",
+    ],
+)
+
+
+cc_library(
+    name = "local_storage",
+    hdrs = ["local_storage.h"],
+    deps = [
+        ":scope",
+        "//parse:node_index",
+        "//type",
+        "//type:alignment",
+        "//type:byte_width",
         "@com_google_absl//absl/container:flat_hash_map",
     ],
 )
