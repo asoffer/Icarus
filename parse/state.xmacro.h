@@ -32,7 +32,7 @@ IC_XMACRO_PARSER_STATE(ResolveFunctionTypeParameters)
 
 IC_XMACRO_PARSER_STATE(ResolveAssignment)
 
-IC_XMACRO_PARSER_STATE(BeginIfStatementTrueBranch)
+IC_XMACRO_PARSER_STATE(IfStatementTrueBranchStart)
 IC_XMACRO_PARSER_STATE(ResolveIfStatement)
 
 IC_XMACRO_PARSER_STATE(ResolvePointerType)

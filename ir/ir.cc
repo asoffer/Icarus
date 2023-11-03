@@ -20,15 +20,16 @@
 namespace ic {
 namespace {
 
-#define IC_PROPAGATE_ERRORS(context, node)                                     \
+#define IC_PROPAGATE_ERRORS(context, node, count)                              \
   do {                                                                         \
     auto&& c = (context);                                                      \
     auto&& n = (node);                                                         \
-    for (auto const* p =                                                       \
-             &c.type_stack()[c.type_stack().size() - n.child_count];           \
+    for (auto const* p = &c.type_stack()[c.type_stack().size() -               \
+                                         static_cast<size_t>(count)];          \
          p != &c.type_stack().back(); ++p) {                                   \
       if (p->type() == type::Error) {                                          \
-        c.type_stack().resize(c.type_stack().size() - n.child_count + 1);      \
+        c.type_stack().resize(c.type_stack().size() -                          \
+                              static_cast<size_t>(count) + 1);                 \
         c.type_stack().back() = type::QualifiedType::Constant(type::Error);    \
         return;                                                                \
       }                                                                        \
@@ -253,12 +254,13 @@ void HandleParseTreeNodeInfixOperator(ParseNodeIndex index, IrContext& context,
 
 void HandleParseTreeNodeExpressionPrecedenceGroup(
     ParseNodeIndex index, IrContext& context, diag::DiagnosticConsumer& diag) {
+  auto node = context.Node(index);
+  IC_PROPAGATE_ERRORS(context, node, node.child_count / 2);
   Token::Kind kind = context.operator_stack().back();
   context.operator_stack().pop_back();
   switch (kind) {
     case Token::Kind::Period: break;
     case Token::Kind::MinusGreater: {
-      auto node = context.Node(index);
       if (node.child_count != 3) {
         diag.Consume({
             diag::Header(diag::MessageKind::Error),
@@ -331,17 +333,11 @@ void HandleParseTreeNodeColon(ParseNodeIndex, IrContext& context,
   context.declaration_stack().back().kind = Token::Kind::Colon;
 }
 
-void HandleParseTreeNodeExpressionGroup(ParseNodeIndex index,
-                                        IrContext& context,
-                                        diag::DiagnosticConsumer& diag) {
-  // Nothing to do here.
-}
-
 void HandleParseTreeNodeMemberExpression(ParseNodeIndex index,
                                          IrContext& context,
                                          diag::DiagnosticConsumer& diag) {
   auto node = context.Node(index);
-  // IC_PROPAGATE_ERRORS(context, node);
+  IC_PROPAGATE_ERRORS(context, node, 1);
   NTH_REQUIRE(not context.type_stack().empty());
   if (context.type_stack().back().type() == type::Module) {
     if (context.type_stack().back().constant()) {
@@ -408,15 +404,16 @@ void HandleParseTreeNodeMemberExpression(ParseNodeIndex index,
 void HandleParseTreeNodeCallExpression(ParseNodeIndex index, IrContext& context,
                                        diag::DiagnosticConsumer& diag) {
   auto node = context.Node(index);
-  IC_PROPAGATE_ERRORS(context, node);
+  IC_PROPAGATE_ERRORS(context, node, node.child_count - 1);
 
   auto invocable_type =
-      context.type_stack()[context.type_stack().size() - node.child_count];
+      context
+          .type_stack()[context.type_stack().size() - (node.child_count - 1)];
   if (invocable_type.type().kind() == type::Type::Kind::Function) {
     auto fn_type           = invocable_type.type().AsFunction();
     auto const& parameters = *fn_type.parameters();
     // TODO: Properly implement function call type-checking.
-    if (parameters.size() == node.child_count - 1) {
+    if (parameters.size() == node.child_count - 2) {
       auto type_iter             = context.type_stack().rbegin();
       auto& argument_width_count = context.emit.rotation_count[index];
       for (size_t i = 0; i < parameters.size(); ++i) {
@@ -425,7 +422,7 @@ void HandleParseTreeNodeCallExpression(ParseNodeIndex index, IrContext& context,
       }
       auto const& returns = fn_type.returns();
       context.type_stack().resize(context.type_stack().size() -
-                                  node.child_count);
+                                  (node.child_count - 1));
       for (type::Type r : returns) {
         context.type_stack().push_back(
             type::QualifiedType(type::Qualifier::Unqualified(), r));
@@ -564,7 +561,7 @@ bool HandleParseTreeNodeScopeStart(ParseNodeIndex index, IrContext& context,
 void HandleParseTreeNodeFunctionStart(ParseNodeIndex index, IrContext& context,
                                       diag::DiagnosticConsumer& diag) {}
 
-void HandleParseTreeNodeBeginIfStatementTrueBranch(ParseNodeIndex index,
+void HandleParseTreeNodeIfStatementTrueBranchStart(ParseNodeIndex index,
                                                    IrContext& context,
                                                    diag::DiagnosticConsumer&) {
   context.push_scope(context.Node(index).scope_index);

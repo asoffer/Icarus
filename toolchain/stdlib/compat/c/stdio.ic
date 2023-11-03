@@ -6,7 +6,6 @@ let c ::= import "std.compat.c.types"
 let FILE   ::= builtin.opaque()
 let fpos_t ::= builtin.opaque()
 
-
 let fopen    ::= builtin.foreign("fopen", ([*]char, [*]char) -> *FILE)
 let freopen  ::= builtin.foreign("freopen", ([*]char, [*]char, *FILE) -> *FILE)
 let fclose   ::= builtin.foreign("fclose", *FILE -> c.int)

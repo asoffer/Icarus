@@ -183,47 +183,86 @@ void Parser::HandleModule(ParseTree& tree) {
 }
 
 void Parser::HandleStatement(ParseTree& tree) {
-  ParseNode::Kind k;
   tree.append_leaf(ParseNode::Kind::StatementStart, Token::Invalid());
-  state().back().subtree_start = tree.size() - 1;
   switch (current_token().kind()) {
     case Token::Kind::Let:
-      k                          = ParseNode::Kind::Let;
       tree.back().statement_kind = ParseNode::StatementKind::Declaration;
+      ExpandState(
+          State{
+              .kind          = State::Kind::DeclaredSymbol,
+              .subtree_start = tree.size(),
+          },
+          State{
+              .kind          = State::Kind::Declaration,
+              .subtree_start = tree.size(),
+          },
+          State{
+              .kind          = State::Kind::ResolveStatement,
+              .subtree_start = tree.size() - 1,
+          });
+      tree.append_leaf(ParseNode::Kind::Let, *++iterator_);
       break;
     case Token::Kind::Var:
-      k                          = ParseNode::Kind::Var;
       tree.back().statement_kind = ParseNode::StatementKind::Declaration;
+      ExpandState(
+          State{
+              .kind          = State::Kind::DeclaredSymbol,
+              .subtree_start = tree.size(),
+          },
+          State{
+              .kind          = State::Kind::Declaration,
+              .subtree_start = tree.size(),
+          },
+          State{
+              .kind          = State::Kind::ResolveStatement,
+              .subtree_start = tree.size() - 1,
+          });
+      tree.append_leaf(ParseNode::Kind::Var, *++iterator_);
       break;
     case Token::Kind::If:
       tree.back().statement_kind = ParseNode::StatementKind::Expression;
-      ExpandState(State::Kind::ParenthesizedExpression,
-                  State::Kind::BeginIfStatementTrueBranch,
-                  State::Kind::BracedStatementSequence,
-                  State{
-                      .kind               = State::Kind::ResolveIfStatement,
-                      .ambient_precedence = Precedence::Loosest(),
-                      .token              = *iterator_,
-                      .subtree_start      = tree.size(),
-                  });
+      ExpandState(
+          State{
+              .kind          = State::Kind::ParenthesizedExpression,
+              .subtree_start = tree.size(),
+          },
+          State{
+              .kind          = State::Kind::IfStatementTrueBranchStart,
+              .subtree_start = tree.size(),
+          },
+          State{
+              .kind          = State::Kind::BracedStatementSequence,
+              .subtree_start = tree.size(),
+          },
+          State{
+              .kind               = State::Kind::ResolveIfStatement,
+              .ambient_precedence = Precedence::Loosest(),
+              .token              = *iterator_,
+              .subtree_start      = tree.size(),
+          },
+          State{
+              .kind          = State::Kind::ResolveStatement,
+              .subtree_start = tree.size() - 1,
+          });
       ++iterator_;
       return;
     default:
       tree.back().statement_kind = ParseNode::StatementKind::Expression;
-      ExpandState(State::Kind::Expression, State::Kind::ResolveStatement);
+      ExpandState(
+          State{
+              .kind          = State::Kind::Expression,
+              .subtree_start = tree.size(),
+          },
+          State{
+              .kind          = State::Kind::ResolveStatement,
+              .subtree_start = tree.size() - 1,
+          });
       return;
   }
-
-  ExpandState(
-      State{.kind = State::Kind::DeclaredSymbol, .subtree_start = tree.size()},
-      State{.kind = State::Kind::Declaration, .subtree_start = tree.size()},
-      State{.kind          = State::Kind::ResolveStatement,
-            .subtree_start = tree.size()});
-  tree.append_leaf(k, *++iterator_);
 }
 
-void Parser::HandleBeginIfStatementTrueBranch(ParseTree& tree) {
-  tree.append_leaf(ParseNode::Kind::BeginIfStatementTrueBranch, *iterator_);
+void Parser::HandleIfStatementTrueBranchStart(ParseTree& tree) {
+  tree.append_leaf(ParseNode::Kind::IfStatementTrueBranchStart, *iterator_);
   tree.back().scope_index = PushScope();
   pop_and_discard_state();
 }
@@ -549,7 +588,7 @@ void Parser::HandleExpressionSuffix(ParseTree& tree) {
     case Token::Kind::Equal: 
       ++iterator_;
       tree.append(ParseNode::Kind::AssignedValueStart, current_token(),
-                  state().back().subtree_start);
+                  tree.size());
       ExpandState(State::Kind::Expression, State::Kind::ResolveAssignment);
       return;
 
@@ -565,7 +604,7 @@ void Parser::HandleExpressionSuffix(ParseTree& tree) {
       ++iterator_;
       IgnoreAnyNewlines();
       tree.append(ParseNode::Kind::InvocationArgumentStart, current_token(),
-                  state().back().subtree_start);
+                  tree.size());
       if (current_token().kind() == Token::Kind::RightParen) {
         ExpandState(State::Kind::ResolveInvocationArgumentSequence,
                     State::Kind::ExpressionSuffix);

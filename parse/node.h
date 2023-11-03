@@ -38,8 +38,10 @@ struct ParseNode {
     Expression,
     Assignment
   };
+  uint32_t subtree_size = 1;
   union {
-    uint32_t subtree_size;
+    struct {
+    } unused = {};
     ParseNodeIndex next_sibling_index;
     ParseNodeIndex declaration;
     Scope::Index scope_index;
@@ -47,7 +49,7 @@ struct ParseNode {
   };
   Token token = Token::Invalid();
 };
-static_assert(sizeof(ParseNode) == 16);
+static_assert(sizeof(ParseNode) == 20);
 
 void NthPrint(auto &p, auto &, ParseNode::Kind k) {
   static constexpr std::array KindStrings{

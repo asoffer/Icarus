@@ -220,10 +220,6 @@ void HandleParseTreeNodeColon(ParseNodeIndex, EmitContext& context) {
   // Nothing to do here. The type will have already been calculated.
 }
 
-void HandleParseTreeNodeExpressionGroup(ParseNodeIndex, EmitContext&) {
-  // Nothing to do here.
-}
-
 void HandleParseTreeNodeMemberExpression(ParseNodeIndex index,
                                          EmitContext& context) {
   if (context.QualifiedTypeOf(index - 1).type().kind() ==
@@ -287,7 +283,7 @@ void HandleParseTreeNodeFunctionTypeParameters(ParseNodeIndex index,
       context.Node(index).child_count);
 }
 
-void HandleParseTreeNodeBeginIfStatementTrueBranch(ParseNodeIndex index,
+void HandleParseTreeNodeIfStatementTrueBranchStart(ParseNodeIndex index,
                                                    EmitContext& context) {
   context.push_scope(context.Node(index).scope_index);
   context.current_function().append<jasmin::Not>();

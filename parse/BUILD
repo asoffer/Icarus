@@ -55,6 +55,7 @@ cc_test(
         "//lexer",
         "//lexer:token_matchers",
         "@asoffer_nth//nth/test:main",
+        "@asoffer_nth//nth/meta:type",
     ],
 )
 
