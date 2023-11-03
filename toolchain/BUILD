@@ -33,6 +33,7 @@ cc_binary(
     name = "run_bytecode",
     srcs = ["run_bytecode.cc"],
     deps = [
+        "//common:debug",
         "//common:errno",
         "//common:string",
         "//diagnostics:message",

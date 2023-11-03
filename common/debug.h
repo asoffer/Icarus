@@ -6,6 +6,7 @@ namespace ic::debug {
 inline bool parser     = false;
 inline bool type_check = false;
 inline bool emit       = false;
+inline bool run        = false;
 
 }  // namespace ic::debug
 

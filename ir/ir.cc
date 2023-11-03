@@ -535,25 +535,16 @@ void HandleParseTreeNodeImport(ParseNodeIndex index, IrContext& context,
 
 bool HandleParseTreeNodeScopeStart(ParseNodeIndex index, IrContext& context,
                                    diag::DiagnosticConsumer& diag) {
-  auto item         = std::move(context.queue.front());
-  auto [start, end] = item.interval;
-  // TODO: You used to have this requirement specified:
-  //   `NTH_REQUIRE((v.harden), start == index);`
-  // It's unclear why this is necessary, and in particular breaks for
-  // if-statements.
-  auto last_end = end;
-  for (auto i : context.emit.tree.child_indices(
-           context.Node(index).next_sibling_index)) {
+  auto item           = std::move(context.queue.front());
+  auto [start, end]   = item.interval;
+  auto stmt_seq_index = context.Node(index).corresponding_statement_sequence;
+  auto child_indices  = context.emit.tree.child_indices(stmt_seq_index);
+  for (auto i : child_indices) {
     item.interval = context.emit.tree.subtree_range(i);
     context.queue.push(item);
-    // TODO: These are actually ordered (in reverse order), so you can just pick
-    // the very first one.
-    last_end = std::max(last_end, item.interval.upper_bound());
   }
-  if (last_end != end) {
-    item.interval = nth::interval(last_end, end);
-    context.queue.push(item);
-  }
+  item.interval = nth::interval(stmt_seq_index, end);
+  context.queue.push(item);
 
   return false;
 }
@@ -570,7 +561,7 @@ void HandleParseTreeNodeIfStatementTrueBranchStart(ParseNodeIndex index,
 void HandleParseTreeNodeIfStatement(ParseNodeIndex index, IrContext& context,
                                     diag::DiagnosticConsumer& diag) {
   if (context.type_stack().back().type() != type::Bool) { NTH_UNIMPLEMENTED(); }
-  context.type_stack().pop_back();
+  // TODO: Handle type of if statement properly.
   context.pop_scope();
 }
 
@@ -629,8 +620,7 @@ void ProcessIrImpl(IrContext& context, diag::DiagnosticConsumer& diag) {
     auto item         = context.queue.front();
     auto [start, end] = item.interval;
     for (auto index = start; index != end; ++index) {
-      auto node = context.Node(index);
-      switch (node.kind) {
+      switch (context.Node(index).kind) {
 #define IC_XMACRO_PARSE_NODE(kind)                                             \
   case ParseNode::Kind::kind: {                                                \
     NTH_LOG((v.when(debug::type_check)), "Process node {} ({})") <<=           \

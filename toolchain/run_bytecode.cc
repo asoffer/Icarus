@@ -5,6 +5,7 @@
 
 #include "absl/debugging/failure_signal_handler.h"
 #include "absl/debugging/symbolize.h"
+#include "common/debug.h"
 #include "common/string.h"
 #include "diagnostics/consumer/streaming.h"
 #include "diagnostics/message.h"
@@ -29,7 +30,10 @@ nth::exit_code Run(nth::FlagValueSet flags, std::span<std::string_view const>) {
   absl::FailureSignalHandlerOptions opts;
   absl::InstallFailureSignalHandler(opts);
 
-  auto const& input = flags.get<nth::file_path>("input");
+  auto const& input     = flags.get<nth::file_path>("input");
+  auto const* debug_run = flags.try_get<bool>("debug-run");
+  if (debug_run) { ic::debug::run = *debug_run; }
+
   std::ifstream in(input.path());
 
   diag::StreamingConsumer consumer;
@@ -68,7 +72,7 @@ nth::exit_code Run(nth::FlagValueSet flags, std::span<std::string_view const>) {
     });
     return nth::exit_code::generic_error;
   }
-  // NTH_LOG((v.debug), "{}") <<= {proto.DebugString()};
+  NTH_LOG((v.when(debug::run)), "{}") <<= {proto.DebugString()};
 
   jasmin::ValueStack value_stack;
   jasmin::Execute(module.initializer(), value_stack);
@@ -85,6 +89,10 @@ nth::Usage const nth::program_usage = {
             {.name        = {"input"},
              .type        = nth::type<nth::file_path>,
              .description = "The from which to read the input .icm file."},
+            {.name        = {"debug-run"},
+             .type        = nth::type<bool>,
+             .description = "Dumps serialized byte code before executing."},
         },
+
     .execute = ic::Run,
 };

@@ -42,7 +42,7 @@ struct ParseNode {
   union {
     struct {
     } unused = {};
-    ParseNodeIndex next_sibling_index;
+    ParseNodeIndex corresponding_statement_sequence;
     ParseNodeIndex declaration;
     Scope::Index scope_index;
     StatementKind statement_kind;

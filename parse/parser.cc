@@ -340,7 +340,7 @@ void Parser::HandleResolveStatementSequence(ParseTree& tree) {
   State state = pop_state();
   auto& start = tree[ParseNodeIndex(state.subtree_start - 1)];
   NTH_REQUIRE(start.kind == ParseNode::Kind::ScopeStart);
-  start.next_sibling_index = ParseNodeIndex(tree.size());
+  start.corresponding_statement_sequence = ParseNodeIndex(tree.size());
   tree.append(ParseNode::Kind::StatementSequence, Token::Invalid(),
               state.subtree_start);
 }
@@ -566,8 +566,10 @@ void Parser::HandleResolveImport(ParseTree& tree) {
 void Parser::HandleResolveAssignment(ParseTree& tree) {
   // TODO: It'd be nice if this was just a category on statements.
   auto s = pop_state();
-  tree[ParseNodeIndex(s.subtree_start)].statement_kind =
+  tree[ParseNodeIndex(s.subtree_start - 1)].statement_kind =
       ParseNode::StatementKind::Assignment;
+  // TODO: s.subtree_start - 1 seems like a bit of a hack and I'm not entirely
+  // sure it's correct.
   tree.append(ParseNode::Kind::Assignment, s.token, s.subtree_start);
 }
 

@@ -120,7 +120,8 @@ void HandleParseTreeNodeStatement(ParseNodeIndex index, EmitContext& context) {
               .statement_kind) {
     case ParseNode::StatementKind::Expression: {
       auto iter = context.statement_qualified_type.find(index);
-      NTH_REQUIRE(iter != context.statement_qualified_type.end());
+      NTH_REQUIRE(iter != context.statement_qualified_type.end())
+          .Log<"For {}">(context.tree.subtree_range(index).lower_bound());
       context.current_function().append<jasmin::Drop>(
           type::JasminSize(iter->second.type()));
     } break;
