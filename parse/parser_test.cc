@@ -21,7 +21,7 @@ struct TreeNodeRef {
       int n;
     };
     using Action = std::variant<ParseNodeIndex, Indent>;
-    std::stack<Action> actions ;
+    std::stack<Action> actions;
     actions.push(t.index);
     p.write("\n");
     int indentation = 4;
@@ -97,30 +97,33 @@ NTH_TEST("parser/declaration/integer") {
   diag::NullConsumer d;
   TokenBuffer buffer = lex::Lex("let x ::= 3", d);
   auto tree          = Parse(buffer, d).parse_tree;
-  NTH_EXPECT(
-      FromRoot(tree) >>= StatementSequence(Statement(
-          StatementStart(), Declaration(Let(), DeclaredIdentifier(),
-                                        ColonColonEqual(), IntegerLiteral()))));
+  NTH_EXPECT(FromRoot(tree) >>= StatementSequence(
+                 ScopeStart(),
+                 Statement(StatementStart(),
+                           Declaration(Let(), DeclaredIdentifier(),
+                                       ColonColonEqual(), IntegerLiteral()))));
 }
 
 NTH_TEST("parser/declaration/bool") {
   diag::NullConsumer d;
   TokenBuffer buffer = lex::Lex("let x := true", d);
   auto tree          = Parse(buffer, d).parse_tree;
-  NTH_EXPECT(
-      FromRoot(tree) >>= StatementSequence(Statement(
-          StatementStart(), Declaration(Let(), DeclaredIdentifier(),
-                                        ColonEqual(), BooleanLiteral()))));
+  NTH_EXPECT(FromRoot(tree) >>= StatementSequence(
+                 ScopeStart(),
+                 Statement(StatementStart(),
+                           Declaration(Let(), DeclaredIdentifier(),
+                                       ColonEqual(), BooleanLiteral()))));
 }
 
 NTH_TEST("parser/comment") {
   diag::NullConsumer d;
   TokenBuffer buffer = lex::Lex("let x ::= true  // comment!", d);
   auto tree          = Parse(buffer, d).parse_tree;
-  NTH_EXPECT(
-      FromRoot(tree) >>= StatementSequence(Statement(
-          StatementStart(), Declaration(Let(), DeclaredIdentifier(),
-                                        ColonColonEqual(), BooleanLiteral()))));
+  NTH_EXPECT(FromRoot(tree) >>= StatementSequence(
+                 ScopeStart(),
+                 Statement(StatementStart(),
+                           Declaration(Let(), DeclaredIdentifier(),
+                                       ColonColonEqual(), BooleanLiteral()))));
 }
 
 NTH_TEST("parser/multiple-declarations-with-newlines") {
@@ -132,6 +135,7 @@ NTH_TEST("parser/multiple-declarations-with-newlines") {
                                 d);
   auto tree          = Parse(buffer, d).parse_tree;
   NTH_EXPECT(FromRoot(tree) >>= StatementSequence(
+                 ScopeStart(),
                  Statement(StatementStart(),
                            Declaration(Let(), DeclaredIdentifier(),
                                        ColonColonEqual(), IntegerLiteral())),
@@ -144,12 +148,13 @@ NTH_TEST("parser/operator-precedence/plus-times") {
   diag::NullConsumer d;
   TokenBuffer buffer = lex::Lex(R"(x + y * z)", d);
   auto tree          = Parse(buffer, d).parse_tree;
-  NTH_EXPECT(FromRoot(tree) >>= StatementSequence(Statement(
-                 StatementStart(),
-                 ExpressionPrecedenceGroup(
-                     Identifier(), InfixOperator(),
-                     ExpressionPrecedenceGroup(Identifier(), InfixOperator(),
-                                               Identifier())))));
+  NTH_EXPECT(FromRoot(tree) >>= StatementSequence(
+                 ScopeStart(), Statement(StatementStart(),
+                                         ExpressionPrecedenceGroup(
+                                             Identifier(), InfixOperator(),
+                                             ExpressionPrecedenceGroup(
+                                                 Identifier(), InfixOperator(),
+                                                 Identifier())))));
 }
 
 NTH_TEST("parser/operator-precedence/times-plus") {
@@ -157,6 +162,7 @@ NTH_TEST("parser/operator-precedence/times-plus") {
   TokenBuffer buffer = lex::Lex(R"(x * y + z)", d);
   auto tree          = Parse(buffer, d).parse_tree;
   NTH_EXPECT(FromRoot(tree) >>= StatementSequence(
+                 ScopeStart(),
                  Statement(StatementStart(),
                            ExpressionPrecedenceGroup(
                                ExpressionPrecedenceGroup(
@@ -168,11 +174,12 @@ NTH_TEST("parser/operator-precedence/plus-plus") {
   diag::NullConsumer d;
   TokenBuffer buffer = lex::Lex(R"(x + y + z)", d);
   auto tree          = Parse(buffer, d).parse_tree;
-  NTH_EXPECT(
-      FromRoot(tree) >>= StatementSequence(Statement(
-          StatementStart(),
-          ExpressionPrecedenceGroup(Identifier(), InfixOperator(), Identifier(),
-                                    InfixOperator(), Identifier()))));
+  NTH_EXPECT(FromRoot(tree) >>= StatementSequence(
+                 ScopeStart(),
+                 Statement(StatementStart(),
+                           ExpressionPrecedenceGroup(
+                               Identifier(), InfixOperator(), Identifier(),
+                               InfixOperator(), Identifier()))));
 }
 
 NTH_TEST("parser/access/basic") {
@@ -180,6 +187,7 @@ NTH_TEST("parser/access/basic") {
   TokenBuffer buffer = lex::Lex(R"(a.b)", d);
   auto tree          = Parse(buffer, d).parse_tree;
   NTH_EXPECT(FromRoot(tree) >>= StatementSequence(
+                 ScopeStart(),
                  Statement(StatementStart(), MemberExpression(Identifier()))));
 }
 
@@ -187,29 +195,33 @@ NTH_TEST("parser/access/nested") {
   diag::NullConsumer d;
   TokenBuffer buffer = lex::Lex(R"(a.b.c)", d);
   auto tree          = Parse(buffer, d).parse_tree;
-  NTH_EXPECT(
-      FromRoot(tree) >>= StatementSequence(Statement(
-          StatementStart(), MemberExpression(MemberExpression(Identifier())))));
+  NTH_EXPECT(FromRoot(tree) >>= StatementSequence(
+                 ScopeStart(),
+                 Statement(StatementStart(),
+                           MemberExpression(MemberExpression(Identifier())))));
 }
 
 NTH_TEST("parser/access/precedence") {
   diag::NullConsumer d;
   TokenBuffer buffer = lex::Lex(R"(a.b * c.d)", d);
   auto tree          = Parse(buffer, d).parse_tree;
-  NTH_EXPECT(
-      FromRoot(tree) >>= StatementSequence(Statement(
-          StatementStart(), ExpressionPrecedenceGroup(
-                                MemberExpression(Identifier()), InfixOperator(),
-                                MemberExpression(Identifier())))));
+  NTH_EXPECT(FromRoot(tree) >>= StatementSequence(
+                 ScopeStart(),
+                 Statement(StatementStart(),
+                           ExpressionPrecedenceGroup(
+                               MemberExpression(Identifier()), InfixOperator(),
+                               MemberExpression(Identifier())))));
 }
 
 NTH_TEST("parser/invoke/empty") {
   diag::NullConsumer d;
   TokenBuffer buffer = lex::Lex(R"(f())", d);
   auto tree          = Parse(buffer, d).parse_tree;
-  NTH_EXPECT(FromRoot(tree) >>= StatementSequence(Statement(
-                 StatementStart(),
-                 CallExpression(Identifier(), InvocationArgumentStart()))));
+  NTH_EXPECT(
+      FromRoot(tree) >>= StatementSequence(
+          ScopeStart(),
+          Statement(StatementStart(),
+                    CallExpression(Identifier(), InvocationArgumentStart()))));
 }
 
 NTH_TEST("parser/invoke/empty-member-call") {
@@ -217,30 +229,35 @@ NTH_TEST("parser/invoke/empty-member-call") {
   TokenBuffer buffer = lex::Lex(R"(a.b())", d);
   auto tree          = Parse(buffer, d).parse_tree;
   NTH_EXPECT(
-      FromRoot(tree) >>= StatementSequence(Statement(
-          StatementStart(), CallExpression(MemberExpression(Identifier()),
-                                           InvocationArgumentStart()))));
+      FromRoot(tree) >>= StatementSequence(
+          ScopeStart(), Statement(StatementStart(),
+                                  CallExpression(MemberExpression(Identifier()),
+                                                 InvocationArgumentStart()))));
 }
 
 NTH_TEST("parser/invoke/double-call") {
   diag::NullConsumer d;
   TokenBuffer buffer = lex::Lex(R"(a.b()())", d);
   auto tree          = Parse(buffer, d).parse_tree;
-  NTH_EXPECT(FromRoot(tree) >>= StatementSequence(Statement(
-                 StatementStart(),
-                 CallExpression(CallExpression(MemberExpression(Identifier()),
-                                               InvocationArgumentStart()),
-                                InvocationArgumentStart()))));
+  NTH_EXPECT(FromRoot(tree) >>= StatementSequence(
+                 ScopeStart(),
+                 Statement(StatementStart(),
+                           CallExpression(
+                               CallExpression(MemberExpression(Identifier()),
+                                              InvocationArgumentStart()),
+                               InvocationArgumentStart()))));
 }
 
 NTH_TEST("parser/invoke/one-positional") {
   diag::NullConsumer d;
   TokenBuffer buffer = lex::Lex(R"(a(b))", d);
   auto tree          = Parse(buffer, d).parse_tree;
-  NTH_EXPECT(FromRoot(tree) >>= StatementSequence(Statement(
-                 StatementStart(),
-                 CallExpression(Identifier(), InvocationArgumentStart(),
-                                Identifier()))));
+  NTH_EXPECT(
+      FromRoot(tree) >>= StatementSequence(
+          ScopeStart(),
+          Statement(StatementStart(),
+                    CallExpression(Identifier(), InvocationArgumentStart(),
+                                   Identifier()))));
 }
 
 NTH_TEST("parser/invoke/one-positional-newline") {
@@ -250,20 +267,24 @@ NTH_TEST("parser/invoke/one-positional-newline") {
   ))",
                                 d);
   auto tree          = Parse(buffer, d).parse_tree;
-  NTH_EXPECT(FromRoot(tree) >>= StatementSequence(Statement(
-                 StatementStart(),
-                 CallExpression(Identifier(), InvocationArgumentStart(),
-                                Identifier()))));
+  NTH_EXPECT(
+      FromRoot(tree) >>= StatementSequence(
+          ScopeStart(),
+          Statement(StatementStart(),
+                    CallExpression(Identifier(), InvocationArgumentStart(),
+                                   Identifier()))));
 }
 
 NTH_TEST("parser/invoke/multiple-positional") {
   diag::NullConsumer d;
   TokenBuffer buffer = lex::Lex(R"(a(b, c, d))", d);
   auto tree          = Parse(buffer, d).parse_tree;
-  NTH_EXPECT(FromRoot(tree) >>= StatementSequence(Statement(
-                 StatementStart(),
-                 CallExpression(Identifier(), InvocationArgumentStart(),
-                                Identifier(), Identifier(), Identifier()))));
+  NTH_EXPECT(
+      FromRoot(tree) >>= StatementSequence(
+          ScopeStart(),
+          Statement(StatementStart(),
+                    CallExpression(Identifier(), InvocationArgumentStart(),
+                                   Identifier(), Identifier(), Identifier()))));
 }
 
 NTH_TEST("parser/invoke/multiple-positional-newline") {
@@ -273,88 +294,98 @@ NTH_TEST("parser/invoke/multiple-positional-newline") {
     d))",
                                 d);
   auto tree          = Parse(buffer, d).parse_tree;
-  NTH_EXPECT(FromRoot(tree) >>= StatementSequence(Statement(
-                 StatementStart(),
-                 CallExpression(Identifier(), InvocationArgumentStart(),
-                                Identifier(), Identifier(), Identifier()))));
+  NTH_EXPECT(
+      FromRoot(tree) >>= StatementSequence(
+          ScopeStart(),
+          Statement(StatementStart(),
+                    CallExpression(Identifier(), InvocationArgumentStart(),
+                                   Identifier(), Identifier(), Identifier()))));
 }
 
 NTH_TEST("parser/invoke/access-call") {
   diag::NullConsumer d;
   TokenBuffer buffer = lex::Lex(R"(a.b(c.d))", d);
   auto tree          = Parse(buffer, d).parse_tree;
-  NTH_EXPECT(
-      FromRoot(tree) >>= StatementSequence(Statement(
-          StatementStart(), CallExpression(MemberExpression(Identifier()),
-                                           InvocationArgumentStart(),
-                                           MemberExpression(Identifier())))));
+  NTH_EXPECT(FromRoot(tree) >>= StatementSequence(
+                 ScopeStart(),
+                 Statement(StatementStart(),
+                           CallExpression(MemberExpression(Identifier()),
+                                          InvocationArgumentStart(),
+                                          MemberExpression(Identifier())))));
 }
 
-NTH_TEST("parser/invoke/pointer") {
+NTH_TEST("parser/pointer") {
   diag::NullConsumer d;
   TokenBuffer buffer = lex::Lex(R"(*a)", d);
   auto tree          = Parse(buffer, d).parse_tree;
-  NTH_EXPECT(FromRoot(tree) >>= StatementSequence(
-                 Statement(StatementStart(), Pointer(Identifier()))));
+  NTH_EXPECT(
+      FromRoot(tree) >>= StatementSequence(
+          ScopeStart(), Statement(StatementStart(), Pointer(Identifier()))));
 }
 
-NTH_TEST("parser/invoke/pointer-access") {
+NTH_TEST("parser/pointer/access") {
   diag::NullConsumer d;
   TokenBuffer buffer = lex::Lex(R"(*a.b)", d);
   auto tree          = Parse(buffer, d).parse_tree;
-  NTH_EXPECT(FromRoot(tree) >>= StatementSequence(Statement(
-                 StatementStart(), Pointer(MemberExpression(Identifier())))));
+  NTH_EXPECT(
+      FromRoot(tree) >>= StatementSequence(
+          ScopeStart(), Statement(StatementStart(),
+                                  Pointer(MemberExpression(Identifier())))));
 }
 
-NTH_TEST("parser/invoke/pointer-function") {
+NTH_TEST("parser/pointer/function") {
   diag::NullConsumer d;
   TokenBuffer buffer = lex::Lex(R"(*a -> b)", d);
   auto tree          = Parse(buffer, d).parse_tree;
-  NTH_EXPECT(FromRoot(tree) >>= StatementSequence(Statement(
-                 StatementStart(),
-                 ExpressionPrecedenceGroup(Pointer(Identifier()),
-                                           InfixOperator(), Identifier()))));
+  NTH_EXPECT(FromRoot(tree) >>= StatementSequence(
+                 ScopeStart(), Statement(StatementStart(),
+                                         ExpressionPrecedenceGroup(
+                                             Pointer(Identifier()),
+                                             InfixOperator(), Identifier()))));
 }
 
-NTH_TEST("parser/invoke/buffer-pointer") {
+NTH_TEST("parser/buffer-pointer") {
   diag::NullConsumer d;
   TokenBuffer buffer = lex::Lex(R"([*]a)", d);
   auto tree          = Parse(buffer, d).parse_tree;
   NTH_EXPECT(FromRoot(tree) >>= StatementSequence(
+                 ScopeStart(),
                  Statement(StatementStart(), BufferPointer(Identifier()))));
 }
 
-NTH_TEST("parser/invoke/buffer-pointer-access") {
+NTH_TEST("parser/buffer-pointer/access") {
   diag::NullConsumer d;
   TokenBuffer buffer = lex::Lex(R"([*]a.b)", d);
   auto tree          = Parse(buffer, d).parse_tree;
-  NTH_EXPECT(
-      FromRoot(tree) >>= StatementSequence(Statement(
-          StatementStart(), BufferPointer(MemberExpression(Identifier())))));
+  NTH_EXPECT(FromRoot(tree) >>= StatementSequence(
+                 ScopeStart(),
+                 Statement(StatementStart(),
+                           BufferPointer(MemberExpression(Identifier())))));
 }
 
-NTH_TEST("parser/invoke/buffer-pointer-function") {
+NTH_TEST("parser/buffer-pointer/function") {
   diag::NullConsumer d;
   TokenBuffer buffer = lex::Lex(R"([*]a -> b)", d);
   auto tree          = Parse(buffer, d).parse_tree;
-  NTH_EXPECT(FromRoot(tree) >>= StatementSequence(Statement(
-                 StatementStart(),
-                 ExpressionPrecedenceGroup(BufferPointer(Identifier()),
-                                           InfixOperator(), Identifier()))));
+  NTH_EXPECT(FromRoot(tree) >>= StatementSequence(
+                 ScopeStart(), Statement(StatementStart(),
+                                         ExpressionPrecedenceGroup(
+                                             BufferPointer(Identifier()),
+                                             InfixOperator(), Identifier()))));
 }
 
-NTH_TEST("parser/invoke/if-statement-empty") {
+NTH_TEST("parser/if-statement/empty") {
   diag::NullConsumer d;
   TokenBuffer buffer = lex::Lex(R"(
   if (condition) {}
   )", d);
   auto tree          = Parse(buffer, d).parse_tree;
-  NTH_EXPECT(FromRoot(tree) >>= StatementSequence(Statement(
+  NTH_EXPECT(FromRoot(tree) >>= StatementSequence(ScopeStart(), Statement(
                  StatementStart(),
                  IfStatement(Identifier(), IfStatementTrueBranchStart()))));
 }
 
-NTH_TEST("parser/invoke/if-statement-empty-newlines") {
+NTH_TEST("parser/if-statement/empty-newlines") {
   diag::NullConsumer d;
   TokenBuffer buffer = lex::Lex(R"(
   if (condition) {
@@ -362,12 +393,14 @@ NTH_TEST("parser/invoke/if-statement-empty-newlines") {
   )",
                                 d);
   auto tree          = Parse(buffer, d).parse_tree;
-  NTH_EXPECT(FromRoot(tree) >>= StatementSequence(Statement(
-                 StatementStart(),
-                 IfStatement(Identifier(), IfStatementTrueBranchStart()))));
+  NTH_EXPECT(
+      FromRoot(tree) >>= StatementSequence(
+          ScopeStart(),
+          Statement(StatementStart(),
+                    IfStatement(Identifier(), IfStatementTrueBranchStart()))));
 }
 
-NTH_TEST("parser/invoke/if-statement-with-one-line-body") {
+NTH_TEST("parser/if-statement/with-one-line-body") {
   diag::NullConsumer d;
   TokenBuffer buffer = lex::Lex(R"(
   if (condition) {
@@ -377,14 +410,16 @@ NTH_TEST("parser/invoke/if-statement-with-one-line-body") {
                                 d);
   auto tree          = Parse(buffer, d).parse_tree;
   NTH_EXPECT(
-      FromRoot(tree) >>= StatementSequence(Statement(
-          StatementStart(),
-          IfStatement(
-              Identifier(), IfStatementTrueBranchStart(), ScopeStart(),
-              StatementSequence(Statement(StatementStart(), Identifier()))))));
+      FromRoot(tree) >>= StatementSequence(
+          ScopeStart(),
+          Statement(StatementStart(),
+                    IfStatement(Identifier(), IfStatementTrueBranchStart(),
+                                StatementSequence(ScopeStart(),
+                                                  Statement(StatementStart(),
+                                                            Identifier()))))));
 }
 
-NTH_TEST("parser/invoke/if-statement-with-body") {
+NTH_TEST("parser/if-statement/with-body") {
   diag::NullConsumer d;
   TokenBuffer buffer = lex::Lex(R"(
   if (condition) {
@@ -395,35 +430,99 @@ NTH_TEST("parser/invoke/if-statement-with-body") {
                                 d);
   auto tree          = Parse(buffer, d).parse_tree;
   NTH_EXPECT(
-      FromRoot(tree) >>= StatementSequence(Statement(
-          StatementStart(),
-          IfStatement(
-              Identifier(), IfStatementTrueBranchStart(), ScopeStart(),
-              StatementSequence(Statement(StatementStart(), Identifier()),
-                                Statement(StatementStart(), Identifier()))))));
+      FromRoot(tree) >>= StatementSequence(
+          ScopeStart(),
+          Statement(
+              StatementStart(),
+              IfStatement(
+                  Identifier(), IfStatementTrueBranchStart(),
+                  StatementSequence(
+                      ScopeStart(), Statement(StatementStart(), Identifier()),
+                      Statement(StatementStart(), Identifier()))))));
 }
 
-NTH_TEST("parser/invoke/simple-assignment") {
+NTH_TEST("parser/assignment") {
   diag::NullConsumer d;
   TokenBuffer buffer = lex::Lex(R"(a = b)", d);
   auto tree          = Parse(buffer, d).parse_tree;
   NTH_EXPECT(
-      FromRoot(tree) >>= StatementSequence(Statement(
-          StatementStart(),
-          Assignment(Identifier(), AssignedValueStart(), Identifier()))));
+      FromRoot(tree) >>= StatementSequence(
+          ScopeStart(), Statement(StatementStart(),
+                                  Assignment(Identifier(), AssignedValueStart(),
+                                             Identifier()))));
 }
 
-NTH_TEST("parser/invoke/complex-assignment") {
+NTH_TEST("parser/assignment/complex") {
   diag::NullConsumer d;
   TokenBuffer buffer = lex::Lex(R"(a.b = c.d + e)", d);
   auto tree          = Parse(buffer, d).parse_tree;
+  NTH_EXPECT(FromRoot(tree) >>= StatementSequence(
+                 ScopeStart(),
+                 Statement(StatementStart(),
+                           Assignment(MemberExpression(Identifier()),
+                                      AssignedValueStart(),
+                                      ExpressionPrecedenceGroup(
+                                          MemberExpression(Identifier()),
+                                          InfixOperator(), Identifier())))));
+}
+
+NTH_TEST("parser/function-literal/empty") {
+  diag::NullConsumer d;
+  TokenBuffer buffer = lex::Lex(R"(fn() -> x {})", d);
+  auto tree          = Parse(buffer, d).parse_tree;
+  NTH_EXPECT(FromRoot(tree) >>= StatementSequence(
+                 ScopeStart(),
+                 Statement(StatementStart(),
+                           FunctionLiteral(Identifier(), FunctionStart()))));
+}
+
+NTH_TEST("parser/function-literal/one-parameter") {
+  diag::NullConsumer d;
+  TokenBuffer buffer = lex::Lex(R"(fn(let a: b) -> x {})", d);
+  auto tree          = Parse(buffer, d).parse_tree;
   NTH_EXPECT(
-      FromRoot(tree) >>= StatementSequence(Statement(
-          StatementStart(),
-          Assignment(
-              MemberExpression(Identifier()), AssignedValueStart(),
-              ExpressionPrecedenceGroup(MemberExpression(Identifier()),
-                                        InfixOperator(), Identifier())))));
+      FromRoot(tree) >>= StatementSequence(
+          ScopeStart(),
+          Statement(StatementStart(),
+                    FunctionLiteral(Declaration(Let(), DeclaredIdentifier(),
+                                                Colon(), Identifier()),
+                                    Identifier(), FunctionStart()))));
+}
+
+NTH_TEST("parser/function-literal/multiple-parameters") {
+  diag::NullConsumer d;
+  TokenBuffer buffer = lex::Lex(R"(
+    fn(let a: b,
+       let c: d) -> x {})", d);
+  auto tree          = Parse(buffer, d).parse_tree;
+  NTH_EXPECT(
+      FromRoot(tree) >>= StatementSequence(
+          ScopeStart(),
+          Statement(StatementStart(),
+                    FunctionLiteral(Declaration(Let(), DeclaredIdentifier(),
+                                                Colon(), Identifier()),
+                                    Declaration(Let(), DeclaredIdentifier(),
+                                                Colon(), Identifier()),
+                                    Identifier(), FunctionStart()))));
+}
+
+NTH_TEST("parser/function-literal/body") {
+  diag::NullConsumer d;
+  TokenBuffer buffer = lex::Lex(R"(
+    fn(let a: b) -> x {
+      y
+    })", d);
+  auto tree          = Parse(buffer, d).parse_tree;
+  NTH_EXPECT(FromRoot(tree) >>= StatementSequence(
+                 ScopeStart(),
+                 Statement(StatementStart(),
+                           FunctionLiteral(
+                               Declaration(Let(), DeclaredIdentifier(), Colon(),
+                                           Identifier()),
+                               Identifier(), FunctionStart(),
+                               StatementSequence(ScopeStart(),
+                                                 Statement(StatementStart(),
+                                                           Identifier()))))));
 }
 
 }  // namespace ic

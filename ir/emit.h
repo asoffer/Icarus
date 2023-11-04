@@ -26,6 +26,12 @@ struct DeclarationInfo {
   ParseNodeIndex index = ParseNodeIndex::Invalid();
 };
 
+enum class Iteration {
+  Continue,
+  PauseRetry,
+  PauseMoveOn,
+};
+
 struct EmitContext {
   explicit EmitContext(ParseTree const& tree NTH_ATTRIBUTE(lifetimebound),
                        DependentModules const& modules

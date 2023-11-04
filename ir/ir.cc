@@ -213,8 +213,9 @@ void HandleParseTreeNodeStatementSequence(ParseNodeIndex index,
                                           IrContext& context,
                                           diag::DiagnosticConsumer& diag) {}
 
-bool HandleParseTreeNodeIdentifier(ParseNodeIndex index, IrContext& context,
-                                   diag::DiagnosticConsumer& diag) {
+Iteration HandleParseTreeNodeIdentifier(ParseNodeIndex index,
+                                        IrContext& context,
+                                        diag::DiagnosticConsumer& diag) {
   auto token = context.Node(index).token;
   auto id    = token.Identifier();
   if (context.identifier_repetition_counter > context.queue.size()) {
@@ -227,7 +228,7 @@ bool HandleParseTreeNodeIdentifier(ParseNodeIndex index, IrContext& context,
     });
     context.type_stack().push_back(
         type::QualifiedType::Unqualified(type::Error));
-    return true;
+    return Iteration::Continue;
   }
 
   // TODO: Actually want to traverse up the scope until you find it.
@@ -237,12 +238,12 @@ bool HandleParseTreeNodeIdentifier(ParseNodeIndex index, IrContext& context,
     context.emit.declarator.emplace(index,
                                     std::pair{decl_id_index, decl_index});
     context.type_stack().push_back(decl_qt);
-    return true;
+    return Iteration::Continue;
   } else {
     auto item     = context.queue.front();
     item.interval = nth::interval(index, item.interval.upper_bound());
     context.queue.push(std::move(item));
-    return false;
+    return Iteration::PauseRetry;
   }
 }
 
@@ -533,20 +534,23 @@ void HandleParseTreeNodeImport(ParseNodeIndex index, IrContext& context,
   context.type_stack().back() = type::QualifiedType::Constant(type::Module);
 }
 
-bool HandleParseTreeNodeScopeStart(ParseNodeIndex index, IrContext& context,
+Iteration HandleParseTreeNodeScopeStart(ParseNodeIndex index, IrContext& context,
                                    diag::DiagnosticConsumer& diag) {
   auto item           = std::move(context.queue.front());
   auto [start, end]   = item.interval;
   auto stmt_seq_index = context.Node(index).corresponding_statement_sequence;
   auto child_indices  = context.emit.tree.child_indices(stmt_seq_index);
   for (auto i : child_indices) {
+    // TODO: We always just want to ignore the last one. There's probably a
+    // better way to do this.
+    if (i == index) { continue; }
     item.interval = context.emit.tree.subtree_range(i);
     context.queue.push(item);
   }
   item.interval = nth::interval(stmt_seq_index, end);
   context.queue.push(item);
 
-  return false;
+  return Iteration::PauseMoveOn;
 }
 
 void HandleParseTreeNodeFunctionStart(ParseNodeIndex index, IrContext& context,
@@ -571,6 +575,18 @@ void HandleParseTreeNodeStatementStart(ParseNodeIndex index, IrContext& context,
 void HandleParseTreeNodeAssignedValueStart(ParseNodeIndex index,
                                            IrContext& context,
                                            diag::DiagnosticConsumer& diag) {}
+
+void HandleParseTreeNodeInferredReturnType(ParseNodeIndex index,
+                                           IrContext& context,
+                                           diag::DiagnosticConsumer& diag) {
+  NTH_UNIMPLEMENTED();
+}
+
+void HandleParseTreeNodeFunctionLiteral(ParseNodeIndex index,
+                                        IrContext& context,
+                                        diag::DiagnosticConsumer& diag) {
+  NTH_UNIMPLEMENTED();
+}
 
 void HandleParseTreeNodeAssignment(ParseNodeIndex index, IrContext& context,
                                    diag::DiagnosticConsumer& diag) {
@@ -602,16 +618,16 @@ void HandleParseTreeNodeFunctionTypeParameters(ParseNodeIndex index,
 }
 
 template <auto F>
-constexpr bool Invoke(ParseNodeIndex index, IrContext& context,
-                      diag::DiagnosticConsumer& diag) {
+constexpr Iteration Invoke(ParseNodeIndex index, IrContext& context,
+                           diag::DiagnosticConsumer& diag) {
   constexpr auto return_type =
       nth::type<std::invoke_result_t<decltype(F), ParseNodeIndex, IrContext&,
                                      diag::DiagnosticConsumer&>>;
-  if constexpr (return_type == nth::type<bool>) {
+  if constexpr (return_type == nth::type<Iteration>) {
     return F(index, context, diag);
   } else {
     F(index, context, diag);
-    return true;
+    return Iteration::Continue;
   }
 }
 
@@ -619,25 +635,31 @@ void ProcessIrImpl(IrContext& context, diag::DiagnosticConsumer& diag) {
   while (not context.queue.empty()) {
     auto item         = context.queue.front();
     auto [start, end] = item.interval;
-    for (auto index = start; index != end; ++index) {
+    auto index        = start;
+    for (; index != end; ++index) {
       switch (context.Node(index).kind) {
 #define IC_XMACRO_PARSE_NODE(kind)                                             \
   case ParseNode::Kind::kind: {                                                \
     NTH_LOG((v.when(debug::type_check)), "Process node {} ({})") <<=           \
         {#kind, index};                                                        \
-    bool should_continue =                                                     \
-        Invoke<HandleParseTreeNode##kind>(index, context, diag);               \
-    if (not should_continue) {                                                 \
-      NTH_LOG((v.when(debug::type_check)), "Stopping early after {}") <<=      \
-          {index};                                                             \
-      goto next_chunk;                                                         \
+    switch (Invoke<HandleParseTreeNode##kind>(index, context, diag)) {         \
+      case Iteration::PauseMoveOn: ++index; [[fallthrough]];                   \
+      case Iteration::PauseRetry: goto stop_early;                             \
+      case Iteration::Continue: break;                                         \
     }                                                                          \
   } break;
 #include "parse/node.xmacro.h"
       }
       context.identifier_repetition_counter = 0;
     }
-  next_chunk:
+    NTH_LOG((v.when(debug::type_check)), "Done type-checking chunk at {}") <<=
+        {index};
+    context.queue.pop();
+    continue;
+
+  stop_early:
+    NTH_LOG((v.when(debug::type_check)), "Stopping early just before {}") <<=
+        {index};
     ++context.identifier_repetition_counter;
     context.queue.pop();
   }

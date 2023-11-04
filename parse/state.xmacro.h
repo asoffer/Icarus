@@ -17,10 +17,11 @@ IC_XMACRO_PARSER_STATE(InvocationArgumentSequence)
 IC_XMACRO_PARSER_STATE(ResolveInvocationArgumentSequence)
 
 IC_XMACRO_PARSER_STATE(Declaration)
+IC_XMACRO_PARSER_STATE(ColonToEndOfDeclaration)
 IC_XMACRO_PARSER_STATE(DeclaredSymbol)
 IC_XMACRO_PARSER_STATE(ResolveInferredTypeDeclaration)
 IC_XMACRO_PARSER_STATE(ResolveUninferredTypeDeclaration)
-IC_XMACRO_PARSER_STATE(ResolveDefaultedDeclaration)
+IC_XMACRO_PARSER_STATE(ResolveDeclaration)
 
 IC_XMACRO_PARSER_STATE(Expression)
 IC_XMACRO_PARSER_STATE(ExpressionSuffix)
@@ -28,9 +29,14 @@ IC_XMACRO_PARSER_STATE(ParenthesizedExpression)
 IC_XMACRO_PARSER_STATE(ResolveMemberTerm)
 IC_XMACRO_PARSER_STATE(AtomicTerm)
 IC_XMACRO_PARSER_STATE(CommaSeparatedExpressionSequence)
+IC_XMACRO_PARSER_STATE(CommaSeparatedDeclarationSequence)
 IC_XMACRO_PARSER_STATE(ResolveFunctionTypeParameters)
 
 IC_XMACRO_PARSER_STATE(ResolveAssignment)
+
+IC_XMACRO_PARSER_STATE(FunctionLiteralReturnTypeStart)
+IC_XMACRO_PARSER_STATE(FunctionLiteralBody)
+IC_XMACRO_PARSER_STATE(ResolveFunctionLiteral)
 
 IC_XMACRO_PARSER_STATE(IfStatementTrueBranchStart)
 IC_XMACRO_PARSER_STATE(ResolveIfStatement)

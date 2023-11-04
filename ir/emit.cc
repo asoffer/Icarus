@@ -11,12 +11,6 @@
 namespace ic {
 namespace {
 
-enum class Iteration {
-  Continue,
-  PauseRetry,
-  PauseMoveOn,
-};
-
 void HandleParseTreeNodeBooleanLiteral(ParseNodeIndex index,
                                        EmitContext& context) {
   auto node = context.Node(index);
@@ -325,6 +319,16 @@ void HandleParseTreeNodeAssignedValueStart(ParseNodeIndex index,
 void HandleParseTreeNodeAssignment(ParseNodeIndex index, EmitContext& context) {
   context.current_function().append<Rotate>(2);
   context.current_function().append<Store>(1);
+}
+
+void HandleParseTreeNodeInferredReturnType(ParseNodeIndex index,
+                                           EmitContext& context) {
+  NTH_UNIMPLEMENTED();
+}
+
+void HandleParseTreeNodeFunctionLiteral(ParseNodeIndex index,
+                                        EmitContext& context) {
+  NTH_UNIMPLEMENTED();
 }
 
 template <auto F>
