@@ -11,28 +11,9 @@ namespace ic {
 // by the currently-being-compiled module. Notably, module initializers are not
 // indexed because they cannot be called explicitly.
 struct GlobalFunctionRegistry {
-  void Register(FunctionId id, IrFunction const *f) {
-    [[maybe_unused]] bool ptr_inserted =
-        functions_by_ptr_.emplace(f, id).second;
-    NTH_REQUIRE(ptr_inserted);
-
-    [[maybe_unused]] bool id_inserted = functions_by_id_.emplace(id, f).second;
-    NTH_REQUIRE(id_inserted);
-  }
-
-  FunctionId id(IrFunction const *f) const {
-    auto iter = functions_by_ptr_.find(f);
-    NTH_REQUIRE(iter != functions_by_ptr_.end())
-        .Log<"Failed to find function {}">(f);
-    return iter->second;
-  }
-
-  IrFunction const &function(FunctionId id) const {
-    auto iter = functions_by_id_.find(id);
-    NTH_REQUIRE(iter != functions_by_id_.end())
-        .Log<"Failed to find function by id {}">(id);
-    return *iter->second;
-  }
+  void Register(FunctionId id, IrFunction const *f);
+  FunctionId id(IrFunction const *f) const;
+  IrFunction const &function(FunctionId id) const;
 
  private:
   absl::flat_hash_map<IrFunction const *, FunctionId> functions_by_ptr_;

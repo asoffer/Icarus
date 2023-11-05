@@ -15,7 +15,7 @@
 namespace ic {
 
 struct Module {
-  explicit Module() {}
+  explicit Module() { functions_.emplace_back(0, 0); }
 
   struct Entry {
     type::QualifiedType qualified_type =
@@ -25,22 +25,15 @@ struct Module {
   Entry const& Lookup(Identifier id) const;
   void Insert(Identifier id, Entry e);
 
-  constexpr IrFunction& initializer() { return initializer_; }
-  constexpr IrFunction const& initializer() const { return initializer_; }
+  constexpr IrFunction& initializer() { return functions_[0]; }
+  constexpr IrFunction const& initializer() const { return functions_[0]; }
 
   constexpr std::deque<IrFunction>& functions() { return functions_; }
   constexpr std::deque<IrFunction> const& functions() const {
     return functions_;
   }
 
-  IrFunction& add_function(size_t parameters, size_t returns) {
-    auto& f = functions_.emplace_back(parameters, returns);
-    NTH_LOG("Making a function at {}") <<= {&f};
-    global_function_registry.Register(
-        FunctionId(ModuleId::Current(), LocalFunctionId(functions_.size() - 1)),
-        &f);
-    return f;
-  }
+  IrFunction& add_function(size_t parameters, size_t returns);
 
   auto const& entries() const { return entries_; }
 
@@ -48,7 +41,6 @@ struct Module {
   static Entry const DefaultEntry;
 
   absl::flat_hash_map<Identifier, Entry> entries_;
-  IrFunction initializer_{0, 0};
   std::deque<IrFunction> functions_;
 };
 

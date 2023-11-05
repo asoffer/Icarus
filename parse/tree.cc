@@ -7,8 +7,7 @@ namespace ic {
 nth::interval<ParseNodeIndex> ParseTree::subtree_range(
     ParseNodeIndex node_index) const {
   NTH_REQUIRE((v.harden), node_index.value() < nodes_.size());
-  auto const& node = nodes_[node_index.value()];
-  return nth::interval(node_index - node.subtree_size + 1, node_index + 1);
+  return nth::interval(first_descendant_index(node_index), node_index + 1);
 }
 
 ParseTree::sibling_index_range ParseTree::child_indices(
@@ -23,6 +22,11 @@ ParseTree::sibling_range ParseTree::children(ParseNodeIndex node_index) const {
   auto* p = &nodes_[node_index.value()];
   return nth::iterator_range(sibling_iterator(p - 1),
                              sibling_iterator(p - p->subtree_size));
+}
+
+ParseNodeIndex ParseTree::first_descendant_index(
+    ParseNodeIndex node_index) const {
+  return node_index - nodes_[node_index.value()].subtree_size + 1;
 }
 
 std::span<ParseNode const> ParseTree::subtree(ParseNodeIndex node_index) const {

@@ -37,7 +37,10 @@ bool Deserializer::DeserializeFunction(ModuleProto const& m,
         uint64_t index = instruction.content()[0];
         FunctionId function_id(ModuleId(index >> 32),
                                LocalFunctionId(index & uint32_t{0xffffffff}));
-        if (function_id.module() == ModuleId::Builtin()) {
+        if (function_id.module() == ModuleId::Current()) {
+          f.raw_append(jasmin::Value(
+              &current().functions()[function_id.local_function().value()]));
+        } else if (function_id.module() == ModuleId::Builtin()) {
           NTH_REQUIRE((v.debug), builtin_module_ != nullptr);
           // TODO: Are local functions the same as module symbols?
           auto entry = builtin_module_->Lookup(
@@ -70,9 +73,8 @@ bool Deserializer::DeserializeFunction(ModuleProto const& m,
 }
 
 bool Deserializer::Deserialize(ModuleProto const& proto, Module& module) {
+  current_ = &module;
   type::DeserializeTypeSystem(proto.type_system());
-  if (proto.initializer().parameters() != 0) { return false; }
-  if (proto.initializer().returns() != 0) { return false; }
 
   // Insert all functions, so that when we populate their bodies we have a
   // stable `IrFunction` to refer to.
@@ -134,15 +136,15 @@ bool Deserializer::Deserialize(ModuleProto const& proto, Module& module) {
   }
 
   size_t i = 0;
+  if (proto.functions().empty()) { return false; }
+  auto const & init = proto.functions(0);
+  if (proto.functions().empty()) { return false; }
+  if (init.parameters() != 0) { return false; }
+  if (init.returns() != 0) { return false; }
   for (auto const& function : proto.functions()) {
     if (not DeserializeFunction(proto, function, module.functions()[i++])) {
       return false;
     }
-  }
-
-  if (not DeserializeFunction(proto, proto.initializer(),
-                              module.initializer())) {
-    return false;
   }
 
   return true;

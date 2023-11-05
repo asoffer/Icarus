@@ -5,6 +5,7 @@
 #include "ir/module.h"
 #include "ir/module.pb.h"
 #include "nth/base/attributes.h"
+#include "nth/debug/debug.h"
 
 namespace ic {
 
@@ -20,8 +21,14 @@ struct Deserializer {
   bool DeserializeDependentModules(std::span<ModuleProto const> protos,
                                    DependentModules& dm);
 
+  Module const& current() const& {
+    NTH_REQUIRE(current_ != nullptr);
+    return *current_;
+  }
+
  private:
   Module const* builtin_module_;
+  Module const* current_;
 };
 
 }  // namespace ic

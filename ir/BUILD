@@ -57,6 +57,7 @@ cc_library(
         "//common:module_id",
         "//common/language:primitive_types",
         "//common:resources",
+        "//parse:declaration",
         "//parse:node_index",
         "//parse:node_xmacro",
         "//parse:tree",
@@ -86,7 +87,10 @@ cc_library(
         "function.h",
         "global_function_registry.h",
     ],
-    srcs = ["function.cc"],
+    srcs = [
+        "function.cc",
+        "global_function_registry.cc",
+    ],
     deps = [
         ":function_id",
         "//common:identifier",

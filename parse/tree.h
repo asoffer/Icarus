@@ -42,6 +42,8 @@ struct ParseTree {
   sibling_range children(ParseNodeIndex node_index) const;
   sibling_index_range child_indices(ParseNodeIndex node_index) const;
 
+  ParseNodeIndex first_descendant_index(ParseNodeIndex node_index) const;
+
   void append(ParseNode::Kind kind, Token token, int subtree_start);
 
   void append_leaf(ParseNode::Kind kind, Token token) {

@@ -1,9 +1,18 @@
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
+    name = "declaration",
+    hdrs = ["declaration.h"],
+    deps = [
+        ":node_index",
+    ],
+)
+
+cc_library(
     name = "node",
     hdrs = ["node.h"],
     deps = [
+        ":declaration",
         ":node_index",
         ":node_xmacro",
         "//ir:scope",
@@ -32,6 +41,7 @@ cc_library(
     srcs = ["parser.cc"],
     textual_hdrs = ["state.xmacro.h"],
     deps = [
+        ":declaration",
         ":precedence",
         ":node_index",
         ":tree",

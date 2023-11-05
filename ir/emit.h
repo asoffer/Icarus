@@ -15,21 +15,33 @@
 #include "jasmin/value_stack.h"
 #include "nth/base/attributes.h"
 #include "nth/container/interval_map.h"
+#include "parse/declaration.h"
 #include "parse/node_index.h"
 #include "parse/tree.h"
 #include "type/type.h"
 
 namespace ic {
 
-struct DeclarationInfo {
-  Token::Kind kind     = Token::Kind::Invalid;
-  ParseNodeIndex index = ParseNodeIndex::Invalid();
-};
+struct Iteration {
+  enum class Kind : uint32_t { Continue, PauseRetry, PauseMoveOn, Skip };
+  using enum Kind;
 
-enum class Iteration {
-  Continue,
-  PauseRetry,
-  PauseMoveOn,
+  Iteration(Kind k) : Iteration(k, ParseNodeIndex::Invalid()) {
+    NTH_REQUIRE((v.debug), k != Kind::Skip);
+  }
+
+  constexpr Kind kind() const { return static_cast<Kind>(value_); }
+  constexpr ParseNodeIndex index() const { return index_; }
+
+  static constexpr Iteration SkipTo(ParseNodeIndex index) {
+    return Iteration(static_cast<Kind>(Kind::Skip), index);
+  }
+
+ private:
+  constexpr Iteration(Kind k, ParseNodeIndex index)
+      : value_(static_cast<uint32_t>(k)), index_(index) {}
+  uint32_t value_;
+  ParseNodeIndex index_;
 };
 
 struct EmitContext {
@@ -87,15 +99,17 @@ struct EmitContext {
   absl::flat_hash_map<Scope::Index, LocalStorage> storage;
   Module& current_module;
 
-  void set_current_function(IrFunction& f) {
+  void push_function(IrFunction& f) { queue.front().push_function(f); }
+
+  void pop_function() {
     NTH_REQUIRE((v.debug), not queue.empty());
-    queue.front().function = &f;
+    queue.front().function_stack_.pop_back();
   }
 
   IrFunction& current_function() {
     NTH_REQUIRE((v.harden), not queue.empty());
-    NTH_REQUIRE((v.debug), queue.front().function != nullptr);
-    return *queue.front().function;
+    NTH_REQUIRE((v.debug), queue.front().function_stack_.back() != nullptr);
+    return *queue.front().function_stack_.back();
   }
 
   void pop_scope() {
@@ -125,13 +139,17 @@ struct EmitContext {
     Reference,
   };
   struct WorkItem {
-    IrFunction* function = nullptr;
+    void push_function(IrFunction& f) { function_stack_.push_back(&f); }
+
     nth::interval<ParseNodeIndex> range;
     std::vector<DeclarationInfo> declaration_stack;
     std::vector<jasmin::OpCodeRange> branches;
     std::vector<Scope::Index> scopes = {Scope::Index::Root()};
     std::vector<Scope::Index> function_stack;
     std::vector<ValueCategory> value_category_stack;
+
+    // TODO: Make private (requires no longer using designated initializers).
+    std::vector<IrFunction*> function_stack_;
   };
   std::queue<WorkItem> queue;
 

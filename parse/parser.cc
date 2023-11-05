@@ -7,6 +7,7 @@
 #include "common/debug.h"
 #include "diagnostics/consumer/consumer.h"
 #include "nth/debug/debug.h"
+#include "parse/declaration.h"
 #include "parse/node_index.h"
 #include "parse/precedence.h"
 #include "parse/tree.h"
@@ -111,6 +112,24 @@ struct Parser {
     }
   }
 
+  DeclarationKind& PushDeclaration() {
+    auto& k = declaration_kinds_.emplace_back();
+    k.set_parameter(inside_function_declaration());
+    return k;
+  }
+
+  DeclarationKind& CurrentDeclaration() {
+    NTH_REQUIRE(not declaration_kinds_.empty());
+    return declaration_kinds_.back();
+  }
+
+  DeclarationKind PopDeclaration() {
+    NTH_REQUIRE(not declaration_kinds_.empty());
+    auto result = declaration_kinds_.back();
+    declaration_kinds_.pop_back();
+    return result;
+  }
+
   Scope::Index PushScope() {
     NTH_REQUIRE(not scope_indices_.empty());
     return scope_indices_.emplace_back(
@@ -133,10 +152,26 @@ struct Parser {
       {.kind = State::Kind::Newlines, .subtree_start = 0},
   };
 
+  bool inside_function_declaration() const {
+    return inside_function_declaration_.back();
+  }
+
+  bool pop_inside_function_decl() {
+    bool b = inside_function_declaration_.back();
+    inside_function_declaration_.pop_back();
+    return b;
+  }
+
+  void push_inside_function_decl(bool b) {
+    inside_function_declaration_.push_back(b);
+  }
+
   TokenBuffer::const_iterator iterator_;
 
   TokenBuffer const& token_buffer_;
   ScopeTree& scope_tree_;
+  std::vector<bool> inside_function_declaration_ = {false};
+  std::vector<DeclarationKind> declaration_kinds_;
   std::vector<Scope::Index> scope_indices_ = {Scope::Index::Root()};
   diag::DiagnosticConsumer& diagnostic_consumer_;
 };
@@ -181,7 +216,6 @@ void Parser::HandleNewlines(ParseTree& tree) {
 }
 
 void Parser::HandleModule(ParseTree& tree) {
-  tree.append_leaf(ParseNode::Kind::FunctionStart, Token::Invalid());
   ExpandState(State{
       .kind               = State::Kind::StatementSequence,
       .ambient_precedence = Precedence::Loosest(),
@@ -193,22 +227,24 @@ void Parser::HandleModule(ParseTree& tree) {
 void Parser::HandleDeclaration(ParseTree& tree) {
   switch (current_token().kind()) {
     case Token::Kind::Let:
+      PushDeclaration();
       ExpandState(State::Kind::DeclaredSymbol,
                   State::Kind::ColonToEndOfDeclaration,
                   State{
                       .kind          = State::Kind::ResolveDeclaration,
                       .subtree_start = tree.size(),
                   });
-      tree.append_leaf(ParseNode::Kind::Let, *++iterator_);
+      tree.append_leaf(ParseNode::Kind::DeclarationStart, *++iterator_);
       break;
     case Token::Kind::Var:
+      PushDeclaration();
       ExpandState(State::Kind::DeclaredSymbol,
                   State::Kind::ColonToEndOfDeclaration,
                   State{
                       .kind          = State::Kind::ResolveDeclaration,
                       .subtree_start = tree.size(),
                   });
-      tree.append_leaf(ParseNode::Kind::Var, *++iterator_);
+      tree.append_leaf(ParseNode::Kind::DeclarationStart, *++iterator_);
       break;
     default: NTH_UNIMPLEMENTED();
   }
@@ -217,42 +253,50 @@ void Parser::HandleDeclaration(ParseTree& tree) {
 void Parser::HandleColonToEndOfDeclaration(ParseTree& tree) {
   ParseNode::Kind node_kind;
   switch (current_token().kind()) {
-    case Token::Kind::ColonColonEqual:
-      node_kind  = ParseNode::Kind::ColonColonEqual;
-      tree.append_leaf(ParseNode::Kind::ColonColonEqual, *iterator_++);
+    case Token::Kind::ColonColonEqual: {
+      auto& cd = CurrentDeclaration();
+      cd.set_explicit_type(false);
+      cd.set_constant(true);
+      cd.set_initializer(true);
       ExpandState(Expression(tree));
-      break;
-    case Token::Kind::ColonEqual:
-      node_kind  = ParseNode::Kind::ColonEqual;
-      tree.append_leaf(ParseNode::Kind::ColonEqual, *iterator_++);
+    } break;
+    case Token::Kind::ColonEqual: {
+      auto& cd = CurrentDeclaration();
+      cd.set_explicit_type(false);
+      cd.set_constant(false);
+      cd.set_initializer(true);
       ExpandState(Expression(tree));
-      break;
-    case Token::Kind::ColonColon:
-      node_kind  = ParseNode::Kind::ColonColon;
+    } break;
+    case Token::Kind::ColonColon: {
+      auto& cd = CurrentDeclaration();
+      cd.set_explicit_type(true);
+      cd.set_constant(true);
       ExpandState(Expression(tree),
                   State{
                       .kind = State::Kind::ResolveUninferredTypeDeclaration,
                       .subtree_start = state().back().subtree_start,
                   });
-      tree.append_leaf(node_kind, *iterator_++);
-      break;
-    case Token::Kind::Colon:
-      node_kind  = ParseNode::Kind::Colon;
+    } break;
+    case Token::Kind::Colon: {
+      auto& cd = CurrentDeclaration();
+      cd.set_explicit_type(true);
+      cd.set_constant(false);
       ExpandState(Expression(tree),
                   State{
                       .kind = State::Kind::ResolveUninferredTypeDeclaration,
                       .subtree_start = state().back().subtree_start,
                   });
-      tree.append_leaf(node_kind, *iterator_++);
-      break;
+    } break;
     default: NTH_UNIMPLEMENTED("{}") <<= {current_token().kind()};
   }
+  ++iterator_;
 }
 
 void Parser::HandleStatement(ParseTree& tree) {
   tree.append_leaf(ParseNode::Kind::StatementStart, Token::Invalid());
   switch (current_token().kind()) {
     case Token::Kind::Let:
+      PushDeclaration();
       ExpandState(State::Kind::DeclaredSymbol,
                   State::Kind::ColonToEndOfDeclaration,
                   State{
@@ -263,9 +307,10 @@ void Parser::HandleStatement(ParseTree& tree) {
                       .kind          = State::Kind::ResolveStatement,
                       .subtree_start = tree.size() - 1,
                   });
-      tree.append_leaf(ParseNode::Kind::Let, *++iterator_);
+      tree.append_leaf(ParseNode::Kind::DeclarationStart, *++iterator_);
       break;
     case Token::Kind::Var:
+      PushDeclaration();
       ExpandState(State::Kind::DeclaredSymbol,
                   State::Kind::ColonToEndOfDeclaration,
                   State{
@@ -276,7 +321,20 @@ void Parser::HandleStatement(ParseTree& tree) {
                       .kind          = State::Kind::ResolveStatement,
                       .subtree_start = tree.size() - 1,
                   });
-      tree.append_leaf(ParseNode::Kind::Var, *++iterator_);
+      tree.append_leaf(ParseNode::Kind::DeclarationStart, *++iterator_);
+      break;
+    case Token::Kind::Return:
+      tree.back().statement_kind = ParseNode::StatementKind::Return;
+      ExpandState(State::Kind::Expression,
+                  State{
+                      .kind          = State::Kind::ResolveReturn,
+                      .subtree_start = tree.size(),
+                  },
+                  State{
+                      .kind          = State::Kind::ResolveStatement,
+                      .subtree_start = tree.size() - 1,
+                  });
+      ++iterator_;
       break;
     case Token::Kind::If:
       tree.back().statement_kind = ParseNode::StatementKind::Expression;
@@ -360,13 +418,13 @@ void Parser::HandleResolveStatement(ParseTree& tree) {
 }
 
 void Parser::HandleStatementSequence(ParseTree& tree) {
+  tree.append_leaf(ParseNode::Kind::ScopeStart, Token::Invalid());
   if (current_token().kind() == Token::Kind::Eof or
       current_token().kind() == Token::Kind::RightBrace) {
-    pop_and_discard_state();
+    ExpandState(State::Kind::ResolveStatementSequence);
     return;
   }
 
-  tree.append_leaf(ParseNode::Kind::ScopeStart, Token::Invalid());
   ExpandState(State::Kind::Statement, State::Kind::Newlines,
               State::Kind::SubsequentStatementSequence,
               State::Kind::ResolveStatementSequence);
@@ -392,32 +450,29 @@ void Parser::HandleResolveStatementSequence(ParseTree& tree) {
               state.subtree_start);
 }
 
-void Parser::HandleResolveInferredTypeDeclaration(ParseTree& tree) {
-  State state = pop_state();
-  tree.append(ParseNode::Kind::Declaration, state.token, state.subtree_start);
-  ParseNodeIndex index(tree.size() - 1);
-  auto iter = tree.child_indices(index).begin();
-  ++iter;
-  tree[*iter].declaration = index;
-}
-
 void Parser::HandleResolveUninferredTypeDeclaration(ParseTree& tree) {
   switch (current_token().kind()) {
     case Token::Kind::Equal:
       ++iterator_;
+      CurrentDeclaration().set_initializer(true);
       ExpandState(Expression(tree));
       break;
-    default: pop_and_discard_state(); break;
+    default:
+      CurrentDeclaration().set_initializer(false);
+      pop_and_discard_state();
+      break;
   }
 }
 
 void Parser::HandleResolveDeclaration(ParseTree& tree) {
   State state = pop_state();
   tree.append(ParseNode::Kind::Declaration, state.token, state.subtree_start);
-  ParseNodeIndex index(tree.size() - 1);
-  auto iter = tree.child_indices(index).begin();
-  ++iter;
-  tree[*iter].declaration = index;
+  ParseNodeIndex decl_index(tree.size() - 1);
+  auto start_index = tree.subtree_range(decl_index).lower_bound();
+  tree[start_index].declaration_info = {
+      .index = decl_index,
+      .kind  = PopDeclaration(),
+  };
 }
 
 void Parser::HandleDeclaredSymbol(ParseTree& tree) {
@@ -430,19 +485,40 @@ void Parser::HandleDeclaredSymbol(ParseTree& tree) {
 void Parser::HandleExpression(ParseTree& tree) {
   switch (current_token().kind()) {
     case Token::Kind::Fn:
-      ++iterator_;
+      push_inside_function_decl(true);
+      tree.append_leaf(ParseNode::Kind::FunctionLiteralStart, *iterator_++);
       if (iterator_->kind() != Token::Kind::LeftParen) { NTH_UNIMPLEMENTED(); }
       ++iterator_;
       if (iterator_->kind() == Token::Kind::RightParen) {
-        ExpandState(State::Kind::FunctionLiteralReturnTypeStart,
-                    State::Kind::FunctionLiteralBody,
-                    State::Kind::ResolveFunctionLiteral);
+        ExpandState(
+            State{
+                .kind = State::Kind::FunctionLiteralReturnTypeStart,
+                .subtree_start = tree.size(),
+            },
+            State{
+                .kind = State::Kind::FunctionLiteralBody,
+                .subtree_start = tree.size(),
+            },
+            State::Kind::ResolveFunctionLiteral);
       } else {
-        ExpandState(State::Kind::Declaration,
-                    State::Kind::CommaSeparatedDeclarationSequence,
-                    State::Kind::FunctionLiteralReturnTypeStart,
-                    State::Kind::FunctionLiteralBody,
-                    State::Kind::ResolveFunctionLiteral);
+        ExpandState(
+            State{
+                .kind          = State::Kind::Declaration,
+                .subtree_start = tree.size(),
+            },
+            State{
+                .kind          = State::Kind::CommaSeparatedDeclarationSequence,
+                .subtree_start = tree.size(),
+            },
+            State{
+                .kind          = State::Kind::FunctionLiteralReturnTypeStart,
+                .subtree_start = tree.size(),
+            },
+            State{
+                .kind          = State::Kind::FunctionLiteralBody,
+                .subtree_start = tree.size(),
+            },
+            State::Kind::ResolveFunctionLiteral);
       }
       break;
     case Token::Kind::Star:
@@ -528,16 +604,13 @@ void Parser::HandleFunctionLiteralReturnTypeStart(ParseTree& tree) {
   }
 
   ++iterator_;
-  if (current_token().kind() == Token::Kind::LeftBrace) {
-    pop_and_discard_state();
-    tree.append_leaf(ParseNode::Kind::InferredReturnType, *iterator_);
-  }
-
   ExpandState(State::Kind::Expression);
 }
 
 void Parser::HandleFunctionLiteralBody(ParseTree& tree) {
-  tree.append_leaf(ParseNode::Kind::FunctionStart, Token::Invalid());
+  pop_inside_function_decl();
+  tree.append(ParseNode::Kind::FunctionLiteralSignature, Token::Invalid(),
+              state().back().subtree_start);
   ExpandState(State{
       .kind               = State::Kind::BracedStatementSequence,
       .ambient_precedence = Precedence::Loosest(),
@@ -597,6 +670,13 @@ void Parser::HandleResolveImport(ParseTree& tree) {
               state().back().subtree_start);
   pop_and_discard_state();
   ++iterator_;
+}
+
+
+void Parser::HandleResolveReturn(ParseTree& tree) {
+  tree.append(ParseNode::Kind::Return, current_token(),
+              state().back().subtree_start);
+  pop_and_discard_state();
 }
 
 void Parser::HandleResolveAssignment(ParseTree& tree) {

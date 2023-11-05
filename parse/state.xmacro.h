@@ -19,7 +19,6 @@ IC_XMACRO_PARSER_STATE(ResolveInvocationArgumentSequence)
 IC_XMACRO_PARSER_STATE(Declaration)
 IC_XMACRO_PARSER_STATE(ColonToEndOfDeclaration)
 IC_XMACRO_PARSER_STATE(DeclaredSymbol)
-IC_XMACRO_PARSER_STATE(ResolveInferredTypeDeclaration)
 IC_XMACRO_PARSER_STATE(ResolveUninferredTypeDeclaration)
 IC_XMACRO_PARSER_STATE(ResolveDeclaration)
 
@@ -44,6 +43,7 @@ IC_XMACRO_PARSER_STATE(ResolveIfStatement)
 IC_XMACRO_PARSER_STATE(ResolvePointerType)
 IC_XMACRO_PARSER_STATE(ResolveBufferPointerType)
 IC_XMACRO_PARSER_STATE(ResolveImport)
+IC_XMACRO_PARSER_STATE(ResolveReturn)
 
 IC_XMACRO_PARSER_STATE(ResolveExpressionGroup)
 
