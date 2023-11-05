@@ -20,6 +20,18 @@ cc_test(
 )
 
 cc_library(
+    name = "file",
+    hdrs = ["file.h"],
+    srcs = ["file.cc"],
+    deps = [
+        ":errno",
+        "@asoffer_nth//nth/debug",
+        "@asoffer_nth//nth/io:file",
+        "@asoffer_nth//nth/io:file_path",
+    ],
+)
+
+cc_library(
     name = "identifier",
     hdrs = ["identifier.h"],
     deps = [

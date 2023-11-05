@@ -5,9 +5,9 @@
 
 #include "absl/debugging/failure_signal_handler.h"
 #include "absl/debugging/symbolize.h"
-#include "absl/strings/str_split.h"
 #include "common/debug.h"
 #include "common/errno.h"
+#include "common/file.h"
 #include "common/resources.h"
 #include "common/string.h"
 #include "diagnostics/consumer/streaming.h"
@@ -25,53 +25,10 @@
 #include "nth/io/file_path.h"
 #include "nth/process/exit_code.h"
 #include "parse/parser.h"
+#include "toolchain/module_map.h"
 
 namespace ic {
 namespace {
-
-std::optional<std::string> ReadFileToString(nth::file_path const& file_name) {
-  errno_resetter e;
-  std::optional<std::string> result = std::nullopt;
-  std::optional<nth::file> file = nth::file::read_only(file_name);
-  if (file) {
-    std::fseek(file->get(), 0, SEEK_END);
-    size_t file_size = file->tell();
-    file->rewind();
-
-    result.emplace();
-    result->resize(file_size, '\0');
-    (void)file->read_into(*result);
-    NTH_REQUIRE(file->close());
-  }
-  return result;
-}
-
-std::optional<std::vector<ModuleProto>> PopulateModuleMap(
-    nth::file_path const& module_map_file) {
-  std::optional content = ReadFileToString(module_map_file);
-  if (not content) { return std::nullopt; }
-  std::vector<ModuleProto> dependent_module_protos;
-  for (std::string_view line : absl::StrSplit(*content, absl::ByChar('\n'))) {
-    if (line.empty()) { continue; }
-    size_t count = 0;
-    std::string_view name, location;
-    for (std::string_view chunk : absl::StrSplit(line, absl::ByChar('\t'))) {
-      switch (count++) {
-        case 0: name = chunk; break;
-        case 1: location = chunk; break;
-        default: return std::nullopt;
-      }
-    }
-    auto id = resources.module_map.add(name);
-    NTH_REQUIRE(dependent_module_protos.size() + 1 == id.value());
-
-    std::ifstream in{std::string(location)};
-    if (not in.is_open()) { NTH_UNIMPLEMENTED("{}") <<= {location}; }
-    dependent_module_protos.emplace_back().ParseFromIstream(&in);
-  }
-
-  return dependent_module_protos;
-}
 
 nth::exit_code Compile(nth::FlagValueSet flags, nth::file_path const& source) {
   absl::InitializeSymbolizer("");

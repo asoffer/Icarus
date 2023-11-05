@@ -74,6 +74,7 @@ bool Deserializer::DeserializeFunction(ModuleProto const& m,
 
 bool Deserializer::Deserialize(ModuleProto const& proto, Module& module) {
   current_ = &module;
+
   type::DeserializeTypeSystem(proto.type_system());
 
   // Insert all functions, so that when we populate their bodies we have a

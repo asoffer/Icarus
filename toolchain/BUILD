@@ -1,11 +1,26 @@
 package(default_visibility = ["//visibility:public"])
 
+cc_library(
+    name = "module_map",
+    hdrs = ["module_map.h"],
+    srcs = ["module_map.cc"],
+    deps = [
+        "//common:file",
+        "//common:resources",
+        "//ir:module_cc_proto",
+        "@asoffer_nth//nth/io:file_path",
+        "@com_google_absl//absl/strings",
+    ],
+)
+
 cc_binary(
     name = "compile",
     srcs = ["compile.cc"],
     deps = [
+        ":module_map",
         "//common:debug",
         "//common:errno",
+        "//common:file",
         "//common:string",
         "//diagnostics:message",
         "//diagnostics/consumer:streaming",
@@ -25,7 +40,6 @@ cc_binary(
         "@asoffer_nth//nth/process:exit_code",
         "@com_google_absl//absl/debugging:failure_signal_handler",
         "@com_google_absl//absl/debugging:symbolize",
-        "@com_google_absl//absl/strings",
     ],
 )
 
@@ -33,6 +47,7 @@ cc_binary(
     name = "run_bytecode",
     srcs = ["run_bytecode.cc"],
     deps = [
+        ":module_map",
         "//common:debug",
         "//common:errno",
         "//common:string",

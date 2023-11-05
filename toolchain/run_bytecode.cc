@@ -21,6 +21,7 @@
 #include "nth/io/file.h"
 #include "nth/io/file_path.h"
 #include "nth/process/exit_code.h"
+#include "toolchain/module_map.h"
 
 namespace ic {
 namespace {
@@ -30,8 +31,9 @@ nth::exit_code Run(nth::FlagValueSet flags, std::span<std::string_view const>) {
   absl::FailureSignalHandlerOptions opts;
   absl::InstallFailureSignalHandler(opts);
 
-  auto const& input     = flags.get<nth::file_path>("input");
-  auto const* debug_run = flags.try_get<bool>("debug-run");
+  auto const& input           = flags.get<nth::file_path>("input");
+  auto const& module_map_path = flags.get<nth::file_path>("module-map");
+  auto const* debug_run       = flags.try_get<bool>("debug-run");
   if (debug_run) { ic::debug::run = *debug_run; }
 
   std::ifstream in(input.path());
@@ -52,10 +54,21 @@ nth::exit_code Run(nth::FlagValueSet flags, std::span<std::string_view const>) {
 
   TokenBuffer token_buffer;
 
-  std::vector<ModuleProto> dependent_module_protos;
+  std::optional dependent_module_protos = PopulateModuleMap(module_map_path);
+  if (not dependent_module_protos) {
+    consumer.Consume({
+        diag::Header(diag::MessageKind::Error),
+        diag::Text(InterpolateString<
+                   "Failed to load the content from the module map file {}.">(
+            module_map_path)),
+    });
+
+    return nth::exit_code::generic_error;
+  }
+
   DependentModules dependencies;
   Deserializer d;
-  if (not d.DeserializeDependentModules(dependent_module_protos,
+  if (not d.DeserializeDependentModules(*dependent_module_protos,
                                         dependencies)) {
     consumer.Consume({diag::Header(diag::MessageKind::Error),
                       diag::Text("Failed to deserialize dependent modules.")});
@@ -89,9 +102,14 @@ nth::Usage const nth::program_usage = {
             {.name        = {"input"},
              .type        = nth::type<nth::file_path>,
              .description = "The from which to read the input .icm file."},
+            {.name        = {"module-map"},
+             .type        = nth::type<nth::file_path>,
+             .description = "The location of the .icmod file defining the "
+                            "module mapping."},
             {.name        = {"debug-run"},
              .type        = nth::type<bool>,
              .description = "Dumps serialized byte code before executing."},
+
         },
 
     .execute = ic::Run,

@@ -12,8 +12,12 @@ def _module_name(p):
         name = "std" + name[16:]
     return name
 
+
 def _module_location(p):
     return p[IcarusInfo].icm.path
+
+def _short_module_location(p):
+    return p[IcarusInfo].icm.short_path
 
 def _ic_compile_impl(ctx):
     src = ctx.attr.srcs[0]
@@ -77,25 +81,39 @@ def _ic_binary_impl(ctx):
     if len(ctx.attr.srcs) != 1:
         fail("ic_binary rules must have exactly one file in 'srcs'.")
 
-    (icm_file, mod_file, icm_deps) = _ic_compile_impl(ctx)
+    (icm_file, _, icm_deps) = _ic_compile_impl(ctx)
+
+    mod_file = ctx.actions.declare_file("{label}.icrunmod".format(
+        label = ctx.label.name
+    ))
+
+    ctx.actions.write(
+        output = mod_file,
+        content = "\n".join([
+            "{}\t{}\n".format(_module_name(p), _short_module_location(p))
+            for p in depset(ctx.attr.deps).to_list()
+        ])
+    )
 
     runfiles = ctx.runfiles(
-        files = [ctx.executable._run_bytecode, icm_file]
+        files = [ctx.executable._run_bytecode, mod_file],
+        transitive_files = icm_deps,
     )
 
     ctx.actions.write(
         output = ctx.outputs.executable,
         is_executable = True,
         content = """
-        {executable} --input={icm} $@
+        {executable} --input={icm} --module-map={mm} $@
         """.format(
             executable = ctx.executable._run_bytecode.short_path,
             icm = icm_file.short_path,
+            mm = mod_file.short_path,
         )
     )
     return [
         DefaultInfo(
-            files = depset([icm_file]),
+            files = depset([icm_file], transitive = [icm_deps]),
             runfiles = runfiles
         ),
     ]
