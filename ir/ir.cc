@@ -159,9 +159,22 @@ void HandleParseTreeNodeDeclaration(ParseNodeIndex index, IrContext& context,
   context.declaration_stack().pop_back();
   if (not info.kind.has_initializer()) {
     NTH_REQUIRE((v.debug), not info.kind.inferred_type());
-    type::QualifiedType initializer_qt = context.type_stack().back();
     context.type_stack().pop_back();
-    if (not info.kind.parameter()) { NTH_UNIMPLEMENTED(); }
+    std::optional type = context.EvaluateAs<type::Type>(index - 1);
+    if (not type) { NTH_UNIMPLEMENTED(); }
+
+    auto qt = info.kind.constant() ? type::QualifiedType::Constant(*type)
+                                   : type::QualifiedType::Unqualified(*type);
+    context.current_scope().insert_identifier(
+        context.Node(info.index).token.Identifier(),
+        {
+            .declaration    = info.index,
+            .identifier     = index,
+            .qualified_type = qt,
+        });
+
+    context.current_storage().insert(index, *type);
+    context.emit.SetQualifiedType(index, qt);
   } else if (info.kind.inferred_type()) {
     type::QualifiedType qt;
     if (info.kind.constant()) {
@@ -180,7 +193,6 @@ void HandleParseTreeNodeDeclaration(ParseNodeIndex index, IrContext& context,
         });
     context.type_stack().pop_back();
   } else {
-    type::QualifiedType initializer_qt = context.type_stack().back();
     context.type_stack().pop_back();
     NTH_UNIMPLEMENTED();
     type::QualifiedType type_expr_qt = context.type_stack().back();
@@ -549,8 +561,16 @@ void HandleParseTreeNodeFunctionLiteralSignature(
   ++iter;
 
   for (; iter != indices.end(); ++iter) {
-    if (std::optional t = context.EvaluateAs<type::Type>(*iter)) {
-      parameters.push_back({.type = *t});
+    // Get DeclaredIdentifier from declaration.
+    // TODO: There may be many!
+    auto decl_iter = context.Children(*iter).begin();
+    while (decl_iter->kind != ParseNode::Kind::DeclaredIdentifier) {
+      ++decl_iter;
+    }
+
+    if (auto* decl_info =
+            context.current_scope().identifier(decl_iter->token.Identifier())) {
+      parameters.push_back({.type = decl_info->qualified_type.type()});
     } else {
       NTH_UNIMPLEMENTED();
     }

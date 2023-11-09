@@ -54,16 +54,35 @@ void HandleParseTreeNodeBuiltinLiteral(ParseNodeIndex index,
 void HandleParseTreeNodeScopeStart(ParseNodeIndex, EmitContext&) {}
 
 Iteration HandleParseTreeNodeFunctionLiteralStart(ParseNodeIndex index,
-                                             EmitContext& context) {
+                                                  EmitContext& context) {
   auto fn_type = context.QualifiedTypeOf(index).type().AsFunction();
   size_t input_size = 0;
   size_t output_size = 0;
+  type::ByteWidth bytes(0);
   for (auto const & p : *fn_type.parameters()) {
     input_size += type::JasminSize(p.type);
+    bytes += type::Contour(p.type).byte_width();
   }
+
   for (auto const& t : fn_type.returns()) { output_size += type::JasminSize(t); }
   context.push_function(
       context.current_module.add_function(input_size, output_size));
+  auto& f = context.current_function();
+  f.append<jasmin::StackAllocate>(bytes.value());
+
+  for (auto const & p : *fn_type.parameters()) {
+    size_t size = type::JasminSize(p.type);
+    f.append<jasmin::StackOffset>(--input_size);
+    f.append<Store>(
+        ((type::Contour(p.type).byte_width().value() - 1) % jasmin::ValueSize) +
+        1);
+
+    for (size_t i = 1; i < size; ++i) {
+      f.append<jasmin::StackOffset>(--input_size);
+      f.append<Store>(jasmin::ValueSize);
+    }
+  }
+
   // TODO: We should be able to jump directly rather than iterate and check.
   while (context.Node(index).kind !=
          ParseNode::Kind::FunctionLiteralSignature) {
@@ -81,7 +100,7 @@ void HandleParseTreeNodeDeclaration(ParseNodeIndex index,
   auto const& decl_info = context.queue.front().declaration_stack.back();
   if (not decl_info.kind.has_initializer()) {
     NTH_REQUIRE((v.debug), not decl_info.kind.inferred_type());
-    NTH_UNIMPLEMENTED();
+    if (not decl_info.kind.parameter()) { NTH_UNIMPLEMENTED(); }
   } else if (decl_info.kind.inferred_type()) {
     if (decl_info.kind.constant()) {
       auto& f = context.current_function();
@@ -152,13 +171,13 @@ Iteration HandleParseTreeNodeIdentifier(ParseNodeIndex index,
     return Iteration::Continue;
   } else if (auto offset = context.current_storage().try_offset(decl_index)) {
     context.current_function().append<jasmin::StackOffset>(offset->value());
-    auto qt_iter = context.statement_qualified_type.find(decl_index);
-    NTH_REQUIRE((v.debug), qt_iter != context.statement_qualified_type.end());
+
     switch (context.queue.front().value_category_stack.back()) {
-      case EmitContext::ValueCategory::Value:
+      case EmitContext::ValueCategory::Value: {
+        auto qt = context.QualifiedTypeOf(decl_index);
         context.current_function().append<jasmin::Load>(
-            type::Contour(qt_iter->second.type()).byte_width().value());
-        break;
+            type::Contour(qt.type()).byte_width().value());
+      } break;
       case EmitContext::ValueCategory::Reference: break;
     }
     return Iteration::Continue;
@@ -422,7 +441,7 @@ void EmitIr(EmitContext& context) {
       case Iteration::PauseMoveOn: ++start; [[fallthrough]];                   \
       case Iteration::PauseRetry: goto stop_early;                             \
       case Iteration::Continue: break;                                         \
-      case Iteration::Skip: start = it.index(); break;                         \
+      case Iteration::Skip: start = it.index() - 1; break;                     \
     }                                                                          \
   } break;
 #include "parse/node.xmacro.h"
@@ -445,7 +464,7 @@ void EmitIr(EmitContext& context) {
       case Iteration::PauseMoveOn: ++start; [[fallthrough]];                   \
       case Iteration::PauseRetry: goto stop_early;                             \
       case Iteration::Continue: break;                                         \
-      case Iteration::Skip: start = it.index(); break;                         \
+      case Iteration::Skip: start = it.index() - 1; break;                     \
     }                                                                          \
   } break;
 #include "parse/node.xmacro.h"
