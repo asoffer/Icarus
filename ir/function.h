@@ -138,12 +138,12 @@ struct NoOp : jasmin::StackMachineInstruction<NoOp> {
 struct Rotate : jasmin::StackMachineInstruction<Rotate> {
   static void execute(jasmin::ValueStack& value_stack, size_t n) {
     NTH_REQUIRE((v.harden), n >= 1);
-    std::queue<jasmin::Value> q;
-    for (size_t i = 1; i < n; ++i) { q.push(value_stack.pop_value()); }
+    std::stack<jasmin::Value> stack;
+    for (size_t i = 1; i < n; ++i) { stack.push(value_stack.pop_value()); }
     jasmin::Value v = value_stack.pop_value();
-    while (not q.empty()) {
-      value_stack.push(q.front());
-      q.pop();
+    while (not stack.empty()) {
+      value_stack.push(stack.top());
+      stack.pop();
     }
     value_stack.push(v);
   }

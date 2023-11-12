@@ -220,10 +220,24 @@ struct ParametersType : internal_type::BasicType {
     friend H AbslHashValue(H h, Parameter p) {
       return H::combine(std::move(h), p.name, p.type);
     }
+
+    friend void NthPrint(auto& p, auto& fmt, Parameter param) {
+      fmt(p, param.name);
+      p.write(": ");
+      fmt(p, param.type);
+    }
   };
 
   size_t size() const;
   std::vector<Parameter> const& operator*() const;
+
+  friend void NthPrint(auto& p, auto& fmt, ParametersType params) {
+    std::string_view separator = "";
+    for (auto const& param : *params) {
+      p.write(std::exchange(separator, ", "));
+      fmt(p, param);
+    }
+  }
 
  private:
   friend Type;
@@ -256,12 +270,7 @@ struct FunctionType : internal_type::BasicType {
   friend void NthPrint(auto& p, auto& fmt, FunctionType f) {
     std::string_view separator = "";
     p.write("(");
-    for (auto const& param : *f.parameters()) {
-      p.write(std::exchange(separator, ", "));
-      fmt(p, param.name);
-      p.write(": ");
-      fmt(p, param.type);
-    }
+    fmt(p, f.parameters());
     std::span returns = f.returns();
     p.write(returns.size() != 1 ? ") -> (" : ") -> ");
     separator = "";

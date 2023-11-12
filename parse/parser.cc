@@ -28,6 +28,8 @@ struct Parser {
     return *iterator_;
   }
 
+  void ForceCompleteParsing() { state_.clear(); }
+
   struct State {
     enum class Kind {
 #define IC_XMACRO_PARSER_STATE(state) state,
@@ -246,7 +248,13 @@ void Parser::HandleDeclaration(ParseTree& tree) {
                   });
       tree.append_leaf(ParseNode::Kind::DeclarationStart, *++iterator_);
       break;
-    default: NTH_UNIMPLEMENTED();
+    default:
+      diagnostic_consumer_.Consume({
+          diag::Header(diag::MessageKind::Error),
+          diag::Text("Parsing error. Expected a declaration, which must start "
+                     "with either `let` or `var`."),
+      });
+      ForceCompleteParsing();
   }
 }
 

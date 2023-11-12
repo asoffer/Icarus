@@ -363,7 +363,9 @@ void HandleParseTreeNodeMemberExpression(ParseNodeIndex index,
       context.type_stack().back() = qt;
       context.emit.SetQualifiedType(index, qt);
     } else if (context.Node(index).token.Identifier() == Identifier("count")) {
-      NTH_UNIMPLEMENTED();
+      auto qt                     = type::QualifiedType::Unqualified(type::U64);
+      context.type_stack().back() = qt;
+      context.emit.SetQualifiedType(index, qt);
     } else {
       diag.Consume({
           diag::Header(diag::MessageKind::Error),
@@ -435,7 +437,7 @@ void HandleParseTreeNodeCallExpression(ParseNodeIndex index, IrContext& context,
         case type::Evaluation::RequireRuntime: break;
       }
     } else {
-      NTH_UNIMPLEMENTED("{} {}") <<= {parameters.size(), node.child_count - 1};
+      NTH_UNIMPLEMENTED("{} {}") <<= {parameters, node.child_count - 1};
     }
   } else if (invocable_type.type().kind() ==
              type::Type::Kind::GenericFunction) {
@@ -577,7 +579,6 @@ void HandleParseTreeNodeFunctionLiteralSignature(
     } else {
       NTH_UNIMPLEMENTED();
     }
-    break;
   }
 
   std::reverse(parameters.begin(), parameters.end());

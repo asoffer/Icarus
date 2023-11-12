@@ -24,8 +24,17 @@ struct ByteWidth {
     return *this;
   }
 
+  ByteWidth& operator-=(ByteWidth w) {
+    width_ -= w.value();
+    return *this;
+  }
+
   friend ByteWidth operator+(ByteWidth lhs, ByteWidth rhs) {
     return lhs += rhs;
+  }
+
+  friend ByteWidth operator-(ByteWidth lhs, ByteWidth rhs) {
+    return lhs -= rhs;
   }
 
   ByteWidth aligned_forward_to(Alignment a) const;

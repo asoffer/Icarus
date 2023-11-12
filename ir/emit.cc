@@ -53,14 +53,33 @@ void HandleParseTreeNodeBuiltinLiteral(ParseNodeIndex index,
 
 void HandleParseTreeNodeScopeStart(ParseNodeIndex, EmitContext&) {}
 
+void StoreStackValue(IrFunction& f, type::ByteWidth offset, type::Type t) {
+  type::ByteWidth type_width = type::Contour(t).byte_width();
+  type::ByteWidth end        = offset + type_width;
+  type::ByteWidth position =
+      end.aligned_backward_to(type::Alignment(jasmin::ValueSize));
+  if (position != end) {
+    f.append<jasmin::StackOffset>(position.value());
+    f.append<Store>((end - position).value());
+  }
+  while (position != offset) {
+    position -= type::ByteWidth(jasmin::ValueSize);
+    f.append<jasmin::StackOffset>(position.value());
+    f.append<Store>(jasmin::ValueSize);
+  }
+}
+
 Iteration HandleParseTreeNodeFunctionLiteralStart(ParseNodeIndex index,
                                                   EmitContext& context) {
-  auto fn_type = context.QualifiedTypeOf(index).type().AsFunction();
-  size_t input_size = 0;
-  size_t output_size = 0;
+  auto fn_type           = context.QualifiedTypeOf(index).type().AsFunction();
+  auto const& parameters = *fn_type.parameters();
+  size_t input_size      = 0;
+  size_t output_size     = 0;
   type::ByteWidth bytes(0);
-  for (auto const & p : *fn_type.parameters()) {
+  std::vector<type::ByteWidth> storage_offsets;
+  for (auto const& p : parameters) {
     input_size += type::JasminSize(p.type);
+    storage_offsets.push_back(bytes);
     bytes += type::Contour(p.type).byte_width();
   }
 
@@ -71,17 +90,11 @@ Iteration HandleParseTreeNodeFunctionLiteralStart(ParseNodeIndex index,
   auto& f = context.current_function();
   f.append<jasmin::StackAllocate>(bytes.value());
 
-  for (auto const & p : *fn_type.parameters()) {
-    size_t size = type::JasminSize(p.type);
-    f.append<jasmin::StackOffset>(--input_size);
-    f.append<Store>(
-        ((type::Contour(p.type).byte_width().value() - 1) % jasmin::ValueSize) +
-        1);
-
-    for (size_t i = 1; i < size; ++i) {
-      f.append<jasmin::StackOffset>(--input_size);
-      f.append<Store>(jasmin::ValueSize);
-    }
+  auto storage_iter = storage_offsets.rbegin();
+  NTH_REQUIRE((v.debug), storage_offsets.size() == parameters.size());
+  for (auto iter = parameters.rbegin(); iter != parameters.rend();
+       ++storage_iter, ++iter) {
+    StoreStackValue(f, *storage_iter, iter->type);
   }
 
   // TODO: We should be able to jump directly rather than iterate and check.
@@ -120,6 +133,7 @@ void HandleParseTreeNodeDeclaration(ParseNodeIndex index,
       delete &f;
       context.pop_function();
     } else {
+    NTH_LOG("{}")<<={          context.current_storage().offset(index).value()};
       context.current_function().append<jasmin::StackOffset>(
           context.current_storage().offset(index).value());
 
@@ -494,9 +508,9 @@ void EmitContext::Evaluate(nth::interval<ParseNodeIndex> subtree,
                            jasmin::ValueStack& value_stack,
                            std::vector<type::Type> types) {
   jasmin::ValueStack vs;
-  // TODO: The size here is potentially wrong. We should compute it based on
-  // `types`.
-  IrFunction f(0, 1);
+  size_t size = 0;
+  for (type::Type t : types) { size += type::JasminSize(t); }
+  IrFunction f(0, size);
   queue.push({.range = subtree});
   push_function(f, Scope::Index::Root());
 
