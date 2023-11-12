@@ -568,4 +568,22 @@ NTH_TEST("parser/function-literal/return-expression") {
                                                     Return(Identifier())))))));
 }
 
+NTH_TEST("parser/slice/once") {
+  diag::NullConsumer d;
+  TokenBuffer buffer = lex::Lex(R"(\i32)", d);
+  auto tree          = Parse(buffer, d).parse_tree;
+  NTH_EXPECT(
+      FromRoot(tree) >>= StatementSequence(
+          ScopeStart(), Statement(StatementStart(), Slice(TypeLiteral()))));
+}
+
+NTH_TEST("parser/slice/multiple") {
+  diag::NullConsumer d;
+  TokenBuffer buffer = lex::Lex(R"(\\\i32)", d);
+  auto tree          = Parse(buffer, d).parse_tree;
+  NTH_EXPECT(FromRoot(tree) >>= StatementSequence(
+                 ScopeStart(), Statement(StatementStart(),
+                                         Slice(Slice(Slice(TypeLiteral()))))));
+}
+
 }  // namespace ic

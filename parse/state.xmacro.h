@@ -40,6 +40,7 @@ IC_XMACRO_PARSER_STATE(ResolveFunctionLiteral)
 IC_XMACRO_PARSER_STATE(IfStatementTrueBranchStart)
 IC_XMACRO_PARSER_STATE(ResolveIfStatement)
 
+IC_XMACRO_PARSER_STATE(ResolveSliceType)
 IC_XMACRO_PARSER_STATE(ResolvePointerType)
 IC_XMACRO_PARSER_STATE(ResolveBufferPointerType)
 IC_XMACRO_PARSER_STATE(ResolveImport)

@@ -25,15 +25,16 @@ message InstructionProto {
     CONSTRUCT_BUFFER_POINTER = 14;
     CONSTRUCT_FUNCTION = 15;
     CONSTRUCT_PARAMETERS = 16;
-    SWAP = 17;
-    REGISTER_FOREIGN_FUNCTION = 18;
-    INVOKE_FOREIGN_FUNCTION = 19;
-    NOT = 20;
-    NOOP = 21;
-    STORE = 22;
-    LOAD = 23;
-    STACK_ALLOCATE = 24;
-    STACK_OFFSET = 25;
+    CONSTRUCT_SLICE = 17;
+    SWAP = 18;
+    REGISTER_FOREIGN_FUNCTION = 19;
+    INVOKE_FOREIGN_FUNCTION = 20;
+    NOT = 21;
+    NOOP = 22;
+    STORE = 23;
+    LOAD = 24;
+    STACK_ALLOCATE = 25;
+    STACK_OFFSET = 26;
   }
   OpCode op_code = 1;
   repeated uint64 content = 2;

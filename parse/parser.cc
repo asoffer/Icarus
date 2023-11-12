@@ -540,6 +540,11 @@ void Parser::HandleExpression(ParseTree& tree) {
       ExpandState(Expression(tree, Precedence::TightUnary()),
                   State::Kind::ResolveBufferPointerType);
       return;
+    case Token::Kind::Backslash:
+      ++iterator_;
+      ExpandState(Expression(tree, Precedence::TightUnary()),
+                  State::Kind::ResolveSliceType);
+      return;
     default:
       ExpandState(State::Kind::AtomicTerm, State::Kind::ExpressionSuffix);
   }
@@ -718,9 +723,7 @@ void Parser::HandleExpressionSuffix(ParseTree& tree) {
                   tree.size());
       ExpandState(State::Kind::Expression, State::Kind::ResolveAssignment);
       return;
-
-#define IC_XMACRO_TOKEN_KIND_BINARY_ONLY_OPERATOR(kind, symbol,                \
-                                                  precedence_group)            \
+#define IC_XMACRO_TOKEN_KIND_BINARY_OPERATOR(kind, symbol, precedence_group)   \
   case Token::Kind::kind:                                                      \
     p = Precedence::precedence_group();                                        \
     break;
@@ -813,6 +816,11 @@ void Parser::HandleResolveBufferPointerType(ParseTree& tree) {
   auto state = pop_state();
   tree.append(ParseNode::Kind::BufferPointer, Token::Invalid(),
               state.subtree_start);
+}
+
+void Parser::HandleResolveSliceType(ParseTree& tree) {
+  auto state = pop_state();
+  tree.append(ParseNode::Kind::Slice, Token::Invalid(), state.subtree_start);
 }
 
 }  // namespace ic

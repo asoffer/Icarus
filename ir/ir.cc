@@ -247,6 +247,7 @@ Iteration HandleParseTreeNodeIdentifier(ParseNodeIndex index,
     auto const& [decl_id_index, decl_index, decl_qt] = *decl_info;
     context.emit.declarator.emplace(index,
                                     std::pair{decl_id_index, decl_index});
+    context.emit.SetQualifiedType(index, decl_qt);
     context.type_stack().push_back(decl_qt);
     return Iteration::Continue;
   } else {
@@ -494,6 +495,13 @@ void HandleParseTreeNodePointer(ParseNodeIndex index, IrContext& context,
 
 void HandleParseTreeNodeBufferPointer(ParseNodeIndex index, IrContext& context,
                                       diag::DiagnosticConsumer& diag) {
+  if (context.type_stack().back().type() != type::Type_) {
+    NTH_UNIMPLEMENTED();
+  }
+}
+
+void HandleParseTreeNodeSlice(ParseNodeIndex index, IrContext& context,
+                              diag::DiagnosticConsumer& diag) {
   if (context.type_stack().back().type() != type::Type_) {
     NTH_UNIMPLEMENTED();
   }

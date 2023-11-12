@@ -21,17 +21,27 @@
 #endif  // not defined(IC_XMACRO_PRIMITIVE_TYPE)
 #include "common/language/primitive_types.xmacro.h"
 
+#if not defined(IC_XMACRO_TOKEN_KIND_BINARY_OPERATOR)
+#define IC_XMACRO_TOKEN_KIND_BINARY_OPERATOR(kind, symbol, precedence_group)   \
+  IC_XMACRO_TOKEN_KIND_OPERATOR(kind, symbol)
+#endif  // not defined(IC_XMACRO_TOKEN_KIND_BINARY_OPERATOR)
+
+#if not defined(IC_XMACRO_TOKEN_KIND_BINARY_OR_UNARY_OPERATOR)
+#define IC_XMACRO_TOKEN_KIND_BINARY_OR_UNARY_OPERATOR(kind, symbol,            \
+                                                      precedence_group)        \
+  IC_XMACRO_TOKEN_KIND_BINARY_OPERATOR(kind, symbol, precedence_group)
+#endif  // not defined(IC_XMACRO_TOKEN_KIND_BINARY_OR_UNARY_OPERATOR)
+
 #if not defined(IC_XMACRO_TOKEN_KIND_BINARY_ONLY_OPERATOR)
 #define IC_XMACRO_TOKEN_KIND_BINARY_ONLY_OPERATOR(kind, symbol,                \
                                                   precedence_group)            \
-  IC_XMACRO_TOKEN_KIND_OPERATOR(kind, symbol)
+  IC_XMACRO_TOKEN_KIND_BINARY_OPERATOR(kind, symbol, precedence_group)
 #endif  // not defined(IC_XMACRO_TOKEN_KIND_BINARY_ONLY_OPERATOR)
 
-
 #if not defined(IC_XMACRO_TOKEN_KIND_ONE_CHARACTER_TOKEN)
-#define IC_XMACRO_TOKEN_KIND_ONE_CHARACTER_TOKEN(kind, symbol)                      \
+#define IC_XMACRO_TOKEN_KIND_ONE_CHARACTER_TOKEN(kind, symbol)                 \
   IC_XMACRO_TOKEN_KIND(kind)
-#endif // not defined(IC_XMACRO_TOKEN_KIND_ONE_CHARACTER_TOKEN)
+#endif  // not defined(IC_XMACRO_TOKEN_KIND_ONE_CHARACTER_TOKEN)
 
 #if not defined(IC_XMACRO_TOKEN_KIND_OPEN)
 #define IC_XMACRO_TOKEN_KIND_OPEN(kind, symbol)                                \
@@ -63,7 +73,6 @@ IC_XMACRO_TOKEN_KIND_TERMINAL_EXPRESSION(Builtin, "builtin")
 
 IC_XMACRO_TOKEN_KIND_BINARY_ONLY_OPERATOR(MinusGreater, "->", Function)
 IC_XMACRO_TOKEN_KIND_BINARY_ONLY_OPERATOR(Plus, "+", PlusMinus)
-IC_XMACRO_TOKEN_KIND_BINARY_ONLY_OPERATOR(Slash, "/", MultiplyDivide)
 IC_XMACRO_TOKEN_KIND_BINARY_ONLY_OPERATOR(Percent, "%", Modulus)
 IC_XMACRO_TOKEN_KIND_BINARY_ONLY_OPERATOR(Less, "<", Comparison)
 IC_XMACRO_TOKEN_KIND_BINARY_ONLY_OPERATOR(Greater, ">", Comparison)
@@ -72,13 +81,15 @@ IC_XMACRO_TOKEN_KIND_BINARY_ONLY_OPERATOR(GreaterEqual, ">=", Comparison)
 IC_XMACRO_TOKEN_KIND_BINARY_ONLY_OPERATOR(EqualEqual, "==", Comparison)
 IC_XMACRO_TOKEN_KIND_BINARY_ONLY_OPERATOR(NotEqual, "!=", Comparison)
 
+IC_XMACRO_TOKEN_KIND_BINARY_OR_UNARY_OPERATOR(Minus, "-", PlusMinus)
+
+IC_XMACRO_TOKEN_KIND_OPERATOR(Backslash, "\\")
 IC_XMACRO_TOKEN_KIND_OPERATOR(ColonColonEqual, "::=")
 IC_XMACRO_TOKEN_KIND_OPERATOR(ColonColon, "::")
 IC_XMACRO_TOKEN_KIND_OPERATOR(ColonEqual, ":=")
 IC_XMACRO_TOKEN_KIND_OPERATOR(Colon, ":")
 IC_XMACRO_TOKEN_KIND_OPERATOR(Star, "*")
 IC_XMACRO_TOKEN_KIND_OPERATOR(BracketedStar, "[*]")
-IC_XMACRO_TOKEN_KIND_OPERATOR(Minus, "-")
 IC_XMACRO_TOKEN_KIND_OPERATOR(Equal, "=")
 IC_XMACRO_TOKEN_KIND_OPERATOR(Period, ".")
 
@@ -100,6 +111,8 @@ IC_XMACRO_TOKEN_KIND_CLOSE(RightBrace, '}')
 #undef IC_XMACRO_TOKEN_KIND_OPERATOR
 #undef IC_XMACRO_TOKEN_KIND_OPERATOR_WORD
 #undef IC_XMACRO_TOKEN_KIND_BINARY_ONLY_OPERATOR
+#undef IC_XMACRO_TOKEN_KIND_BINARY_OR_UNARY_OPERATOR
 #undef IC_XMACRO_TOKEN_KIND_ONE_CHARACTER_TOKEN
+#undef IC_XMACRO_TOKEN_KIND_BINARY_OPERATOR
 #undef IC_XMACRO_TOKEN_KIND_OPEN
 #undef IC_XMACRO_TOKEN_KIND_CLOSE

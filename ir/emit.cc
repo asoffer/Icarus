@@ -69,6 +69,20 @@ void StoreStackValue(IrFunction& f, type::ByteWidth offset, type::Type t) {
   }
 }
 
+void LoadStackValue(IrFunction& f, type::ByteWidth offset, type::Type t) {
+  type::ByteWidth type_width = type::Contour(t).byte_width();
+  type::ByteWidth end        = offset + type_width;
+  while (offset + type::ByteWidth(jasmin::ValueSize) <= end) {
+    f.append<jasmin::StackOffset>(offset.value());
+    f.append<jasmin::Load>(jasmin::ValueSize);
+    offset += type::ByteWidth(jasmin::ValueSize);
+  }
+  if (offset< end) {
+    f.append<jasmin::StackOffset>(offset.value());
+    f.append<jasmin::Load>((end - offset).value());
+  }
+}
+
 Iteration HandleParseTreeNodeFunctionLiteralStart(ParseNodeIndex index,
                                                   EmitContext& context) {
   auto fn_type           = context.QualifiedTypeOf(index).type().AsFunction();
@@ -185,15 +199,14 @@ Iteration HandleParseTreeNodeIdentifier(ParseNodeIndex index,
     context.Push(constant->second);
     return Iteration::Continue;
   } else if (auto offset = context.current_storage().try_offset(decl_index)) {
-    context.current_function().append<jasmin::StackOffset>(offset->value());
-
     switch (context.queue.front().value_category_stack.back()) {
       case EmitContext::ValueCategory::Value: {
         auto qt = context.QualifiedTypeOf(decl_index);
-        context.current_function().append<jasmin::Load>(
-            type::Contour(qt.type()).byte_width().value());
+        LoadStackValue(context.current_function(), *offset, qt.type());
       } break;
-      case EmitContext::ValueCategory::Reference: break;
+      case EmitContext::ValueCategory::Reference:
+        context.current_function().append<jasmin::StackOffset>(offset->value());
+        break;
     }
     return Iteration::Continue;
   } else {
@@ -300,6 +313,10 @@ void HandleParseTreeNodeBufferPointer(ParseNodeIndex index,
 
 void HandleParseTreeNodeInvocationArgumentStart(ParseNodeIndex index,
                                                 EmitContext& context) {}
+
+void HandleParseTreeNodeSlice(ParseNodeIndex index, EmitContext& context) {
+  context.current_function().append<ConstructSliceType>();
+}
 
 void HandleParseTreeNodeImport(ParseNodeIndex index, EmitContext& context) {
   context.current_function().append<jasmin::Push>(

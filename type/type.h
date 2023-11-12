@@ -354,7 +354,7 @@ struct SliceType : internal_type::BasicType {
   Type element_type() const;
 
   friend void NthPrint(auto& p, auto& f, SliceType s) {
-    p.write("[]");
+    p.write("\\");
     f(p, s.element_type());
   }
 

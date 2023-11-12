@@ -130,6 +130,15 @@ struct ConstructBufferPointerType
   }
 };
 
+struct ConstructSliceType
+    : jasmin::StackMachineInstruction<ConstructSliceType> {
+  static std::string_view name() { return "construct-slice-type"; }
+
+  static type::Type execute(type::Type pointee) {
+    return type::Slice(pointee);
+  }
+};
+
 struct NoOp : jasmin::StackMachineInstruction<NoOp> {
   static std::string_view name() { return "no-op"; }
   static void execute(jasmin::ValueStack&) {}
@@ -153,9 +162,9 @@ using InstructionSet = jasmin::MakeInstructionSet<
     jasmin::Push, PushFunction, PushStringLiteral, PushType, jasmin::Drop,
     TypeKind, jasmin::Equal<type::Type::Kind>, Rotate, ConstructOpaqueType,
     ConstructPointerType, ConstructBufferPointerType, ConstructFunctionType,
-    ConstructParametersType, jasmin::Swap, RegisterForeignFunction,
-    InvokeForeignFunction, jasmin::Not, NoOp, Store, jasmin::Load,
-    jasmin::StackAllocate, jasmin::StackOffset>;
+    ConstructParametersType, ConstructSliceType, jasmin::Swap,
+    RegisterForeignFunction, InvokeForeignFunction, jasmin::Not, NoOp, Store,
+    jasmin::Load, jasmin::StackAllocate, jasmin::StackOffset>;
 using IrFunction = jasmin::Function<InstructionSet>;
 
 std::deque<std::pair<type::FunctionType, IrFunction>>& ForeignFunctions();
