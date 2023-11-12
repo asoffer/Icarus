@@ -487,6 +487,7 @@ void Parser::HandleExpression(ParseTree& tree) {
     case Token::Kind::Fn:
       push_inside_function_decl(true);
       tree.append_leaf(ParseNode::Kind::FunctionLiteralStart, *iterator_++);
+      tree.back().scope_index = PushScope();
       if (iterator_->kind() != Token::Kind::LeftParen) { NTH_UNIMPLEMENTED(); }
       ++iterator_;
       if (iterator_->kind() == Token::Kind::RightParen) {

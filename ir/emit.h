@@ -99,11 +99,18 @@ struct EmitContext {
   absl::flat_hash_map<Scope::Index, LocalStorage> storage;
   Module& current_module;
 
-  void push_function(IrFunction& f) { queue.front().push_function(f); }
+  void push_function(IrFunction& f, Scope::Index scope_index) {
+    queue.front().push_function(f, scope_index); 
+  }
 
   void pop_function() {
     NTH_REQUIRE((v.debug), not queue.empty());
+    NTH_REQUIRE((v.debug), not queue.front().function_stack_.empty());
+    NTH_REQUIRE((v.debug), not queue.front().function_stack.empty());
+    NTH_REQUIRE((v.debug), not queue.front().scopes.empty());
     queue.front().function_stack_.pop_back();
+    queue.front().function_stack.pop_back();
+    queue.front().scopes.pop_back();
   }
 
   IrFunction& current_function() {
@@ -139,13 +146,17 @@ struct EmitContext {
     Reference,
   };
   struct WorkItem {
-    void push_function(IrFunction& f) { function_stack_.push_back(&f); }
+    void push_function(IrFunction& f, Scope::Index scope_index) {
+      function_stack_.push_back(&f);
+      function_stack.push_back(scope_index);
+      scopes.push_back(scope_index);
+    }
 
     nth::interval<ParseNodeIndex> range;
     std::vector<DeclarationInfo> declaration_stack;
     std::vector<jasmin::OpCodeRange> branches;
-    std::vector<Scope::Index> scopes = {Scope::Index::Root()};
-    std::vector<Scope::Index> function_stack;
+    std::vector<Scope::Index> scopes         = {Scope::Index::Root()};
+    std::vector<Scope::Index> function_stack = {Scope::Index::Root()};
     std::vector<ValueCategory> value_category_stack;
 
     // TODO: Make private (requires no longer using designated initializers).

@@ -66,7 +66,8 @@ Iteration HandleParseTreeNodeFunctionLiteralStart(ParseNodeIndex index,
 
   for (auto const& t : fn_type.returns()) { output_size += type::JasminSize(t); }
   context.push_function(
-      context.current_module.add_function(input_size, output_size));
+      context.current_module.add_function(input_size, output_size),
+      context.Node(index).scope_index);
   auto& f = context.current_function();
   f.append<jasmin::StackAllocate>(bytes.value());
 
@@ -223,7 +224,8 @@ Iteration HandleParseTreeNodeDeclarationStart(ParseNodeIndex index,
   } else if (k.inferred_type()) {
     if (k.constant()) {
       // TODO: The return might actually be wider and we need to handle that.
-      context.push_function(*new IrFunction(0, 1));
+      context.push_function(*new IrFunction(0, 1),
+                            context.queue.front().function_stack.back());
       return Iteration::PauseMoveOn;
     } else {
       return Iteration::Continue;
@@ -495,11 +497,8 @@ void EmitContext::Evaluate(nth::interval<ParseNodeIndex> subtree,
   // TODO: The size here is potentially wrong. We should compute it based on
   // `types`.
   IrFunction f(0, 1);
-  queue.push({
-      .range          = subtree,
-      .function_stack = {Scope::Index::Root()},
-  });
-  queue.back().push_function(f);
+  queue.push({.range = subtree});
+  push_function(f, Scope::Index::Root());
 
   EmitIr(*this);
 

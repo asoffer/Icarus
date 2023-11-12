@@ -421,16 +421,15 @@ void HandleParseTreeNodeCallExpression(ParseNodeIndex index, IrContext& context,
           nth::interval range = context.emit.tree.subtree_range(index);
           jasmin::ValueStack value_stack;
           context.emit.Evaluate(range, value_stack, returns);
-          // auto module_id = context.EvaluateAs<ModuleId>(index);
-          // if (module_id == ModuleId::Invalid()) {
-          //   diag.Consume({
-          //       diag::Header(diag::MessageKind::Error),
-          //       diag::Text(InterpolateString<"No module found named \"{}\"">(
-          //           *context.EvaluateAs<std::string_view>(index - 1))),
-          //   });
-          //   return;
-          // }
-          // NTH_LOG("{}") <<= {*module_id};
+          auto module_id = context.EvaluateAs<ModuleId>(index);
+          if (module_id == ModuleId::Invalid()) {
+            diag.Consume({
+                diag::Header(diag::MessageKind::Error),
+                diag::Text(InterpolateString<"No module found named \"{}\"">(
+                    *context.EvaluateAs<std::string_view>(index - 1))),
+            });
+            return;
+          }
         } break;
         case type::Evaluation::PreferRuntime:
         case type::Evaluation::RequireRuntime: break;
@@ -541,7 +540,11 @@ Iteration HandleParseTreeNodeScopeStart(ParseNodeIndex index, IrContext& context
 
 void HandleParseTreeNodeFunctionLiteralStart(ParseNodeIndex index,
                                              IrContext& context,
-                                             diag::DiagnosticConsumer& diag) {}
+                                             diag::DiagnosticConsumer& diag) {
+  Scope::Index scope_index = context.Node(index).scope_index;
+  context.queue.front().functions.push_back(scope_index);
+  context.push_scope(scope_index);
+}
 
 void HandleParseTreeNodeFunctionLiteralSignature(
     ParseNodeIndex index, IrContext& context, diag::DiagnosticConsumer& diag) {
@@ -613,6 +616,8 @@ void HandleParseTreeNodeReturn(ParseNodeIndex index, IrContext& context,
 void HandleParseTreeNodeFunctionLiteral(ParseNodeIndex index,
                                         IrContext& context,
                                         diag::DiagnosticConsumer& diag) {
+  context.queue.front().functions.pop_back();
+  context.pop_scope();
   // TODO: Check that the return type matches the signature.
 }
 
