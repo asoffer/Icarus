@@ -373,11 +373,18 @@ void Parser::HandleStatement(ParseTree& tree) {
       ++iterator_;
       return;
     default:
+      // Statement kind defaults to an `Expression`, but may be changed to
+      // `Assignment` during `ResolveAssignment`.
       tree.back().statement_kind = ParseNode::StatementKind::Expression;
-      ExpandState(Expression(tree), State{
-                                        .kind = State::Kind::ResolveStatement,
-                                        .subtree_start = tree.size() - 1,
-                                    });
+      ExpandState(Expression(tree),
+                  State{
+                      .kind          = State::Kind::TryAssignment,
+                      .subtree_start = tree.size(),
+                  },
+                  State{
+                      .kind          = State::Kind::ResolveStatement,
+                      .subtree_start = tree.size() - 1,
+                  });
       break;
   }
 }
@@ -408,6 +415,17 @@ void Parser::HandleIfStatementTryElse(ParseTree& tree) {
             .kind          = State::Kind::BracedStatementSequence,
             .subtree_start = tree.size(),
         });
+  } else {
+    pop_and_discard_state();
+  }
+}
+
+void Parser::HandleTryAssignment(ParseTree& tree) {
+  if (current_token().kind() == Token::Kind::Equal) {
+    ++iterator_;
+    tree.append(ParseNode::Kind::AssignedValueStart, current_token(),
+                tree.size());
+    ExpandState(State::Kind::Expression, State::Kind::ResolveAssignment);
   } else {
     pop_and_discard_state();
   }
@@ -756,12 +774,6 @@ void Parser::HandleExpressionSuffix(ParseTree& tree) {
   switch (current_token().kind()) {
     case Token::Kind::Newline:
     case Token::Kind::Eof: pop_and_discard_state(); return;
-    case Token::Kind::Equal:
-      ++iterator_;
-      tree.append(ParseNode::Kind::AssignedValueStart, current_token(),
-                  tree.size());
-      ExpandState(State::Kind::Expression, State::Kind::ResolveAssignment);
-      return;
 #define IC_XMACRO_TOKEN_KIND_BINARY_OPERATOR(kind, symbol, precedence_group)   \
   case Token::Kind::kind:                                                      \
     p = Precedence::precedence_group();                                        \

@@ -32,6 +32,7 @@ IC_XMACRO_PARSER_STATE(CommaSeparatedDeclarationSequence)
 IC_XMACRO_PARSER_STATE(ResolveFunctionTypeParameters)
 
 IC_XMACRO_PARSER_STATE(ResolveAssignment)
+IC_XMACRO_PARSER_STATE(TryAssignment)
 
 IC_XMACRO_PARSER_STATE(FunctionLiteralReturnTypeStart)
 IC_XMACRO_PARSER_STATE(FunctionLiteralBody)

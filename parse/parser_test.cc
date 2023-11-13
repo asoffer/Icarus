@@ -115,6 +115,28 @@ NTH_TEST("parser/declaration/bool") {
                                        BooleanLiteral()))));
 }
 
+NTH_TEST("parser/declaration/with-type-and-initializer") {
+  diag::NullConsumer d;
+  TokenBuffer buffer = lex::Lex("let x: T = true", d);
+  auto tree          = Parse(buffer, d).parse_tree;
+  NTH_EXPECT(FromRoot(tree) >>= StatementSequence(
+                 ScopeStart(),
+                 Statement(StatementStart(),
+                           Declaration(DeclarationStart(), DeclaredIdentifier(),
+                                       Identifier(), BooleanLiteral()))));
+}
+
+NTH_TEST("parser/declaration/with-type-but-no-initializer") {
+  diag::NullConsumer d;
+  TokenBuffer buffer = lex::Lex("let x: T", d);
+  auto tree          = Parse(buffer, d).parse_tree;
+  NTH_EXPECT(FromRoot(tree) >>= StatementSequence(
+                 ScopeStart(),
+                 Statement(StatementStart(),
+                           Declaration(DeclarationStart(), DeclaredIdentifier(),
+                                       Identifier()))));
+}
+
 NTH_TEST("parser/comment") {
   diag::NullConsumer d;
   TokenBuffer buffer = lex::Lex("let x ::= true  // comment!", d);
