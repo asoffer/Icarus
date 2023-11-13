@@ -141,7 +141,7 @@ struct ConstructSliceType
 
 struct NoOp : jasmin::StackMachineInstruction<NoOp> {
   static std::string_view name() { return "no-op"; }
-  static void execute(jasmin::ValueStack&) {}
+  static void execute(jasmin::ValueStack& vs) {}
 };
 
 struct Rotate : jasmin::StackMachineInstruction<Rotate> {

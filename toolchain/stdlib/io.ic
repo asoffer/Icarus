@@ -4,3 +4,17 @@ let Print ::= fn(let s: \char) -> () {
   let printf ::= builtin.foreign("printf", ([*]char, c.int, [*]char) -> c.int)
   printf("%.*s".data, s.count, s.data)
 }
+
+let PrintNum ::= fn(let n: i64) -> () {
+  let printf ::= builtin.foreign("printf", ([*]char, i64) -> c.int)
+  printf("%lld".data, n)
+}
+
+let PrintBool ::= fn(let b: bool) -> () {
+  let printf ::= builtin.foreign("printf", ([*]char, [*]char) -> c.int)
+  if (b) {
+    printf("%s".data, "true".data)
+  } else {
+    printf("%s".data, "false".data) 
+  }
+}

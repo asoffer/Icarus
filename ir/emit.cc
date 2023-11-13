@@ -149,7 +149,6 @@ void HandleParseTreeNodeDeclaration(ParseNodeIndex index,
       delete &f;
       context.pop_function();
     } else {
-    NTH_LOG("{}")<<={          context.current_storage().offset(index).value()};
       context.current_function().append<jasmin::StackOffset>(
           context.current_storage().offset(index).value());
 
@@ -180,6 +179,7 @@ void HandleParseTreeNodeStatement(ParseNodeIndex index, EmitContext& context) {
           .Log<"For {}">(context.tree.first_descendant_index(index));
       size_t size_to_drop = iter->second.second;
       if (size_to_drop != 0) {
+        NTH_LOG("Dropping {}") <<={size_to_drop};
         context.current_function().append<jasmin::Drop>(size_to_drop);
       }
     } break;
@@ -339,6 +339,16 @@ void HandleParseTreeNodeIfStatementTrueBranchStart(ParseNodeIndex index,
   context.current_function().append<jasmin::Not>();
   context.queue.front().branches.push_back(
       context.current_function().append_with_placeholders<jasmin::JumpIf>());
+}
+
+void HandleParseTreeNodeIfStatementFalseBranchStart(ParseNodeIndex index,
+                                                    EmitContext& context) {
+  jasmin::OpCodeRange jump = context.queue.front().branches.back();
+  context.queue.front().branches.back() =
+      context.current_function().append_with_placeholders<jasmin::Jump>();
+  jasmin::OpCodeRange land = context.current_function().append<NoOp>();
+  context.current_function().set_value(
+      jump, 0, jasmin::OpCodeRange::Distance(land, jump));
 }
 
 void HandleParseTreeNodeIfStatement(ParseNodeIndex index,

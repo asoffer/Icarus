@@ -359,6 +359,7 @@ void Parser::HandleStatement(ParseTree& tree) {
               .kind          = State::Kind::BracedStatementSequence,
               .subtree_start = tree.size(),
           },
+          State::Kind::IfStatementTryElse,
           State{
               .kind               = State::Kind::ResolveIfStatement,
               .ambient_precedence = Precedence::Loosest(),
@@ -385,6 +386,31 @@ void Parser::HandleIfStatementTrueBranchStart(ParseTree& tree) {
   tree.append_leaf(ParseNode::Kind::IfStatementTrueBranchStart, *iterator_);
   tree.back().scope_index = PushScope();
   pop_and_discard_state();
+}
+
+void Parser::HandleIfStatementFalseBranchStart(ParseTree& tree) {
+  tree.append_leaf(ParseNode::Kind::IfStatementFalseBranchStart, *iterator_);
+  tree.back().scope_index = PushScope();
+  pop_and_discard_state();
+}
+
+void Parser::HandleIfStatementTryElse(ParseTree& tree) {
+  PopScope();
+  IgnoreAnyNewlines();
+  if (current_token().kind() == Token::Kind::Else) {
+    ++iterator_;
+    ExpandState(
+        State{
+            .kind          = State::Kind::IfStatementFalseBranchStart,
+            .subtree_start = tree.size(),
+        },
+        State{
+            .kind          = State::Kind::BracedStatementSequence,
+            .subtree_start = tree.size(),
+        });
+  } else {
+    pop_and_discard_state();
+  }
 }
 
 void Parser::HandleResolveIfStatement(ParseTree& tree) {

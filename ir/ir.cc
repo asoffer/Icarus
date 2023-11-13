@@ -644,13 +644,20 @@ void HandleParseTreeNodeIfStatementTrueBranchStart(ParseNodeIndex index,
   context.push_scope(context.Node(index).scope_index);
 }
 
+void HandleParseTreeNodeIfStatementFalseBranchStart(ParseNodeIndex index,
+                                                    IrContext& context,
+                                                    diag::DiagnosticConsumer&) {
+  context.push_scope(context.Node(index).scope_index);
+}
+
 void HandleParseTreeNodeIfStatement(ParseNodeIndex index, IrContext& context,
                                     diag::DiagnosticConsumer& diag) {
   if (context.type_stack().top()[0].type() != type::Bool) {
     NTH_UNIMPLEMENTED();
   }
-  // TODO: Handle type of if statement properly.
   context.pop_scope();
+  context.type_stack().pop();
+  context.type_stack().push({});
 }
 
 void HandleParseTreeNodeStatementStart(ParseNodeIndex index, IrContext& context,

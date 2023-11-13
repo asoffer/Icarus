@@ -446,6 +446,90 @@ NTH_TEST("parser/if-statement/with-body") {
                       Statement(StatementStart(), Identifier()))))));
 }
 
+NTH_TEST("parser/if-else-statement/empty") {
+  diag::NullConsumer d;
+  TokenBuffer buffer = lex::Lex(R"(
+  if (condition) {
+  } else {
+  }
+  )",
+                                d);
+  auto tree          = Parse(buffer, d).parse_tree;
+  NTH_EXPECT(
+      FromRoot(tree) >>= StatementSequence(
+          ScopeStart(),
+          Statement(StatementStart(),
+                    IfStatement(Identifier(), IfStatementTrueBranchStart(),
+                                StatementSequence(ScopeStart()),
+                                IfStatementFalseBranchStart(),
+                                StatementSequence(ScopeStart())))));
+}
+
+NTH_TEST("parser/if-else-statement/with-else-body") {
+  diag::NullConsumer d;
+  TokenBuffer buffer = lex::Lex(R"(
+  if (condition) {
+  } else {
+    body
+  }
+  )",
+                                d);
+  auto tree          = Parse(buffer, d).parse_tree;
+  NTH_EXPECT(
+      FromRoot(tree) >>= StatementSequence(
+          ScopeStart(),
+          Statement(StatementStart(),
+                    IfStatement(Identifier(), IfStatementTrueBranchStart(),
+                                StatementSequence(ScopeStart()),
+                                IfStatementFalseBranchStart(),
+                                StatementSequence(ScopeStart(),
+                                                  Statement(StatementStart(),
+                                                            Identifier()))))));
+}
+
+NTH_TEST("parser/if-else-statement/with-bodies") {
+  diag::NullConsumer d;
+  TokenBuffer buffer = lex::Lex(R"(
+  if (condition) {
+    body
+  } else {
+    body
+  }
+  )",
+                                d);
+  auto tree          = Parse(buffer, d).parse_tree;
+  NTH_EXPECT(
+      FromRoot(tree) >>= StatementSequence(
+          ScopeStart(),
+          Statement(
+              StatementStart(),
+              IfStatement(
+                  Identifier(), IfStatementTrueBranchStart(),
+                  StatementSequence(ScopeStart(),
+                                    Statement(StatementStart(), Identifier())),
+                  IfStatementFalseBranchStart(),
+                  StatementSequence(ScopeStart(), Statement(StatementStart(),
+                                                            Identifier()))))));
+}
+
+NTH_TEST("parser/if-else-statement/one-line-with-bodies") {
+  diag::NullConsumer d;
+  TokenBuffer buffer = lex::Lex(R"(if (condition) { body } else { body })", d);
+  auto tree          = Parse(buffer, d).parse_tree;
+  NTH_EXPECT(
+      FromRoot(tree) >>= StatementSequence(
+          ScopeStart(),
+          Statement(
+              StatementStart(),
+              IfStatement(
+                  Identifier(), IfStatementTrueBranchStart(),
+                  StatementSequence(ScopeStart(),
+                                    Statement(StatementStart(), Identifier())),
+                  IfStatementFalseBranchStart(),
+                  StatementSequence(ScopeStart(), Statement(StatementStart(),
+                                                            Identifier()))))));
+}
+
 NTH_TEST("parser/assignment") {
   diag::NullConsumer d;
   TokenBuffer buffer = lex::Lex(R"(a = b)", d);
