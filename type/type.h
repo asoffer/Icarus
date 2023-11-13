@@ -17,7 +17,7 @@ namespace ic::type {
 
 // All types definable within the type-system can be categorized by "kind" and
 // fit into one of the kinds specified in "common/language/type_kind.xmacro.h".
-// Each such type must be precisely 64-bits wide, and must reserve have the
+// Each such type must be precisely 64-bits wide, and must have the
 // most-significant 8 bytes be unset in any valid representation. Furthermore,
 // the second-most-significant 8 bytes must be filled with a representation of
 // the corresponding `Type::Kind` defined below.
@@ -38,14 +38,12 @@ struct Type {
   };
 
   friend void NthPrint(auto& p, auto&, Kind k) {
-    switch (k) {
-#define IC_XMACRO_TYPE_KIND(kind)                                              \
-  case Kind::kind:                                                             \
-    p.write("Type::Kind::");                                                   \
-    p.write(#kind);                                                            \
-    break;
+    static constexpr std::array Names = {
+#define IC_XMACRO_TYPE_KIND(kind) #kind,
 #include "common/language/type_kind.xmacro.h"
-    }
+    };
+    p.write("Type::Kind::");
+    p.write(Names[static_cast<std::underlying_type_t<Kind>>(k)]);
   }
 
   constexpr Kind kind() const {
@@ -64,7 +62,7 @@ struct Type {
   friend bool IcarusDeserializeValue(std::span<jasmin::Value const> values,
                                      Type& t) {
     if (values.size() != 1) { return false; }
-    t.data_ = values.front().as<uint64_t>();
+    t.data_ = values.front().raw_value();
     return true;
   }
 

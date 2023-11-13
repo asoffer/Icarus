@@ -97,7 +97,9 @@ Iteration HandleParseTreeNodeFunctionLiteralStart(ParseNodeIndex index,
     bytes += type::Contour(p.type).byte_width();
   }
 
-  for (auto const& t : fn_type.returns()) { output_size += type::JasminSize(t); }
+  for (auto const& t : fn_type.returns()) {
+    output_size += type::JasminSize(t);
+  }
   context.push_function(
       context.current_module.add_function(input_size, output_size),
       context.Node(index).scope_index);
@@ -151,10 +153,10 @@ void HandleParseTreeNodeDeclaration(ParseNodeIndex index,
       context.current_function().append<jasmin::StackOffset>(
           context.current_storage().offset(index).value());
 
-      auto qt_iter = context.statement_qualified_type.find(index);
-      NTH_REQUIRE((v.debug), qt_iter != context.statement_qualified_type.end());
-      context.current_function().append<Store>(
-          type::Contour(qt_iter->second.type()).byte_width().value());
+      auto qt_iter = context.statement_expression_info.find(index);
+      NTH_REQUIRE((v.debug),
+                  qt_iter != context.statement_expression_info.end());
+      context.current_function().append<Store>(qt_iter->second.first.value());
     }
   } else {
     NTH_UNIMPLEMENTED();
@@ -173,11 +175,13 @@ void HandleParseTreeNodeStatement(ParseNodeIndex index, EmitContext& context) {
   switch (
       context.Node(context.tree.first_descendant_index(index)).statement_kind) {
     case ParseNode::StatementKind::Expression: {
-      auto iter = context.statement_qualified_type.find(index);
-      NTH_REQUIRE(iter != context.statement_qualified_type.end())
+      auto iter = context.statement_expression_info.find(index);
+      NTH_REQUIRE(iter != context.statement_expression_info.end())
           .Log<"For {}">(context.tree.first_descendant_index(index));
-      context.current_function().append<jasmin::Drop>(
-          type::JasminSize(iter->second.type()));
+      size_t size_to_drop = iter->second.second;
+      if (size_to_drop != 0) {
+        context.current_function().append<jasmin::Drop>(size_to_drop);
+      }
     } break;
     default: break;
   }
@@ -379,9 +383,12 @@ void HandleParseTreeNodeReturn(ParseNodeIndex index, EmitContext& context) {
 void HandleParseTreeNodeFunctionLiteral(ParseNodeIndex index,
                                         EmitContext& context) {
   jasmin::Value f = &context.current_function();
+  context.current_function().append<jasmin::Return>();
   context.pop_function();
   context.Push(std::span(&f, 1), {context.QualifiedTypeOf(index).type()});
 }
+
+void HandleParseTreeNodeNoReturns(ParseNodeIndex index, EmitContext& context) {}
 
 template <auto F>
 constexpr Iteration Invoke(ParseNodeIndex index, EmitContext& context) {

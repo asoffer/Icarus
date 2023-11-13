@@ -618,7 +618,19 @@ void Parser::HandleFunctionLiteralReturnTypeStart(ParseTree& tree) {
   }
 
   ++iterator_;
-  ExpandState(State::Kind::Expression);
+  if (iterator_->kind() == Token::Kind::LeftParen) {
+    auto it = iterator_ + 1;
+    while (it->kind() == Token::Kind::Newline) { ++it; }
+    if (it->kind() == Token::Kind::RightParen) {
+      pop_and_discard_state();
+      tree.append_leaf(ParseNode::Kind::NoReturns, *iterator_);
+      iterator_ = it + 1;
+    } else {
+      ExpandState(State::Kind::Expression);
+    }
+  } else {
+    ExpandState(State::Kind::Expression);
+  }
 }
 
 void Parser::HandleFunctionLiteralBody(ParseTree& tree) {

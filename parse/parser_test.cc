@@ -545,6 +545,35 @@ NTH_TEST("parser/function-literal/body") {
                                                             Identifier()))))));
 }
 
+NTH_TEST("parser/function-literal/no-returns-with-newlines") {
+  diag::NullConsumer d;
+  TokenBuffer buffer = lex::Lex(R"(
+  fn() -> (
+    // No returns here!
+  ) {})", d);
+  auto tree          = Parse(buffer, d).parse_tree;
+  NTH_EXPECT(
+      FromRoot(tree) >>= StatementSequence(
+          ScopeStart(),
+          Statement(StatementStart(),
+                    FunctionLiteral(FunctionLiteralStart(),
+                                    FunctionLiteralSignature(NoReturns()),
+                                    StatementSequence(ScopeStart())))));
+}
+
+NTH_TEST("parser/function-literal/no-returns") {
+  diag::NullConsumer d;
+  TokenBuffer buffer = lex::Lex(R"(fn() -> () {})", d);
+  auto tree          = Parse(buffer, d).parse_tree;
+  NTH_EXPECT(
+      FromRoot(tree) >>= StatementSequence(
+          ScopeStart(),
+          Statement(StatementStart(),
+                    FunctionLiteral(FunctionLiteralStart(),
+                                    FunctionLiteralSignature(NoReturns()),
+                                    StatementSequence(ScopeStart())))));
+}
+
 NTH_TEST("parser/function-literal/return-expression") {
   diag::NullConsumer d;
   TokenBuffer buffer = lex::Lex(R"(

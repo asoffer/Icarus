@@ -87,8 +87,8 @@ struct EmitContext {
 
   ParseTree const& tree;
 
-  absl::flat_hash_map<ParseNodeIndex, type::QualifiedType>
-      statement_qualified_type;
+  absl::flat_hash_map<ParseNodeIndex, std::pair<type::ByteWidth, size_t>>
+      statement_expression_info;
 
   absl::flat_hash_map<ParseNodeIndex, size_t> rotation_count;
   absl::flat_hash_map<ParseNodeIndex, std::pair<ParseNodeIndex, ParseNodeIndex>>

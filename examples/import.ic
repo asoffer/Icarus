@@ -1,4 +1,4 @@
-// Other modules may be imported via the `import` keyword.
+// Modules may be imported via the `import` keyword.
 //
 // The string name, in this case "std.io" representing the module corresponds to
 // a source file (or files) in an implementation-defined manner. In this case,

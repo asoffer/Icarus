@@ -10,6 +10,7 @@
 #include "common/resources.h"
 #include "common/string.h"
 #include "ir/scope.h"
+#include "ir/type_stack.h"
 #include "jasmin/execute.h"
 #include "jasmin/value_stack.h"
 #include "nth/debug/debug.h"
@@ -22,16 +23,17 @@ namespace {
 
 #define IC_PROPAGATE_ERRORS(context, node, count)                              \
   do {                                                                         \
-    auto&& c = (context);                                                      \
-    auto&& n = (node);                                                         \
-    for (auto const* p = &c.type_stack()[c.type_stack().size() -               \
-                                         static_cast<size_t>(count)];          \
-         p != &c.type_stack().back(); ++p) {                                   \
-      if (p->type() == type::Error) {                                          \
-        c.type_stack().resize(c.type_stack().size() -                          \
-                              static_cast<size_t>(count) + 1);                 \
-        c.type_stack().back() = type::QualifiedType::Constant(type::Error);    \
-        return;                                                                \
+    auto&& c  = (context);                                                     \
+    auto&& n  = (node);                                                        \
+    auto iter = c.type_stack().rbegin();                                       \
+    for (size_t i = 0; i < count; ++i, ++iter) {                               \
+      NTH_REQUIRE((v.debug), iter != c.type_stack().rend());                   \
+      for (auto qt : *iter) {                                                  \
+        if (qt.type() == type::Error) {                                        \
+          for (size_t j = 0; j < count; ++j) { c.type_stack().pop(); }         \
+          c.type_stack().push({type::QualifiedType::Constant(type::Error)});   \
+          return;                                                              \
+        }                                                                      \
       }                                                                        \
     }                                                                          \
   } while (false);
@@ -77,9 +79,7 @@ struct IrContext {
     }
   }
 
-  std::vector<type::QualifiedType>& type_stack() {
-    return queue.front().type_stack;
-  }
+  TypeStack& type_stack() { return queue.front().type_stack_; }
 
   std::vector<DeclarationInfo>& declaration_stack() {
     return queue.front().declaration_stack;
@@ -109,12 +109,17 @@ struct IrContext {
   }
 
   struct WorkItem {
+    WorkItem(nth::interval<ParseNodeIndex> interval) : interval(interval) {}
+
     nth::interval<ParseNodeIndex> interval;
-    std::vector<type::QualifiedType> type_stack;
     std::vector<Token::Kind> operator_stack;
     std::vector<DeclarationInfo> declaration_stack;
     std::vector<Scope::Index> scopes    = {Scope::Index::Root()};
     std::vector<Scope::Index> functions = {Scope::Index::Root()};
+
+   private:
+    friend IrContext;
+    TypeStack type_stack_;
   };
 
   size_t identifier_repetition_counter = 0;
@@ -126,7 +131,7 @@ struct IrContext {
   void HandleParseTreeNode##name(ParseNodeIndex index, IrContext& context,     \
                                  diag::DiagnosticConsumer& diag) {             \
     auto qt = type::QualifiedType::Constant(t);                                \
-    context.type_stack().push_back(qt);                                        \
+    context.type_stack().push({qt});                                           \
     context.emit.SetQualifiedType(index, qt);                                  \
   }
 #include "parse/node.xmacro.h"
@@ -159,7 +164,7 @@ void HandleParseTreeNodeDeclaration(ParseNodeIndex index, IrContext& context,
   context.declaration_stack().pop_back();
   if (not info.kind.has_initializer()) {
     NTH_REQUIRE((v.debug), not info.kind.inferred_type());
-    context.type_stack().pop_back();
+    context.type_stack().pop();
     std::optional type = context.EvaluateAs<type::Type>(index - 1);
     if (not type) { NTH_UNIMPLEMENTED(); }
 
@@ -178,9 +183,9 @@ void HandleParseTreeNodeDeclaration(ParseNodeIndex index, IrContext& context,
   } else if (info.kind.inferred_type()) {
     type::QualifiedType qt;
     if (info.kind.constant()) {
-      qt = type::QualifiedType::Constant(context.type_stack().back().type());
+      qt = type::QualifiedType::Constant(context.type_stack().top()[0].type());
     } else {
-      qt = type::QualifiedType::Unqualified(context.type_stack().back().type());
+      qt = type::QualifiedType::Unqualified(context.type_stack().top()[0].type());
       context.current_storage().insert(index, qt.type());
     }
 
@@ -191,11 +196,11 @@ void HandleParseTreeNodeDeclaration(ParseNodeIndex index, IrContext& context,
             .identifier     = index,
             .qualified_type = qt,
         });
-    context.type_stack().pop_back();
+    context.type_stack().pop();
   } else {
-    context.type_stack().pop_back();
+    context.type_stack().pop();
     NTH_UNIMPLEMENTED();
-    type::QualifiedType type_expr_qt = context.type_stack().back();
+    type::QualifiedType type_expr_qt = context.type_stack().top()[0];
     if (not RequireConstant(type_expr_qt, type::Type_, diag)) { return; }
     auto iter          = context.ChildIndices(index).begin();
     auto expr_iter     = iter;
@@ -211,10 +216,21 @@ void HandleParseTreeNodeStatement(ParseNodeIndex index, IrContext& context,
                                   diag::DiagnosticConsumer& diag) {
   switch (context.Node(context.emit.tree.first_descendant_index(index))
               .statement_kind) {
-    case ParseNode::StatementKind::Expression:
-      context.emit.statement_qualified_type.emplace(
-          index, context.type_stack().back());
-      context.type_stack().pop_back();
+    case ParseNode::StatementKind::Expression: {
+      std::span qts = context.type_stack().top();
+      size_t size   = 0;
+      type::ByteWidth bytes(0);
+      for (auto qt : qts) {
+        auto contour = type::Contour(qt.type());
+        bytes.align_forward_to(contour.alignment());
+        bytes += contour.byte_width();
+        size += type::JasminSize(qt.type());
+      }
+
+      context.emit.statement_expression_info.emplace(
+          index, std::make_pair(bytes, size));
+      context.type_stack().pop();
+    } break;
     default: break;
   }
 }
@@ -236,8 +252,7 @@ Iteration HandleParseTreeNodeIdentifier(ParseNodeIndex index,
                 id)),
         diag::SourceQuote(token),
     });
-    context.type_stack().push_back(
-        type::QualifiedType::Unqualified(type::Error));
+    context.type_stack().push({type::QualifiedType::Unqualified(type::Error)});
     return Iteration::Continue;
   }
 
@@ -248,7 +263,7 @@ Iteration HandleParseTreeNodeIdentifier(ParseNodeIndex index,
     context.emit.declarator.emplace(index,
                                     std::pair{decl_id_index, decl_index});
     context.emit.SetQualifiedType(index, decl_qt);
-    context.type_stack().push_back(decl_qt);
+    context.type_stack().push({decl_qt});
     return Iteration::Continue;
   } else {
     auto item     = context.queue.front();
@@ -281,10 +296,10 @@ void HandleParseTreeNodeExpressionPrecedenceGroup(
                 "cannot be used together without parentheses."),
         });
       }
-      NTH_REQUIRE(context.type_stack().size() >= 2);
-      type::Type return_type = context.type_stack().back().type();
-      context.type_stack().pop_back();
-      type::Type parameters_type = context.type_stack().back().type();
+      NTH_REQUIRE(context.type_stack().group_count() >= 2);
+      type::Type return_type = context.type_stack().top()[0].type();
+      context.type_stack().pop();
+      type::Type parameters_type = context.type_stack().top()[0].type();
       auto iter                  = context.Children(index).begin();
       if (parameters_type != type::Type_) {
         auto iter = context.Children(index).begin();
@@ -308,8 +323,8 @@ void HandleParseTreeNodeExpressionPrecedenceGroup(
         });
       }
 
-      context.type_stack().back() =
-          type::QualifiedType(type::Qualifier::Constant(), type::Type_);
+      context.type_stack().pop();
+      context.type_stack().push({type::QualifiedType::Constant(type::Type_)});
     } break;
     default: NTH_UNIMPLEMENTED();
   }
@@ -327,16 +342,17 @@ void HandleParseTreeNodeMemberExpression(ParseNodeIndex index,
   auto node = context.Node(index);
   IC_PROPAGATE_ERRORS(context, node, 1);
   NTH_REQUIRE(not context.type_stack().empty());
-  if (context.type_stack().back().type() == type::Module) {
-    if (context.type_stack().back().constant()) {
+  if (context.type_stack().top()[0].type() == type::Module) {
+    if (context.type_stack().top()[0].constant()) {
       auto module_id = context.EvaluateAs<ModuleId>(index - 1);
       NTH_REQUIRE(module_id.has_value());
       auto qt = context.emit.module(*module_id)
                     .Lookup(node.token.Identifier())
                     .qualified_type;
-      context.type_stack().back() = qt;
+      context.type_stack().pop();
+      context.type_stack().push({qt});
       context.emit.SetQualifiedType(index, qt);
-      if (context.type_stack().back().type() == type::Error) {
+      if (context.type_stack().top()[0].type() == type::Error) {
         diag.Consume({
             diag::Header(diag::MessageKind::Error),
             diag::Text(
@@ -351,21 +367,24 @@ void HandleParseTreeNodeMemberExpression(ParseNodeIndex index,
           diag::Text("Members may not be accessed from non-constant modules."),
           diag::SourceQuote(context.Node(index - 1).token),
       });
-      context.type_stack().back() =
-          type::QualifiedType::Unqualified(type::Error);
+      context.type_stack().pop();
+      context.type_stack().push(
+          {type::QualifiedType::Unqualified(type::Error)});
     }
-  } else if (context.type_stack().back().type() == type::Type_) {
-    NTH_UNIMPLEMENTED("{} -> {}") <<= {context.type_stack().back(), node.token};
-  } else if (context.type_stack().back().type().kind() ==
+  } else if (context.type_stack().top()[0].type() == type::Type_) {
+    NTH_UNIMPLEMENTED("{} -> {}") <<= {context.type_stack().top(), node.token};
+  } else if (context.type_stack().top()[0].type().kind() ==
              type::Type::Kind::Slice) {
     if (context.Node(index).token.Identifier() == Identifier("data")) {
       auto qt = type::QualifiedType::Unqualified(type::BufPtr(
-          context.type_stack().back().type().AsSlice().element_type()));
-      context.type_stack().back() = qt;
+          context.type_stack().top()[0].type().AsSlice().element_type()));
+      context.type_stack().pop();
+      context.type_stack().push({qt});
       context.emit.SetQualifiedType(index, qt);
     } else if (context.Node(index).token.Identifier() == Identifier("count")) {
       auto qt                     = type::QualifiedType::Unqualified(type::U64);
-      context.type_stack().back() = qt;
+      context.type_stack().pop();
+      context.type_stack().push({qt});
       context.emit.SetQualifiedType(index, qt);
     } else {
       diag.Consume({
@@ -375,8 +394,9 @@ void HandleParseTreeNodeMemberExpression(ParseNodeIndex index,
               context.Node(index).token.Identifier())),
           diag::SourceQuote(context.Node(index - 1).token),
       });
-      context.type_stack().back() =
-          type::QualifiedType::Unqualified(type::Error);
+      context.type_stack().pop();
+      context.type_stack().push(
+          {type::QualifiedType::Unqualified(type::Error)});
     }
   } else {
     diag.Consume({
@@ -384,10 +404,11 @@ void HandleParseTreeNodeMemberExpression(ParseNodeIndex index,
         diag::Text(
             InterpolateString<"Access operator `.` may only follow a type, "
                               "module, or enum, but you provided: {}.">(
-                context.type_stack().back().type())),
+                context.type_stack().top()[0].type())),
         diag::SourceQuote(context.Node(index - 2).token),
     });
-    context.type_stack().back().type() = type::Error;
+    context.type_stack().pop();
+    context.type_stack().push({type::QualifiedType::Unqualified(type::Error)});
   }
 }
 
@@ -396,9 +417,12 @@ void HandleParseTreeNodeCallExpression(ParseNodeIndex index, IrContext& context,
   auto node = context.Node(index);
   IC_PROPAGATE_ERRORS(context, node, node.child_count - 1);
 
-  auto invocable_type =
-      context
-          .type_stack()[context.type_stack().size() - (node.child_count - 1)];
+  auto iter = context.type_stack().rbegin();
+  for (size_t i = 2; i < node.child_count; ++i) {
+    NTH_REQUIRE((v.debug), iter != context.type_stack().rend());
+    ++iter;
+  }
+  auto invocable_type = (*iter)[0];
   if (invocable_type.type().kind() == type::Type::Kind::Function) {
     auto fn_type           = invocable_type.type().AsFunction();
     auto const& parameters = *fn_type.parameters();
@@ -407,16 +431,18 @@ void HandleParseTreeNodeCallExpression(ParseNodeIndex index, IrContext& context,
       auto type_iter             = context.type_stack().rbegin();
       auto& argument_width_count = context.emit.rotation_count[index];
       for (size_t i = 0; i < parameters.size(); ++i) {
-        argument_width_count += type::JasminSize(type_iter->type());
+        argument_width_count += type::JasminSize((*type_iter)[0].type());
         ++type_iter;
       }
       auto const& returns = fn_type.returns();
-      context.type_stack().resize(context.type_stack().size() -
-                                  (node.child_count - 1));
-      for (type::Type r : returns) {
-        context.type_stack().push_back(
-            type::QualifiedType(type::Qualifier::Unqualified(), r));
+      for (size_t i = 1; i < node.child_count; ++i) {
+        context.type_stack().pop();
       }
+      std::vector<type::QualifiedType> return_qts;
+      for (type::Type r : returns) {
+        return_qts.push_back(type::QualifiedType::Unqualified(r));
+      }
+      context.type_stack().push(return_qts);
 
       switch (fn_type.evaluation()) {
         case type::Evaluation::PreferCompileTime: NTH_UNIMPLEMENTED();
@@ -443,26 +469,32 @@ void HandleParseTreeNodeCallExpression(ParseNodeIndex index, IrContext& context,
   } else if (invocable_type.type().kind() ==
              type::Type::Kind::GenericFunction) {
     auto& rotation_count = context.emit.rotation_count[index];
-    std::vector<ParseNodeIndex> indices;
+    std::vector<ParseNodeIndex> argument_indices;
     for (auto iter = context.ChildIndices(index).begin();
          context.Node(*iter).kind != ParseNode::Kind::InvocationArgumentStart;
          ++iter) {
-      indices.push_back(*iter);
+      argument_indices.push_back(*iter);
     }
-    size_t type_stack_index = context.type_stack().size() - indices.size();
-    std::reverse(indices.begin(), indices.end());
+
+    std::reverse(argument_indices.begin(), argument_indices.end());
     jasmin::ValueStack value_stack;
-    for (auto index : indices) {
-      auto t              = context.type_stack()[type_stack_index].type();
+
+    auto iter = context.type_stack().rbegin();
+    for (size_t i = 1; i < argument_indices.size(); ++i) {
+      NTH_REQUIRE((v.debug), iter != context.type_stack().rend());
+      ++iter;
+    }
+    for (auto index : argument_indices) {
+      auto t              = (*iter)[0].type();
       nth::interval range = context.emit.tree.subtree_range(index);
       context.emit.Evaluate(range, value_stack, {t});
       rotation_count += type::JasminSize(t);
-      ++type_stack_index;
+      ++iter;
     }
     auto g = invocable_type.type().AsGenericFunction();
     jasmin::Execute(*static_cast<IrFunction const*>(g.data()), value_stack);
     auto t = value_stack.pop<type::Type>();
-    context.type_stack().push_back(type::QualifiedType::Constant(t));
+    context.type_stack().push({type::QualifiedType::Constant(t)});
     NTH_REQUIRE((v.debug), t.kind() == type::Type::Kind::Function);
 
     if (g.evaluation() == type::Evaluation::PreferCompileTime or
@@ -488,21 +520,21 @@ void HandleParseTreeNodeInvocationArgumentStart(
 
 void HandleParseTreeNodePointer(ParseNodeIndex index, IrContext& context,
                                 diag::DiagnosticConsumer& diag) {
-  if (context.type_stack().back().type() != type::Type_) {
+  if (context.type_stack().top()[0].type() != type::Type_) {
     NTH_UNIMPLEMENTED();
   }
 }
 
 void HandleParseTreeNodeBufferPointer(ParseNodeIndex index, IrContext& context,
                                       diag::DiagnosticConsumer& diag) {
-  if (context.type_stack().back().type() != type::Type_) {
+  if (context.type_stack().top()[0].type() != type::Type_) {
     NTH_UNIMPLEMENTED();
   }
 }
 
 void HandleParseTreeNodeSlice(ParseNodeIndex index, IrContext& context,
                               diag::DiagnosticConsumer& diag) {
-  if (context.type_stack().back().type() != type::Type_) {
+  if (context.type_stack().top()[0].type() != type::Type_) {
     NTH_UNIMPLEMENTED();
   }
 }
@@ -522,11 +554,13 @@ void HandleParseTreeNodeImport(ParseNodeIndex index, IrContext& context,
             InterpolateString<"Could not find a module named \"{}\".">(path)),
         diag::SourceQuote(context.Node(index - 1).token),
     });
-    context.type_stack().back() = type::QualifiedType::Constant(type::Error);
+    context.type_stack().pop();
+    context.type_stack().push({type::QualifiedType::Constant(type::Error)});
     return;
   }
 
-  context.type_stack().back() = type::QualifiedType::Constant(type::Module);
+  context.type_stack().pop();
+  context.type_stack().push({type::QualifiedType::Constant(type::Module)});
 }
 
 Iteration HandleParseTreeNodeScopeStart(ParseNodeIndex index, IrContext& context,
@@ -561,15 +595,19 @@ void HandleParseTreeNodeFunctionLiteralSignature(
   ParseNodeIndex start = context.emit.tree.first_descendant_index(index) - 1;
   NTH_REQUIRE((v.debug), context.Node(start).kind ==
                              ParseNode::Kind::FunctionLiteralStart);
-  type::Type return_type;
+  std::vector<type::Type> return_types;
   std::vector<type::ParametersType::Parameter> parameters;
   auto indices = context.ChildIndices(index);
 
   auto iter    = indices.begin();
-  if (std::optional t = context.EvaluateAs<type::Type>(*iter)) {
-    return_type = *t;
-  } else {
-    NTH_UNIMPLEMENTED();
+  switch (context.Node(*iter).kind) {
+    case ParseNode::Kind::NoReturns: break;
+    default:
+      if (std::optional t = context.EvaluateAs<type::Type>(*iter)) {
+        return_types.push_back(*t);
+      } else {
+        NTH_UNIMPLEMENTED();
+      }
   }
   ++iter;
 
@@ -590,10 +628,13 @@ void HandleParseTreeNodeFunctionLiteralSignature(
   }
 
   std::reverse(parameters.begin(), parameters.end());
-  auto qt = type::QualifiedType::Constant(
-      type::Function(type::Parameters(std::move(parameters)),
-                     std::vector<type::Type>{return_type}));
-  context.type_stack().back() = qt;
+  for (size_t i = 0; i < return_types.size(); ++i) {
+    context.type_stack().pop();
+  }
+  auto qt = type::QualifiedType::Constant(type::Function(
+      type::Parameters(std::move(parameters)), std::move(return_types)));
+
+  context.type_stack().push({qt});
   context.emit.SetQualifiedType(start, qt);
 }
 
@@ -605,7 +646,9 @@ void HandleParseTreeNodeIfStatementTrueBranchStart(ParseNodeIndex index,
 
 void HandleParseTreeNodeIfStatement(ParseNodeIndex index, IrContext& context,
                                     diag::DiagnosticConsumer& diag) {
-  if (context.type_stack().back().type() != type::Bool) { NTH_UNIMPLEMENTED(); }
+  if (context.type_stack().top()[0].type() != type::Bool) {
+    NTH_UNIMPLEMENTED();
+  }
   // TODO: Handle type of if statement properly.
   context.pop_scope();
 }
@@ -632,9 +675,9 @@ void HandleParseTreeNodeFunctionLiteral(ParseNodeIndex index,
 
 void HandleParseTreeNodeAssignment(ParseNodeIndex index, IrContext& context,
                                    diag::DiagnosticConsumer& diag) {
-  auto rhs_qt = context.type_stack().back();
-  context.type_stack().pop_back();
-  auto lhs_qt = context.type_stack().back();
+  auto rhs_qt = context.type_stack().top()[0];
+  context.type_stack().pop();
+  auto lhs_qt = context.type_stack().top()[0];
 
   if (lhs_qt.constant()) {
     NTH_UNIMPLEMENTED("TODO: Log error about assignign to a constant {}") <<=
@@ -650,13 +693,19 @@ void HandleParseTreeNodeFunctionTypeParameters(ParseNodeIndex index,
                                                IrContext& context,
                                                diag::DiagnosticConsumer& diag) {
   for (size_t i = 0; i < context.emit.Node(index).child_count; ++i) {
-    if (context.type_stack().back() !=
+    if (context.type_stack().top()[0] !=
         type::QualifiedType::Constant(type::Type_)) {
       NTH_UNIMPLEMENTED("{}") <<= {context.type_stack()};
     }
-    context.type_stack().pop_back();
+    context.type_stack().pop();
   }
-  context.type_stack().push_back(type::QualifiedType::Constant(type::Type_));
+  context.type_stack().push({type::QualifiedType::Constant(type::Type_)});
+}
+
+
+void HandleParseTreeNodeNoReturns(ParseNodeIndex index, IrContext& context,
+                                  diag::DiagnosticConsumer& diag) {
+  context.type_stack().push({});
 }
 
 template <auto F>
@@ -713,7 +762,7 @@ void ProcessIrImpl(IrContext& context, diag::DiagnosticConsumer& diag) {
 
 void ProcessIr(EmitContext& emit, diag::DiagnosticConsumer& diag) {
   IrContext context{.emit = emit};
-  context.queue.push({.interval = emit.tree.node_range()});
+  context.queue.push(IrContext::WorkItem(emit.tree.node_range()));
   ProcessIrImpl(context, diag);
 }
 

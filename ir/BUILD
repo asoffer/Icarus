@@ -125,6 +125,7 @@ cc_library(
     deps = [
         ":emit",
         ":scope",
+        ":type_stack",
         "//common:debug",
         "//common:module_id",
         "//common:string",
@@ -211,5 +212,15 @@ cc_library(
         "//type:serialize",
         "@asoffer_nth//nth/debug",
         "@asoffer_nth//nth/debug/log",
+    ],
+)
+
+cc_library(
+    name = "type_stack",
+    hdrs = ["type_stack.h"],
+    srcs = ["type_stack.cc"],
+    deps = [
+        "//type",
+        "@asoffer_nth//nth/debug",
     ],
 )

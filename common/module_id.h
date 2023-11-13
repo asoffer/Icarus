@@ -32,7 +32,7 @@ struct ModuleId {
                                      ModuleId& id) {
     // TODO: Deal with the fact that you write these things multiple times.
     if (values.size() < 1) { return false; }
-    id.id_ = values.front().as<uint32_t>();
+    id.id_ = values.front().raw_value();
     return true;
   }
 
