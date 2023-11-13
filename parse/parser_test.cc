@@ -586,4 +586,21 @@ NTH_TEST("parser/slice/multiple") {
                                          Slice(Slice(Slice(TypeLiteral()))))));
 }
 
+NTH_TEST("parser/parenthesized") {
+  diag::NullConsumer d;
+  TokenBuffer buffer = lex::Lex(R"((a))", d);
+  auto tree          = Parse(buffer, d).parse_tree;
+  NTH_EXPECT(FromRoot(tree) >>= StatementSequence(
+                 ScopeStart(), Statement(StatementStart(), Identifier())));
+}
+
+NTH_TEST("parser/parenthesized/newlines") {
+  diag::NullConsumer d;
+  TokenBuffer buffer = lex::Lex(R"((
+  a))", d);
+  auto tree          = Parse(buffer, d).parse_tree;
+  NTH_EXPECT(FromRoot(tree) >>= StatementSequence(
+                 ScopeStart(), Statement(StatementStart(), Identifier())));
+}
+
 }  // namespace ic

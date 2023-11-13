@@ -658,10 +658,12 @@ void Parser::HandleAtomicTerm(ParseTree& tree) {
                       State::Kind::CommaSeparatedExpressionSequence,
                       State::Kind::ResolveFunctionTypeParameters);
         }
-        return;
       } else {
-        NTH_UNIMPLEMENTED();
+        // TODO: ParenthesizedExpression checks for the opening '(' again which
+        // we already know is present. We should be able to avoid that.
+        ExpandState(State::Kind::ParenthesizedExpression);
       }
+      return;
     } break;
     case Token::Kind::Import:
       ++iterator_;
@@ -683,7 +685,6 @@ void Parser::HandleResolveImport(ParseTree& tree) {
   tree.append(ParseNode::Kind::Import, current_token(),
               state().back().subtree_start);
   pop_and_discard_state();
-  ++iterator_;
 }
 
 

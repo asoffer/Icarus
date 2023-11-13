@@ -57,12 +57,12 @@ ic_binary(
 #     srcs = ["function_calls.ic"],
 #     deps = ["//toolchain/stdlib:io"],
 # )
-# 
-# ic_binary(
-#     name = "import",
-#     srcs = ["import.ic"],
-#     deps = ["//toolchain/stdlib:io"],
-# )
+ 
+ic_binary(
+    name = "import",
+    srcs = ["import.ic"],
+    deps = ["//toolchain/stdlib:io"],
+)
 
 ic_binary(
     name = "minimal_program",
