@@ -134,6 +134,7 @@ cc_library(
         "//parse:node_xmacro",
         "//parse:tree",
         "//type",
+        "//type:cast",
         "@asoffer_jasmin//jasmin:execute",
         "@asoffer_jasmin//jasmin:value_stack",
         "@asoffer_nth//nth/debug",

@@ -181,6 +181,9 @@ struct BasicType {
 // Represents a primitive type built-in to the language.
 struct PrimitiveType : internal_type::BasicType {
   enum class Kind : uint8_t {
+#define IC_XMACRO_PRIMITIVE_TYPE_BEGIN_CATEGORY(name)                          \
+  InternalBeginCategory_##name,
+#define IC_XMACRO_PRIMITIVE_TYPE_END_CATEGORY(name) InternalEndCategory_##name,
 #define IC_XMACRO_PRIMITIVE_TYPE(kind, symbol, spelling) kind,
 #include "common/language/primitive_types.xmacro.h"
   };
@@ -198,6 +201,7 @@ struct PrimitiveType : internal_type::BasicType {
     p.write(spelling);                                                         \
     return;
 #include "common/language/primitive_types.xmacro.h"
+      default: NTH_UNREACHABLE();
     }
   }
 
@@ -205,6 +209,10 @@ struct PrimitiveType : internal_type::BasicType {
   friend Type;
   PrimitiveType() = default;
 };
+
+#define IC_XMACRO_PRIMITIVE_TYPE_BEGIN_CATEGORY(category_name)                 \
+  bool category_name(PrimitiveType);
+#include "common/language/primitive_types.xmacro.h"
 
 // Represents a set of parameters to an invocable type.
 struct ParametersType : internal_type::BasicType {

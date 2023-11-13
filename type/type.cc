@@ -149,7 +149,8 @@ TypeContour Contour(Type t) {
         case PrimitiveType::Kind::Module:
         case PrimitiveType::Kind::Type:
         case PrimitiveType::Kind::Integer:
-        case PrimitiveType::Kind::Error: NTH_UNREACHABLE();
+        case PrimitiveType::Kind::Error:
+        default: NTH_UNREACHABLE();
         case PrimitiveType::Kind::Bool:
         case PrimitiveType::Kind::Char:
         case PrimitiveType::Kind::Byte:
@@ -177,5 +178,20 @@ TypeContour Contour(Type t) {
     default: NTH_UNIMPLEMENTED("{}") <<= {t.kind()};
   }
 }
+
+auto ToUnderlying(PrimitiveType::Kind k) {
+  return static_cast<std::underlying_type_t<PrimitiveType::Kind>>(k);
+}
+
+#define IC_XMACRO_PRIMITIVE_TYPE_BEGIN_CATEGORY(category_name)                 \
+  bool category_name(PrimitiveType p) {                                        \
+    auto value = ToUnderlying(p.kind());                                       \
+    constexpr auto begin =                                                     \
+        PrimitiveType::Kind::InternalBeginCategory_##category_name;            \
+    constexpr auto end =                                                       \
+        PrimitiveType::Kind::InternalEndCategory_##category_name;              \
+    return ToUnderlying(begin) < value and value < ToUnderlying(end);          \
+  }
+#include "common/language/primitive_types.xmacro.h"
 
 }  // namespace ic::type

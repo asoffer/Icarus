@@ -16,6 +16,7 @@
 #include "nth/debug/debug.h"
 #include "parse/node_index.h"
 #include "parse/tree.h"
+#include "type/cast.h"
 #include "type/type.h"
 
 namespace ic {
@@ -242,7 +243,7 @@ void HandleParseTreeNodeDeclaration(ParseNodeIndex index, IrContext& context,
     auto type_iter     = ++iter;
     std::optional type = context.EvaluateAs<type::Type>(*type_iter);
     if (not type) { NTH_UNIMPLEMENTED(); }
-    if (*type != init_qt.type()) {
+    if (not type::ImplicitCast(init_qt.type(), *type)) {
       auto token = context.Node(index).token;
       diag.Consume({
           diag::Header(diag::MessageKind::Error),
@@ -746,8 +747,16 @@ void HandleParseTreeNodeAssignment(ParseNodeIndex index, IrContext& context,
         {lhs_qt};
   }
   // TODO: Check for assignability?
-  if (lhs_qt.type() != rhs_qt.type()) {
-    NTH_UNIMPLEMENTED("TODO: Type-check properly with casts.");
+
+  if (not type::ImplicitCast(rhs_qt.type(), lhs_qt.type())) {
+    auto token = context.Node(index).token;
+    diag.Consume({
+        diag::Header(diag::MessageKind::Error),
+        diag::Text(InterpolateString<
+                   "Invalid assignment from type {} to object of type {}.">(
+            rhs_qt.type(), lhs_qt.type())),
+        diag::SourceQuote(token),
+    });
   }
 }
 

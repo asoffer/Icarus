@@ -33,6 +33,15 @@ cc_test(
 )
 
 cc_library(
+    name = "cast",
+    hdrs = ["cast.h"],
+    srcs = ["cast.cc"],
+    deps = [
+        ":type",
+    ],
+)
+
+cc_library(
     name = "deserialize",
     hdrs = ["deserialize.h"],
     srcs = ["deserialize.cc"],
