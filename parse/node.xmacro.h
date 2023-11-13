@@ -38,6 +38,8 @@
   IC_XMACRO_PARSE_NODE_EXPRESSION(name)
 #endif  // not defined(IC_XMACRO_PARSE_NODE_CONSTANT)
 
+IC_XMACRO_PARSE_NODE(Module)
+IC_XMACRO_PARSE_NODE(ModuleStart)
 IC_XMACRO_PARSE_NODE(StatementSequence)
 IC_XMACRO_PARSE_NODE(DeclarationStart)
 IC_XMACRO_PARSE_NODE(DeclaredIdentifier)

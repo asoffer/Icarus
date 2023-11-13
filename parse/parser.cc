@@ -218,13 +218,22 @@ void Parser::HandleNewlines(ParseTree& tree) {
 }
 
 void Parser::HandleModule(ParseTree& tree) {
-  ExpandState(State{
-      .kind               = State::Kind::StatementSequence,
-      .ambient_precedence = Precedence::Loosest(),
-      .token              = *iterator_,
-      .subtree_start      = tree.size(),
-  });
+  tree.append_leaf(ParseNode::Kind::ModuleStart, Token::Invalid());
+  ExpandState(
+      State{
+          .kind               = State::Kind::StatementSequence,
+          .ambient_precedence = Precedence::Loosest(),
+          .token              = *iterator_,
+          .subtree_start      = tree.size(),
+      },
+      State::Kind::ResolveModule);
 }
+
+void Parser::HandleResolveModule(ParseTree& tree) {
+  tree.append(ParseNode::Kind::Module, current_token(), 0);
+  pop_and_discard_state();
+}
+
 
 void Parser::HandleDeclaration(ParseTree& tree) {
   switch (current_token().kind()) {

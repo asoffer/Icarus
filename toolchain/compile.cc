@@ -92,8 +92,6 @@ nth::exit_code Compile(nth::FlagValueSet flags, nth::file_path const& source) {
   emit_context.queue.push(EmitContext::WorkItem{
       .range = parse_tree.node_range(),
   });
-  emit_context.queue.back().push_function(module.initializer(),
-                                          Scope::Index::Root());
   EmitIr(emit_context);
   SetExported(emit_context);
 

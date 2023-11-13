@@ -81,6 +81,12 @@ struct IrContext {
 
   TypeStack& type_stack() { return queue.front().type_stack_; }
 
+  void MakeError(size_t num_to_pop) {
+    auto& ts = type_stack();
+    for (size_t i = 0; i < num_to_pop; ++i) { type_stack().pop(); }
+    type_stack().push({type::QualifiedType::Unqualified(type::Error)});
+  }
+
   std::vector<DeclarationInfo>& declaration_stack() {
     return queue.front().declaration_stack;
   }
@@ -114,8 +120,8 @@ struct IrContext {
     nth::interval<ParseNodeIndex> interval;
     std::vector<Token::Kind> operator_stack;
     std::vector<DeclarationInfo> declaration_stack;
-    std::vector<Scope::Index> scopes    = {Scope::Index::Root()};
-    std::vector<Scope::Index> functions = {Scope::Index::Root()};
+    std::vector<Scope::Index> scopes;
+    std::vector<Scope::Index> functions;
 
    private:
     friend IrContext;
@@ -158,6 +164,18 @@ bool RequireConstant(type::QualifiedType actual, type::Type expected,
   return ok;
 }
 
+void HandleParseTreeNodeModule(ParseNodeIndex index, IrContext& context,
+                               diag::DiagnosticConsumer& diag) {
+  context.queue.front().functions.pop_back();
+  context.pop_scope();
+}
+
+void HandleParseTreeNodeModuleStart(ParseNodeIndex index, IrContext& context,
+                                    diag::DiagnosticConsumer& diag) {
+  context.queue.front().functions.push_back(Scope::Index::Root());
+  context.push_scope(Scope::Index::Root());
+}
+
 void HandleParseTreeNodeDeclaration(ParseNodeIndex index, IrContext& context,
                                     diag::DiagnosticConsumer& diag) {
   DeclarationInfo info = context.declaration_stack().back();
@@ -198,24 +216,61 @@ void HandleParseTreeNodeDeclaration(ParseNodeIndex index, IrContext& context,
         });
     context.type_stack().pop();
   } else {
+    auto types_iter      = context.type_stack().rbegin();
+    std::span init_types = *types_iter;
+    std::span type_types = *++types_iter;
+
+    if (init_types.size() != 1) {
+      NTH_UNIMPLEMENTED("Log an error");
+      context.MakeError(2);
+    }
+
+    if (type_types.size() != 1) {
+      NTH_UNIMPLEMENTED("Log an error");
+      context.MakeError(2);
+    } else if (not RequireConstant(type_types[0], type::Type_, diag)) {
+      context.MakeError(2);
+      return;
+    }
+
+    type::QualifiedType init_qt = init_types[0];
     context.type_stack().pop();
-    NTH_UNIMPLEMENTED();
-    type::QualifiedType type_expr_qt = context.type_stack().top()[0];
-    if (not RequireConstant(type_expr_qt, type::Type_, diag)) { return; }
+    context.type_stack().pop();
+
     auto iter          = context.ChildIndices(index).begin();
     auto expr_iter     = iter;
     auto type_iter     = ++iter;
     std::optional type = context.EvaluateAs<type::Type>(*type_iter);
     if (not type) { NTH_UNIMPLEMENTED(); }
+    if (*type != init_qt.type()) {
+      auto token = context.Node(index).token;
+      diag.Consume({
+          diag::Header(diag::MessageKind::Error),
+          diag::Text(InterpolateString<"Initializing expression does not match "
+                                       "declared type ({} vs {}).">(
+              init_qt.type(), *type)),
+          diag::SourceQuote(token),
+      });
+      context.type_stack().push(
+          {type::QualifiedType::Unqualified(type::Error)});
+    }
     type::QualifiedType qt = type::QualifiedType::Unqualified(*type);
     context.current_storage().insert(index, qt.type());
+    context.current_scope().insert_identifier(
+        context.Node(info.index).token.Identifier(),
+        {
+            .declaration    = info.index,
+            .identifier     = index,
+            .qualified_type = qt,
+        });
+    context.emit.SetQualifiedType(index, qt);
   }
 }
 
 void HandleParseTreeNodeStatement(ParseNodeIndex index, IrContext& context,
                                   diag::DiagnosticConsumer& diag) {
   switch (context.Node(context.emit.tree.first_descendant_index(index))
-              .statement_kind) {
+             .statement_kind) {
     case ParseNode::StatementKind::Expression: {
       std::span qts = context.type_stack().top();
       size_t size   = 0;

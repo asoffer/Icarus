@@ -11,6 +11,18 @@
 namespace ic {
 namespace {
 
+void HandleParseTreeNodeModule(ParseNodeIndex index, EmitContext& context) {
+  context.current_function().append<jasmin::Return>();
+  context.pop_function();
+}
+
+void HandleParseTreeNodeModuleStart(ParseNodeIndex index,
+                                    EmitContext& context) {
+  auto& f = context.current_module.initializer();
+  context.push_function(f, Scope::Index::Root());
+  f.append<jasmin::StackAllocate>(context.current_storage().size().value());
+}
+
 void HandleParseTreeNodeBooleanLiteral(ParseNodeIndex index,
                                        EmitContext& context) {
   auto node = context.Node(index);
@@ -89,7 +101,7 @@ Iteration HandleParseTreeNodeFunctionLiteralStart(ParseNodeIndex index,
   auto const& parameters = *fn_type.parameters();
   size_t input_size      = 0;
   size_t output_size     = 0;
-  type::ByteWidth bytes(0);
+  type::ByteWidth bytes  = context.current_storage().size();
   std::vector<type::ByteWidth> storage_offsets;
   for (auto const& p : parameters) {
     input_size += type::JasminSize(p.type);
@@ -149,16 +161,35 @@ void HandleParseTreeNodeDeclaration(ParseNodeIndex index,
       delete &f;
       context.pop_function();
     } else {
+      auto range = context.current_storage().range(index);
       context.current_function().append<jasmin::StackOffset>(
-          context.current_storage().offset(index).value());
-
-      auto qt_iter = context.statement_expression_info.find(index);
-      NTH_REQUIRE((v.debug),
-                  qt_iter != context.statement_expression_info.end());
-      context.current_function().append<Store>(qt_iter->second.first.value());
+          range.lower_bound().value());
+      context.current_function().append<Store>(range.length().value());
     }
   } else {
-    NTH_UNIMPLEMENTED();
+    // TODO: Cast to declared type
+    if (decl_info.kind.constant()) {
+      auto& f = context.current_function();
+      f.append<jasmin::Return>();
+      jasmin::ValueStack value_stack;
+      jasmin::Execute(f, value_stack);
+      auto const* info = context.scopes.identifier(
+          context.current_scope_index(),
+          context.Node(decl_info.index).token.Identifier());
+      NTH_REQUIRE(info != nullptr);
+      context.constants.insert_or_assign(
+          context.tree.subtree_range(index),
+          EmitContext::ComputedConstants(decl_info.index,
+                                         std::move(value_stack),
+                                         {info->qualified_type.type()}));
+      delete &f;
+      context.pop_function();
+    } else {
+      auto range = context.current_storage().range(index);
+      context.current_function().append<jasmin::StackOffset>(
+          range.lower_bound().value());
+      context.current_function().append<Store>(range.length().value());
+    }
   }
 
   if (context.queue.front().declaration_stack.size() == 1 and
@@ -179,7 +210,6 @@ void HandleParseTreeNodeStatement(ParseNodeIndex index, EmitContext& context) {
           .Log<"For {}">(context.tree.first_descendant_index(index));
       size_t size_to_drop = iter->second.second;
       if (size_to_drop != 0) {
-        NTH_LOG("Dropping {}") <<={size_to_drop};
         context.current_function().append<jasmin::Drop>(size_to_drop);
       }
     } break;
@@ -262,7 +292,15 @@ Iteration HandleParseTreeNodeDeclarationStart(ParseNodeIndex index,
       return Iteration::Continue;
     }
   } else {
-    NTH_UNIMPLEMENTED();
+    // TODO: Casting to declared type.
+    if (k.constant()) {
+      // TODO: The return might actually be wider and we need to handle that.
+      context.push_function(*new IrFunction(0, 1),
+                            context.queue.front().function_stack.back());
+      return Iteration::PauseMoveOn;
+    } else {
+      return Iteration::Continue;
+    }
   }
 }
 
@@ -456,7 +494,6 @@ void EmitContext::Push(EmitContext::ComputedConstants const& c) {
 }
 
 void EmitIr(EmitContext& context) {
-  auto& f = context.current_function();
   while (not context.queue.empty()) {
     auto [start, end] = context.queue.front().range;
     NTH_LOG((v.when(debug::emit)), "Starting emission of [{}, {}) @ {}") <<=
@@ -533,7 +570,6 @@ void EmitIr(EmitContext& context) {
     context.queue.pop();
     continue;
   }
-  f.append<jasmin::Return>();
   NTH_LOG((v.when(debug::emit)), "Done emitting!");
   return;
 }
@@ -549,6 +585,7 @@ void EmitContext::Evaluate(nth::interval<ParseNodeIndex> subtree,
   push_function(f, Scope::Index::Root());
 
   EmitIr(*this);
+  f.append<jasmin::Return>();
 
   jasmin::Execute(f, vs);
   for (jasmin::Value v : vs) { value_stack.push(v); }

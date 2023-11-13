@@ -152,6 +152,7 @@ cc_library(
         "//type",
         "//type:alignment",
         "//type:byte_width",
+        "@asoffer_nth//nth/container:interval",
         "@com_google_absl//absl/container:flat_hash_map",
     ],
 )
