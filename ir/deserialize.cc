@@ -9,6 +9,18 @@
 
 namespace ic {
 
+std::pair<ModuleId, Module const*> Deserializer::ResolveModule(
+    ModuleId id) const {
+  if (id == ModuleId::Foreign()) { return std::make_pair(id, nullptr); }
+  if (id == ModuleId::Current()) {
+    return std::make_pair(current_id_, current_);
+  }
+  NTH_REQUIRE((v.harden), dependencies_ != nullptr);
+  NTH_REQUIRE((v.harden), dependencies_->size() > id.value());
+  auto resolved_id = resources.module_map[(*dependencies_)[id.value()]];
+  return std::make_pair(resolved_id, &dependent_modules_[resolved_id]);
+}
+
 bool Deserializer::DeserializeFunction(ModuleProto const& m,
                                        FunctionProto const& proto,
                                        IrFunction& f) {
@@ -35,12 +47,10 @@ bool Deserializer::DeserializeFunction(ModuleProto const& m,
       case InstructionProto::PUSH_FUNCTION: {
         if (instruction.content().size() != 1) { return false; }
         uint64_t index = instruction.content()[0];
-        FunctionId function_id(ModuleId(index >> 32),
+        auto [id, m]   = ResolveModule(ModuleId(index >> 32));
+        FunctionId function_id(id,
                                LocalFunctionId(index & uint32_t{0xffffffff}));
-        if (function_id.module() == ModuleId::Current()) {
-          f.raw_append(jasmin::Value(
-              &current().functions()[function_id.local_function().value()]));
-        } else if (function_id.module() == ModuleId::Builtin()) {
+        if (function_id.module() == ModuleId::Builtin()) {
           NTH_REQUIRE((v.debug), builtin_module_ != nullptr);
           // TODO: Are local functions the same as module symbols?
           auto entry = builtin_module_->Lookup(
@@ -52,7 +62,8 @@ bool Deserializer::DeserializeFunction(ModuleProto const& m,
           f.raw_append(
               &LookupForeignFunction(function_id.local_function()).second);
         } else {
-          NTH_UNIMPLEMENTED();
+          f.raw_append(jasmin::Value(
+              &m->functions()[function_id.local_function().value()]));
         }
       } break;
       default: {
@@ -72,15 +83,18 @@ bool Deserializer::DeserializeFunction(ModuleProto const& m,
   return true;
 }
 
-bool Deserializer::Deserialize(ModuleProto const& proto, Module& module) {
-  current_ = &module;
+bool Deserializer::Deserialize(ModuleProto const& proto, ModuleId id,
+                               Module& module) {
+  current_      = &module;
+  current_id_   = id;
+  dependencies_ = &proto.modules();
 
   type::DeserializeTypeSystem(proto.type_system());
 
   // Insert all functions, so that when we populate their bodies we have a
   // stable `IrFunction` to refer to.
   for (auto const& function : proto.functions()) {
-    module.add_function(function.parameters(), function.returns());
+    module.add_function(current_id_, function.parameters(), function.returns());
   }
 
   for (std::string const& s : proto.string_literals()) {
@@ -119,9 +133,10 @@ bool Deserializer::Deserialize(ModuleProto const& proto, Module& module) {
         type::Deserialize(exported_symbol.type(), proto.type_system());
     if (t.kind() == type::Type::Kind::Function) {
       if (exported_symbol.content().size() != 1) { return false; }
-      uint64_t n = exported_symbol.content()[0];
-      value.push_back(&global_function_registry.function(FunctionId(
-          ModuleId(n >> 32), LocalFunctionId(n & uint64_t{0xffffffff}))));
+      uint64_t n    = exported_symbol.content()[0];
+      auto [mid, m] = ResolveModule(ModuleId(n >> 32));
+      value.push_back(&global_function_registry.function(
+          FunctionId(mid, LocalFunctionId(n & uint64_t{0xffffffff}))));
     } else {
       for (uint64_t n : exported_symbol.content()) {
         jasmin::Value v = jasmin::Value::Uninitialized();
@@ -147,7 +162,6 @@ bool Deserializer::Deserialize(ModuleProto const& proto, Module& module) {
       return false;
     }
   }
-
   return true;
 }
 
@@ -157,8 +171,11 @@ bool Deserializer::DeserializeDependentModules(
   dm.modules_.reserve(protos.size() + 1);
   dm.modules_.emplace_back(BuiltinModule());
   builtin_module_ = &dm.modules_[0];
+  uint32_t i = 0;
   for (auto const& proto : protos) {
-    if (not Deserialize(proto, dm.modules_.emplace_back())) { return false; }
+    if (not Deserialize(proto, ModuleId(++i), dm.modules_.emplace_back())) {
+      return false;
+    }
   }
   return true;
 }

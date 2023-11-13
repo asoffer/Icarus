@@ -52,6 +52,7 @@ void Serializer::SerializeFunction(IrFunction const& function,
 }
 
 void Serializer::Serialize(Module& module, ModuleProto& proto) {
+  for (auto const& m : resources.module_map) { *proto.add_modules() = m; }
   SerializeTypeSystem(*proto.mutable_type_system());
 
   for (auto const& f : module.functions()) {

@@ -67,7 +67,7 @@ nth::exit_code Run(nth::FlagValueSet flags, std::span<std::string_view const>) {
   }
 
   DependentModules dependencies;
-  Deserializer d;
+  Deserializer d(dependencies);
   if (not d.DeserializeDependentModules(*dependent_module_protos,
                                         dependencies)) {
     consumer.Consume({diag::Header(diag::MessageKind::Error),
@@ -75,7 +75,8 @@ nth::exit_code Run(nth::FlagValueSet flags, std::span<std::string_view const>) {
     return nth::exit_code::generic_error;
   }
 
-  if (not proto.ParseFromIstream(&in) or not d.Deserialize(proto, module)) {
+  if (not proto.ParseFromIstream(&in) or
+      not d.Deserialize(proto, ModuleId::Current(), module)) {
     NTH_LOG((v.debug), "{}") <<= {proto.DebugString()};
     consumer.Consume({
         diag::Header(diag::MessageKind::Error),

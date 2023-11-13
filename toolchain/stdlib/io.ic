@@ -1,0 +1,7 @@
+let c ::= import "std.compat.c.types"
+
+let Print ::= fn(let s: \char) -> bool {
+  let printf ::= builtin.foreign("printf", ([*]char, c.int, [*]char) -> c.int)
+  printf("%.*s".data, s.count, s.data)
+  return true
+}

@@ -16,6 +16,9 @@ struct ModuleMap {
 
   ModuleId operator[](std::string_view module_name) const;
 
+  auto begin() const { return by_name_.begin(); }
+  auto end() const { return by_name_.end(); }
+
  private:
   nth::flyweight_set<std::string> by_name_ = {"~builtin~"};
 };

@@ -34,6 +34,7 @@ struct Module {
   }
 
   IrFunction& add_function(size_t parameters, size_t returns);
+  IrFunction& add_function(ModuleId id, size_t parameters, size_t returns);
 
   auto const& entries() const { return entries_; }
 

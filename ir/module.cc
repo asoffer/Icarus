@@ -18,9 +18,13 @@ void Module::Insert(Identifier id , Module::Entry entry) {
 }
 
 IrFunction& Module::add_function(size_t parameters, size_t returns) {
+  return add_function(ModuleId::Current(), parameters, returns);
+}
+IrFunction& Module::add_function(ModuleId id, size_t parameters,
+                                 size_t returns) {
   auto& f = functions_.emplace_back(parameters, returns);
-  FunctionId id(ModuleId::Current(), LocalFunctionId(functions_.size() - 1));
-  global_function_registry.Register(id, &f);
+  FunctionId fn_id(id, LocalFunctionId(functions_.size() - 1));
+  global_function_registry.Register(fn_id, &f);
   return f;
 }
 

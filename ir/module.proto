@@ -69,4 +69,5 @@ message ModuleProto {
 
   map<uint32, string> identifiers = 5;
   map<uint32, SymbolProto> exported_symbols = 6;
+  repeated string modules = 7;
 }

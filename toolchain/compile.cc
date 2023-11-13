@@ -77,7 +77,7 @@ nth::exit_code Compile(nth::FlagValueSet flags, nth::file_path const& source) {
   consumer.set_parse_tree(parse_tree);
 
   DependentModules dependencies;
-  Deserializer d;
+  Deserializer d(dependencies);
   if (not d.DeserializeDependentModules(*dependent_module_protos,
                                         dependencies)) {
     consumer.Consume({diag::Header(diag::MessageKind::Error),
