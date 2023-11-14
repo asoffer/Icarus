@@ -42,6 +42,16 @@ struct TypeStack {
     std::vector<type::QualifiedType>::const_reverse_iterator iter_;
   };
 
+  friend void NthPrint(auto& p, auto& fmt, TypeStack const & stack) {
+    p.write("[");
+    std::string_view separator = "";
+    for (auto iter = stack.rbegin(); iter != stack.rend(); ++iter) {
+      p.write(std::exchange(separator, ", "));
+      fmt(p, *iter);
+    }
+    p.write("]");
+  }
+
   const_iterator rbegin() const { return const_iterator(types_.rbegin()); }
   const_iterator rend() const { return const_iterator(types_.rend()); }
 

@@ -37,8 +37,8 @@ struct ByteWidth {
     return lhs -= rhs;
   }
 
-  ByteWidth aligned_forward_to(Alignment a) const;
-  ByteWidth aligned_backward_to(Alignment a) const;
+  [[nodiscard]] ByteWidth aligned_forward_to(Alignment a) const;
+  [[nodiscard]] ByteWidth aligned_backward_to(Alignment a) const;
   void align_forward_to(Alignment a);
   void align_backward_to(Alignment a);
 

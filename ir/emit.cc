@@ -5,6 +5,7 @@
 #include "common/resources.h"
 #include "ir/serialize.h"
 #include "jasmin/execute.h"
+#include "jasmin/instructions/arithmetic.h"
 #include "nth/debug/debug.h"
 #include "nth/debug/log/log.h"
 
@@ -101,12 +102,15 @@ Iteration HandleParseTreeNodeFunctionLiteralStart(ParseNodeIndex index,
   auto const& parameters = *fn_type.parameters();
   size_t input_size      = 0;
   size_t output_size     = 0;
-  type::ByteWidth bytes  = context.current_storage().size();
+  type::ByteWidth bytes(0);
   std::vector<type::ByteWidth> storage_offsets;
+  storage_offsets.reserve(parameters.size());
   for (auto const& p : parameters) {
     input_size += type::JasminSize(p.type);
     storage_offsets.push_back(bytes);
-    bytes += type::Contour(p.type).byte_width();
+    auto contour = type::Contour(p.type);
+    bytes.align_forward_to(contour.alignment());
+    bytes += contour.byte_width();
   }
 
   for (auto const& t : fn_type.returns()) {
@@ -116,10 +120,9 @@ Iteration HandleParseTreeNodeFunctionLiteralStart(ParseNodeIndex index,
       context.current_module.add_function(input_size, output_size),
       context.Node(index).scope_index);
   auto& f = context.current_function();
-  f.append<jasmin::StackAllocate>(bytes.value());
+  f.append<jasmin::StackAllocate>(context.current_storage().size().value());
 
   auto storage_iter = storage_offsets.rbegin();
-  NTH_REQUIRE((v.debug), storage_offsets.size() == parameters.size());
   for (auto iter = parameters.rbegin(); iter != parameters.rend();
        ++storage_iter, ++iter) {
     StoreStackValue(f, *storage_iter, iter->type);
@@ -251,9 +254,7 @@ Iteration HandleParseTreeNodeIdentifier(ParseNodeIndex index,
 }
 
 void HandleParseTreeNodeDeclaredIdentifier(ParseNodeIndex index,
-                                           EmitContext& context) {
-  context.queue.front().declaration_stack.back().index = index;
-}
+                                           EmitContext& context) {}
 
 void HandleParseTreeNodeInfixOperator(ParseNodeIndex index,
                                       EmitContext& context) {}
@@ -262,44 +263,71 @@ void HandleParseTreeNodeExpressionPrecedenceGroup(ParseNodeIndex index,
                                                   EmitContext& context) {
   auto iter = context.tree.children(index).begin();
   ++iter;
-  auto node = *iter;
-  switch (node.token.kind()) {
+  auto operator_node = *iter;
+  size_t child_count = context.Node(index).child_count;
+  switch (operator_node.token.kind()) {
     case Token::Kind::MinusGreater: {
-      context.current_function().append<ConstructFunctionType>();
+      for (size_t i = 0; i < child_count / 2; ++i) {
+        context.current_function().append<ConstructFunctionType>();
+      }
     } break;
-    default: NTH_UNIMPLEMENTED();
+    case Token::Kind::Plus: {
+      for (size_t i = 0; i < child_count / 2; ++i) {
+        context.current_function().append<jasmin::Add<int64_t>>();
+      }
+    } break;
+    case Token::Kind::Minus: {
+      for (size_t i = 0; i < child_count / 2; ++i) {
+        context.current_function().append<jasmin::Subtract<int64_t>>();
+      }
+    } break;
+    case Token::Kind::Percent: {
+      for (size_t i = 0; i < child_count / 2; ++i) {
+        context.current_function().append<jasmin::Mod<int64_t>>();
+      }
+    } break;
+    case Token::Kind::Star: {
+      for (size_t i = 0; i < child_count / 2; ++i) {
+        context.current_function().append<jasmin::Multiply<int64_t>>();
+      }
+    } break;
+    default: NTH_UNIMPLEMENTED("{}") <<= {operator_node.token};
   }
 }
 
 Iteration HandleParseTreeNodeDeclarationStart(ParseNodeIndex index,
                                               EmitContext& context) {
-  auto k = context.Node(index).declaration_info.kind;
-  context.queue.front().declaration_stack.emplace_back().kind = k;
-  if (not k.has_initializer()) {
-    if (k.constant()) {
+  auto info = context.Node(index).declaration_info;
+  auto& d   = context.queue.front().declaration_stack.emplace_back();
+  d.kind    = info.kind;
+  d.index   = index;
+  if (not info.kind.has_initializer()) {
+    if (info.kind.constant()) {
       NTH_UNIMPLEMENTED();
     } else {
       // Nothing to do here. The type will have already been calculated.
       return Iteration::Continue;
     }
-  } else if (k.inferred_type()) {
-    if (k.constant()) {
+  } else if (info.kind.inferred_type()) {
+    if (info.kind.constant()) {
       // TODO: The return might actually be wider and we need to handle that.
       context.push_function(*new IrFunction(0, 1),
                             context.queue.front().function_stack.back());
       return Iteration::PauseMoveOn;
     } else {
-      return Iteration::Continue;
+      auto iter = context.tree.child_indices(info.index).begin();
+      return Iteration::SkipTo(*++iter + 1);
     }
   } else {
     // TODO: Casting to declared type.
-    if (k.constant()) {
+    if (info.kind.constant()) {
       // TODO: The return might actually be wider and we need to handle that.
       context.push_function(*new IrFunction(0, 1),
                             context.queue.front().function_stack.back());
       return Iteration::PauseMoveOn;
     } else {
-      return Iteration::Continue;
+      auto iter = context.tree.child_indices(info.index).begin();
+      return Iteration::SkipTo(*++iter + 1);
     }
   }
 }

@@ -12,6 +12,7 @@
 #include "jasmin/instructions/bool.h"
 #include "jasmin/instructions/compare.h"
 #include "jasmin/instructions/core.h"
+#include "jasmin/instructions/arithmetic.h"
 #include "jasmin/instructions/stack.h"
 #include "jasmin/value.h"
 #include "jasmin/value_stack.h"
@@ -164,7 +165,9 @@ using InstructionSet = jasmin::MakeInstructionSet<
     ConstructPointerType, ConstructBufferPointerType, ConstructFunctionType,
     ConstructParametersType, ConstructSliceType, jasmin::Swap,
     RegisterForeignFunction, InvokeForeignFunction, jasmin::Not, NoOp, Store,
-    jasmin::Load, jasmin::StackAllocate, jasmin::StackOffset>;
+    jasmin::Load, jasmin::StackAllocate, jasmin::StackOffset,
+    jasmin::Add<int64_t>, jasmin::Subtract<int64_t>, jasmin::Multiply<int64_t>,
+    jasmin::Mod<int64_t>>;
 using IrFunction = jasmin::Function<InstructionSet>;
 
 std::deque<std::pair<type::FunctionType, IrFunction>>& ForeignFunctions();

@@ -82,9 +82,12 @@ struct IrContext {
 
   TypeStack& type_stack() { return queue.front().type_stack_; }
 
-  void MakeError(size_t num_to_pop) {
+  void PopTypeStack(size_t num_to_pop) {
     auto& ts = type_stack();
-    for (size_t i = 0; i < num_to_pop; ++i) { type_stack().pop(); }
+    for (size_t i = 0; i < num_to_pop; ++i) { ts.pop(); }
+  }
+  void MakeError(size_t num_to_pop) {
+    PopTypeStack(num_to_pop);
     type_stack().push({type::QualifiedType::Unqualified(type::Error)});
   }
 
@@ -382,6 +385,23 @@ void HandleParseTreeNodeExpressionPrecedenceGroup(
       context.type_stack().pop();
       context.type_stack().push({type::QualifiedType::Constant(type::Type_)});
     } break;
+    case Token::Kind::Plus: 
+    case Token::Kind::Minus:
+    case Token::Kind::Percent:
+    case Token::Kind::Star: {
+      NTH_REQUIRE(context.type_stack().group_count() >= node.child_count / 2);
+      auto iter = context.type_stack().rbegin();
+      std::vector<type::QualifiedType> types;
+      for (size_t i = 0; i <= node.child_count / 2; ++i, ++iter) {
+        if ((*iter).size() != 1) { NTH_UNIMPLEMENTED(); }
+        types.push_back((*iter)[0]);
+      }
+      for (size_t i = 0; i + 1 < types.size(); ++i) {
+        if (types[i] != types[i + 1]) { NTH_UNIMPLEMENTED(); }
+      }
+      context.PopTypeStack(1 + node.child_count / 2);
+      context.type_stack().push({types[0]});
+    } break;
     default: NTH_UNIMPLEMENTED();
   }
 }
@@ -542,6 +562,7 @@ void HandleParseTreeNodeCallExpression(ParseNodeIndex index, IrContext& context,
     }
     for (auto index : argument_indices) {
       auto t              = (*iter)[0].type();
+
       nth::interval range = context.emit.tree.subtree_range(index);
       context.emit.Evaluate(range, value_stack, {t});
       rotation_count += type::JasminSize(t);
