@@ -688,6 +688,24 @@ NTH_TEST("parser/assignment") {
                                              Identifier())))));
 }
 
+NTH_TEST("parser/assignment/with-operators") {
+  diag::NullConsumer d;
+  TokenBuffer buffer = lex::Lex(R"(a + b = c + d)", d);
+  auto tree          = Parse(buffer, d).parse_tree;
+  NTH_EXPECT(FromRoot(tree) >>=
+             Module(ModuleStart(),
+                    StatementSequence(
+                        ScopeStart(),
+                        Statement(StatementStart(),
+                                  Assignment(ExpressionPrecedenceGroup(
+                                                 Identifier(), InfixOperator(),
+                                                 Identifier()),
+                                             AssignedValueStart(),
+                                             ExpressionPrecedenceGroup(
+                                                 Identifier(), InfixOperator(),
+                                                 Identifier()))))));
+}
+
 NTH_TEST("parser/assignment/complex") {
   diag::NullConsumer d;
   TokenBuffer buffer = lex::Lex(R"(a.b = c.d + e)", d);

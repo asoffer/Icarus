@@ -440,7 +440,7 @@ void Parser::HandleTryAssignment(ParseTree& tree) {
     ++iterator_;
     tree.append(ParseNode::Kind::AssignedValueStart, current_token(),
                 tree.size());
-    ExpandState(State::Kind::Expression, State::Kind::ResolveAssignment);
+    ExpandState(Expression(tree), State::Kind::ResolveAssignment);
   } else {
     pop_and_discard_state();
   }
