@@ -44,6 +44,9 @@ IC_XMACRO_PARSER_STATE(IfStatementFalseBranchStart)
 IC_XMACRO_PARSER_STATE(ResolveIfStatement)
 IC_XMACRO_PARSER_STATE(IfStatementTryElse)
 
+IC_XMACRO_PARSER_STATE(WhileLoopBody)
+IC_XMACRO_PARSER_STATE(ResolveWhileLoop)
+
 IC_XMACRO_PARSER_STATE(ResolveSliceType)
 IC_XMACRO_PARSER_STATE(ResolvePointerType)
 IC_XMACRO_PARSER_STATE(ResolveBufferPointerType)

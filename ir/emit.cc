@@ -422,6 +422,40 @@ void HandleParseTreeNodeFunctionTypeParameters(ParseNodeIndex index,
       context.Node(index).child_count);
 }
 
+void HandleParseTreeNodeWhileLoopStart(ParseNodeIndex index,
+                                       EmitContext& context) {
+  context.queue.front().branches.push_back(
+      context.current_function().append<NoOp>());
+}
+
+void HandleParseTreeNodeWhileLoopBodyStart(ParseNodeIndex index,
+                                           EmitContext& context) {
+  context.current_function().append<jasmin::Not>();
+  context.queue.front().branches.push_back(
+      context.current_function().append_with_placeholders<jasmin::JumpIf>());
+  context.push_scope(context.Node(index).scope_index);
+}
+
+void HandleParseTreeNodeWhileLoop(ParseNodeIndex index, EmitContext& context) {
+  // TODO: You don't really need all these no-ops.
+  context.pop_scope();
+
+  jasmin::OpCodeRange jump_to_land = context.queue.front().branches.back();
+  context.queue.front().branches.pop_back();
+  jasmin::OpCodeRange restart = context.queue.front().branches.back();
+  context.queue.front().branches.pop_back();
+
+  auto land =
+      context.current_function().append_with_placeholders<jasmin::Jump>();
+
+  context.current_function().set_value(
+      land, 0, jasmin::OpCodeRange::Distance(restart, land));
+
+  land = context.current_function().append<NoOp>();
+  context.current_function().set_value(
+      jump_to_land, 0, jasmin::OpCodeRange::Distance(land, jump_to_land));
+}
+
 void HandleParseTreeNodeIfStatementTrueBranchStart(ParseNodeIndex index,
                                                    EmitContext& context) {
   context.push_scope(context.Node(index).scope_index);

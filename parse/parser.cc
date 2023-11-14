@@ -366,15 +366,8 @@ void Parser::HandleStatement(ParseTree& tree) {
               .kind          = State::Kind::ParenthesizedExpression,
               .subtree_start = tree.size(),
           },
-          State{
-              .kind          = State::Kind::IfStatementTrueBranchStart,
-              .subtree_start = tree.size(),
-          },
-          State{
-              .kind          = State::Kind::BracedStatementSequence,
-              .subtree_start = tree.size(),
-          },
-          State::Kind::IfStatementTryElse,
+          State::Kind::IfStatementTrueBranchStart,
+          State::Kind::BracedStatementSequence, State::Kind::IfStatementTryElse,
           State{
               .kind               = State::Kind::ResolveIfStatement,
               .ambient_precedence = Precedence::Loosest(),
@@ -384,6 +377,27 @@ void Parser::HandleStatement(ParseTree& tree) {
           State{
               .kind          = State::Kind::ResolveStatement,
               .subtree_start = tree.size() - 1,
+          });
+      ++iterator_;
+      return;
+    case Token::Kind::While:
+      tree.back().statement_kind = ParseNode::StatementKind::Expression;
+      tree.append_leaf(ParseNode::Kind::WhileLoopStart, *iterator_);
+      ExpandState(
+          State{
+              .kind          = State::Kind::ParenthesizedExpression,
+              .subtree_start = tree.size() - 1,
+          },
+          State::Kind::WhileLoopBody, State::Kind::BracedStatementSequence,
+          State{
+              .kind               = State::Kind::ResolveWhileLoop,
+              .ambient_precedence = Precedence::Loosest(),
+              .token              = *iterator_,
+              .subtree_start      = tree.size() - 1,
+          },
+          State{
+              .kind          = State::Kind::ResolveStatement,
+              .subtree_start = tree.size() - 2,
           });
       ++iterator_;
       return;
@@ -403,6 +417,19 @@ void Parser::HandleStatement(ParseTree& tree) {
       break;
   }
 }
+
+void Parser::HandleWhileLoopBody(ParseTree& tree) {
+  tree.append_leaf(ParseNode::Kind::WhileLoopBodyStart, *iterator_);
+  tree.back().scope_index = PushScope();
+  pop_and_discard_state();
+}
+
+void Parser::HandleResolveWhileLoop(ParseTree& tree) {
+  PopScope();
+  auto state = pop_state();
+  tree.append(ParseNode::Kind::WhileLoop, state.token, state.subtree_start);
+}
+
 
 void Parser::HandleIfStatementTrueBranchStart(ParseTree& tree) {
   tree.append_leaf(ParseNode::Kind::IfStatementTrueBranchStart, *iterator_);

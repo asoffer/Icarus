@@ -734,6 +734,40 @@ void HandleParseTreeNodeFunctionLiteralSignature(
   context.emit.SetQualifiedType(start, qt);
 }
 
+void HandleParseTreeNodeWhileLoopStart(ParseNodeIndex index, IrContext& context,
+                                       diag::DiagnosticConsumer& diag) {}
+
+void HandleParseTreeNodeWhileLoopBodyStart(ParseNodeIndex index,
+                                           IrContext& context,
+                                           diag::DiagnosticConsumer& diag) {
+  if (context.type_stack().top().size() != 1) {
+    diag.Consume({
+        diag::Header(diag::MessageKind::Error),
+        diag::Text("While-loop condition is not expanded."),
+        diag::SourceQuote(context.Node(index).token),
+    });
+    context.MakeError(1);
+  } else if (context.type_stack().top().size() != 1) {
+    diag.Consume({
+        diag::Header(diag::MessageKind::Error),
+        diag::Text(
+            InterpolateString<"While-loop conditions must be `bool`s, but you "
+                              "provided a `{}`.">(
+                context.type_stack().top()[0])),
+        diag::SourceQuote(context.Node(index).token),
+    });
+    context.MakeError(1);
+  } else {
+    context.push_scope(context.Node(index).scope_index);
+  }
+}
+
+void HandleParseTreeNodeWhileLoop(ParseNodeIndex index, IrContext& context,
+                                  diag::DiagnosticConsumer&) {
+  // TODO: This should have type-checking for all the statements that were
+  // contained in it, esp. once we have early returns and yielding.
+}
+
 void HandleParseTreeNodeIfStatementTrueBranchStart(ParseNodeIndex index,
                                                    IrContext& context,
                                                    diag::DiagnosticConsumer&) {

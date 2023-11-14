@@ -911,4 +911,40 @@ NTH_TEST("parser/parenthesized/newlines") {
                                    Statement(StatementStart(), Identifier()))));
 }
 
+NTH_TEST("parser/while/empty") {
+  diag::NullConsumer d;
+  TokenBuffer buffer = lex::Lex(R"(while (condition) {})", d);
+  auto tree          = Parse(buffer, d).parse_tree;
+  NTH_EXPECT(FromRoot(tree) >>= Module(
+                 ModuleStart(),
+                 StatementSequence(
+                     ScopeStart(),
+                     Statement(StatementStart(),
+                               WhileLoop(WhileLoopStart(), Identifier(),
+                                         WhileLoopBodyStart(),
+                                         StatementSequence(ScopeStart()))))));
+}
+
+NTH_TEST("parser/while/statements") {
+  diag::NullConsumer d;
+  TokenBuffer buffer = lex::Lex(R"(while (condition) {
+    a
+    b
+  })",
+                                d);
+  auto tree          = Parse(buffer, d).parse_tree;
+  NTH_EXPECT(
+      FromRoot(tree) >>= Module(
+          ModuleStart(),
+          StatementSequence(
+              ScopeStart(),
+              Statement(
+                  StatementStart(),
+                  WhileLoop(WhileLoopStart(), Identifier(), WhileLoopBodyStart(),
+                            StatementSequence(
+                                ScopeStart(),
+                                Statement(StatementStart(), Identifier()),
+                                Statement(StatementStart(), Identifier())))))));
+}
+
 }  // namespace ic
