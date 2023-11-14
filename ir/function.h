@@ -167,7 +167,7 @@ using InstructionSet = jasmin::MakeInstructionSet<
     RegisterForeignFunction, InvokeForeignFunction, jasmin::Not, NoOp, Store,
     jasmin::Load, jasmin::StackAllocate, jasmin::StackOffset,
     jasmin::Add<int64_t>, jasmin::Subtract<int64_t>, jasmin::Multiply<int64_t>,
-    jasmin::Mod<int64_t>>;
+    jasmin::Mod<int64_t>, jasmin::Equal<int64_t>, jasmin::LessThan<int64_t>>;
 using IrFunction = jasmin::Function<InstructionSet>;
 
 std::deque<std::pair<type::FunctionType, IrFunction>>& ForeignFunctions();

@@ -213,6 +213,43 @@ NTH_TEST("parser/operator-precedence/times-plus") {
                                InfixOperator(), Identifier())))));
 }
 
+NTH_TEST("parser/operator-precedence/multiple-levels") {
+  diag::NullConsumer d;
+  TokenBuffer buffer = lex::Lex(R"(a + b * c == d)", d);
+  auto tree          = Parse(buffer, d).parse_tree;
+  NTH_EXPECT(
+      FromRoot(tree) >>= Module(
+          ModuleStart(),
+          StatementSequence(ScopeStart(),
+                            Statement(StatementStart(),
+                                      ExpressionPrecedenceGroup(
+                                          ExpressionPrecedenceGroup(
+                                              Identifier(), InfixOperator(),
+                                              ExpressionPrecedenceGroup(
+                                                  Identifier(), InfixOperator(),
+                                                  Identifier())),
+                                          InfixOperator(), Identifier())))));
+}
+
+NTH_TEST("parser/operator-precedence/multiple-levels-balanced") {
+  diag::NullConsumer d;
+  TokenBuffer buffer = lex::Lex(R"(a + b == c * d)", d);
+  auto tree          = Parse(buffer, d).parse_tree;
+  NTH_EXPECT(
+      FromRoot(tree) >>=
+      Module(ModuleStart(),
+             StatementSequence(
+                 ScopeStart(),
+                 Statement(
+                     StatementStart(),
+                     ExpressionPrecedenceGroup(
+                         ExpressionPrecedenceGroup(
+                             Identifier(), InfixOperator(), Identifier()),
+                         InfixOperator(),
+                         ExpressionPrecedenceGroup(
+                             Identifier(), InfixOperator(), Identifier()))))));
+}
+
 NTH_TEST("parser/operator-precedence/plus-plus") {
   diag::NullConsumer d;
   TokenBuffer buffer = lex::Lex(R"(x + y + z)", d);
@@ -452,11 +489,14 @@ NTH_TEST("parser/buffer-pointer/function") {
   diag::NullConsumer d;
   TokenBuffer buffer = lex::Lex(R"([*]a -> b)", d);
   auto tree          = Parse(buffer, d).parse_tree;
-  NTH_EXPECT(FromRoot(tree) >>= Module(ModuleStart(), StatementSequence(
-                 ScopeStart(), Statement(StatementStart(),
+  NTH_EXPECT(
+      FromRoot(tree) >>=
+      Module(ModuleStart(),
+             StatementSequence(ScopeStart(),
+                               Statement(StatementStart(),
                                          ExpressionPrecedenceGroup(
                                              BufferPointer(Identifier()),
-                                             InfixOperator(), Identifier()))));
+                                             InfixOperator(), Identifier())))));
 }
 
 NTH_TEST("parser/if-statement/empty") {

@@ -402,6 +402,25 @@ void HandleParseTreeNodeExpressionPrecedenceGroup(
       context.PopTypeStack(1 + node.child_count / 2);
       context.type_stack().push({types[0]});
     } break;
+    case Token::Kind::Less:
+    case Token::Kind::Greater:
+    case Token::Kind::LessEqual:
+    case Token::Kind::GreaterEqual:
+    case Token::Kind::EqualEqual: 
+    case Token::Kind::NotEqual: {
+      NTH_REQUIRE(context.type_stack().group_count() >= node.child_count / 2);
+      auto iter = context.type_stack().rbegin();
+      std::vector<type::QualifiedType> types;
+      for (size_t i = 0; i <= node.child_count / 2; ++i, ++iter) {
+        if ((*iter).size() != 1) { NTH_UNIMPLEMENTED(); }
+        types.push_back((*iter)[0]);
+      }
+      for (size_t i = 0; i + 1 < types.size(); ++i) {
+        if (types[i] != types[i + 1]) { NTH_UNIMPLEMENTED(); }
+      }
+      context.PopTypeStack(1 + node.child_count / 2);
+      context.type_stack().push({type::QualifiedType::Constant(type::Bool)});
+    } break;
     default: NTH_UNIMPLEMENTED();
   }
 }

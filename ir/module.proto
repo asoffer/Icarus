@@ -35,6 +35,12 @@ message InstructionProto {
     LOAD = 24;
     STACK_ALLOCATE = 25;
     STACK_OFFSET = 26;
+    ADD_I64 = 27;
+    SUB_I64 = 28;
+    MUL_I64 = 29;
+    MOD_I64 = 30;
+    EQ_I64 = 31;
+    LT_I64 = 32;
   }
   OpCode op_code = 1;
   repeated uint64 content = 2;

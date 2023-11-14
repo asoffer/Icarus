@@ -291,6 +291,29 @@ void HandleParseTreeNodeExpressionPrecedenceGroup(ParseNodeIndex index,
         context.current_function().append<jasmin::Multiply<int64_t>>();
       }
     } break;
+    case Token::Kind::EqualEqual: {
+        context.current_function().append<jasmin::Equal<int64_t>>();
+    } break;
+    case Token::Kind::NotEqual: {
+      context.current_function().append<jasmin::Equal<int64_t>>();
+      context.current_function().append<jasmin::Not>();
+    } break;
+    case Token::Kind::Less: {
+      context.current_function().append<jasmin::LessThan<int64_t>>();
+    } break;
+    case Token::Kind::Greater: {
+      context.current_function().append<jasmin::Swap>();
+      context.current_function().append<jasmin::LessThan<int64_t>>();
+    } break;
+    case Token::Kind::LessEqual: {
+      context.current_function().append<jasmin::Swap>();
+      context.current_function().append<jasmin::LessThan<int64_t>>();
+      context.current_function().append<jasmin::Not>();
+    } break;
+    case Token::Kind::GreaterEqual: {
+      context.current_function().append<jasmin::LessThan<int64_t>>();
+      context.current_function().append<jasmin::Not>();
+    } break;
     default: NTH_UNIMPLEMENTED("{}") <<= {operator_node.token};
   }
 }
