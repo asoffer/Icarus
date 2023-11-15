@@ -151,6 +151,8 @@ TypeContour Contour(Type t) {
         case PrimitiveType::Kind::Integer:
         case PrimitiveType::Kind::Error:
         default: NTH_UNREACHABLE();
+        case PrimitiveType::Kind::NullType:
+          return TypeContour(ByteWidth(0), Alignment(1));
         case PrimitiveType::Kind::Bool:
         case PrimitiveType::Kind::Char:
         case PrimitiveType::Kind::Byte:

@@ -27,16 +27,9 @@ struct Resources {
   std::string_view StringLiteral(size_t index) const {
     return strings.from_index(index);
   }
-  size_t ForeignFunctionIndex(std::string_view name, type::FunctionType t) {
-    return foreign_functions.index(
-        foreign_functions.insert(std::make_pair(StringLiteralIndex(name), t))
-            .first);
-  }
 
   // Values of string literals used in the program.
   nth::flyweight_set<std::string> strings;
-
-  nth::flyweight_set<std::pair<size_t, type::FunctionType>> foreign_functions;
 
   ModuleMap module_map;
 };

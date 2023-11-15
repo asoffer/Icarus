@@ -4,7 +4,7 @@
 
 #include <deque>
 
-#include "common/resources.h"
+#include "ir/foreign_function.h"
 #include "ir/function_id.h"
 #include "ir/global_function_registry.h"
 #include "jasmin/value.h"
@@ -12,8 +12,6 @@
 
 namespace ic {
 namespace {
-
-std::deque<std::pair<type::FunctionType, IrFunction>> foreign_functions;
 
 ffi_type* FfiType(type::Type t) {
   if (t == type::Char) {
@@ -41,44 +39,13 @@ T Read(ffi_arg const& value) {
 
 }  // namespace
 
-std::deque<std::pair<type::FunctionType, IrFunction>>& ForeignFunctions() {
-  return foreign_functions;
-}
-
-std::pair<type::FunctionType, IrFunction> const& LookupForeignFunction(
-    LocalFunctionId id) {
-  NTH_REQUIRE(id.value() < ForeignFunctions().size());
-  return ForeignFunctions()[id.value()];
-}
-
 void RegisterForeignFunction::execute(jasmin::ValueStack& value_stack) {
   type::Type t     = value_stack.pop<type::Type>();
   size_t length    = value_stack.pop<size_t>();
   char const* data = value_stack.pop<char const*>();
-
-  size_t foreign_function_count = resources.foreign_functions.size();
-  size_t index = resources.ForeignFunctionIndex(std::string_view(data, length),
-                                                t.AsFunction());
-  if (index == foreign_function_count) {
-    size_t jasmin_parameter_size = 0;
-    size_t jasmin_return_size    = 0;
-    for (auto const& p : *t.AsFunction().parameters()) {
-      jasmin_parameter_size += type::JasminSize(p.type);
-    }
-    for (type::Type return_type : t.AsFunction().returns()) {
-      jasmin_return_size += type::JasminSize(return_type);
-    }
-    FunctionId id(ModuleId::Foreign(), LocalFunctionId(index));
-    auto& [fn_type, fn] = foreign_functions.emplace_back(
-        std::piecewise_construct, std::forward_as_tuple(t.AsFunction()),
-        std::forward_as_tuple(jasmin_parameter_size, jasmin_return_size));
-    // TODO: Implement?
-    fn.append<jasmin::Return>();
-    global_function_registry.Register(id, &fn);
-    value_stack.push(&fn);
-  } else {
-    value_stack.push(&foreign_functions[index].second);
-  }
+  auto const& f    = InsertForeignFunction(std::string_view(data, length),
+                                           t.AsFunction(), false);
+  value_stack.push(&f);
 }
 
 void InvokeForeignFunction::execute(jasmin::ValueStack& value_stack,

@@ -18,3 +18,15 @@ ic_library(
     srcs = ["stdio.ic"],
     deps = [":types"],
 )
+
+ic_library(
+    name = "string",
+    srcs = ["string.ic"],
+    deps = [":types"],
+)
+
+ic_library(
+    name = "time",
+    srcs = ["time.ic"],
+    deps = [":types"],
+)

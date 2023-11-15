@@ -10,3 +10,5 @@ let long_long          ::= i64
 let unsigned_long_long ::= u64
 let float              ::= f32
 let double             ::= f64
+
+let size_t ::= unsigned_long

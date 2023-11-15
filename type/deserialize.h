@@ -8,6 +8,9 @@ namespace ic::type {
 
 Type Deserialize(TypeProto const& proto, TypeSystemProto const& ts);
 
+FunctionType DeserializeFunctionType(FunctionTypeProto const& proto,
+                                     TypeSystemProto const& ts);
+
 void DeserializeTypeSystem(TypeSystemProto const& proto);
 
 }  // namespace ic

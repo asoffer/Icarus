@@ -1,7 +1,7 @@
-c ::= import "std.c.string"
+let c ::= import "std.compat.c.string"
 
 // Given a buffer-pointer to a null-terminated character array, returns a slice
 // over the entire array excluding the null-terminator.
-#{export} null_terminated_slice ::= (ptr: [*]char) -> [/]char {
-  return builtin.slice(ptr, c.strlen(ptr))
+let null_terminated_slice ::= fn(let ptr: [*]char) -> \char {
+  return "abc"// builtin.slice(ptr, c.strlen(ptr))
 }

@@ -170,11 +170,6 @@ using InstructionSet = jasmin::MakeInstructionSet<
     jasmin::Mod<int64_t>, jasmin::Equal<int64_t>, jasmin::LessThan<int64_t>>;
 using IrFunction = jasmin::Function<InstructionSet>;
 
-std::deque<std::pair<type::FunctionType, IrFunction>>& ForeignFunctions();
-
-std::pair<type::FunctionType, IrFunction> const& LookupForeignFunction(
-    LocalFunctionId id);
-
 }  // namespace ic
 
 #endif  // ICARUS_IR_FUNCTION_H

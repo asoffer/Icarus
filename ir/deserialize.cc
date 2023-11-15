@@ -21,7 +21,7 @@ std::pair<ModuleId, Module const*> Deserializer::ResolveModule(
   return std::make_pair(resolved_id, &dependent_modules_[resolved_id]);
 }
 
-bool Deserializer::DeserializeFunction(ModuleProto const& m,
+bool Deserializer::DeserializeFunction(ModuleProto const& module_proto,
                                        FunctionProto const& proto,
                                        IrFunction& f) {
   for (auto const& instruction : proto.instructions()) {
@@ -33,7 +33,7 @@ bool Deserializer::DeserializeFunction(ModuleProto const& m,
     f.raw_append(op_code_value);
     switch (op_code) {
       case InstructionProto::PUSH_STRING_LITERAL: {
-        auto const& string_literals = m.string_literals();
+        auto const& string_literals = module_proto.string_literals();
         if (instruction.content().size() != 1) { return false; }
         if (instruction.content()[0] >= string_literals.size()) {
           return false;
@@ -59,8 +59,15 @@ bool Deserializer::DeserializeFunction(ModuleProto const& m,
           if (entry.value.size() != 1) { return false; }
           f.raw_append(entry.value[0]);
         } else if (function_id.module() == ModuleId::Foreign()) {
-          f.raw_append(
-              &LookupForeignFunction(function_id.local_function()).second);
+          auto const& ff =
+              module_proto
+                  .foreign_functions()[function_id.local_function().value()];
+          LocalFunctionId local_fn_id(
+              ForeignFunctionIndex(module_proto.string_literals()[ff.name()],
+                                   type::DeserializeFunctionType(
+                                       ff.type(), module_proto.type_system())));
+
+          f.raw_append(&LookupForeignFunction(local_fn_id).second);
         } else {
           f.raw_append(jasmin::Value(
               &m->functions()[function_id.local_function().value()]));
@@ -101,26 +108,9 @@ bool Deserializer::Deserialize(ModuleProto const& proto, ModuleId id,
     resources.StringLiteralIndex(s);
   }
   for (auto const& f : proto.foreign_functions()) {
-    std::vector<type::ParametersType::Parameter> parameters;
-    std::vector<type::Type> return_types;
-    parameters.reserve(f.type().parameters().size());
-    for (type::ParameterTypeProto const& p : f.type().parameters()) {
-      parameters.push_back(
-          {.name = p.name(),
-           .type = type::Deserialize(p.type(), proto.type_system())});
-    }
-    return_types.reserve(f.type().returns().size());
-    for (type::TypeProto const& t : f.type().returns()) {
-      return_types.push_back(type::Deserialize(t, proto.type_system()));
-    }
-    auto fn_type = type::Function(type::Parameters(std::move(parameters)),
-                                  std::move(return_types));
-    resources.ForeignFunctionIndex(proto.string_literals()[f.name()], fn_type);
-    // TODO: This breaks down when coalescing needs to happen.
-    IrFunction const* fn =
-        ForeignFunction(proto.string_literals()[f.name()], fn_type);
-    // TODO: Handle errors.
-    NTH_REQUIRE(fn != nullptr);
+    InsertForeignFunction(
+        proto.string_literals()[f.name()],
+        type::DeserializeFunctionType(f.type(), proto.type_system()), true);
   }
 
   auto const& identifiers = proto.identifiers();
@@ -135,8 +125,16 @@ bool Deserializer::Deserialize(ModuleProto const& proto, ModuleId id,
       if (exported_symbol.content().size() != 1) { return false; }
       uint64_t n    = exported_symbol.content()[0];
       auto [mid, m] = ResolveModule(ModuleId(n >> 32));
-      value.push_back(&global_function_registry.function(
-          FunctionId(mid, LocalFunctionId(n & uint64_t{0xffffffff}))));
+      LocalFunctionId local_fn_id(n & uint64_t{0xffffffff});
+      if (mid == ModuleId::Foreign()) {
+        auto const& f = proto.foreign_functions()[local_fn_id.value()];
+        local_fn_id   = LocalFunctionId(ForeignFunctionIndex(
+              proto.string_literals()[f.name()],
+              type::DeserializeFunctionType(f.type(), proto.type_system())));
+      }
+
+      value.push_back(
+          &global_function_registry.function(FunctionId(mid, local_fn_id)));
     } else {
       for (uint64_t n : exported_symbol.content()) {
         jasmin::Value v = jasmin::Value::Uninitialized();

@@ -639,17 +639,26 @@ void Parser::HandleExpression(ParseTree& tree) {
     case Token::Kind::Star:
       ++iterator_;
       ExpandState(Expression(tree, Precedence::TightUnary()),
-                  State::Kind::ResolvePointerType);
+                  State{
+                      .kind          = State::Kind::ResolvePointerType,
+                      .subtree_start = tree.size(),
+                  });
       return;
     case Token::Kind::BracketedStar:
       ++iterator_;
       ExpandState(Expression(tree, Precedence::TightUnary()),
-                  State::Kind::ResolveBufferPointerType);
+                  State{
+                      .kind          = State::Kind::ResolveBufferPointerType,
+                      .subtree_start = tree.size(),
+                  });
       return;
     case Token::Kind::Backslash:
       ++iterator_;
       ExpandState(Expression(tree, Precedence::TightUnary()),
-                  State::Kind::ResolveSliceType);
+                  State{
+                      .kind          = State::Kind::ResolveSliceType,
+                      .subtree_start = tree.size(),
+                  });
       return;
     default:
       ExpandState(State::Kind::AtomicTerm, State::Kind::ExpressionSuffix);

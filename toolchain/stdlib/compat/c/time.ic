@@ -1,0 +1,19 @@
+// This module provides an interface to functions in the <time.h> C-header file.
+
+let c ::= import "std.compat.c.types"
+
+let clock_t  ::= c.long
+let time_t   ::= c.long
+let tm       ::= builtin.opaque()
+let size_t   ::= c.size_t
+
+let CLOCKS_PER_SEC :: clock_t = 1000000
+
+let clock     ::= builtin.foreign("clock", () -> clock_t)
+let time      ::= builtin.foreign("time", *time_t -> time_t)
+let ctime     ::= builtin.foreign("ctime", *time_t -> [*]char)
+let asctime   ::= builtin.foreign("asctime", *tm -> [*]char)
+let strftime  ::= builtin.foreign("strftime", ([*]char, size_t, [*]char, *tm) -> size_t)
+let gmtime    ::= builtin.foreign("gmtime", *time_t -> *tm)
+let localtime ::= builtin.foreign("localtime", *time_t -> *tm)
+let mktime    ::= builtin.foreign("mktime", *tm -> time_t)

@@ -33,6 +33,13 @@ void HandleParseTreeNodeBooleanLiteral(ParseNodeIndex index,
                                                   Token::Kind::True);
 }
 
+void HandleParseTreeNodeNullTypeLiteral(ParseNodeIndex index,
+                                        EmitContext& context) {
+  NTH_REQUIRE((v.debug), context.Node(index).token.kind() == Token::Kind::Null);
+  context.current_function().append<jasmin::Push>(
+      static_cast<void const*>(nullptr));
+}
+
 void HandleParseTreeNodeIntegerLiteral(ParseNodeIndex index,
                                        EmitContext& context) {
   context.current_function().append<jasmin::Push>(

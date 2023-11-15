@@ -1,0 +1,31 @@
+// This module provides an interface to functions in the <string.h> C-header file.
+
+let c ::= import "std.compat.c.types"
+
+let size_t ::= c.size_t
+
+let strcpy   ::= builtin.foreign("strcpy", ([*]char, [*]char) -> [*]char)
+let strncpy  ::= builtin.foreign("strncpy", ([*]char, [*]char, size_t) -> [*]char)
+let strcat   ::= builtin.foreign("strcat", ([*]char, [*]char) -> [*]char)
+let strncat  ::= builtin.foreign("strncat", ([*]char, [*]char, size_t) -> [*]char)
+// TODO: Implement `strxform`
+
+let strlen   ::= builtin.foreign("strlen", [*]char -> size_t)
+let strcmp   ::= builtin.foreign("strcmp", ([*]char, [*]char) -> c.int)
+let strncmp  ::= builtin.foreign("strncmp", ([*]char, [*]char, size_t) -> c.int)
+let strcoll  ::= builtin.foreign("strcoll", ([*]char, [*]char) -> size_t)
+let strchr   ::= builtin.foreign("strchr", ([*]char, c.int) -> [*]char)
+let strrchr  ::= builtin.foreign("strrchr", ([*]char, c.int) -> [*]char)
+let strspn   ::= builtin.foreign("strspn", ([*]char, [*]char) -> size_t)
+let strcspn  ::= builtin.foreign("strcspn", ([*]char, [*]char) -> size_t)
+let strpbrk  ::= builtin.foreign("strpbrk", ([*]char, [*]char) -> [*]char)
+let strstr   ::= builtin.foreign("strstr", ([*]char, [*]char) -> [*]char)
+let strtok   ::= builtin.foreign("strtok", ([*]char, [*]char) -> [*]char)
+
+let memchr   ::= builtin.foreign("memchr", ([*]byte, c.int, size_t) -> [*]byte)
+let memcmp   ::= builtin.foreign("memcmp", ([*]byte, [*]byte, size_t) -> c.int)
+let memset   ::= builtin.foreign("memset", ([*]byte, c.int, size_t) -> [*]byte)
+let memcpy   ::= builtin.foreign("memcpy", ([*]byte, [*]byte, size_t) -> [*]byte)
+let memmove  ::= builtin.foreign("memmove", ([*]byte, [*]byte, size_t) -> [*]byte)
+
+let strerror ::= builtin.foreign("strerror", c.int -> [*]byte)

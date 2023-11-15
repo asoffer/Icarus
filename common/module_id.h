@@ -28,6 +28,18 @@ struct ModuleId {
 
   constexpr uint32_t value() const { return id_; }
 
+  friend void NthPrint(auto &p, auto &f, ModuleId id) {
+    if (id == ModuleId::Builtin()) {
+      p.write("builtin");
+    } else if (id == ModuleId::Foreign()) {
+      p.write("foreign");
+    } else if (id == ModuleId::Current()) {
+      p.write("current");
+    } else {
+      f(p, id.value());
+    }
+  }
+
   friend bool IcarusDeserializeValue(std::span<jasmin::Value const> values,
                                      ModuleId& id) {
     // TODO: Deal with the fact that you write these things multiple times.

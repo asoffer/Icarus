@@ -215,9 +215,11 @@ void HandleParseTreeNodeDeclaration(ParseNodeIndex index, IrContext& context,
     if (info.kind.constant()) {
       qt = type::QualifiedType::Constant(context.type_stack().top()[0].type());
     } else {
-      qt = type::QualifiedType::Unqualified(context.type_stack().top()[0].type());
+      qt = type::QualifiedType::Unqualified(
+          context.type_stack().top()[0].type());
       context.current_storage().insert(index, qt.type());
     }
+    context.emit.SetQualifiedType(index, qt);
 
     context.current_scope().insert_identifier(
         context.Node(info.index).token.Identifier(),

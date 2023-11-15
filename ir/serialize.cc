@@ -1,6 +1,7 @@
 #include "ir/serialize.h"
 
 #include "common/resources.h"
+#include "ir/foreign_function.h"
 #include "ir/module.h"
 #include "nth/debug/debug.h"
 #include "nth/debug/log/log.h"
@@ -60,8 +61,9 @@ void Serializer::Serialize(Module& module, ModuleProto& proto) {
     SerializeFunction(f, proto_fn);
   }
   for (auto const& s : resources.strings) { *proto.add_string_literals() = s; }
-  for (auto const& [name, type] : resources.foreign_functions) {
-    auto& f = *proto.add_foreign_functions();
+  for (auto const& [name_and_type, unused_value] : AllForeignFunctions()) {
+    auto const& [name, type] = name_and_type;
+    auto& f                  = *proto.add_foreign_functions();
     f.set_name(name);
     type::SerializeFunctionType(type, *f.mutable_type());
   }

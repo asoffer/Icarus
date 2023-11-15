@@ -32,7 +32,7 @@ cc_library(
     deps = [
         ":builtin_module",
         ":dependent_modules",
-        ":foreign_function",
+        ":function",
         ":module",
         ":module_cc_proto",
         "//type:deserialize",
@@ -73,22 +73,14 @@ cc_library(
 )
 
 cc_library(
-    name = "foreign_function",
-    hdrs = ["foreign_function.h"],
-    srcs = ["foreign_function.cc"],
-    deps = [
-        ":function",
-        "//type",
-    ]
-)
-
-cc_library(
     name = "function",
     hdrs = [
+        "foreign_function.h",
         "function.h",
         "global_function_registry.h",
     ],
     srcs = [
+        "foreign_function.cc",
         "function.cc",
         "global_function_registry.cc",
     ],
@@ -107,6 +99,7 @@ cc_library(
         "@asoffer_jasmin//jasmin/instructions:stack",
         "@asoffer_jasmin//jasmin:value",
         "@asoffer_jasmin//jasmin:value_stack",
+        "@asoffer_nth//nth/container:flyweight_map",
         "@com_google_absl//absl/container:flat_hash_map",
     ],
 )
