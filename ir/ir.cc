@@ -408,7 +408,6 @@ void HandleParseTreeNodeExpressionPrecedenceGroup(
       std::reverse(types.begin(), types.end());
       auto start = types.begin();
       type::QualifiedType current;
-      NTH_LOG("{}")<<={types};
       for (auto end = start + 1; end != types.end(); ++end) {
         if (auto return_type =
                 FindInfixOperator(kind, std::span(start, end + 1))) {

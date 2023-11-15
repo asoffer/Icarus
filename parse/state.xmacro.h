@@ -40,7 +40,6 @@ IC_XMACRO_PARSER_STATE(FunctionLiteralBody)
 IC_XMACRO_PARSER_STATE(ResolveFunctionLiteral)
 
 IC_XMACRO_PARSER_STATE(IfStatementTrueBranchStart)
-IC_XMACRO_PARSER_STATE(IfStatementFalseBranchStart)
 IC_XMACRO_PARSER_STATE(ResolveIfStatement)
 IC_XMACRO_PARSER_STATE(IfStatementTryElse)
 

@@ -131,14 +131,25 @@ bool Lexer::TryLexNumber(std::string_view& source) {
       source.remove_prefix(1);
       return true;
     } else {
+      if (IdentifierCharacter(source[1])) {
+        switch (source[1]) {
+          case 'b': NTH_UNIMPLEMENTED();
+          case 'd': {
+            source.remove_prefix(2);
+            goto consume_decimal;
+          }
+          case 'x': NTH_UNIMPLEMENTED();
+          default: NTH_UNIMPLEMENTED("{}") <<= {source[1]};
+        }
+      } else {
+        goto consume_decimal;
+      }
       switch (source[1]) {
         case 'b': NTH_UNIMPLEMENTED();
         case 'd': {
           source.remove_prefix(2);
           goto consume_decimal;
         }
-        case 'x': NTH_UNIMPLEMENTED();
-        default: NTH_UNIMPLEMENTED();
       }
       NTH_UNREACHABLE();
     }

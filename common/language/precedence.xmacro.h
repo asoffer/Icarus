@@ -24,6 +24,7 @@ IC_XMACRO_PRECEDENCE_GROUP(TightUnary)
 // than `a + (b < c)`.
 IC_XMACRO_PRECEDENCE_ORDER(Comparison, PlusMinus)
 IC_XMACRO_PRECEDENCE_ORDER(PlusMinus, MultiplyDivide)
+IC_XMACRO_PRECEDENCE_ORDER(Comparison, Modulus)
 IC_XMACRO_PRECEDENCE_ORDER(Function, TightUnary)
 IC_XMACRO_PRECEDENCE_ORDER(MultiplyDivide, TightUnary)
 

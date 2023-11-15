@@ -437,26 +437,46 @@ void Parser::HandleIfStatementTrueBranchStart(ParseTree& tree) {
   pop_and_discard_state();
 }
 
-void Parser::HandleIfStatementFalseBranchStart(ParseTree& tree) {
-  tree.append_leaf(ParseNode::Kind::IfStatementFalseBranchStart, *iterator_);
-  tree.back().scope_index = PushScope();
-  pop_and_discard_state();
-}
-
 void Parser::HandleIfStatementTryElse(ParseTree& tree) {
   PopScope();
   IgnoreAnyNewlines();
   if (current_token().kind() == Token::Kind::Else) {
     ++iterator_;
-    ExpandState(
-        State{
-            .kind          = State::Kind::IfStatementFalseBranchStart,
-            .subtree_start = tree.size(),
-        },
-        State{
-            .kind          = State::Kind::BracedStatementSequence,
-            .subtree_start = tree.size(),
-        });
+    IgnoreAnyNewlines();
+    tree.append_leaf(ParseNode::Kind::IfStatementFalseBranchStart, *iterator_);
+    tree.back().scope_index = PushScope();
+    if (current_token().kind() == Token::Kind::If) {
+      tree.append_leaf(ParseNode::Kind::ScopeStart, Token::Invalid());
+      tree.append_leaf(ParseNode::Kind::StatementStart, Token::Invalid());
+      tree.back().statement_kind = ParseNode::StatementKind::Expression;
+      ExpandState(
+          State{
+              .kind          = State::Kind::ParenthesizedExpression,
+              .subtree_start = tree.size(),
+          },
+          State::Kind::IfStatementTrueBranchStart,
+          State::Kind::BracedStatementSequence, State::Kind::IfStatementTryElse,
+          State{
+              .kind               = State::Kind::ResolveIfStatement,
+              .ambient_precedence = Precedence::Loosest(),
+              .token              = *iterator_,
+              .subtree_start      = tree.size(),
+          },
+          State{
+              .kind          = State::Kind::ResolveStatement,
+              .subtree_start = tree.size() - 1,
+          },
+          State{
+              .kind          = State::Kind::ResolveStatementSequence,
+              .subtree_start = tree.size() - 2,
+          });
+      ++iterator_;
+    } else {
+      ExpandState(State{
+          .kind          = State::Kind::BracedStatementSequence,
+          .subtree_start = tree.size() - 1,
+      });
+    }
   } else {
     pop_and_discard_state();
   }

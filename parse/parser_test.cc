@@ -675,6 +675,34 @@ NTH_TEST("parser/if-else-statement/one-line-with-bodies") {
                                                           Identifier())))))));
 }
 
+NTH_TEST("parser/if-statement/else-if") {
+  diag::NullConsumer d;
+  TokenBuffer buffer = lex::Lex(R"(
+  if (condition) {} else if (condition) {}
+  )",
+                                d);
+  auto tree          = Parse(buffer, d).parse_tree;
+  NTH_EXPECT(
+      FromRoot(tree) >>=
+      Module(ModuleStart(),
+             StatementSequence(
+                 ScopeStart(),
+                 Statement(
+                     StatementStart(),
+                     IfStatement(
+                         Identifier(), IfStatementTrueBranchStart(),
+                         StatementSequence(ScopeStart()),
+                         IfStatementFalseBranchStart(),
+                         StatementSequence(
+                             ScopeStart(),
+                             Statement(
+                                 StatementStart(),
+                                 IfStatement(
+                                     Identifier(), IfStatementTrueBranchStart(),
+                                     StatementSequence(ScopeStart())))))))));
+}
+
+
 NTH_TEST("parser/assignment") {
   diag::NullConsumer d;
   TokenBuffer buffer = lex::Lex(R"(a = b)", d);

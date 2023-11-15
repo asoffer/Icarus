@@ -1,6 +1,6 @@
-io ::= import "std.io"
+let io ::= import "std.io"
 
-i: i64
+var i: i64 = 1
 while (i < 100) {
   if (i % 15 == 0) {
     io.Print("FizzBuzz\n")
@@ -9,7 +9,7 @@ while (i < 100) {
   } else if (i % 5 == 0) {
     io.Print("Buzz\n")
   } else {
-    io.Print(i)
+    io.PrintNum(i)
     io.Print("\n")
   }
   i = i + 1
