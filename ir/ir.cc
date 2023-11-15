@@ -53,6 +53,14 @@ type::Type FromConstant() {
         {t};
   }
 }
+std::optional<type::QualifiedType> FindInfixOperator(
+    Token::Kind kind, std::span<type::QualifiedType const> argument_types) {
+  if (argument_types.size() != 2) { return std::nullopt; }
+  if (type::ImplicitCast(argument_types[1].type(), argument_types[0].type())) {
+    return type::QualifiedType::Unqualified(argument_types[0].type());
+  }
+  return std::nullopt;
+}
 
 struct IrContext {
   ParseNode const& Node(ParseNodeIndex index) { return emit.tree[index]; }
@@ -390,17 +398,32 @@ void HandleParseTreeNodeExpressionPrecedenceGroup(
     case Token::Kind::Percent:
     case Token::Kind::Star: {
       NTH_REQUIRE(context.type_stack().group_count() >= node.child_count / 2);
+      NTH_REQUIRE(node.child_count >= 3);
       auto iter = context.type_stack().rbegin();
       std::vector<type::QualifiedType> types;
       for (size_t i = 0; i <= node.child_count / 2; ++i, ++iter) {
         if ((*iter).size() != 1) { NTH_UNIMPLEMENTED(); }
         types.push_back((*iter)[0]);
       }
-      for (size_t i = 0; i + 1 < types.size(); ++i) {
-        if (types[i] != types[i + 1]) { NTH_UNIMPLEMENTED(); }
+      std::reverse(types.begin(), types.end());
+      auto start = types.begin();
+      type::QualifiedType current;
+      NTH_LOG("{}")<<={types};
+      for (auto end = start + 1; end != types.end(); ++end) {
+        if (auto return_type =
+                FindInfixOperator(kind, std::span(start, end + 1))) {
+          current = *return_type;
+        } else {
+          if (start + 1 == end) { NTH_UNIMPLEMENTED(); }
+          start  = end;
+          *start = std::exchange(current,
+                                 type::QualifiedType::Unqualified(type::Error));
+        }
       }
+
+      if (current.type() == type::Error) { NTH_UNIMPLEMENTED(); }
       context.PopTypeStack(1 + node.child_count / 2);
-      context.type_stack().push({types[0]});
+      context.type_stack().push({current});
     } break;
     case Token::Kind::Less:
     case Token::Kind::Greater:
@@ -416,7 +439,10 @@ void HandleParseTreeNodeExpressionPrecedenceGroup(
         types.push_back((*iter)[0]);
       }
       for (size_t i = 0; i + 1 < types.size(); ++i) {
-        if (types[i] != types[i + 1]) { NTH_UNIMPLEMENTED(); }
+        if (not type::ImplicitCast(types[i].type(), types[i + 1].type()) and
+            not type::ImplicitCast(types[i + 1].type(), types[i].type())) {
+          NTH_UNIMPLEMENTED();
+        }
       }
       context.PopTypeStack(1 + node.child_count / 2);
       context.type_stack().push({type::QualifiedType::Constant(type::Bool)});
