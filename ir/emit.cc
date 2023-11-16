@@ -24,17 +24,41 @@ void HandleParseTreeNodeModuleStart(ParseNodeIndex index,
   f.append<jasmin::StackAllocate>(context.current_storage().size().value());
 }
 
-#define IC_XMACRO_PARSE_NODE_PREFIX_UNARY(node, token, precedence)             \
-  void HandleParseTreeNode##node##Start(ParseNodeIndex index,                  \
-                                        EmitContext& context) {}
-#include "parse/node.xmacro.h"
+void HandleParseTreeNodeImportStart(ParseNodeIndex index,
+                                    EmitContext& context) {}
+void HandleParseTreeNodePointerStart(ParseNodeIndex index,
+                                     EmitContext& context) {}
+void HandleParseTreeNodeSliceStart(ParseNodeIndex index, EmitContext& context) {
+}
+void HandleParseTreeNodeBufferPointerStart(ParseNodeIndex index,
+                                           EmitContext& context) {}
+
+void HandleParseTreeNodeAddressStart(ParseNodeIndex index,
+                                     EmitContext& context) {
+  context.queue.front().value_category_stack.push_back(
+      EmitContext::ValueCategory::Reference);
+}
+
+void HandleParseTreeNodeDerefStart(ParseNodeIndex index, EmitContext& context) {
+  context.queue.front().value_category_stack.push_back(
+      EmitContext::ValueCategory::Value);
+}
 
 void HandleParseTreeNodeAddress(ParseNodeIndex index, EmitContext& context) {
-  NTH_UNIMPLEMENTED();
+  context.queue.front().value_category_stack.pop_back();
 }
 
 void HandleParseTreeNodeDeref(ParseNodeIndex index, EmitContext& context) {
-  NTH_UNIMPLEMENTED();
+  context.queue.front().value_category_stack.pop_back();
+  NTH_REQUIRE((v.debug),
+              not context.queue.front().value_category_stack.empty());
+  if (context.queue.front().value_category_stack.back() ==
+      EmitContext::ValueCategory::Value) {
+    auto qt = context.QualifiedTypeOf(index - 1);
+    // TODO: Wider types?
+    context.current_function().append<jasmin::Load>(
+        type::Contour(qt.type()).byte_width().value());
+  }
 }
 
 void HandleParseTreeNodeBooleanLiteral(ParseNodeIndex index,

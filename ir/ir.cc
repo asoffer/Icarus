@@ -196,12 +196,30 @@ void HandleParseTreeNodeModuleStart(ParseNodeIndex index, IrContext& context,
 
 void HandleParseTreeNodeDeref(ParseNodeIndex index, IrContext& context,
                               diag::DiagnosticConsumer& diag) {
-  NTH_UNIMPLEMENTED();
+  if (context.type_stack().top().size() != 1) { NTH_UNIMPLEMENTED(); }
+  auto qt = context.type_stack().top()[0];
+  context.emit.SetQualifiedType(index - 1, qt);
+  context.type_stack().pop();
+  switch  (qt.type().kind()) {
+    case type::Type::Kind::Pointer:
+      context.type_stack().push(
+          {type::QualifiedType::Unqualified(qt.type().AsPointer().pointee())});
+      break;
+    case type::Type::Kind::BufferPointer:
+      context.type_stack().push({type::QualifiedType::Unqualified(
+          qt.type().AsBufferPointer().pointee())});
+      break;
+    default: NTH_UNIMPLEMENTED();
+  }
 }
 
 void HandleParseTreeNodeAddress(ParseNodeIndex index, IrContext& context,
                                 diag::DiagnosticConsumer& diag) {
-  NTH_UNIMPLEMENTED();
+  if (context.type_stack().top().size() != 1) { NTH_UNIMPLEMENTED(); }
+  auto qt = context.type_stack().top()[0];
+  context.type_stack().pop();
+  context.type_stack().push(
+      {type::QualifiedType::Unqualified(type::Ptr(qt.type()))});
 }
 
 void HandleParseTreeNodeDeclaration(ParseNodeIndex index, IrContext& context,
