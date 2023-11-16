@@ -25,15 +25,15 @@ load("//toolchain:ic_rule.bzl", "ic_binary")
 #     ],
 # )
 
-# ic_binary(
-#     name = "date_time",
-#     srcs = ["date_time.ic"],
-#     deps = [
-#         "//toolchain/stdlib:io",
-#         "//toolchain/stdlib/c:time",
-#         ":utility",
-#     ],
-# )
+ic_binary(
+    name = "date_time",
+    srcs = ["date_time.ic"],
+    deps = [
+        "//toolchain/stdlib:io",
+        "//toolchain/stdlib/compat/c:time",
+        "//toolchain/stdlib/compat/c:string",
+    ],
+)
 # 
 # ic_binary(
 #     name = "enum",
@@ -68,11 +68,3 @@ ic_binary(
     name = "minimal_program",
     srcs = ["minimal_program.ic"],
 )
-
-# ic_library(
-#     name = "utility",
-#     srcs = ["utility.ic"],
-#     deps = [
-#         "//toolchain/stdlib/c:string",
-#     ],
-# )

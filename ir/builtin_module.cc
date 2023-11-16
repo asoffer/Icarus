@@ -32,6 +32,12 @@ nth::NoDestructor<IrFunction> Opaque([] {
   return f;
 }());
 
+nth::NoDestructor<IrFunction> Slice([] {
+  IrFunction f(2, 2);
+  f.append<jasmin::Return>();
+  return f;
+}());
+
 nth::NoDestructor<IrFunction> ForeignType([] {
   IrFunction f(3, 1);
   f.append<jasmin::Swap>();
@@ -55,6 +61,15 @@ Module BuiltinModule() {
   global_function_registry.Register(
       FunctionId(ModuleId::Builtin(), LocalFunctionId(next_id++)), &*Opaque);
 
+  m.Insert(Identifier("slice"),
+           {.qualified_type = type::QualifiedType::Constant(type::Function(
+                type::Parameters(std::vector<type::ParametersType::Parameter>{
+                    {.type = type::BufPtr(type::Char)}, {.type = type::U64}}),
+                {type::Slice(type::Char)})),
+            .value          = {jasmin::Value(&*Slice)}});
+  global_function_registry.Register(
+      FunctionId(ModuleId::Builtin(), LocalFunctionId(next_id++)), &*Slice);
+
   m.Insert(
       Identifier("foreign"),
       {.qualified_type = type::QualifiedType::Constant(type::GenericFunction(
@@ -63,6 +78,8 @@ Module BuiltinModule() {
   global_function_registry.Register(
       FunctionId(ModuleId::Builtin(), LocalFunctionId(next_id++)),
       &*ForeignType);
+
+  // TODO: There's something wrong with registration happening after this point.
   global_function_registry.Register(
       FunctionId(ModuleId::Builtin(), LocalFunctionId(next_id++)), &*Foreign);
 

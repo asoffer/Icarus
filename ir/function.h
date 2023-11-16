@@ -145,6 +145,7 @@ struct NoOp : jasmin::StackMachineInstruction<NoOp> {
   static void execute(jasmin::ValueStack& vs) {}
 };
 
+
 struct Rotate : jasmin::StackMachineInstruction<Rotate> {
   static void execute(jasmin::ValueStack& value_stack, size_t n) {
     NTH_REQUIRE((v.harden), n >= 1);

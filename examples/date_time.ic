@@ -1,14 +1,25 @@
-io   ::= import "std.io"
-c    ::= import "std.c.time"
-util ::= import "examples.utility"
+let io   ::= import "std.io"
+let c    ::= import "std.compat.c.time"
+let cstr ::= import "std.compat.c.string"
 
-now := c.time(null)
+let now := c.time(null)
 io.Print("Current time is: ")
-io.Print(util.null_terminated_slice(c.ctime(now)))
+io.Print(ntcs(c.ctime(&now)))
 
-// timeinfo := c.gmtime(now)
-// io.Print("In UTC: ", c.asctime(timeinfo))
-// 
+let timeinfo := c.gmtime(&now)
+io.Print("In UTC: ")
+io.Print(ntcs(c.asctime(timeinfo)))
+
 // buffer: [256; char]
 // used := c.strftime(&buffer[0], 256, "%A, %B %e %Y".data, timeinfo)
 // io.Print("Formatted: ", builtin.slice(&buffer[0], used as u64), !'\n')
+
+// `ntcs` is short for "[N]ull-[T]erminated [C]haracter [S]lice." This utility
+// function constructs a `\char` from a `[*]char`, assuming the pointer is
+// pointing to a null-terminated character array. Null-terminated strings are
+// common in the C programming language, but generally considered unidiomatic
+// in Icarus. This means that we sometimes need a little help from utility
+// functions like this one when writing code that interoperates with C.
+let ntcs ::= fn(let ptr: [*]char) -> \char {
+  return builtin.slice(ptr, cstr.strlen(ptr))
+}
