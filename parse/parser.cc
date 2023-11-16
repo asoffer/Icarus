@@ -349,7 +349,7 @@ void Parser::HandleStatement(ParseTree& tree) {
       break;
     case Token::Kind::Return:
       tree.back().statement_kind = ParseNode::StatementKind::Return;
-      ExpandState(State::Kind::Expression,
+      ExpandState(Expression(tree),
                   State{
                       .kind          = State::Kind::ResolveReturn,
                       .subtree_start = tree.size(),

@@ -873,31 +873,43 @@ NTH_TEST("parser/function-literal/no-returns") {
                                         StatementSequence(ScopeStart()))))));
 }
 
-// NTH_TEST("parser/function-literal/return-expression") {
-//   diag::NullConsumer d;
-//   TokenBuffer buffer = lex::Lex(R"(
-//     fn(let a: b) -> x {
-//       return c
-//     })",
-//                                 d);
-//   auto tree          = Parse(buffer, d).parse_tree;
-//   NTH_EXPECT(
-//       FromRoot(tree) >>= Module(
-//           ModuleStart(),
-//           StatementSequence(
-//               ScopeStart(),
-//               Statement(
-//                   StatementStart(),
-//                   FunctionLiteral(
-//                       FunctionLiteralStart(),
-//                       FunctionLiteralSignature(
-//                           Declaration(DeclarationStart(), DeclaredIdentifier(),
-//                                       Identifier()),
-//                           Identifier()),
-//                       StatementSequence(ScopeStart(),
-//                                         Statement(StatementStart(),
-//                                                   Return(Identifier()))))))));
-// }
+NTH_TEST("parser/return-expression") {
+  diag::NullConsumer d;
+  TokenBuffer buffer = lex::Lex(R"(return a)", d);
+  auto tree          = Parse(buffer, d).parse_tree;
+  NTH_EXPECT(
+      FromRoot(tree) >>=
+      Module(ModuleStart(),
+             StatementSequence(ScopeStart(), Statement(StatementStart(),
+                                                       Return(Identifier())))));
+}
+
+
+NTH_TEST("parser/function-literal/return-expression") {
+  diag::NullConsumer d;
+  TokenBuffer buffer = lex::Lex(R"(
+    fn(let a: b) -> x {
+      return c
+    })",
+                                d);
+  auto tree          = Parse(buffer, d).parse_tree;
+  NTH_EXPECT(
+      FromRoot(tree) >>= Module(
+          ModuleStart(),
+          StatementSequence(
+              ScopeStart(),
+              Statement(
+                  StatementStart(),
+                  FunctionLiteral(
+                      FunctionLiteralStart(),
+                      FunctionLiteralSignature(
+                          Declaration(DeclarationStart(), DeclaredIdentifier(),
+                                      Identifier()),
+                          Identifier()),
+                      StatementSequence(ScopeStart(),
+                                        Statement(StatementStart(),
+                                                  Return(Identifier()))))))));
+}
 
 NTH_TEST("parser/slice/once") {
   diag::NullConsumer d;
