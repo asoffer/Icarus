@@ -57,6 +57,7 @@ cc_binary(
         "//ir:deserialize",
         "//ir:module",
         "//ir:module_cc_proto",
+        "//ir:program_arguments",
         "//lexer:token_buffer",
         "@asoffer_jasmin//jasmin:execute",
         "@asoffer_nth//nth/commandline:main",

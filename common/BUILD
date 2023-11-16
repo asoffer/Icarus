@@ -104,3 +104,8 @@ cc_library(
         "//type",
     ],
 )
+
+cc_library(
+    name = "slice",
+    hdrs = ["slice.h"],
+)

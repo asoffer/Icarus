@@ -498,6 +498,7 @@ void HandleParseTreeNodeMemberExpression(ParseNodeIndex index,
   auto node = context.Node(index);
   IC_PROPAGATE_ERRORS(context, node, 1);
   NTH_REQUIRE(not context.type_stack().empty());
+  context.emit.SetQualifiedType(index - 1, context.type_stack().top()[0]);
   if (context.type_stack().top()[0].type() == type::Module) {
     if (context.type_stack().top()[0].constant()) {
       auto module_id = context.EvaluateAs<ModuleId>(index - 1);
@@ -571,7 +572,52 @@ void HandleParseTreeNodeMemberExpression(ParseNodeIndex index,
 void HandleParseTreeNodeIndexExpression(ParseNodeIndex index,
                                         IrContext& context,
                                         diag::DiagnosticConsumer& diag) {
-  NTH_UNIMPLEMENTED();
+  std::vector<type::QualifiedType> index_argument_qts;
+  auto iter = context.ChildIndices(index).begin();
+  for (; context.Node(*iter).kind != ParseNode::Kind::IndexArgumentStart;
+       ++iter) {
+    if (context.type_stack().top().size() != 1) { NTH_UNIMPLEMENTED(); }
+    index_argument_qts.push_back(context.type_stack().top()[0]);
+    context.type_stack().pop();
+  }
+
+  std::reverse(index_argument_qts.begin(), index_argument_qts.end());
+
+  if (context.type_stack().top().size() != 1) { NTH_UNIMPLEMENTED(); }
+  auto qt = context.type_stack().top()[0];
+  context.emit.SetQualifiedType(*++iter, qt);
+  context.type_stack().pop();
+  switch (qt.type().kind()) {
+    case type::Type::Kind::Slice: {
+      if (index_argument_qts.size() == 1) {
+        if (index_argument_qts[0].type().kind() ==
+                type::Type::Kind::Primitive and
+            type::Integral(index_argument_qts[0].type().AsPrimitive())) {
+          context.type_stack().push({type::QualifiedType(
+              qt.qualifier(), qt.type().AsSlice().element_type())});
+        } else {
+          NTH_UNIMPLEMENTED();
+        }
+      } else {
+        NTH_UNIMPLEMENTED();
+      }
+    } break;
+    case type::Type::Kind::BufferPointer: {
+      if (index_argument_qts.size() == 1) {
+        if (index_argument_qts[0].type().kind() ==
+                type::Type::Kind::Primitive and
+            type::Integral(index_argument_qts[0].type().AsPrimitive())) {
+          context.type_stack().push({type::QualifiedType(
+              qt.qualifier(), qt.type().AsBufferPointer().pointee())});
+        } else {
+          NTH_UNIMPLEMENTED();
+        }
+      } else {
+        NTH_UNIMPLEMENTED();
+      }
+    } break;
+    default: NTH_UNIMPLEMENTED();
+  }
 }
 
 void HandleParseTreeNodeCallExpression(ParseNodeIndex index, IrContext& context,
@@ -647,7 +693,7 @@ void HandleParseTreeNodeCallExpression(ParseNodeIndex index, IrContext& context,
       ++iter;
     }
     for (auto index : argument_indices) {
-      auto t              = (*iter)[0].type();
+      auto t = (*iter)[0].type();
 
       nth::interval range = context.emit.tree.subtree_range(index);
       context.emit.Evaluate(range, value_stack, {t});
@@ -730,8 +776,9 @@ void HandleParseTreeNodeImport(ParseNodeIndex index, IrContext& context,
   context.type_stack().push({type::QualifiedType::Constant(type::Module)});
 }
 
-Iteration HandleParseTreeNodeScopeStart(ParseNodeIndex index, IrContext& context,
-                                   diag::DiagnosticConsumer& diag) {
+Iteration HandleParseTreeNodeScopeStart(ParseNodeIndex index,
+                                        IrContext& context,
+                                        diag::DiagnosticConsumer& diag) {
   auto item           = std::move(context.queue.front());
   auto [start, end]   = item.interval;
   auto stmt_seq_index = context.Node(index).corresponding_statement_sequence;
@@ -766,7 +813,7 @@ void HandleParseTreeNodeFunctionLiteralSignature(
   std::vector<type::ParametersType::Parameter> parameters;
   auto indices = context.ChildIndices(index);
 
-  auto iter    = indices.begin();
+  auto iter = indices.begin();
   switch (context.Node(*iter).kind) {
     case ParseNode::Kind::NoReturns: break;
     default:
@@ -837,6 +884,8 @@ void HandleParseTreeNodeWhileLoop(ParseNodeIndex index, IrContext& context,
                                   diag::DiagnosticConsumer&) {
   // TODO: This should have type-checking for all the statements that were
   // contained in it, esp. once we have early returns and yielding.
+  context.type_stack().pop();
+  context.type_stack().push({});
 }
 
 void HandleParseTreeNodeIfStatementTrueBranchStart(ParseNodeIndex index,
@@ -917,7 +966,6 @@ void HandleParseTreeNodeFunctionTypeParameters(ParseNodeIndex index,
   }
   context.type_stack().push({type::QualifiedType::Constant(type::Type_)});
 }
-
 
 void HandleParseTreeNodeNoReturns(ParseNodeIndex index, IrContext& context,
                                   diag::DiagnosticConsumer& diag) {

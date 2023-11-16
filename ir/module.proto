@@ -41,6 +41,9 @@ message InstructionProto {
     MOD_I64 = 30;
     EQ_I64 = 31;
     LT_I64 = 32;
+    ADD_POINTER = 33;
+    LOAD_PROGRAM_ARGUMENTS = 34;
+    DUPLICATE = 35;
   }
   OpCode op_code = 1;
   repeated uint64 content = 2;

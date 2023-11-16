@@ -13,6 +13,7 @@
 #include "ir/deserialize.h"
 #include "ir/module.h"
 #include "ir/module.pb.h"
+#include "ir/program_arguments.h"
 #include "jasmin/execute.h"
 #include "lexer/token_buffer.h"
 #include "nth/commandline/commandline.h"
@@ -26,7 +27,7 @@
 namespace ic {
 namespace {
 
-nth::exit_code Run(nth::FlagValueSet flags, std::span<std::string_view const>) {
+nth::exit_code Run(nth::FlagValueSet flags, std::span<std::string_view const> arguments) {
   absl::InitializeSymbolizer("");
   absl::FailureSignalHandlerOptions opts;
   absl::InstallFailureSignalHandler(opts);
@@ -37,6 +38,9 @@ nth::exit_code Run(nth::FlagValueSet flags, std::span<std::string_view const>) {
   if (debug_run) { ic::debug::run = *debug_run; }
 
   std::ifstream in(input.path());
+
+  SetProgramArguments(
+      std::vector<std::string>(arguments.begin(), arguments.end()));
 
   diag::StreamingConsumer consumer;
 

@@ -32,6 +32,13 @@ nth::NoDestructor<IrFunction> Opaque([] {
   return f;
 }());
 
+nth::NoDestructor<IrFunction> Arguments([] {
+  IrFunction f(0, 2);
+  f.append<LoadProgramArguments>();
+  f.append<jasmin::Return>();
+  return f;
+}());
+
 nth::NoDestructor<IrFunction> Slice([] {
   IrFunction f(2, 2);
   f.append<jasmin::Return>();
@@ -60,6 +67,15 @@ Module BuiltinModule() {
        .value          = {jasmin::Value(&*Opaque)}});
   global_function_registry.Register(
       FunctionId(ModuleId::Builtin(), LocalFunctionId(next_id++)), &*Opaque);
+
+  m.Insert(
+      Identifier("arguments"),
+      {.qualified_type = type::QualifiedType::Constant(type::Function(
+           type::Parameters(std::vector<type::ParametersType::Parameter>{}),
+           {type::Slice(type::Slice(type::Char))})),
+       .value          = {jasmin::Value(&*Arguments)}});
+  global_function_registry.Register(
+      FunctionId(ModuleId::Builtin(), LocalFunctionId(next_id++)), &*Arguments);
 
   m.Insert(Identifier("slice"),
            {.qualified_type = type::QualifiedType::Constant(type::Function(

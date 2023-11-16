@@ -4,9 +4,11 @@
 
 #include <deque>
 
+#include "common/slice.h"
 #include "ir/foreign_function.h"
 #include "ir/function_id.h"
 #include "ir/global_function_registry.h"
+#include "ir/program_arguments.h"
 #include "jasmin/value.h"
 #include "jasmin/value_stack.h"
 
@@ -38,6 +40,12 @@ T Read(ffi_arg const& value) {
 }
 
 }  // namespace
+
+void LoadProgramArguments::execute(jasmin::ValueStack& value_stack) {
+  Slice arguments = ProgramArguments();
+  value_stack.push(arguments.data());
+  value_stack.push(arguments.count());
+}
 
 void RegisterForeignFunction::execute(jasmin::ValueStack& value_stack) {
   type::Type t     = value_stack.pop<type::Type>();

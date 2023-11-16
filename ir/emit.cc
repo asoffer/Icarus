@@ -12,6 +12,50 @@
 namespace ic {
 namespace {
 
+void StoreStackValue(IrFunction& f, type::ByteWidth offset, type::Type t) {
+  type::ByteWidth type_width = type::Contour(t).byte_width();
+  type::ByteWidth end        = offset + type_width;
+  type::ByteWidth position =
+      end.aligned_backward_to(type::Alignment(jasmin::ValueSize));
+  if (position != end) {
+    f.append<jasmin::StackOffset>(position.value());
+    f.append<Store>((end - position).value());
+  }
+  while (position != offset) {
+    position -= type::ByteWidth(jasmin::ValueSize);
+    f.append<jasmin::StackOffset>(position.value());
+    f.append<Store>(jasmin::ValueSize);
+  }
+}
+
+void Load(IrFunction& f, type::ByteWidth width) {
+  size_t i = jasmin::ValueSize;
+  for (; i < width.value(); i += jasmin::ValueSize) {
+    f.append<jasmin::Duplicate>();
+    f.append<jasmin::Push>(jasmin::ValueSize);
+    f.append<AddPointer>();
+    f.append<jasmin::Swap>();
+    f.append<jasmin::Load>(jasmin::ValueSize);
+    f.append<jasmin::Swap>();
+  }
+
+  f.append<jasmin::Load>(width.value() - (i - jasmin::ValueSize));
+}
+
+void LoadStackValue(IrFunction& f, type::ByteWidth offset, type::Type t) {
+  type::ByteWidth type_width = type::Contour(t).byte_width();
+  type::ByteWidth end        = offset + type_width;
+  while (offset + type::ByteWidth(jasmin::ValueSize) <= end) {
+    f.append<jasmin::StackOffset>(offset.value());
+    f.append<jasmin::Load>(jasmin::ValueSize);
+    offset += type::ByteWidth(jasmin::ValueSize);
+  }
+  if (offset < end) {
+    f.append<jasmin::StackOffset>(offset.value());
+    f.append<jasmin::Load>((end - offset).value());
+  }
+}
+
 void HandleParseTreeNodeModule(ParseNodeIndex index, EmitContext& context) {
   context.current_function().append<jasmin::Return>();
   context.pop_function();
@@ -55,9 +99,7 @@ void HandleParseTreeNodeDeref(ParseNodeIndex index, EmitContext& context) {
   if (context.queue.front().value_category_stack.back() ==
       EmitContext::ValueCategory::Value) {
     auto qt = context.QualifiedTypeOf(index - 1);
-    // TODO: Wider types?
-    context.current_function().append<jasmin::Load>(
-        type::Contour(qt.type()).byte_width().value());
+    Load(context.current_function(), type::Contour(qt.type()).byte_width());
   }
 }
 
@@ -109,36 +151,6 @@ void HandleParseTreeNodeBuiltinLiteral(ParseNodeIndex index,
 }
 
 void HandleParseTreeNodeScopeStart(ParseNodeIndex, EmitContext&) {}
-
-void StoreStackValue(IrFunction& f, type::ByteWidth offset, type::Type t) {
-  type::ByteWidth type_width = type::Contour(t).byte_width();
-  type::ByteWidth end        = offset + type_width;
-  type::ByteWidth position =
-      end.aligned_backward_to(type::Alignment(jasmin::ValueSize));
-  if (position != end) {
-    f.append<jasmin::StackOffset>(position.value());
-    f.append<Store>((end - position).value());
-  }
-  while (position != offset) {
-    position -= type::ByteWidth(jasmin::ValueSize);
-    f.append<jasmin::StackOffset>(position.value());
-    f.append<Store>(jasmin::ValueSize);
-  }
-}
-
-void LoadStackValue(IrFunction& f, type::ByteWidth offset, type::Type t) {
-  type::ByteWidth type_width = type::Contour(t).byte_width();
-  type::ByteWidth end        = offset + type_width;
-  while (offset + type::ByteWidth(jasmin::ValueSize) <= end) {
-    f.append<jasmin::StackOffset>(offset.value());
-    f.append<jasmin::Load>(jasmin::ValueSize);
-    offset += type::ByteWidth(jasmin::ValueSize);
-  }
-  if (offset< end) {
-    f.append<jasmin::StackOffset>(offset.value());
-    f.append<jasmin::Load>((end - offset).value());
-  }
-}
 
 Iteration HandleParseTreeNodeFunctionLiteralStart(ParseNodeIndex index,
                                                   EmitContext& context) {
@@ -336,7 +348,7 @@ void HandleParseTreeNodeExpressionPrecedenceGroup(ParseNodeIndex index,
       }
     } break;
     case Token::Kind::EqualEqual: {
-        context.current_function().append<jasmin::Equal<int64_t>>();
+      context.current_function().append<jasmin::Equal<int64_t>>();
     } break;
     case Token::Kind::NotEqual: {
       context.current_function().append<jasmin::Equal<int64_t>>();
@@ -433,7 +445,41 @@ void HandleParseTreeNodeMemberExpression(ParseNodeIndex index,
 
 void HandleParseTreeNodeIndexExpression(ParseNodeIndex index,
                                         EmitContext& context) {
-  NTH_UNIMPLEMENTED();
+  // TODO: The offset shouldn't need to be traversed again to find the very
+  // first node. We could either store these backwards so it's first, have the
+  // IndexExpression node store the start location.
+  auto iter = context.tree.child_indices(index).begin();
+  for (; context.Node(*iter).kind != ParseNode::Kind::IndexArgumentStart;
+       ++iter) {}
+  auto qt = context.QualifiedTypeOf(*++iter);
+  auto& f = context.current_function();
+  if (qt.type().kind() == type::Type::Kind::Slice) {
+    auto t    = qt.type().AsSlice().element_type();
+    auto size = type::Contour(t).byte_width();
+    f.append<jasmin::Swap>();
+    f.append<jasmin::Drop>(1);
+    f.append<jasmin::Push>(size.value());
+    f.append<jasmin::Multiply<int64_t>>();
+    f.append<AddPointer>();
+
+    if (context.queue.front().value_category_stack.back() ==
+        EmitContext::ValueCategory::Value) {
+      Load(f, size);
+    }
+  } else if (qt.type().kind() == type::Type::Kind::BufferPointer) {
+    auto t    = qt.type().AsBufferPointer().pointee();
+    auto size = type::Contour(t).byte_width();
+    f.append<jasmin::Push>(size.value());
+    f.append<jasmin::Multiply<int64_t>>();
+    f.append<AddPointer>();
+
+    if (context.queue.front().value_category_stack.back() ==
+        EmitContext::ValueCategory::Value) {
+      Load(f, size);
+    }
+  } else {
+    NTH_UNREACHABLE();
+  }
 }
 
 void HandleParseTreeNodeCallExpression(ParseNodeIndex index,

@@ -86,6 +86,7 @@ cc_library(
     ],
     deps = [
         ":function_id",
+        ":program_arguments",
         "//common:identifier",
         "//common:module_id",
         "//common:resources",
@@ -182,6 +183,18 @@ cc_proto_library(
     visibility = ["//visibility:public"],
     deps = [":module_proto"],
 )
+
+cc_library(
+    name = "program_arguments",
+    hdrs = ["program_arguments.h"],
+    srcs = ["program_arguments.cc"],
+    deps = [
+        "//common:slice",
+        "@asoffer_nth//nth/utility:no_destructor",
+        "@com_google_absl//absl/synchronization",
+    ],
+)
+
 
 cc_library(
     name = "scope",

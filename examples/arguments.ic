@@ -1,16 +1,16 @@
-io ::= import "std.io"
+let io ::= import "std.io"
 
 // Program arguments are accessible by invoking `builtin.arguments`, which
-// returns a slice of character slices. That is, a value of type `[/][/]char`.
+// returns a slice of character slices. That is, a value of type `\\char`.
 
 io.Print("There are ")
-io.Print(builtin.arguments().length)
+io.PrintNum(builtin.arguments().count)
 io.Print(" program argument(s):")
 
-i: u64
-while (i < builtin.arguments().length) {
+var i: u64 = 0
+while (i < builtin.arguments().count) {
   io.Print("\n  ")
-  io.Print(i)
+  io.PrintNum(i)
   io.Print(": ")
   io.Print(builtin.arguments()[i])
   i = i + 1

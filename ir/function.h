@@ -145,6 +145,16 @@ struct NoOp : jasmin::StackMachineInstruction<NoOp> {
   static void execute(jasmin::ValueStack& vs) {}
 };
 
+struct AddPointer : jasmin::StackMachineInstruction<AddPointer> {
+  static std::byte const* execute(std::byte const* ptr, uint64_t amount) {
+    return ptr + amount;
+  }
+};
+
+struct LoadProgramArguments
+    : jasmin::StackMachineInstruction<LoadProgramArguments> {
+  static void execute(jasmin::ValueStack& value_stack);
+};
 
 struct Rotate : jasmin::StackMachineInstruction<Rotate> {
   static void execute(jasmin::ValueStack& value_stack, size_t n) {
@@ -168,7 +178,8 @@ using InstructionSet = jasmin::MakeInstructionSet<
     RegisterForeignFunction, InvokeForeignFunction, jasmin::Not, NoOp, Store,
     jasmin::Load, jasmin::StackAllocate, jasmin::StackOffset,
     jasmin::Add<int64_t>, jasmin::Subtract<int64_t>, jasmin::Multiply<int64_t>,
-    jasmin::Mod<int64_t>, jasmin::Equal<int64_t>, jasmin::LessThan<int64_t>>;
+    jasmin::Mod<int64_t>, jasmin::Equal<int64_t>, jasmin::LessThan<int64_t>,
+    AddPointer, LoadProgramArguments, jasmin::Duplicate>;
 using IrFunction = jasmin::Function<InstructionSet>;
 
 }  // namespace ic
