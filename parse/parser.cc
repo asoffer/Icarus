@@ -52,7 +52,8 @@ struct Parser {
     uint32_t subtree_start = -1;
 
     friend void NthPrint(auto& p, auto& f, State const& s) {
-      nth::Interpolate<"[{} {}]">(p, f, s.kind, s.subtree_start);
+      nth::Interpolate<"[{} {} ({})]">(p, f, s.kind, s.subtree_start,
+                                       s.ambient_precedence);
     }
   };
 
@@ -178,9 +179,9 @@ struct Parser {
   diag::DiagnosticConsumer& diagnostic_consumer_;
 };
 
-void DoResolveExpressionGroup(Parser::State state, ParseTree& tree) {
+void CompleteSubExpression(ParseTree& tree, uint32_t subtree_start) {
   tree.append(ParseNode::Kind::ExpressionPrecedenceGroup, Token::Invalid(),
-              state.subtree_start);
+              subtree_start);
   tree.set_back_child_count();
 }
 
@@ -597,8 +598,35 @@ void Parser::HandleDeclaredSymbol(ParseTree& tree) {
 }
 
 void Parser::HandleExpression(ParseTree& tree) {
+  ExpandState(State::Kind::TryPrefix, State::Kind::TryInfix);
+}
+
+void Parser::HandleTryTermSuffix(ParseTree& tree) {
   switch (current_token().kind()) {
-    case Token::Kind::Fn:
+    case Token::Kind::Period: 
+      ++iterator_;
+      push_state({.kind          = State::Kind::ResolveMemberTerm,
+                  .subtree_start = state().back().subtree_start});
+      return;
+    case Token::Kind::LeftParen:
+      ++iterator_;
+      IgnoreAnyNewlines();
+      tree.append(ParseNode::Kind::InvocationArgumentStart, current_token(),
+                  tree.size());
+      push_state({.kind          = State::Kind::InvocationArgumentSequence,
+                  .subtree_start = state().back().subtree_start});
+      if (current_token().kind() != Token::Kind::RightParen) {
+        push_state(Expression(tree));
+      }
+      return;
+    default: pop_and_discard_state(); break;
+  }
+}
+
+void Parser::HandleAtom(ParseTree& tree) {
+  ParseNode::Kind k;
+  switch (current_token().kind()) {
+    case Token::Kind::Fn: {
       push_inside_function_decl(true);
       tree.append_leaf(ParseNode::Kind::FunctionLiteralStart, *iterator_++);
       tree.back().scope_index = PushScope();
@@ -635,34 +663,112 @@ void Parser::HandleExpression(ParseTree& tree) {
             },
             State::Kind::ResolveFunctionLiteral);
       }
-      break;
-    case Token::Kind::Star:
-      ++iterator_;
-      ExpandState(Expression(tree, Precedence::TightUnary()),
-                  State{
-                      .kind          = State::Kind::ResolvePointerType,
-                      .subtree_start = tree.size(),
-                  });
       return;
-    case Token::Kind::BracketedStar:
-      ++iterator_;
-      ExpandState(Expression(tree, Precedence::TightUnary()),
-                  State{
-                      .kind          = State::Kind::ResolveBufferPointerType,
-                      .subtree_start = tree.size(),
-                  });
+    } break;
+    case Token::Kind::LeftParen: {
+      size_t paren_gap      = iterator_->payload();
+      auto kind_after_paren = token_buffer_[paren_gap + 1].kind();
+      if (kind_after_paren == Token::Kind::MinusGreater) {
+        ++iterator_;
+        if (std::distance(token_buffer_.begin(), iterator_) == paren_gap) {
+          ExpandState(State::Kind::ResolveFunctionTypeParameters);
+        } else {
+          ExpandState(State::Kind::Expression,
+                      State::Kind::CommaSeparatedExpressionSequence,
+                      State::Kind::ResolveFunctionTypeParameters);
+        }
+      } else {
+        // TODO: ParenthesizedExpression checks for the opening '(' again which
+        // we already know is present. We should be able to avoid that.
+        ExpandState(State::Kind::ParenthesizedExpression);
+      }
       return;
-    case Token::Kind::Backslash:
-      ++iterator_;
-      ExpandState(Expression(tree, Precedence::TightUnary()),
-                  State{
-                      .kind          = State::Kind::ResolveSliceType,
-                      .subtree_start = tree.size(),
-                  });
-      return;
-    default:
-      ExpandState(State::Kind::AtomicTerm, State::Kind::ExpressionSuffix);
+    } break;
+#define IC_XMACRO_ATOM(token_kind, parse_node_kind)                            \
+  case Token::Kind::token_kind:                                                \
+    k = ParseNode::Kind::parse_node_kind;                                      \
+    break;
+#include "common/language/atoms.xmacro.h"
+    default: NTH_UNIMPLEMENTED("Token: {}") <<= {current_token()};
   }
+
+  tree.append_leaf(k, *iterator_++);
+  pop_and_discard_state();
+}
+
+void Parser::HandleTryPrefix(ParseTree& tree) {
+  switch (current_token().kind()) {
+#define IC_XMACRO_PARSE_NODE_PREFIX_UNARY(node, token, precedence)             \
+  case Token::Kind::token:                                                     \
+    tree.append_leaf(ParseNode::Kind::node##Start, *iterator_);                \
+    ++iterator_;                                                               \
+    ExpandState(Expression(tree, Precedence::precedence()),                    \
+                State{                                                         \
+                    .kind               = State::Kind::Resolve##node,          \
+                    .ambient_precedence = state().back().ambient_precedence,   \
+                    .subtree_start      = tree.size() - 1,                     \
+                });                                                            \
+    return;
+#include "parse/node.xmacro.h"
+    default: ExpandState(State::Kind::Atom, State::Kind::TryTermSuffix);
+  }
+}
+
+void Parser::HandleTryInfix(ParseTree& tree) {
+  Precedence p = Precedence::Loosest();
+  switch (current_token().kind()) {
+    case Token::Kind::Star: p = Precedence::MultiplyDivide(); break;
+#define IC_XMACRO_TOKEN_KIND_BINARY_OPERATOR(kind, symbol, precedence_group)   \
+  case Token::Kind::kind:                                                      \
+    p = Precedence::precedence_group();                                        \
+    break;
+
+#include "lexer/token_kind.xmacro.h"
+    default: {
+      auto state = pop_state();
+      if (tree.back().subtree_size + state.subtree_start != tree.size()) {
+        CompleteSubExpression(tree, state.subtree_start);
+      }
+      return;
+    }
+  }
+
+  auto state    = pop_state();
+  auto priority = Precedence::Priority(state.ambient_precedence, p);
+  NTH_LOG((v.when(debug::parser)), "Priority({}, {}) == {}") <<=
+      {state.ambient_precedence, p, priority};
+
+  switch (Precedence::Priority(state.ambient_precedence, p)) {
+    case Priority::Left: return;
+   case Priority::Same:
+     tree.append_leaf(ParseNode::Kind::InfixOperator, *iterator_++);
+     push_state(Expression(tree, p));
+     break;
+    case Priority::Right:
+      tree.append_leaf(ParseNode::Kind::InfixOperator, *iterator_++);
+      push_state({
+          .kind               = State::Kind::ResolveInfix,
+          .ambient_precedence = p,
+          .subtree_start      = state.subtree_start,
+      });
+      push_state(Expression(tree, p));
+      break;
+    case Priority::Ambiguous:
+      NTH_UNIMPLEMENTED(
+          "Ambiguous precedences Precedence::{} vs Precedence::{}") <<=
+          {state.ambient_precedence, p};
+      break;
+  }
+}
+
+void Parser::HandleResolveInfix(ParseTree& tree) {
+  auto state = pop_state();
+  CompleteSubExpression(tree, state.subtree_start);
+  push_state({
+      .kind               = State::Kind::TryInfix,
+      .ambient_precedence = this->state().back().ambient_precedence,
+      .subtree_start      = state.subtree_start,
+  });
 }
 
 void Parser::HandleClosingBrace(ParseTree& tree) {
@@ -741,10 +847,18 @@ void Parser::HandleFunctionLiteralReturnTypeStart(ParseTree& tree) {
       tree.append_leaf(ParseNode::Kind::NoReturns, *iterator_);
       iterator_ = it + 1;
     } else {
-      ExpandState(State::Kind::Expression);
+      ExpandState(State{
+          .kind               = State::Kind::Expression,
+          .ambient_precedence = state().back().ambient_precedence,
+          .subtree_start      = tree.size(),
+      });
     }
   } else {
-    ExpandState(State::Kind::Expression);
+    ExpandState(State{
+        .kind               = State::Kind::Expression,
+        .ambient_precedence = state().back().ambient_precedence,
+        .subtree_start      = tree.size(),
+    });
   }
 }
 
@@ -769,51 +883,6 @@ void Parser::HandleResolveMemberTerm(ParseTree& tree) {
   ++iterator_;
   pop_and_discard_state();
 }
-
-void Parser::HandleAtomicTerm(ParseTree& tree) {
-  ParseNode::Kind k;
-  switch (current_token().kind()) {
-    case Token::Kind::LeftParen: {
-      size_t paren_gap      = iterator_->payload();
-      auto kind_after_paren = token_buffer_[paren_gap + 1].kind();
-      if (kind_after_paren == Token::Kind::MinusGreater) {
-        ++iterator_;
-        if (std::distance(token_buffer_.begin(), iterator_) == paren_gap) {
-          ExpandState(State::Kind::ResolveFunctionTypeParameters);
-        } else {
-          ExpandState(State::Kind::Expression,
-                      State::Kind::CommaSeparatedExpressionSequence,
-                      State::Kind::ResolveFunctionTypeParameters);
-        }
-      } else {
-        // TODO: ParenthesizedExpression checks for the opening '(' again which
-        // we already know is present. We should be able to avoid that.
-        ExpandState(State::Kind::ParenthesizedExpression);
-      }
-      return;
-    } break;
-    case Token::Kind::Import:
-      ++iterator_;
-      ExpandState(State::Kind::Expression, State::Kind::ResolveImport);
-      return;
-#define IC_XMACRO_ATOM(token_kind, parse_node_kind)                            \
-  case Token::Kind::token_kind:                                                \
-    k = ParseNode::Kind::parse_node_kind;                                      \
-    break;
-#include "common/language/atoms.xmacro.h"
-    default: NTH_UNIMPLEMENTED("Token: {}") <<= {current_token()};
-  }
-
-  tree.append_leaf(k, *iterator_++);
-  pop_and_discard_state();
-}
-
-void Parser::HandleResolveImport(ParseTree& tree) {
-  tree.append(ParseNode::Kind::Import, current_token(),
-              state().back().subtree_start);
-  pop_and_discard_state();
-}
-
 
 void Parser::HandleResolveReturn(ParseTree& tree) {
   tree.append(ParseNode::Kind::Return, current_token(),
@@ -840,120 +909,12 @@ void Parser::HandleResolveInvocationArgumentSequence(ParseTree& tree) {
   pop_and_discard_state();
 }
 
-void Parser::HandleExpressionSuffix(ParseTree& tree) {
-  Precedence p = Precedence::Loosest();
-  switch (current_token().kind()) {
-    case Token::Kind::Newline:
-    case Token::Kind::Eof: pop_and_discard_state(); return;
-    case Token::Kind::Star: p = Precedence::MultiplyDivide(); break;
-    case Token::Kind::LeftParen: {
-      ++iterator_;
-      IgnoreAnyNewlines();
-      tree.append(ParseNode::Kind::InvocationArgumentStart, current_token(),
-                  tree.size());
-      if (current_token().kind() == Token::Kind::RightParen) {
-        ExpandState(State::Kind::ResolveInvocationArgumentSequence,
-                    State::Kind::ExpressionSuffix);
-      } else {
-        ExpandState(State{.kind          = State::Kind::Expression,
-                          .subtree_start = tree.size()},
-                    State::Kind::InvocationArgumentSequence,
-                    State::Kind::ExpressionSuffix);
-      }
-      return;
-    } break;
-    case Token::Kind::Period: {
-      ++iterator_;
-      ExpandState(
-          State{.kind          = State::Kind::ResolveMemberTerm,
-                .subtree_start = tree.size() - tree.back().subtree_size},
-          State{.kind          = State::Kind::ExpressionSuffix,
-                .subtree_start = tree.size() - tree.back().subtree_size});
-      return;
-    } break;
-#define IC_XMACRO_TOKEN_KIND_BINARY_OPERATOR(kind, symbol, precedence_group)   \
-  case Token::Kind::kind:                                                      \
-    p = Precedence::precedence_group();                                        \
-    break;
-
-#include "lexer/token_kind.xmacro.h"
-    default: pop_and_discard_state(); return;
+#define IC_XMACRO_PARSE_NODE_PREFIX_UNARY(node, unused_token,                  \
+                                          unused_precedence)                   \
+  void Parser::HandleResolve##node(ParseTree& tree) {                          \
+    tree.append(ParseNode::Kind::node, Token::Invalid(),                       \
+                pop_state().subtree_start);                                    \
   }
-
-  uint32_t subtree_start;
-  State state = pop_state();
-  switch (Precedence::Priority(state.ambient_precedence, p)) {
-    case Priority::Left:
-      if (state_.back().kind == State::Kind::ResolveExpressionGroup) {
-        while (state_.back().kind == State::Kind::ResolveExpressionGroup and
-               Precedence::Priority(state_.back().ambient_precedence, p) ==
-                   Priority::Left) {
-          DoResolveExpressionGroup(state = pop_state(), tree);
-          subtree_start = state.subtree_start;
-        }
-
-        push_state(State{
-            .kind               = State::Kind::ResolveExpressionGroup,
-            .ambient_precedence = p,
-            .token              = Token::Invalid(),
-            .subtree_start      = subtree_start,
-        });
-        // `+ 1` to account for the infix operator.
-        subtree_start = tree.size() + 1;
-
-      } else {
-        auto next_state = state_.back();
-        state.ambient_precedence =
-            std::next(this->state().rbegin())->ambient_precedence;
-        ExpandState(next_state, state);
-        return;
-      }
-      break;
-    case Priority::Same:
-      NTH_REQUIRE(state_.back().kind == State::Kind::ResolveExpressionGroup);
-      subtree_start = state.subtree_start;
-      break;
-    case Priority::Right:
-      push_state({.kind               = State::Kind::ResolveExpressionGroup,
-                  .ambient_precedence = p,
-                  .token              = Token::Invalid(),
-                  .subtree_start      = state.subtree_start});
-      // Plus one because of the infix operator we're going to append.
-      subtree_start = tree.size() + 1;
-      break;
-    case Priority::Ambiguous:
-      NTH_UNIMPLEMENTED(
-          "Ambiguous precedences Precedence::{} vs Precedence::{}") <<=
-          {state.ambient_precedence, p};
-      break;
-  }
-
-  tree.append_leaf(ParseNode::Kind::InfixOperator, *iterator_++);
-  push_state(State{
-      .kind               = State::Kind::Expression,
-      .ambient_precedence = p,
-      .subtree_start      = subtree_start,
-  });
-}
-
-void Parser::HandleResolveExpressionGroup(ParseTree& tree) {
-  DoResolveExpressionGroup(pop_state(), tree);
-}
-
-void Parser::HandleResolvePointerType(ParseTree& tree) {
-  auto state = pop_state();
-  tree.append(ParseNode::Kind::Pointer, Token::Invalid(), state.subtree_start);
-}
-
-void Parser::HandleResolveBufferPointerType(ParseTree& tree) {
-  auto state = pop_state();
-  tree.append(ParseNode::Kind::BufferPointer, Token::Invalid(),
-              state.subtree_start);
-}
-
-void Parser::HandleResolveSliceType(ParseTree& tree) {
-  auto state = pop_state();
-  tree.append(ParseNode::Kind::Slice, Token::Invalid(), state.subtree_start);
-}
+#include "parse/node.xmacro.h"
 
 }  // namespace ic

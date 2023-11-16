@@ -36,14 +36,21 @@ cc_library(
 )
 
 cc_library(
+    name = "state_xmacro",
+    textual_hdrs = ["state.xmacro.h"],
+    deps = [":node_xmacro"],
+)
+
+cc_library(
     name = "parser",
     hdrs = ["parser.h"],
     srcs = ["parser.cc"],
-    textual_hdrs = ["state.xmacro.h"],
     deps = [
         ":declaration",
-        ":precedence",
         ":node_index",
+        ":node_xmacro",
+        ":precedence",
+        ":state_xmacro",
         ":tree",
         "//common:debug",
         "//common/language:atoms",

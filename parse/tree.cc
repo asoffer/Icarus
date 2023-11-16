@@ -42,7 +42,7 @@ void ParseTree::append(ParseNode::Kind kind, Token token, int subtree_start) {
 
 void ParseTree::set_back_child_count() {
   int16_t count = 0;
-  for (auto const& unused : children(ParseNodeIndex(nodes_.size() - 1))) {
+  for (auto const& unused : child_indices(ParseNodeIndex(nodes_.size() - 1))) {
     ++count;
   }
   nodes_.back().child_count = count;

@@ -24,6 +24,19 @@ void HandleParseTreeNodeModuleStart(ParseNodeIndex index,
   f.append<jasmin::StackAllocate>(context.current_storage().size().value());
 }
 
+#define IC_XMACRO_PARSE_NODE_PREFIX_UNARY(node, token, precedence)             \
+  void HandleParseTreeNode##node##Start(ParseNodeIndex index,                  \
+                                        EmitContext& context) {}
+#include "parse/node.xmacro.h"
+
+void HandleParseTreeNodeAddress(ParseNodeIndex index, EmitContext& context) {
+  NTH_UNIMPLEMENTED();
+}
+
+void HandleParseTreeNodeDeref(ParseNodeIndex index, EmitContext& context) {
+  NTH_UNIMPLEMENTED();
+}
+
 void HandleParseTreeNodeBooleanLiteral(ParseNodeIndex index,
                                        EmitContext& context) {
   auto node = context.Node(index);

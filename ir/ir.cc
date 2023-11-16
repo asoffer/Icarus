@@ -188,6 +188,22 @@ void HandleParseTreeNodeModuleStart(ParseNodeIndex index, IrContext& context,
   context.push_scope(Scope::Index::Root());
 }
 
+#define IC_XMACRO_PARSE_NODE_PREFIX_UNARY(node, token, precedence)             \
+  void HandleParseTreeNode##node##Start(ParseNodeIndex index,                  \
+                                        IrContext& context,                    \
+                                        diag::DiagnosticConsumer& diag) {}
+#include "parse/node.xmacro.h"
+
+void HandleParseTreeNodeDeref(ParseNodeIndex index, IrContext& context,
+                              diag::DiagnosticConsumer& diag) {
+  NTH_UNIMPLEMENTED();
+}
+
+void HandleParseTreeNodeAddress(ParseNodeIndex index, IrContext& context,
+                                diag::DiagnosticConsumer& diag) {
+  NTH_UNIMPLEMENTED();
+}
+
 void HandleParseTreeNodeDeclaration(ParseNodeIndex index, IrContext& context,
                                     diag::DiagnosticConsumer& diag) {
   DeclarationInfo info = context.declaration_stack().back();

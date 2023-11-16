@@ -23,11 +23,9 @@ IC_XMACRO_PARSER_STATE(DeclaredSymbol)
 IC_XMACRO_PARSER_STATE(ResolveUninferredTypeDeclaration)
 IC_XMACRO_PARSER_STATE(ResolveDeclaration)
 
-IC_XMACRO_PARSER_STATE(Expression)
-IC_XMACRO_PARSER_STATE(ExpressionSuffix)
 IC_XMACRO_PARSER_STATE(ParenthesizedExpression)
 IC_XMACRO_PARSER_STATE(ResolveMemberTerm)
-IC_XMACRO_PARSER_STATE(AtomicTerm)
+
 IC_XMACRO_PARSER_STATE(CommaSeparatedExpressionSequence)
 IC_XMACRO_PARSER_STATE(CommaSeparatedDeclarationSequence)
 IC_XMACRO_PARSER_STATE(ResolveFunctionTypeParameters)
@@ -46,16 +44,21 @@ IC_XMACRO_PARSER_STATE(IfStatementTryElse)
 IC_XMACRO_PARSER_STATE(WhileLoopBody)
 IC_XMACRO_PARSER_STATE(ResolveWhileLoop)
 
-IC_XMACRO_PARSER_STATE(ResolveSliceType)
-IC_XMACRO_PARSER_STATE(ResolvePointerType)
-IC_XMACRO_PARSER_STATE(ResolveBufferPointerType)
-IC_XMACRO_PARSER_STATE(ResolveImport)
 IC_XMACRO_PARSER_STATE(ResolveReturn)
 
-IC_XMACRO_PARSER_STATE(ResolveExpressionGroup)
+IC_XMACRO_PARSER_STATE(Atom)
+IC_XMACRO_PARSER_STATE(TryTermSuffix)
+IC_XMACRO_PARSER_STATE(TryPrefix)
+IC_XMACRO_PARSER_STATE(TryInfix)
+IC_XMACRO_PARSER_STATE(ResolveInfix)
+IC_XMACRO_PARSER_STATE(Expression)
+
+#define IC_XMACRO_PARSE_NODE_PREFIX_UNARY(node, unused_token,                  \
+                                          unused_precedence)                   \
+  IC_XMACRO_PARSER_STATE(Resolve##node)
+#include "parse/node.xmacro.h"
 
 IC_XMACRO_PARSER_STATE(ClosingParenthesis)
 IC_XMACRO_PARSER_STATE(ClosingBrace)
 
 #undef IC_XMACRO_PARSER_STATE
-#undef IC_XMACRO_PARSER_STATE_SEQUENCE

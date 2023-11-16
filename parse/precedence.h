@@ -22,6 +22,12 @@ enum class Priority : int8_t {
   Same = 2,
 };
 
+void NthPrint(auto& printer, auto& f, Priority p) {
+  static constexpr std::string_view PriorityStrings[] = {"Left", "Ambiguous",
+                                                         "Right", "Same"};
+  printer.write(PriorityStrings[1 + static_cast<int8_t>(p)]);
+}
+
 struct Precedence {
   enum class Kind : uint8_t {
     Loosest,
