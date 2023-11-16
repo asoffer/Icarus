@@ -5,11 +5,11 @@ load("//toolchain:ic_rule.bzl", "ic_binary")
 #     srcs = ["example_file.txt"],
 # )
 # 
-# ic_binary(
-#     name = "arguments",
-#     srcs = ["arguments.ic"],
-#     deps = ["//toolchain/stdlib:io"],
-# )
+ic_binary(
+    name = "arguments",
+    srcs = ["arguments.ic"],
+    deps = ["//toolchain/stdlib:io"],
+)
 
 # TODO: Fix this target.
 # ic_binary(

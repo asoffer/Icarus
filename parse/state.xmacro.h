@@ -17,6 +17,9 @@ IC_XMACRO_PARSER_STATE(SubsequentStatementSequence)
 IC_XMACRO_PARSER_STATE(InvocationArgumentSequence)
 IC_XMACRO_PARSER_STATE(ResolveInvocationArgumentSequence)
 
+IC_XMACRO_PARSER_STATE(IndexArgumentSequence)
+IC_XMACRO_PARSER_STATE(ResolveIndexArgumentSequence)
+
 IC_XMACRO_PARSER_STATE(Declaration)
 IC_XMACRO_PARSER_STATE(ColonToEndOfDeclaration)
 IC_XMACRO_PARSER_STATE(DeclaredSymbol)

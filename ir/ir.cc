@@ -568,6 +568,12 @@ void HandleParseTreeNodeMemberExpression(ParseNodeIndex index,
   }
 }
 
+void HandleParseTreeNodeIndexExpression(ParseNodeIndex index,
+                                        IrContext& context,
+                                        diag::DiagnosticConsumer& diag) {
+  NTH_UNIMPLEMENTED();
+}
+
 void HandleParseTreeNodeCallExpression(ParseNodeIndex index, IrContext& context,
                                        diag::DiagnosticConsumer& diag) {
   auto node = context.Node(index);
@@ -671,6 +677,10 @@ void HandleParseTreeNodeDeclaredIdentifier(ParseNodeIndex index,
                                            diag::DiagnosticConsumer& diag) {
   context.declaration_stack().back().index = index;
 }
+
+void HandleParseTreeNodeIndexArgumentStart(ParseNodeIndex index,
+                                           IrContext& context,
+                                           diag::DiagnosticConsumer& diag) {}
 
 void HandleParseTreeNodeInvocationArgumentStart(
     ParseNodeIndex index, IrContext& context, diag::DiagnosticConsumer& diag) {}

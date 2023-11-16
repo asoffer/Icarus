@@ -431,6 +431,11 @@ void HandleParseTreeNodeMemberExpression(ParseNodeIndex index,
   }
 }
 
+void HandleParseTreeNodeIndexExpression(ParseNodeIndex index,
+                                        EmitContext& context) {
+  NTH_UNIMPLEMENTED();
+}
+
 void HandleParseTreeNodeCallExpression(ParseNodeIndex index,
                                        EmitContext& context) {
   auto iter = context.rotation_count.find(index);
@@ -447,6 +452,9 @@ void HandleParseTreeNodeBufferPointer(ParseNodeIndex index,
                                       EmitContext& context) {
   context.current_function().append<ConstructBufferPointerType>();
 }
+
+void HandleParseTreeNodeIndexArgumentStart(ParseNodeIndex index,
+                                           EmitContext& context) {}
 
 void HandleParseTreeNodeInvocationArgumentStart(ParseNodeIndex index,
                                                 EmitContext& context) {}

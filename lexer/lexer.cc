@@ -72,6 +72,13 @@ TokenBuffer Lex(std::string_view source,
     lex::ConsumeWhile<WhitespaceCharacter>(source);
     if (source.empty()) { break; }
 
+    // We need to special-case `[*]` because otherwise we'll lex `[`.
+    if (source.starts_with("[*]")) {
+      [[maybe_unused]] bool b = lexer.TryLexOperator(source);
+      NTH_REQUIRE((v.debug), b);
+      continue;
+    }
+
     switch (source.front()) {
 #define IC_XMACRO_TOKEN_KIND_OPEN(kind, symbol)                                \
   case symbol:                                                                 \

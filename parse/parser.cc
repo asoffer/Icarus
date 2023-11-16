@@ -619,6 +619,17 @@ void Parser::HandleTryTermSuffix(ParseTree& tree) {
         push_state(Expression(tree));
       }
       return;
+    case Token::Kind::LeftBracket:
+      ++iterator_;
+      IgnoreAnyNewlines();
+      tree.append(ParseNode::Kind::IndexArgumentStart, current_token(),
+                  tree.size());
+      push_state({.kind          = State::Kind::IndexArgumentSequence,
+                  .subtree_start = state().back().subtree_start});
+      if (current_token().kind() != Token::Kind::RightBracket) {
+        push_state(Expression(tree));
+      }
+      return;
     default: pop_and_discard_state(); break;
   }
 }
@@ -684,6 +695,10 @@ void Parser::HandleAtom(ParseTree& tree) {
       }
       return;
     } break;
+    case Token::Kind::LeftBracket: {
+      NTH_UNIMPLEMENTED();
+    } break;
+
 #define IC_XMACRO_ATOM(token_kind, parse_node_kind)                            \
   case Token::Kind::token_kind:                                                \
     k = ParseNode::Kind::parse_node_kind;                                      \
@@ -788,6 +803,20 @@ void Parser::HandleClosingParenthesis(ParseTree& tree) {
     pop_and_discard_state();
   } else {
     NTH_UNIMPLEMENTED();
+  }
+}
+
+void Parser::HandleIndexArgumentSequence(ParseTree& tree) {
+  IgnoreAnyNewlines();
+  if (current_token().kind() == Token::Kind::RightBracket) {
+    ExpandState(State::Kind::ResolveIndexArgumentSequence);
+    return;
+  } else if (current_token().kind() == Token::Kind::Comma) {
+    ++iterator_;
+    IgnoreAnyNewlines();
+    ExpandState(Expression(tree), State::Kind::IndexArgumentSequence);
+  } else {
+    NTH_UNREACHABLE("{}") <<= {current_token().kind()};
   }
 }
 
@@ -903,6 +932,15 @@ void Parser::HandleResolveAssignment(ParseTree& tree) {
 void Parser::HandleResolveInvocationArgumentSequence(ParseTree& tree) {
   NTH_REQUIRE(current_token().kind() == Token::Kind::RightParen);
   tree.append(ParseNode::Kind::CallExpression, current_token(),
+              state().back().subtree_start);
+  tree.set_back_child_count();
+  ++iterator_;
+  pop_and_discard_state();
+}
+
+void Parser::HandleResolveIndexArgumentSequence(ParseTree& tree) {
+  NTH_REQUIRE(current_token().kind() == Token::Kind::RightBracket);
+  tree.append(ParseNode::Kind::IndexExpression, current_token(),
               state().back().subtree_start);
   tree.set_back_child_count();
   ++iterator_;
