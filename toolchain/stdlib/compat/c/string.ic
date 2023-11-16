@@ -8,7 +8,7 @@ let strcpy   ::= builtin.foreign("strcpy", ([*]char, [*]char) -> [*]char)
 let strncpy  ::= builtin.foreign("strncpy", ([*]char, [*]char, size_t) -> [*]char)
 let strcat   ::= builtin.foreign("strcat", ([*]char, [*]char) -> [*]char)
 let strncat  ::= builtin.foreign("strncat", ([*]char, [*]char, size_t) -> [*]char)
-// TODO: Implement `strxform`
+let strxfrm  ::= builtin.foreign("strxfrm", ([*]char, [*]char, size_t) -> [*]char)
 
 let strlen   ::= builtin.foreign("strlen", [*]char -> size_t)
 let strcmp   ::= builtin.foreign("strcmp", ([*]char, [*]char) -> c.int)
