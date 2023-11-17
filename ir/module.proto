@@ -44,6 +44,8 @@ message InstructionProto {
     ADD_POINTER = 33;
     LOAD_PROGRAM_ARGUMENTS = 34;
     DUPLICATE = 35;
+    ASCII_ENCODE = 36;
+    ASCII_DECODE = 37;
   }
   OpCode op_code = 1;
   repeated uint64 content = 2;

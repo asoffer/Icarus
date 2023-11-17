@@ -8,7 +8,7 @@
 #include "type/type.h"
 
 namespace ic {
-
+namespace {
 nth::NoDestructor<IrFunction> Function([] {
   IrFunction f(1, 1);
   f.append<TypeKind>();
@@ -69,57 +69,60 @@ nth::NoDestructor<IrFunction> ForeignType([] {
   return f;
 }());
 
+nth::NoDestructor<std::vector<std::string>> BuiltinNamesImpl;
+
+}  // namespace
+
+std::span<std::string const> BuiltinNames() { return *BuiltinNamesImpl; }
+
 Module BuiltinModule() {
   uint32_t next_id = 0;
-
   Module m;
-  m.Insert(
-      Identifier("opaque"),
-      {.qualified_type = type::QualifiedType::Constant(type::Function(
-           type::Parameters(std::vector<type::ParametersType::Parameter>{}),
-           {type::Type_})),
-       .value          = {jasmin::Value(&*Opaque)}});
-  global_function_registry.Register(
-      FunctionId(ModuleId::Builtin(), LocalFunctionId(next_id++)), &*Opaque);
 
-  m.Insert(
-      Identifier("arguments"),
-      {.qualified_type = type::QualifiedType::Constant(type::Function(
-           type::Parameters(std::vector<type::ParametersType::Parameter>{}),
-           {type::Slice(type::Slice(type::Char))})),
-       .value          = {jasmin::Value(&*Arguments)}});
-  global_function_registry.Register(
-      FunctionId(ModuleId::Builtin(), LocalFunctionId(next_id++)), &*Arguments);
+  auto Register = [&](std::string_view name, type::Type t,
+                      IrFunction const& f) {
+    m.Insert(Identifier(name),
+             {.qualified_type = type::QualifiedType::Constant(t),
+              .value          = {jasmin::Value(&f)}});
+    global_function_registry.Register(
+        FunctionId(ModuleId::Builtin(), LocalFunctionId(next_id++)), &f);
+    BuiltinNamesImpl->emplace_back(name);
+  };
 
-  m.Insert(Identifier("ascii_encode"),
-           {.qualified_type = type::QualifiedType::Constant(type::Function(
-                type::Parameters(std::vector<type::ParametersType::Parameter>{
-                    {.type = type::U8}}),
-                {type::Char})),
-            .value          = {jasmin::Value(&*AsciiEncodeFn)}});
-  global_function_registry.Register(
-      FunctionId(ModuleId::Builtin(), LocalFunctionId(next_id++)),
-      &*AsciiEncodeFn);
+  Register("opaque",
+           type::Function(
+               type::Parameters(std::vector<type::ParametersType::Parameter>{}),
+               {type::Type_}),
+           *Opaque);
 
-  m.Insert(Identifier("ascii_decode"),
-           {.qualified_type = type::QualifiedType::Constant(type::Function(
-                type::Parameters(std::vector<type::ParametersType::Parameter>{
-                    {.type = type::Char}}),
-                {type::U8})),
-            .value          = {jasmin::Value(&*AsciiDecodeFn)}});
-  global_function_registry.Register(
-      FunctionId(ModuleId::Builtin(), LocalFunctionId(next_id++)),
-      &*AsciiDecodeFn);
+  Register("arguments",
+           type::Function(
+               type::Parameters(std::vector<type::ParametersType::Parameter>{}),
+               {type::Slice(type::Slice(type::Char))}),
+           *Arguments);
 
-  m.Insert(Identifier("slice"),
-           {.qualified_type = type::QualifiedType::Constant(type::Function(
-                type::Parameters(std::vector<type::ParametersType::Parameter>{
-                    {.type = type::BufPtr(type::Char)}, {.type = type::U64}}),
-                {type::Slice(type::Char)})),
-            .value          = {jasmin::Value(&*Slice)}});
-  global_function_registry.Register(
-      FunctionId(ModuleId::Builtin(), LocalFunctionId(next_id++)), &*Slice);
+  Register("ascii_encode",
+           type::Function(
+               type::Parameters(std::vector<type::ParametersType::Parameter>{
+                   {.type = type::U8}}),
+               {type::Char}),
+           *AsciiEncodeFn);
 
+  Register("ascii_decode",
+           type::Function(
+               type::Parameters(std::vector<type::ParametersType::Parameter>{
+                   {.type = type::Char}}),
+               {type::U8}),
+           *AsciiDecodeFn);
+
+  Register("slice",
+           type::Function(
+               type::Parameters(std::vector<type::ParametersType::Parameter>{
+                   {.type = type::BufPtr(type::Char)}, {.type = type::U64}}),
+               {type::Slice(type::Char)}),
+           *Slice);
+
+  // TODO: There's something wrong with registration happening after this point.
   m.Insert(
       Identifier("foreign"),
       {.qualified_type = type::QualifiedType::Constant(type::GenericFunction(
@@ -129,16 +132,8 @@ Module BuiltinModule() {
       FunctionId(ModuleId::Builtin(), LocalFunctionId(next_id++)),
       &*ForeignType);
 
-  // TODO: There's something wrong with registration happening after this point.
   global_function_registry.Register(
       FunctionId(ModuleId::Builtin(), LocalFunctionId(next_id++)), &*Foreign);
-
-  m.Insert(Identifier("function"),
-           {.qualified_type =
-                type::QualifiedType::Constant(type::Pattern(type::Type_)),
-            .value = {jasmin::Value(&*Function)}});
-  global_function_registry.Register(
-      FunctionId(ModuleId::Builtin(), LocalFunctionId(next_id++)), &*Function);
 
   return m;
 }
