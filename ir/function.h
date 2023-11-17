@@ -151,6 +151,14 @@ struct AddPointer : jasmin::StackMachineInstruction<AddPointer> {
   }
 };
 
+struct AsciiEncode : jasmin::StackMachineInstruction<AsciiEncode> {
+  static char execute(uint8_t n) { return n; }
+};
+
+struct AsciiDecode : jasmin::StackMachineInstruction<AsciiDecode> {
+  static uint8_t execute(char c) { return c; }
+};
+
 struct LoadProgramArguments
     : jasmin::StackMachineInstruction<LoadProgramArguments> {
   static void execute(jasmin::ValueStack& value_stack);
@@ -179,7 +187,8 @@ using InstructionSet = jasmin::MakeInstructionSet<
     jasmin::Load, jasmin::StackAllocate, jasmin::StackOffset,
     jasmin::Add<int64_t>, jasmin::Subtract<int64_t>, jasmin::Multiply<int64_t>,
     jasmin::Mod<int64_t>, jasmin::Equal<int64_t>, jasmin::LessThan<int64_t>,
-    AddPointer, LoadProgramArguments, jasmin::Duplicate>;
+    AddPointer, LoadProgramArguments, jasmin::Duplicate, AsciiEncode,
+    AsciiDecode>;
 using IrFunction = jasmin::Function<InstructionSet>;
 
 }  // namespace ic

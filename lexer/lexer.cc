@@ -20,6 +20,7 @@ struct Lexer {
   bool TryLexNumber(std::string_view& source);
   bool TryLexOperator(std::string_view& source);
   bool TryLexStringLiteral(std::string_view& source);
+  bool TryLexCharacterLiteral(std::string_view& source);
   bool TryLexComment(std::string_view& source);
 
   uint32_t StartIndex(std::string_view s) const { return s.data() - start_; }
@@ -106,11 +107,51 @@ TokenBuffer Lex(std::string_view source,
     if (lexer.TryLexComment(source)) { continue; }
     if (lexer.TryLexOperator(source)) { continue; }
     if (lexer.TryLexStringLiteral(source)) { continue; }
+    if (lexer.TryLexCharacterLiteral(source)) { continue; }
 
     break;
   }
   buffer.Append(Token::Eof());
   return buffer;
+}
+
+bool Lexer::TryLexCharacterLiteral(std::string_view& source) {
+  // TODO: Actually most of these situations where you're returning false are
+  // diagnosable errors because you know nothing else will match.
+  if (source.size() < 4 or not source.starts_with("!'")) { return false; }
+  switch (source[2]) {
+    case '\\': {
+      if (source.size() < 5) { return false; }
+      char c;
+      switch (source[3]) {
+        case 'n': c = '\n'; break;
+        case 'r': c = '\r'; break;
+        case 't': c = '\t'; break;
+        case '\'': c = '\''; break;
+        case '\\': c = '\\'; break;
+        case '0': c = '\0'; break;
+        default: return false;
+      }
+
+     if (source[4] == '\'') {
+        token_buffer_.Append(Token::CharacterLiteral(c, StartIndex(source)));
+        source.remove_prefix(5);
+        return true;
+      } else {
+        return false;
+      }
+    } break;
+    case '\'': NTH_UNIMPLEMENTED(); break;
+    default:
+      if (source[3] == '\'') {
+        token_buffer_.Append(
+            Token::CharacterLiteral(source[2], StartIndex(source)));
+        source.remove_prefix(4);
+        return true;
+      } else {
+        return false;
+      }
+  }
 }
 
 bool Lexer::TryLexComment(std::string_view& source) {

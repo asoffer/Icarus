@@ -7,5 +7,6 @@ ic_library(
     srcs = ["io.ic"],
     deps = [
         "//toolchain/stdlib/compat/c:types",
+        "//toolchain/stdlib/compat/c:stdio",
     ]
 )

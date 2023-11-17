@@ -1,4 +1,5 @@
-let c ::= import "std.compat.c.types"
+let c     ::= import "std.compat.c.types"
+let stdio ::= import "std.compat.c.stdio"
 
 let Print ::= fn(let s: \char) -> () {
   let printf ::= builtin.foreign("printf", ([*]char, c.int, [*]char) -> c.int)
@@ -8,6 +9,10 @@ let Print ::= fn(let s: \char) -> () {
 let PrintNum ::= fn(let n: i64) -> () {
   let printf ::= builtin.foreign("printf", ([*]char, i64) -> c.int)
   printf("%lld".data, n)
+}
+
+let PrintChar ::= fn(let ch: char) -> () {
+  stdio.putchar(builtin.ascii_decode(ch))
 }
 
 let PrintBool ::= fn(let b: bool) -> () {

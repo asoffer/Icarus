@@ -132,6 +132,12 @@ void HandleParseTreeNodeStringLiteral(ParseNodeIndex index,
   context.current_function().append<PushStringLiteral>(s.data(), s.size());
 }
 
+void HandleParseTreeNodeCharacterLiteral(ParseNodeIndex index,
+                                         EmitContext& context) {
+  context.current_function().append<jasmin::Push>(
+      context.Node(index).token.AsCharacterLiteral());
+}
+
 void HandleParseTreeNodeTypeLiteral(ParseNodeIndex index,
                                     EmitContext& context) {
   auto node = context.Node(index);

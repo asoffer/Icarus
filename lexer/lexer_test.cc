@@ -159,5 +159,22 @@ NTH_INVOKE_TEST("lex/string-literal") {
   }
 }
 
+NTH_TEST("lex/character-literal", std::string_view content) {
+  diag::NullConsumer d;
+  auto token_buffer = Lex(content, d);
+
+  NTH_EXPECT(token_buffer >>=
+             ElementsAreSequentially(HasKind(Token::Kind::CharacterLiteral),
+                                     HasKind(Token::Kind::Eof)));
+}
+
+NTH_INVOKE_TEST("lex/character-literal") {
+  for (std::string_view content :
+       {R"(!'a')", R"(!'b')", R"(!'c')", R"(!'!')", R"(!'\0')", R"(!'\t')",
+        R"(!'\n')", R"(!'\r')", R"(!'\'')", R"(!'\\')", R"(!'\0')"}) {
+    co_yield content;
+  }
+}
+
 }  // namespace
 }  // namespace ic::lex

@@ -42,11 +42,15 @@ struct Token {
   // Constructs a string-literal token at the given offset.
   static Token StringLiteral(uint32_t offset, uint32_t index);
 
+  // Constructs a character-literal token at the given offset.
+  static Token CharacterLiteral(char c, uint32_t offset);
+
   // Constructs an identifier token at the given offset.
   static Token Identifier(uint32_t offset, Identifier id);
 
   // Constructs a symbol token with the given kind at the given `offset`.
   static Token Symbol(Kind k, uint32_t offset);
+
 
   // Constructs a closing-symbol (e.g `]` or `}`) at the given `offset` for a
   // corresponding open-symbol whose token index is given by `open_index`
@@ -67,6 +71,7 @@ struct Token {
 
   Integer AsInteger() const;
   bool AsBoolean() const;
+  char AsCharacterLiteral() const;
   uint32_t AsStringLiteralIndex() const;
 
   friend void NthPrint(nth::Printer auto& p, nth::FormatterFor<Token> auto& f,

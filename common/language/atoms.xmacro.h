@@ -13,6 +13,7 @@ IC_XMACRO_ATOM(True, BooleanLiteral)
 IC_XMACRO_ATOM(False, BooleanLiteral)
 IC_XMACRO_ATOM(Null, NullTypeLiteral)
 IC_XMACRO_ATOM(StringLiteral, StringLiteral)
+IC_XMACRO_ATOM(CharacterLiteral, CharacterLiteral)
 IC_XMACRO_ATOM(IntegerLiteral, IntegerLiteral)
 IC_XMACRO_ATOM(Identifier, Identifier)
 

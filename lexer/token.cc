@@ -35,6 +35,8 @@ bool Token::AsBoolean() const {
   }
 }
 
+char Token::AsCharacterLiteral() const { return payload_; }
+
 uint32_t Token::AsStringLiteralIndex() const {
   NTH_REQUIRE(kind() == Kind::StringLiteral);
   return payload_;
@@ -47,6 +49,14 @@ Token Token::Identifier(uint32_t offset, ic::Identifier identifier_index) {
   token.offset_  = offset;
   token.kind_    = static_cast<uint8_t>(Kind::Identifier);
   token.payload_ = identifier_index.value();
+  return token;
+}
+
+Token Token::CharacterLiteral(char c, uint32_t offset) {
+  Token token;
+  token.offset_  = offset;
+  token.kind_    = static_cast<uint8_t>(Kind::CharacterLiteral);
+  token.payload_ = c;
   return token;
 }
 

@@ -98,6 +98,7 @@ IC_XMACRO_PARSE_NODE_CONSTANT(BooleanLiteral, type::Bool)
 IC_XMACRO_PARSE_NODE_CONSTANT(NullTypeLiteral, type::NullType)
 IC_XMACRO_PARSE_NODE_CONSTANT(IntegerLiteral, type::Integer)
 IC_XMACRO_PARSE_NODE_CONSTANT(StringLiteral, type::Slice(type::Char))
+IC_XMACRO_PARSE_NODE_CONSTANT(CharacterLiteral, type::Char)
 IC_XMACRO_PARSE_NODE_CONSTANT(TypeLiteral, type::Type_)
 IC_XMACRO_PARSE_NODE_CONSTANT(BuiltinLiteral, type::Module)
 
