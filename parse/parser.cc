@@ -521,7 +521,7 @@ void Parser::HandleBracedStatementSequence(ParseTree& tree) {
         },
         State::Kind::ClosingBrace);
   } else {
-    NTH_UNIMPLEMENTED();
+    NTH_UNIMPLEMENTED("{}") <<= {current_token().kind()};
   }
 }
 
@@ -629,9 +629,15 @@ void Parser::HandleTryTermSuffix(ParseTree& tree) {
         push_state(Expression(tree));
       }
       return;
-    case Token::Kind::LeftBrace:
-      if (state()[state().size() - 3].kind !=
-          State::Kind::FunctionLiteralBody) {
+    case Token::Kind::LeftBrace: {
+      bool in_fn = false;
+      for (auto iter = state().rbegin();
+           iter->ambient_precedence != Precedence::Loosest(); ++iter) {
+        if (iter->ambient_precedence == Precedence::Function()) {
+          in_fn = true;
+        }
+      }
+      if (not in_fn) {
         tree.back().scope_index = PushScope();
         tree.append_leaf(ParseNode::Kind::ScopeBodyStart, *iterator_);
         tree.append_leaf(ParseNode::Kind::ScopeBlockStart, *iterator_);
@@ -656,6 +662,7 @@ void Parser::HandleTryTermSuffix(ParseTree& tree) {
       } else {
         pop_and_discard_state();
       }
+    } break;
       break;
     default: pop_and_discard_state(); break;
   }
@@ -674,10 +681,11 @@ void Parser::HandleAtom(ParseTree& tree) {
         ExpandState(
             State{
                 .kind = State::Kind::FunctionLiteralReturnTypeStart,
-                .subtree_start = tree.size(),
+                .ambient_precedence = Precedence::Function(),
+                .subtree_start      = tree.size(),
             },
             State{
-                .kind = State::Kind::FunctionLiteralBody,
+                .kind          = State::Kind::FunctionLiteralBody,
                 .subtree_start = tree.size(),
             },
             State::Kind::ResolveFunctionLiteral);
@@ -692,8 +700,9 @@ void Parser::HandleAtom(ParseTree& tree) {
                 .subtree_start = tree.size(),
             },
             State{
-                .kind          = State::Kind::FunctionLiteralReturnTypeStart,
-                .subtree_start = tree.size(),
+                .kind = State::Kind::FunctionLiteralReturnTypeStart,
+                .ambient_precedence = Precedence::Function(),
+                .subtree_start      = tree.size(),
             },
             State{
                 .kind          = State::Kind::FunctionLiteralBody,
