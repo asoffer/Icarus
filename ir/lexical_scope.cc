@@ -10,8 +10,6 @@ LexicalScope::Index LexicalScope::Index::Invalid() {
   return Index(std::numeric_limits<Index::underlying_type>::max());
 }
 
-LexicalScope::Index LexicalScope::parent() const { return parent_; }
-
 LexicalScope::DeclarationInfo const *LexicalScope::identifier(
     Identifier id) const {
   auto iter = identifiers_.find(id);
@@ -22,7 +20,7 @@ LexicalScope::DeclarationInfo const *LexicalScope::identifier(
 LexicalScope::Index LexicalScopeTree::insert_child(
     LexicalScope::Index parent_index) {
   LexicalScope::Index index(scopes_.size());
-  scopes_.push_back(LexicalScope(parent_index));
+  scopes_.push_back(LexicalScope(index.value() - parent_index.value()));
   return index;
 }
 
@@ -42,11 +40,8 @@ LexicalScope const &LexicalScopeTree::operator[](
 
 LexicalScope::DeclarationInfo const *LexicalScopeTree::identifier(
     LexicalScope::Index index, Identifier id) const {
-  while (index != LexicalScope::Index::Invalid()) {
-    auto const &scope = scopes_[index.value()];
-    auto const *info  = scope.identifier(id);
-    if (info) { return info; }
-    index = scope.parent();
+  for (auto const &scope : ancestors(index)) {
+    if (auto const *info = scope.identifier(id)) { return info; }
   }
   return nullptr;
 }

@@ -208,6 +208,7 @@ cc_library(
         "//parse:node_index",
         "//type",
         "@asoffer_nth//nth/debug",
+        "@asoffer_nth//nth/utility:iterator_range",
         "@com_google_absl//absl/container:flat_hash_map",
     ]
 )
