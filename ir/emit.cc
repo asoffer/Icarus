@@ -64,7 +64,7 @@ void HandleParseTreeNodeModule(ParseNodeIndex index, EmitContext& context) {
 void HandleParseTreeNodeModuleStart(ParseNodeIndex index,
                                     EmitContext& context) {
   auto& f = context.current_module.initializer();
-  context.push_function(f, Scope::Index::Root());
+  context.push_function(f, LexicalScope::Index::Root());
   f.append<jasmin::StackAllocate>(context.current_storage().size().value());
 }
 
@@ -101,6 +101,44 @@ void HandleParseTreeNodeDeref(ParseNodeIndex index, EmitContext& context) {
     auto qt = context.QualifiedTypeOf(index - 1);
     Load(context.current_function(), type::Contour(qt.type()).byte_width());
   }
+}
+
+void HandleParseTreeNodeScopeBlockStart(ParseNodeIndex index,
+                                        EmitContext& context) {
+  context.current_function().append<NoOp>();
+}
+
+void HandleParseTreeNodeScopeBlock(ParseNodeIndex index,
+                                        EmitContext& context) {
+  // TODO: NTH_UNIMPLEMENTED();
+}
+
+void HandleParseTreeNodeScopeBodyStart(ParseNodeIndex index,
+                                       EmitContext& context) {
+  context.queue.front().branches.push_back(
+      context.current_function().append_with_placeholders<jasmin::Jump>());
+}
+
+void HandleParseTreeNodeScope(ParseNodeIndex index, EmitContext& context) {
+  jasmin::OpCodeRange final_jump = context.queue.front().branches.back();
+  auto land                      = context.current_function().append<NoOp>();
+  context.queue.front().branches.pop_back();
+  context.current_function().set_value(
+      final_jump, 0, jasmin::OpCodeRange::Distance(land, final_jump));
+}
+
+void HandleParseTreeNodeScopeLiteral(ParseNodeIndex index,
+                                     EmitContext& context) {
+  Scope const* s = &context.current_scope();
+  context.pop_scope();
+  context.current_function().append<jasmin::Push>(s);
+}
+
+Iteration HandleParseTreeNodeScopeLiteralStart(ParseNodeIndex index,
+                                               EmitContext& context) {
+  context.push_scope(context.current_module.add_scope(),
+                     context.Node(index).scope_index);
+  return Iteration::SkipTo(index + 2);
 }
 
 void HandleParseTreeNodeBooleanLiteral(ParseNodeIndex index,
@@ -214,8 +252,8 @@ void HandleParseTreeNodeDeclaration(ParseNodeIndex index,
       f.append<jasmin::Return>();
       jasmin::ValueStack value_stack;
       jasmin::Execute(f, value_stack);
-      auto const* info = context.scopes.identifier(
-          context.current_scope_index(),
+      auto const* info = context.lexical_scopes.identifier(
+          context.current_lexical_scope_index(),
           context.Node(decl_info.index).token.Identifier());
       NTH_REQUIRE(info != nullptr);
       context.constants.insert_or_assign(
@@ -238,8 +276,8 @@ void HandleParseTreeNodeDeclaration(ParseNodeIndex index,
       f.append<jasmin::Return>();
       jasmin::ValueStack value_stack;
       jasmin::Execute(f, value_stack);
-      auto const* info = context.scopes.identifier(
-          context.current_scope_index(),
+      auto const* info = context.lexical_scopes.identifier(
+          context.current_lexical_scope_index(),
           context.Node(decl_info.index).token.Identifier());
       NTH_REQUIRE(info != nullptr);
       context.constants.insert_or_assign(
@@ -537,12 +575,12 @@ void HandleParseTreeNodeWhileLoopBodyStart(ParseNodeIndex index,
   context.current_function().append<jasmin::Not>();
   context.queue.front().branches.push_back(
       context.current_function().append_with_placeholders<jasmin::JumpIf>());
-  context.push_scope(context.Node(index).scope_index);
+  context.push_lexical_scope(context.Node(index).scope_index);
 }
 
 void HandleParseTreeNodeWhileLoop(ParseNodeIndex index, EmitContext& context) {
   // TODO: You don't really need all these no-ops.
-  context.pop_scope();
+  context.pop_lexical_scope();
 
   jasmin::OpCodeRange jump_to_land = context.queue.front().branches.back();
   context.queue.front().branches.pop_back();
@@ -562,7 +600,7 @@ void HandleParseTreeNodeWhileLoop(ParseNodeIndex index, EmitContext& context) {
 
 void HandleParseTreeNodeIfStatementTrueBranchStart(ParseNodeIndex index,
                                                    EmitContext& context) {
-  context.push_scope(context.Node(index).scope_index);
+  context.push_lexical_scope(context.Node(index).scope_index);
   context.current_function().append<jasmin::Not>();
   context.queue.front().branches.push_back(
       context.current_function().append_with_placeholders<jasmin::JumpIf>());
@@ -585,7 +623,7 @@ void HandleParseTreeNodeIfStatement(ParseNodeIndex index,
   jasmin::OpCodeRange land = context.current_function().append<NoOp>();
   context.current_function().set_value(
       jump, 0, jasmin::OpCodeRange::Distance(land, jump));
-  context.pop_scope();
+  context.pop_lexical_scope();
 }
 
 void HandleParseTreeNodeStatementStart(ParseNodeIndex index,
@@ -646,6 +684,11 @@ void EmitContext::Push(std::span<jasmin::Value const> vs, type::Type t) {
     NTH_REQUIRE((v.harden), vs.size() == 1);
     current_function().append<PushType>(vs[0].as<type::Type>());
     return;
+  } else if (t == type::Scope) {
+    auto & c = current_function();
+    NTH_REQUIRE((v.harden), vs.size() == 1);
+    vs[0].as<Scope const *>()->AppendTo(c);
+    return;
   }
   switch (t.kind()) {
     case type::Type::Kind::GenericFunction:
@@ -673,6 +716,7 @@ void EmitContext::Push(std::span<jasmin::Value const> vs,
                        std::span<type::Type const> ts) {
   for (type::Type t : ts) {
     size_t width = type::JasminSize(t);
+    NTH_REQUIRE((v.debug), width <= vs.size());
     Push(vs.subspan(0, width), t);
     vs.subspan(width);
   }
@@ -771,7 +815,7 @@ void EmitContext::Evaluate(nth::interval<ParseNodeIndex> subtree,
   for (type::Type t : types) { size += type::JasminSize(t); }
   IrFunction f(0, size);
   queue.push({.range = subtree});
-  push_function(f, Scope::Index::Root());
+  push_function(f, LexicalScope::Index::Root());
 
   EmitIr(*this);
   f.append<jasmin::Return>();

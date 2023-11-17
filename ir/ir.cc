@@ -9,7 +9,7 @@
 #include "common/module_id.h"
 #include "common/resources.h"
 #include "common/string.h"
-#include "ir/scope.h"
+#include "ir/lexical_scope.h"
 #include "ir/type_stack.h"
 #include "jasmin/execute.h"
 #include "jasmin/value_stack.h"
@@ -107,19 +107,23 @@ struct IrContext {
     return queue.front().operator_stack;
   }
 
-  void pop_scope() {
+  void pop_lexical_scope() {
     NTH_REQUIRE((v.harden), not queue.empty());
-    queue.front().scopes.pop_back();
+    queue.front().lexical_scopes.pop_back();
   }
 
-  void push_scope(Scope::Index index) { queue.front().scopes.push_back(index); }
-
-  Scope::Index current_scope_index() {
-    NTH_REQUIRE((v.harden), not queue.front().scopes.empty());
-    return queue.front().scopes.back();
+  void push_lexical_scope(LexicalScope::Index index) {
+    queue.front().lexical_scopes.push_back(index);
   }
 
-  Scope& current_scope() { return emit.scopes[current_scope_index()]; }
+  LexicalScope::Index current_lexical_scope_index() {
+    NTH_REQUIRE((v.harden), not queue.front().lexical_scopes.empty());
+    return queue.front().lexical_scopes.back();
+  }
+
+  LexicalScope& current_lexical_scope() {
+    return emit.lexical_scopes[current_lexical_scope_index()];
+  }
 
   LocalStorage& current_storage() {
     NTH_REQUIRE((v.harden), not queue.front().functions.empty());
@@ -132,8 +136,8 @@ struct IrContext {
     nth::interval<ParseNodeIndex> interval;
     std::vector<Token::Kind> operator_stack;
     std::vector<DeclarationInfo> declaration_stack;
-    std::vector<Scope::Index> scopes;
-    std::vector<Scope::Index> functions;
+    std::vector<LexicalScope::Index> lexical_scopes;
+    std::vector<LexicalScope::Index> functions;
 
    private:
     friend IrContext;
@@ -179,13 +183,13 @@ bool RequireConstant(type::QualifiedType actual, type::Type expected,
 void HandleParseTreeNodeModule(ParseNodeIndex index, IrContext& context,
                                diag::DiagnosticConsumer& diag) {
   context.queue.front().functions.pop_back();
-  context.pop_scope();
+  context.pop_lexical_scope();
 }
 
 void HandleParseTreeNodeModuleStart(ParseNodeIndex index, IrContext& context,
                                     diag::DiagnosticConsumer& diag) {
-  context.queue.front().functions.push_back(Scope::Index::Root());
-  context.push_scope(Scope::Index::Root());
+  context.queue.front().functions.push_back(LexicalScope::Index::Root());
+  context.push_lexical_scope(LexicalScope::Index::Root());
 }
 
 #define IC_XMACRO_PARSE_NODE_PREFIX_UNARY(node, token, precedence)             \
@@ -200,7 +204,7 @@ void HandleParseTreeNodeDeref(ParseNodeIndex index, IrContext& context,
   auto qt = context.type_stack().top()[0];
   context.emit.SetQualifiedType(index - 1, qt);
   context.type_stack().pop();
-  switch  (qt.type().kind()) {
+  switch (qt.type().kind()) {
     case type::Type::Kind::Pointer:
       context.type_stack().push(
           {type::QualifiedType::Unqualified(qt.type().AsPointer().pointee())});
@@ -211,6 +215,46 @@ void HandleParseTreeNodeDeref(ParseNodeIndex index, IrContext& context,
       break;
     default: NTH_UNIMPLEMENTED();
   }
+}
+
+void HandleParseTreeNodeScopeBlockStart(ParseNodeIndex index,
+                                        IrContext& context,
+                                        diag::DiagnosticConsumer& diag) {
+  LexicalScope::Index scope_index = context.Node(index).scope_index;
+  context.push_lexical_scope(scope_index);
+}
+
+void HandleParseTreeNodeScopeBlock(ParseNodeIndex index, IrContext& context,
+                                   diag::DiagnosticConsumer& diag) {
+  context.pop_lexical_scope();
+}
+
+void HandleParseTreeNodeScopeBodyStart(ParseNodeIndex index, IrContext& context,
+                                       diag::DiagnosticConsumer& diag) {
+  context.type_stack().pop();
+}
+
+void HandleParseTreeNodeScope(ParseNodeIndex index, IrContext& context,
+                              diag::DiagnosticConsumer& diag) {
+  context.type_stack().push({});
+}
+
+void HandleParseTreeNodeScopeLiteral(ParseNodeIndex index, IrContext& context,
+                                     diag::DiagnosticConsumer& diag) {
+  context.type_stack().push({type::QualifiedType::Constant(type::Scope)});
+}
+
+Iteration HandleParseTreeNodeScopeLiteralStart(ParseNodeIndex index,
+                                               IrContext& context,
+                                               diag::DiagnosticConsumer& diag) {
+  context.current_lexical_scope().insert_identifier(
+      context.Node(index + 1).token.Identifier(),
+      {
+          .declaration    = index + 1,
+          .identifier     = index + 1,
+          .qualified_type = type::QualifiedType::Constant(type::Bool),  // TODO
+      });
+  return Iteration::SkipTo(index + 2);
 }
 
 void HandleParseTreeNodeAddress(ParseNodeIndex index, IrContext& context,
@@ -234,7 +278,7 @@ void HandleParseTreeNodeDeclaration(ParseNodeIndex index, IrContext& context,
 
     auto qt = info.kind.constant() ? type::QualifiedType::Constant(*type)
                                    : type::QualifiedType::Unqualified(*type);
-    context.current_scope().insert_identifier(
+    context.current_lexical_scope().insert_identifier(
         context.Node(info.index).token.Identifier(),
         {
             .declaration    = info.index,
@@ -255,7 +299,7 @@ void HandleParseTreeNodeDeclaration(ParseNodeIndex index, IrContext& context,
     }
     context.emit.SetQualifiedType(index, qt);
 
-    context.current_scope().insert_identifier(
+    context.current_lexical_scope().insert_identifier(
         context.Node(info.index).token.Identifier(),
         {
             .declaration    = info.index,
@@ -304,7 +348,7 @@ void HandleParseTreeNodeDeclaration(ParseNodeIndex index, IrContext& context,
     }
     type::QualifiedType qt = type::QualifiedType::Unqualified(*type);
     context.current_storage().insert(index, qt.type());
-    context.current_scope().insert_identifier(
+    context.current_lexical_scope().insert_identifier(
         context.Node(info.index).token.Identifier(),
         {
             .declaration    = info.index,
@@ -318,7 +362,7 @@ void HandleParseTreeNodeDeclaration(ParseNodeIndex index, IrContext& context,
 void HandleParseTreeNodeStatement(ParseNodeIndex index, IrContext& context,
                                   diag::DiagnosticConsumer& diag) {
   switch (context.Node(context.emit.tree.first_descendant_index(index))
-             .statement_kind) {
+              .statement_kind) {
     case ParseNode::StatementKind::Expression: {
       std::span qts = context.type_stack().top();
       size_t size   = 0;
@@ -360,8 +404,8 @@ Iteration HandleParseTreeNodeIdentifier(ParseNodeIndex index,
   }
 
   // TODO: Actually want to traverse up the scope until you find it.
-  if (auto* decl_info =
-          context.emit.scopes.identifier(context.current_scope_index(), id)) {
+  if (auto* decl_info = context.emit.lexical_scopes.identifier(
+          context.current_lexical_scope_index(), id)) {
     auto const& [decl_id_index, decl_index, decl_qt] = *decl_info;
     context.emit.declarator.emplace(index,
                                     std::pair{decl_id_index, decl_index});
@@ -429,7 +473,7 @@ void HandleParseTreeNodeExpressionPrecedenceGroup(
       context.type_stack().pop();
       context.type_stack().push({type::QualifiedType::Constant(type::Type_)});
     } break;
-    case Token::Kind::Plus: 
+    case Token::Kind::Plus:
     case Token::Kind::Minus:
     case Token::Kind::Percent:
     case Token::Kind::Star: {
@@ -464,7 +508,7 @@ void HandleParseTreeNodeExpressionPrecedenceGroup(
     case Token::Kind::Greater:
     case Token::Kind::LessEqual:
     case Token::Kind::GreaterEqual:
-    case Token::Kind::EqualEqual: 
+    case Token::Kind::EqualEqual:
     case Token::Kind::NotEqual: {
       NTH_REQUIRE(context.type_stack().group_count() >= node.child_count / 2);
       auto iter = context.type_stack().rbegin();
@@ -486,7 +530,8 @@ void HandleParseTreeNodeExpressionPrecedenceGroup(
   }
 }
 
-void HandleParseTreeNodeDeclarationStart(ParseNodeIndex index, IrContext& context,
+void HandleParseTreeNodeDeclarationStart(ParseNodeIndex index,
+                                         IrContext& context,
                                          diag::DiagnosticConsumer&) {
   context.declaration_stack().emplace_back() =
       context.Node(index).declaration_info;
@@ -539,7 +584,7 @@ void HandleParseTreeNodeMemberExpression(ParseNodeIndex index,
       context.type_stack().push({qt});
       context.emit.SetQualifiedType(index, qt);
     } else if (context.Node(index).token.Identifier() == Identifier("count")) {
-      auto qt                     = type::QualifiedType::Unqualified(type::U64);
+      auto qt = type::QualifiedType::Unqualified(type::U64);
       context.type_stack().pop();
       context.type_stack().push({qt});
       context.emit.SetQualifiedType(index, qt);
@@ -799,9 +844,9 @@ Iteration HandleParseTreeNodeScopeStart(ParseNodeIndex index,
 void HandleParseTreeNodeFunctionLiteralStart(ParseNodeIndex index,
                                              IrContext& context,
                                              diag::DiagnosticConsumer& diag) {
-  Scope::Index scope_index = context.Node(index).scope_index;
+  LexicalScope::Index scope_index = context.Node(index).scope_index;
   context.queue.front().functions.push_back(scope_index);
-  context.push_scope(scope_index);
+  context.push_lexical_scope(scope_index);
 }
 
 void HandleParseTreeNodeFunctionLiteralSignature(
@@ -833,8 +878,8 @@ void HandleParseTreeNodeFunctionLiteralSignature(
       ++decl_iter;
     }
 
-    if (auto* decl_info =
-            context.current_scope().identifier(decl_iter->token.Identifier())) {
+    if (auto* decl_info = context.current_lexical_scope().identifier(
+            decl_iter->token.Identifier())) {
       parameters.push_back({.type = decl_info->qualified_type.type()});
     } else {
       NTH_UNIMPLEMENTED();
@@ -876,7 +921,7 @@ void HandleParseTreeNodeWhileLoopBodyStart(ParseNodeIndex index,
     });
     context.MakeError(1);
   } else {
-    context.push_scope(context.Node(index).scope_index);
+    context.push_lexical_scope(context.Node(index).scope_index);
   }
 }
 
@@ -891,13 +936,13 @@ void HandleParseTreeNodeWhileLoop(ParseNodeIndex index, IrContext& context,
 void HandleParseTreeNodeIfStatementTrueBranchStart(ParseNodeIndex index,
                                                    IrContext& context,
                                                    diag::DiagnosticConsumer&) {
-  context.push_scope(context.Node(index).scope_index);
+  context.push_lexical_scope(context.Node(index).scope_index);
 }
 
 void HandleParseTreeNodeIfStatementFalseBranchStart(ParseNodeIndex index,
                                                     IrContext& context,
                                                     diag::DiagnosticConsumer&) {
-  context.push_scope(context.Node(index).scope_index);
+  context.push_lexical_scope(context.Node(index).scope_index);
 }
 
 void HandleParseTreeNodeIfStatement(ParseNodeIndex index, IrContext& context,
@@ -905,7 +950,7 @@ void HandleParseTreeNodeIfStatement(ParseNodeIndex index, IrContext& context,
   if (context.type_stack().top()[0].type() != type::Bool) {
     NTH_UNIMPLEMENTED();
   }
-  context.pop_scope();
+  context.pop_lexical_scope();
   context.type_stack().pop();
   context.type_stack().push({});
 }
@@ -926,7 +971,7 @@ void HandleParseTreeNodeFunctionLiteral(ParseNodeIndex index,
                                         IrContext& context,
                                         diag::DiagnosticConsumer& diag) {
   context.queue.front().functions.pop_back();
-  context.pop_scope();
+  context.pop_lexical_scope();
   // TODO: Check that the return type matches the signature.
 }
 
@@ -997,12 +1042,12 @@ void ProcessIrImpl(IrContext& context, diag::DiagnosticConsumer& diag) {
   case ParseNode::Kind::node_kind: {                                           \
     NTH_LOG((v.when(debug::type_check)), "Process node {} ({})") <<=           \
         {#node_kind, index};                                                   \
-    switch (                                                                   \
-        Invoke<HandleParseTreeNode##node_kind>(index, context, diag).kind()) { \
+    auto it = Invoke<HandleParseTreeNode##node_kind>(index, context, diag);    \
+    switch (it.kind()) {                                                       \
       case Iteration::PauseMoveOn: ++index; [[fallthrough]];                   \
       case Iteration::PauseRetry: goto stop_early;                             \
       case Iteration::Continue: break;                                         \
-      case Iteration::Skip: NTH_UNREACHABLE();                                 \
+      case Iteration::Skip: index = it.index() - 1; break;                     \
     }                                                                          \
   } break;
 #include "parse/node.xmacro.h"

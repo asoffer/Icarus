@@ -28,4 +28,6 @@ IrFunction& Module::add_function(ModuleId id, size_t parameters,
   return f;
 }
 
+Scope& Module::add_scope() { return scopes_.emplace_back(); }
+
 }  // namespace ic

@@ -9,9 +9,9 @@
 #include "common/identifier.h"
 #include "common/module_id.h"
 #include "ir/dependent_modules.h"
+#include "ir/lexical_scope.h"
 #include "ir/local_storage.h"
 #include "ir/module.h"
-#include "ir/scope.h"
 #include "jasmin/value_stack.h"
 #include "nth/base/attributes.h"
 #include "nth/container/interval_map.h"
@@ -48,8 +48,8 @@ struct EmitContext {
   explicit EmitContext(ParseTree const& tree NTH_ATTRIBUTE(lifetimebound),
                        DependentModules const& modules
                            NTH_ATTRIBUTE(lifetimebound),
-                       ScopeTree& scopes, Module& module)
-      : tree(tree), scopes(scopes), current_module{module}, modules(modules) {
+                       LexicalScopeTree& scopes, Module& module)
+      : tree(tree), lexical_scopes(scopes), current_module{module}, modules(modules) {
     types_.reserve(tree.size());
   }
 
@@ -94,44 +94,70 @@ struct EmitContext {
   absl::flat_hash_map<ParseNodeIndex, std::pair<ParseNodeIndex, ParseNodeIndex>>
       declarator;
 
-  ScopeTree& scopes;
+  LexicalScopeTree& lexical_scopes;
   absl::flat_hash_set<ParseNodeIndex> declarations_to_export;
-  absl::flat_hash_map<Scope::Index, LocalStorage> storage;
+  absl::flat_hash_map<LexicalScope::Index, LocalStorage> storage;
   Module& current_module;
 
-  void push_function(IrFunction& f, Scope::Index scope_index) {
-    queue.front().push_function(f, scope_index); 
+  void push_function(IrFunction& f, LexicalScope::Index scope_index) {
+    queue.front().push_function(f, scope_index);
   }
 
   void pop_function() {
     NTH_REQUIRE((v.debug), not queue.empty());
     NTH_REQUIRE((v.debug), not queue.front().function_stack_.empty());
     NTH_REQUIRE((v.debug), not queue.front().function_stack.empty());
-    NTH_REQUIRE((v.debug), not queue.front().scopes.empty());
+    NTH_REQUIRE((v.debug), not queue.front().lexical_scopes.empty());
     queue.front().function_stack_.pop_back();
     queue.front().function_stack.pop_back();
-    queue.front().scopes.pop_back();
+    queue.front().lexical_scopes.pop_back();
   }
 
   IrFunction& current_function() {
     NTH_REQUIRE((v.harden), not queue.empty());
+    NTH_REQUIRE((v.debug), not queue.front().function_stack_.empty());
     NTH_REQUIRE((v.debug), queue.front().function_stack_.back() != nullptr);
     return *queue.front().function_stack_.back();
   }
 
+  void push_scope(Scope& f, LexicalScope::Index scope_index) {
+    queue.front().push_scope(f, scope_index);
+  }
+
   void pop_scope() {
+    NTH_REQUIRE((v.debug), not queue.empty());
+    NTH_REQUIRE((v.debug), not queue.front().scope_stack_.empty());
+    NTH_REQUIRE((v.debug), not queue.front().function_stack.empty());
+    NTH_REQUIRE((v.debug), not queue.front().function_stack_.empty());
+    NTH_REQUIRE((v.debug), not queue.front().lexical_scopes.empty());
+    queue.front().scope_stack_.pop_back();
+    queue.front().function_stack.pop_back();
+    queue.front().function_stack_.pop_back();
+    queue.front().lexical_scopes.pop_back();
+  }
+
+  Scope& current_scope() {
     NTH_REQUIRE((v.harden), not queue.empty());
-    queue.front().scopes.pop_back();
+    NTH_REQUIRE((v.debug), not queue.front().scope_stack_.empty());
+    NTH_REQUIRE((v.debug), queue.front().scope_stack_.back() != nullptr);
+    return *queue.front().scope_stack_.back();
   }
 
-  void push_scope(Scope::Index index) { queue.front().scopes.push_back(index); }
-
-  Scope::Index current_scope_index() {
-    NTH_REQUIRE((v.harden), not queue.front().scopes.empty());
-    return queue.front().scopes.back();
+  void pop_lexical_scope() {
+    NTH_REQUIRE((v.harden), not queue.empty());
+    queue.front().lexical_scopes.pop_back();
   }
 
-  LocalStorage &current_storage() {
+  void push_lexical_scope(LexicalScope::Index index) {
+    queue.front().lexical_scopes.push_back(index);
+  }
+
+  LexicalScope::Index current_lexical_scope_index() {
+    NTH_REQUIRE((v.harden), not queue.front().lexical_scopes.empty());
+    return queue.front().lexical_scopes.back();
+  }
+
+  LocalStorage& current_storage() {
     NTH_REQUIRE((v.harden), not queue.front().function_stack.empty());
     return storage[queue.front().function_stack.back()];
   }
@@ -146,21 +172,31 @@ struct EmitContext {
     Reference,
   };
   struct WorkItem {
-    void push_function(IrFunction& f, Scope::Index scope_index) {
+    void push_function(IrFunction& f, LexicalScope::Index scope_index) {
       function_stack_.push_back(&f);
       function_stack.push_back(scope_index);
-      scopes.push_back(scope_index);
+      lexical_scopes.push_back(scope_index);
+    }
+
+    void push_scope(Scope& s, LexicalScope::Index scope_index) {
+      scope_stack_.push_back(&s);
+      function_stack_.push_back(&s.implementation());
+      function_stack.push_back(scope_index);
+      lexical_scopes.push_back(scope_index);
     }
 
     nth::interval<ParseNodeIndex> range;
     std::vector<DeclarationInfo> declaration_stack;
     std::vector<jasmin::OpCodeRange> branches;
-    std::vector<Scope::Index> scopes         = {Scope::Index::Root()};
-    std::vector<Scope::Index> function_stack = {Scope::Index::Root()};
+    std::vector<LexicalScope::Index> lexical_scopes = {LexicalScope::Index::Root()};
+    std::vector<LexicalScope::Index> function_stack = {
+        LexicalScope::Index::Root()};
     std::vector<ValueCategory> value_category_stack;
 
     // TODO: Make private (requires no longer using designated initializers).
+    // TODO: Combine these and check access to them.
     std::vector<IrFunction*> function_stack_;
+    std::vector<Scope*> scope_stack_;
   };
   std::queue<WorkItem> queue;
 

@@ -9,6 +9,7 @@
 #include "common/identifier.h"
 #include "ir/function.h"
 #include "ir/global_function_registry.h"
+#include "ir/scope.h"
 #include "jasmin/value.h"
 #include "type/type.h"
 
@@ -36,6 +37,8 @@ struct Module {
   IrFunction& add_function(size_t parameters, size_t returns);
   IrFunction& add_function(ModuleId id, size_t parameters, size_t returns);
 
+  Scope& add_scope();
+
   auto const& entries() const { return entries_; }
 
  private:
@@ -43,6 +46,7 @@ struct Module {
 
   absl::flat_hash_map<Identifier, Entry> entries_;
   std::deque<IrFunction> functions_;
+  std::deque<Scope> scopes_;
 };
 
 }  // namespace ic

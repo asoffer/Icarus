@@ -40,6 +40,10 @@ IC_XMACRO_PARSER_STATE(FunctionLiteralReturnTypeStart)
 IC_XMACRO_PARSER_STATE(FunctionLiteralBody)
 IC_XMACRO_PARSER_STATE(ResolveFunctionLiteral)
 
+IC_XMACRO_PARSER_STATE(ResolveScope)
+IC_XMACRO_PARSER_STATE(ResolveScopeBlock)
+IC_XMACRO_PARSER_STATE(ResolveScopeLiteral)
+
 IC_XMACRO_PARSER_STATE(IfStatementTrueBranchStart)
 IC_XMACRO_PARSER_STATE(ResolveIfStatement)
 IC_XMACRO_PARSER_STATE(IfStatementTryElse)

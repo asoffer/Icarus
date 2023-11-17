@@ -2,7 +2,6 @@
 #define ICARUS_IR_LOCAL_STORAGE_H
 
 #include "absl/container/flat_hash_map.h"
-#include "ir/scope.h"
 #include "nth/container/interval.h"
 #include "nth/debug/debug.h"
 #include "parse/node_index.h"

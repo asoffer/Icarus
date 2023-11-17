@@ -1,7 +1,7 @@
 #ifndef ICARUS_PARSE_NODE_H
 #define ICARUS_PARSE_NODE_H
 
-#include "ir/scope.h"
+#include "ir/lexical_scope.h"
 #include "lexer/token.h"
 #include "nth/strings/interpolate.h"
 #include "parse/node_index.h"
@@ -45,7 +45,7 @@ struct ParseNode {
     struct {
     } unused = {};
     ParseNodeIndex corresponding_statement_sequence;
-    Scope::Index scope_index;
+    LexicalScope::Index scope_index;
     DeclarationInfo declaration_info;
     StatementKind statement_kind;
   };

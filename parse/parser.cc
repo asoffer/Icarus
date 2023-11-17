@@ -16,7 +16,7 @@ namespace ic {
 namespace {
 
 struct Parser {
-  explicit Parser(TokenBuffer const& token_buffer, ScopeTree& scope_tree,
+  explicit Parser(TokenBuffer const& token_buffer, LexicalScopeTree& scope_tree,
                   diag::DiagnosticConsumer& diagnostic_consumer)
       : iterator_(token_buffer.begin()),
         token_buffer_(token_buffer),
@@ -133,7 +133,7 @@ struct Parser {
     return result;
   }
 
-  Scope::Index PushScope() {
+  LexicalScope::Index PushScope() {
     NTH_REQUIRE(not scope_indices_.empty());
     return scope_indices_.emplace_back(
         scope_tree_.insert_child(scope_indices_.back()));
@@ -172,10 +172,11 @@ struct Parser {
   TokenBuffer::const_iterator iterator_;
 
   TokenBuffer const& token_buffer_;
-  ScopeTree& scope_tree_;
+  LexicalScopeTree& scope_tree_;
   std::vector<bool> inside_function_declaration_ = {false};
   std::vector<DeclarationKind> declaration_kinds_;
-  std::vector<Scope::Index> scope_indices_ = {Scope::Index::Root()};
+  std::vector<LexicalScope::Index> scope_indices_ = {
+      LexicalScope::Index::Root()};
   diag::DiagnosticConsumer& diagnostic_consumer_;
 };
 
@@ -240,7 +241,6 @@ void Parser::HandleResolveModule(ParseTree& tree) {
   tree.append(ParseNode::Kind::Module, current_token(), 0);
   pop_and_discard_state();
 }
-
 
 void Parser::HandleDeclaration(ParseTree& tree) {
   switch (current_token().kind()) {
@@ -430,7 +430,6 @@ void Parser::HandleResolveWhileLoop(ParseTree& tree) {
   auto state = pop_state();
   tree.append(ParseNode::Kind::WhileLoop, state.token, state.subtree_start);
 }
-
 
 void Parser::HandleIfStatementTrueBranchStart(ParseTree& tree) {
   tree.append_leaf(ParseNode::Kind::IfStatementTrueBranchStart, *iterator_);
@@ -630,6 +629,34 @@ void Parser::HandleTryTermSuffix(ParseTree& tree) {
         push_state(Expression(tree));
       }
       return;
+    case Token::Kind::LeftBrace:
+      if (state()[state().size() - 3].kind !=
+          State::Kind::FunctionLiteralBody) {
+        tree.back().scope_index = PushScope();
+        tree.append_leaf(ParseNode::Kind::ScopeBodyStart, *iterator_);
+        tree.append_leaf(ParseNode::Kind::ScopeBlockStart, *iterator_);
+        ExpandState(
+            State{
+                .kind               = State::Kind::BracedStatementSequence,
+                .ambient_precedence = Precedence::Loosest(),
+                .subtree_start      = tree.size(),
+            },
+            State{
+                .kind               = State::Kind::ResolveScopeBlock,
+                .ambient_precedence = Precedence::Loosest(),
+                .token              = *iterator_,
+                .subtree_start      = tree.size() - 1,
+            },
+            State{
+                .kind               = State::Kind::ResolveScope,
+                .ambient_precedence = Precedence::Loosest(),
+                .token              = *iterator_,
+                .subtree_start      = state().back().subtree_start,
+            });
+      } else {
+        pop_and_discard_state();
+      }
+      break;
     default: pop_and_discard_state(); break;
   }
 }
@@ -674,6 +701,33 @@ void Parser::HandleAtom(ParseTree& tree) {
             },
             State::Kind::ResolveFunctionLiteral);
       }
+      return;
+    } break;
+    case Token::Kind::Scope: {
+      tree.append_leaf(ParseNode::Kind::ScopeLiteralStart, *iterator_++);
+      tree.back().scope_index = PushScope();
+      if (iterator_->kind() != Token::Kind::LeftBracket) {
+        NTH_UNIMPLEMENTED();
+      }
+      ++iterator_;
+      if (iterator_->kind() != Token::Kind::Identifier) { NTH_UNIMPLEMENTED(); }
+      tree.append_leaf(ParseNode::Kind::Identifier, *iterator_++);
+      if (iterator_->kind() != Token::Kind::RightBracket) {
+        NTH_UNIMPLEMENTED();
+      }
+      ++iterator_;
+      PushScope();
+      ExpandState(
+          State{
+              .kind               = State::Kind::BracedStatementSequence,
+              .ambient_precedence = Precedence::Loosest(),
+              .subtree_start      = tree.size(),
+          },
+          State{
+              .kind               = State::Kind::ResolveScopeLiteral,
+              .ambient_precedence = Precedence::Loosest(),
+              .subtree_start      = tree.size() - 2,
+          });
       return;
     } break;
     case Token::Kind::LeftParen: {
@@ -945,6 +999,24 @@ void Parser::HandleResolveIndexArgumentSequence(ParseTree& tree) {
   tree.set_back_child_count();
   ++iterator_;
   pop_and_discard_state();
+}
+
+void Parser::HandleResolveScopeBlock(ParseTree& tree) {
+  PopScope();
+  tree.append(ParseNode::Kind::ScopeBlock, current_token(),
+              pop_state().subtree_start);
+}
+
+void Parser::HandleResolveScope(ParseTree& tree) {
+  PopScope();
+  tree.append(ParseNode::Kind::Scope, current_token(),
+              pop_state().subtree_start);
+}
+
+void Parser::HandleResolveScopeLiteral(ParseTree& tree) {
+  PopScope();
+  tree.append(ParseNode::Kind::ScopeLiteral, current_token(),
+              pop_state().subtree_start);
 }
 
 #define IC_XMACRO_PARSE_NODE_PREFIX_UNARY(node, unused_token,                  \

@@ -48,6 +48,7 @@ cc_library(
     srcs = ["emit.cc"],
     deps = [
         ":dependent_modules",
+        ":lexical_scope",
         ":local_storage",
         ":module",
         ":scope",
@@ -120,7 +121,7 @@ cc_library(
     srcs = ["ir.cc"],
     deps = [
         ":emit",
-        ":scope",
+        ":lexical_scope",
         ":type_stack",
         "//common:debug",
         "//common:module_id",
@@ -144,7 +145,7 @@ cc_library(
     name = "local_storage",
     hdrs = ["local_storage.h"],
     deps = [
-        ":scope",
+        ":lexical_scope",
         "//parse:node_index",
         "//type",
         "//type:alignment",
@@ -160,6 +161,7 @@ cc_library(
     srcs = ["module.cc"],
     deps = [
         ":function",
+        ":scope",
         "//common:identifier",
         "//type",
         "@asoffer_jasmin//jasmin:value",
@@ -197,9 +199,9 @@ cc_library(
 
 
 cc_library(
-    name = "scope",
-    hdrs = ["scope.h"],
-    srcs = ["scope.cc"],
+    name = "lexical_scope",
+    hdrs = ["lexical_scope.h"],
+    srcs = ["lexical_scope.cc"],
     deps = [
         "//common:identifier",
         "//common:strong_identifier_type",
@@ -207,6 +209,15 @@ cc_library(
         "//type",
         "@asoffer_nth//nth/debug",
         "@com_google_absl//absl/container:flat_hash_map",
+    ]
+)
+
+cc_library(
+    name = "scope",
+    hdrs = ["scope.h"],
+    srcs = ["scope.cc"],
+    deps = [
+        ":function",
     ]
 )
 
