@@ -10,7 +10,7 @@ def generated_ic_library(name, **kwargs):
         outs = ["internal_generate_c_values_{}_src.cc".format(name)],
         cmd = "./$(location //toolchain/stdlib/compat/c/internal:generate_c_values) \"{}\" {} > $@".format(
            "".join(["#include <{}>\n".format(i) for i in kwargs["includes"]]),
-           " ".join(["{} {}".format(*kv) for kv in kwargs["symbols"].items()])
+           " ".join(["{} \"{}\"".format(*kv) for kv in kwargs["symbols"].items()])
         ),
         tools = ["//toolchain/stdlib/compat/c/internal:generate_c_values"],
         visibility = ["//visibility:private"],

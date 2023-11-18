@@ -4,10 +4,15 @@
 
 char const *FormatSpecifier(char const *type) {
   if (std::strcmp(type, "int") == 0) { return "d"; }
+  if (std::strcmp(type, "long") == 0) { return "ld"; }
+  if (std::strcmp(type, "long long") == 0) { return "lld"; }
+  if (std::strcmp(type, "unsigned int") == 0) { return "u"; }
+  if (std::strcmp(type, "unsigned long") == 0) { return "lu"; }
+  if (std::strcmp(type, "unsigned long long") == 0) { return "llu"; }
   if (std::strcmp(type, "char") == 0) { return "c"; }
   if (std::strcmp(type, "double") == 0) { return "f"; }
   if (std::strcmp(type, "float") == 0) { return "f"; }
-  std::abort();
+  return "WTF";
 }
 
 int main(int argc, char const *argv[]) {
