@@ -1,14 +1,7 @@
 load("//toolchain:ic_rule.bzl", "ic_library")
+load("//toolchain/stdlib/compat/c/internal:generate.bzl", "generated_ic_library")
 
 package(default_visibility = ["//visibility:public"])
-
-genrule(
-    name = "generate_c_types",
-    outs = ["types.ic"],
-    cmd = "./$(location //toolchain/stdlib/compat/c/internal:c_types_generator) > $@",
-    tools = ["//toolchain/stdlib/compat/c/internal:c_types_generator"],
-    visibility = ["//visibility:private"],
-)
 
 ic_library(
     name = "types",
@@ -33,8 +26,23 @@ ic_library(
     deps = [":types"],
 )
 
-ic_library(
+genrule(
+    name = "generate_c_types",
+    outs = ["types.ic"],
+    cmd = "./$(location //toolchain/stdlib/compat/c/internal:c_types_generator) > $@",
+    tools = ["//toolchain/stdlib/compat/c/internal:c_types_generator"],
+    visibility = ["//visibility:private"],
+)
+
+generated_ic_library(
     name = "time",
-    srcs = ["time.ic"],
-    deps = [":types"],
+    srcs = ["time.template.ic"],
+    includes = ["time.h"],
+    symbols = {
+        "CLOCKS_PER_SEC": "int",
+        "TIME_UTC": "int",
+    },
+    deps = [
+        ":types",
+    ],
 )

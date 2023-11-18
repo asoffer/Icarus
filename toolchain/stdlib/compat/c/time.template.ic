@@ -1,0 +1,27 @@
+// This module provides an interface to functions in the <time.h> C-header file.
+
+let c ::= import "std.compat.c.types"
+
+let clock_t  ::= c.long
+let time_t   ::= c.long
+let tm       ::= builtin.opaque()
+let timespec ::= builtin.opaque()
+let size_t   ::= c.unsigned_long  // TODO: generate this type.
+
+let CLOCKS_PER_SEC :: clock_t = {{{CLOCKS_PER_SEC}}}
+let TIME_UTC       ::=          {{{TIME_UTC}}}
+
+let clock        ::= builtin.foreign("clock", () -> clock_t)
+let difftime     ::= builtin.foreign("difftime", (time_t, time_t) -> c.double)
+let mktime       ::= builtin.foreign("mktime", *tm -> time_t)
+let time         ::= builtin.foreign("time", *time_t -> time_t)
+let timespec_get ::= builtin.foreign("timespec_get", (*timespec, c.int) -> c.int)
+let asctime      ::= builtin.foreign("asctime", *tm -> [*]char)
+let ctime        ::= builtin.foreign("ctime", *time_t -> [*]char)
+let gmtime       ::= builtin.foreign("gmtime", *time_t -> *tm)
+let localtime    ::= builtin.foreign("localtime", *time_t -> *tm)
+let strftime     ::= builtin.foreign("strftime", ([*]char, size_t, [*]char, *tm) -> size_t)
+
+// Additionally, the <time.h> C-header defines the constant `NULL`, for which
+// there is no corresponding value in this module. For such uses, prefer the
+// Icarus native `null` constant.
