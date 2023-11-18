@@ -50,9 +50,36 @@ generated_ic_library(
     deps = [],
 )
 
-ic_library(
+generated_ic_library(
+    name = "locale",
+    srcs = ["locale.template.ic"],
+    includes = ["locale.h"],
+    symbols = {
+        "LC_ALL": "int",
+        "LC_COLLATE": "int",
+        "LC_CTYPE": "int",
+        "LC_MONETARY": "int",
+        "LC_NUMERIC": "int",
+        "LC_TIME": "int",
+    },
+    deps = [],
+)
+
+generated_ic_library(
     name = "stdio",
-    srcs = ["stdio.ic"],
+    srcs = ["stdio.template.ic"],
+    includes = ["stdio.h"],
+    symbols = {
+        "BUFSIZ": "int",
+        "EOF": "int",
+        "FOPEN_MAX": "int",
+        "FILENAME_MAX": "int",
+        "L_tmpnam": "int",
+        "SEEK_CUR": "int",
+        "SEEK_END": "int",
+        "SEEK_SET": "int",
+        "TMP_MAX": "int",
+    },
     deps = [":types"],
 )
 
@@ -72,5 +99,21 @@ generated_ic_library(
     },
     deps = [
         ":types",
+    ],
+)
+
+ic_library(
+    name = "test_build",
+    srcs = ["test.ic"],
+    testonly = True,
+    visibility = ["//visibility:private"],
+    deps = [
+        ":ctype",
+        ":limits",
+        ":locale",
+        ":string",
+        ":stdio",
+        ":types",
+        ":time",
     ],
 )

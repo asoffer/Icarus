@@ -1,0 +1,13 @@
+// This module provides an interface to functions in the <locale.h> C-header file.
+
+let lconv       ::= builtin.opaque()
+let LC_ALL      ::= {{{LC_ALL}}}
+let LC_COLLATE  ::= {{{LC_COLLATE}}}
+let LC_CTYPE    ::= {{{LC_CTYPE}}}
+let LC_MONETARY ::= {{{LC_MONETARY}}}
+let LC_NUMERIC  ::= {{{LC_NUMERIC}}}
+let LC_TIME     ::= {{{LC_TIME}}}
+
+// Additionally, the <locale.h> C-header defines the constant `NULL`, for which
+// there is no corresponding value in this module. For such uses, prefer the
+// Icarus native `null` constant.
