@@ -32,7 +32,8 @@ namespace {
       for (auto qt : *iter) {                                                  \
         if (qt.type() == type::Error) {                                        \
           for (size_t j = 0; j < count; ++j) { c.type_stack().pop(); }         \
-          c.type_stack().push({type::QualifiedType::Constant(type::Error)});   \
+          c.type_stack().push(                                                 \
+              {type::QualifiedType::Unqualified(type::Error)});                \
           return;                                                              \
         }                                                                      \
       }                                                                        \
@@ -198,9 +199,27 @@ void HandleParseTreeNodeModuleStart(ParseNodeIndex index, IrContext& context,
                                         diag::DiagnosticConsumer& diag) {}
 #include "parse/node.xmacro.h"
 
+// Returns true if the error was diagnosed.
+bool TryDiagnoseUnexpanded(TypeStack& type_stack,
+                           diag::DiagnosticConsumer& diag, Token token) {
+  if (type_stack.top().size() == 1) { return false; }
+  diag.Consume({
+      diag::Header(diag::MessageKind::Error),
+      diag::Text("Expression represents an unexpanded pack of values and "
+                 "cannot be used in this context. Expand the arguments first."),
+      diag::SourceQuote(token),
+  });
+  type_stack.pop();
+  type_stack.push({type::QualifiedType::Unqualified(type::Error)});
+  return true;
+}
+
 void HandleParseTreeNodeDeref(ParseNodeIndex index, IrContext& context,
-                              diag::DiagnosticConsumer& diag) {
-  if (context.type_stack().top().size() != 1) { NTH_UNIMPLEMENTED(); }
+                             diag::DiagnosticConsumer& diag) {
+  if (TryDiagnoseUnexpanded(context.type_stack(), diag,
+                            context.Node(index - 1).token)) {
+    return;
+  }
   auto qt = context.type_stack().top()[0];
   context.emit.SetQualifiedType(index - 1, qt);
   context.type_stack().pop();
@@ -259,7 +278,10 @@ Iteration HandleParseTreeNodeScopeLiteralStart(ParseNodeIndex index,
 
 void HandleParseTreeNodeAddress(ParseNodeIndex index, IrContext& context,
                                 diag::DiagnosticConsumer& diag) {
-  if (context.type_stack().top().size() != 1) { NTH_UNIMPLEMENTED(); }
+  if (TryDiagnoseUnexpanded(context.type_stack(), diag,
+                            context.Node(index - 1).token)) {
+    return;
+  }
   auto qt = context.type_stack().top()[0];
   context.type_stack().pop();
   context.type_stack().push(
@@ -336,7 +358,7 @@ void HandleParseTreeNodeDeclaration(ParseNodeIndex index, IrContext& context,
     if (not type) { NTH_UNIMPLEMENTED(); }
     if (not type::ImplicitCast(init_qt.type(), *type)) {
       auto token = context.Node(index).token;
-      diag.Consume({
+    diag.Consume({
           diag::Header(diag::MessageKind::Error),
           diag::Text(InterpolateString<"Initializing expression does not match "
                                        "declared type ({} vs {}).">(
@@ -364,6 +386,7 @@ void HandleParseTreeNodeStatement(ParseNodeIndex index, IrContext& context,
   switch (context.Node(context.emit.tree.first_descendant_index(index))
               .statement_kind) {
     case ParseNode::StatementKind::Expression: {
+      IC_PROPAGATE_ERRORS(context, context.Node(index), 1);
       std::span qts = context.type_stack().top();
       size_t size   = 0;
       type::ByteWidth bytes(0);
@@ -429,7 +452,7 @@ void HandleParseTreeNodeInfixOperator(ParseNodeIndex index, IrContext& context,
 void HandleParseTreeNodeExpressionPrecedenceGroup(
     ParseNodeIndex index, IrContext& context, diag::DiagnosticConsumer& diag) {
   auto node = context.Node(index);
-  IC_PROPAGATE_ERRORS(context, node, node.child_count / 2);
+  IC_PROPAGATE_ERRORS(context, node, (1 + node.child_count) / 2);
   Token::Kind kind = context.operator_stack().back();
   context.operator_stack().pop_back();
   switch (kind) {
@@ -626,12 +649,29 @@ void HandleParseTreeNodeIndexExpression(ParseNodeIndex index,
     context.type_stack().pop();
   }
 
+  for (auto qt :index_argument_qts ) {
+    if (qt.type() == type::Error) {
+      context.type_stack().pop();
+      context.type_stack().push(
+          {type::QualifiedType::Unqualified(type::Error)});
+      return;
+    }
+  }
   std::reverse(index_argument_qts.begin(), index_argument_qts.end());
 
-  if (context.type_stack().top().size() != 1) { NTH_UNIMPLEMENTED(); }
+  ++iter;
+  if (TryDiagnoseUnexpanded(context.type_stack(), diag,
+                            context.Node(*iter).token)) {
+    return;
+  }
   auto qt = context.type_stack().top()[0];
-  context.emit.SetQualifiedType(*++iter, qt);
+  context.emit.SetQualifiedType(*iter, qt);
   context.type_stack().pop();
+  if (qt.type() == type::Error) {
+    context.type_stack().push({type::QualifiedType::Unqualified(type::Error)});
+    return;
+  }
+
   switch (qt.type().kind()) {
     case type::Type::Kind::Slice: {
       if (index_argument_qts.size() == 1) {
@@ -776,25 +816,45 @@ void HandleParseTreeNodeIndexArgumentStart(ParseNodeIndex index,
 void HandleParseTreeNodeInvocationArgumentStart(
     ParseNodeIndex index, IrContext& context, diag::DiagnosticConsumer& diag) {}
 
+void TryDiagnoseUnaryTypeConstructorError(TypeStack& type_stack,
+                                          diag::DiagnosticConsumer& diag,
+                                          std::string_view type_constructor,
+                                          Token token) {
+  if (type_stack.top()[0].type() == type::Type_) { return; }
+  diag.Consume({
+      diag::Header(diag::MessageKind::Error),
+      diag::Text(
+          InterpolateString<"Attempting to apply the {} type constructor "
+                            "`\\` to a non-type (specifically, a(n) {}).">(
+              type_constructor, type_stack.top()[0].type())),
+      diag::SourceQuote(token),
+  });
+  bool constant = type_stack.top()[0].constant();
+  type_stack.pop();
+  type_stack.push({constant ? type::QualifiedType::Constant(type::Error)
+                            : type::QualifiedType::Unqualified(type::Error)});
+}
+
 void HandleParseTreeNodePointer(ParseNodeIndex index, IrContext& context,
                                 diag::DiagnosticConsumer& diag) {
-  if (context.type_stack().top()[0].type() != type::Type_) {
-    NTH_UNIMPLEMENTED();
-  }
+  IC_PROPAGATE_ERRORS(context, context.Node(index), 1);
+  TryDiagnoseUnaryTypeConstructorError(context.type_stack(), diag, "pointer",
+                                       context.Node(index - 1).token);
 }
 
 void HandleParseTreeNodeBufferPointer(ParseNodeIndex index, IrContext& context,
                                       diag::DiagnosticConsumer& diag) {
-  if (context.type_stack().top()[0].type() != type::Type_) {
-    NTH_UNIMPLEMENTED();
-  }
+  IC_PROPAGATE_ERRORS(context, context.Node(index), 1);
+  TryDiagnoseUnaryTypeConstructorError(context.type_stack(), diag,
+                                       "buffer-pointer",
+                                       context.Node(index - 1).token);
 }
 
 void HandleParseTreeNodeSlice(ParseNodeIndex index, IrContext& context,
                               diag::DiagnosticConsumer& diag) {
-  if (context.type_stack().top()[0].type() != type::Type_) {
-    NTH_UNIMPLEMENTED();
-  }
+  IC_PROPAGATE_ERRORS(context, context.Node(index), 1);
+  TryDiagnoseUnaryTypeConstructorError(context.type_stack(), diag, "slice",
+                                       context.Node(index - 1).token);
 }
 
 void HandleParseTreeNodeImport(ParseNodeIndex index, IrContext& context,

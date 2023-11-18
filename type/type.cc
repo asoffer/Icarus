@@ -146,9 +146,6 @@ TypeContour Contour(Type t) {
   switch (t.kind()) {
     case Type::Kind::Primitive:
       switch (t.AsPrimitive().kind()) {
-        case PrimitiveType::Kind::Module:
-        case PrimitiveType::Kind::Type:
-        case PrimitiveType::Kind::Integer:
         case PrimitiveType::Kind::Error:
         default: NTH_UNREACHABLE();
         case PrimitiveType::Kind::NullType:
@@ -167,6 +164,9 @@ TypeContour Contour(Type t) {
         case PrimitiveType::Kind::U32:
         case PrimitiveType::Kind::F32:
           return TypeContour(ByteWidth(4), Alignment(4));
+        case PrimitiveType::Kind::Module:
+        case PrimitiveType::Kind::Type:
+        case PrimitiveType::Kind::Integer:
         case PrimitiveType::Kind::I64:
         case PrimitiveType::Kind::U64:
         case PrimitiveType::Kind::F64:
