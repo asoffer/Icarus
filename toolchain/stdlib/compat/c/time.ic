@@ -5,7 +5,7 @@ let c ::= import "std.compat.c.types"
 let clock_t  ::= c.long
 let time_t   ::= c.long
 let tm       ::= builtin.opaque()
-let size_t   ::= c.size_t
+let size_t   ::= c.unsigned_long
 
 let CLOCKS_PER_SEC :: clock_t = 1000000
 

@@ -45,7 +45,7 @@ def _ic_compile_impl(ctx):
         inputs = depset([src_file, mod_file], transitive = icm_deps),
         outputs = [icm_file],
         arguments = [
-            src_file.short_path,
+            src_file.path,
             "--output={}".format(icm_file.path),
             "--module-map={}".format(mod_file.path),
             # "--debug-parser=true",

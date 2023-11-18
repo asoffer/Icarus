@@ -2,7 +2,7 @@
 
 let c ::= import "std.compat.c.types"
 
-let size_t ::= c.size_t
+let size_t   ::= c.unsigned_long
 
 let strcpy   ::= builtin.foreign("strcpy", ([*]char, [*]char) -> [*]char)
 let strncpy  ::= builtin.foreign("strncpy", ([*]char, [*]char, size_t) -> [*]char)
