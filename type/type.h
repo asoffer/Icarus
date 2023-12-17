@@ -411,6 +411,71 @@ struct OpaqueType : internal_type::BasicType {
 
 OpaqueType Opaque();
 
+struct Family {
+  explicit constexpr Family(Type index_type, void const* evaluator)
+      : index_(index_type), evaluator_(evaluator) {}
+
+  friend constexpr bool operator==(Family, Family) = default;
+
+  template <typename H>
+  friend H AbslHashValue(H h, Family f) {
+    return H::combine(std::move(h), f.index_, f.evaluator_);
+  }
+
+  Type index_type() const { return index_; }
+  void const* evaluator() const { return evaluator_; }
+
+ private:
+  Type index_;
+  void const* evaluator_;
+};
+
+struct DependentProductType : internal_type::BasicType {
+  Family family() const;
+  Type index_type() const { return family().index_type(); }
+
+  friend void NthPrint(auto& p, auto& fmt, DependentProductType d) {
+    p.write("Product(family.");
+    fmt(p, d.data());
+    p.write(")");
+  }
+
+ private:
+  friend Type;
+  friend void Serialize(Type type, TypeProto& proto);
+  friend Type Deserialize(TypeProto const&, TypeSystemProto const&);
+  friend DependentProductType DependentProduct(Family family);
+
+  explicit constexpr DependentProductType() = default;
+  explicit constexpr DependentProductType(uint64_t n)
+      : BasicType(Type::Kind::DependentProduct, n) {}
+};
+
+DependentProductType DependentProduct(Family family);
+
+struct DependentSumType : internal_type::BasicType {
+  Family family() const;
+  Type index_type() const { return family().index_type(); }
+
+  friend void NthPrint(auto& p, auto& fmt, DependentSumType d) {
+    p.write("Sum(family.");
+    fmt(p, d.data());
+    p.write(")");
+  }
+
+ private:
+  friend Type;
+  friend void Serialize(Type type, TypeProto& proto);
+  friend Type Deserialize(TypeProto const&, TypeSystemProto const&);
+  friend DependentSumType DependentSum(Family family);
+
+  explicit constexpr DependentSumType() = default;
+  explicit constexpr DependentSumType(uint64_t n)
+      : BasicType(Type::Kind::DependentSum, n) {}
+};
+
+DependentSumType DependentSum(Family family);
+
 #define IC_XMACRO_TYPE_KIND(kind)                                              \
   inline constexpr Type::Type(kind##Type t) : data_(t.data_) {}
 #include "common/language/type_kind.xmacro.h"
@@ -444,6 +509,7 @@ struct TypeSystem {
   nth::flyweight_set<Type> buffer_pointee_types;
   nth::flyweight_set<Type> pattern_types;
   nth::flyweight_set<std::pair<void const*, Evaluation>> generic_function_types;
+  nth::flyweight_set<Family> type_families;
 };
 
 TypeContour Contour(Type t);

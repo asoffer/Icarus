@@ -139,6 +139,8 @@ size_t JasminSize(Type t) {
     case Type::Kind::Pattern: return 1;
     case Type::Kind::GenericFunction: return 1;
     case Type::Kind::Opaque: NTH_UNREACHABLE("{}") <<= {t};
+    case Type::Kind::DependentSum: NTH_UNREACHABLE("{}") <<= {t};
+    case Type::Kind::DependentProduct: NTH_UNREACHABLE("{}") <<= {t};
   }
 }
 
@@ -196,5 +198,23 @@ auto ToUnderlying(PrimitiveType::Kind k) {
     return ToUnderlying(begin) < value and value < ToUnderlying(end);          \
   }
 #include "common/language/primitive_types.xmacro.h"
+
+DependentSumType DependentSum(Family family) {
+  return DependentSumType(type_system->type_families.index(
+      type_system->type_families.insert(family).first));
+}
+
+Family DependentSumType::family() const {
+  return type_system->type_families.from_index(data());
+}
+
+DependentProductType DependentProduct(Family family) {
+  return DependentProductType(type_system->type_families.index(
+      type_system->type_families.insert(family).first));
+}
+
+Family DependentProductType::family() const {
+  return type_system->type_families.from_index(data());
+}
 
 }  // namespace ic::type
