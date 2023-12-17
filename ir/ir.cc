@@ -11,8 +11,9 @@
 #include "common/string.h"
 #include "ir/lexical_scope.h"
 #include "ir/type_stack.h"
-#include "jasmin/execute.h"
-#include "jasmin/value_stack.h"
+#include "jasmin/core/execute.h"
+#include "jasmin/core/value.h"
+#include "nth/container/stack.h"
 #include "nth/debug/debug.h"
 #include "parse/node_index.h"
 #include "parse/tree.h"
@@ -75,14 +76,16 @@ struct IrContext {
   std::optional<T> EvaluateAs(ParseNodeIndex subtree_root_index) {
     T result;
     nth::interval range = emit.tree.subtree_range(subtree_root_index);
-    jasmin::ValueStack value_stack;
+    nth::stack<jasmin::Value> value_stack;
     emit.Evaluate(range, value_stack, {FromConstant<T>()});
     if constexpr (nth::type<T> == nth::type<std::string_view>) {
-      size_t length   = value_stack.pop<size_t>();
-      char const* ptr = value_stack.pop<char const*>();
+      size_t length   = value_stack.top().as<size_t>();
+      value_stack.pop();
+      char const* ptr = value_stack.top().as<char const*>();
+      value_stack.pop();
       return std::string_view(ptr, length);
-    } else if (IcarusDeserializeValue(
-                   std::span(value_stack.begin(), value_stack.end()), result)) {
+    } else if (IcarusDeserializeValue(value_stack.top_span(value_stack.size()),
+                                      result)) {
       return result;
     } else {
       return std::nullopt;
@@ -721,10 +724,13 @@ void HandleParseTreeNodeCallExpression(ParseNodeIndex index, IrContext& context,
     auto const& parameters = *fn_type.parameters();
     // TODO: Properly implement function call type-checking.
     if (parameters.size() == node.child_count - 2) {
-      auto type_iter             = context.type_stack().rbegin();
-      auto& argument_width_count = context.emit.rotation_count[index];
+      auto type_iter        = context.type_stack().rbegin();
+      auto [iter, inserted] = context.emit.instruction_spec.try_emplace(index);
+      auto& spec            = iter->second;
+      NTH_REQUIRE((v.harden), inserted);
+      ++spec.parameters;
       for (size_t i = 0; i < parameters.size(); ++i) {
-        argument_width_count += type::JasminSize((*type_iter)[0].type());
+        spec.parameters += type::JasminSize((*type_iter)[0].type());
         ++type_iter;
       }
       auto const& returns = fn_type.returns();
@@ -733,6 +739,7 @@ void HandleParseTreeNodeCallExpression(ParseNodeIndex index, IrContext& context,
       }
       std::vector<type::QualifiedType> return_qts;
       for (type::Type r : returns) {
+        spec.returns += type::JasminSize(r);
         return_qts.push_back(type::QualifiedType::Unqualified(r));
       }
       context.type_stack().push(return_qts);
@@ -741,7 +748,7 @@ void HandleParseTreeNodeCallExpression(ParseNodeIndex index, IrContext& context,
         case type::Evaluation::PreferCompileTime: NTH_UNIMPLEMENTED();
         case type::Evaluation::RequireCompileTime: {
           nth::interval range = context.emit.tree.subtree_range(index);
-          jasmin::ValueStack value_stack;
+          nth::stack<jasmin::Value> value_stack;
           context.emit.Evaluate(range, value_stack, returns);
           auto module_id = context.EvaluateAs<ModuleId>(index);
           if (module_id == ModuleId::Invalid()) {
@@ -761,39 +768,37 @@ void HandleParseTreeNodeCallExpression(ParseNodeIndex index, IrContext& context,
     }
   } else if (invocable_type.type().kind() ==
              type::Type::Kind::GenericFunction) {
-    auto& rotation_count = context.emit.rotation_count[index];
-    std::vector<ParseNodeIndex> argument_indices;
+    auto& spec = context.emit.instruction_spec[index];
+    ++spec.parameters;
+    std::vector<std::pair<ParseNodeIndex, TypeStack::const_iterator>> argument_indices;
+    auto type_iter = context.type_stack().rbegin();
     for (auto iter = context.ChildIndices(index).begin();
          context.Node(*iter).kind != ParseNode::Kind::InvocationArgumentStart;
-         ++iter) {
-      argument_indices.push_back(*iter);
+         ++iter, ++type_iter) {
+      NTH_REQUIRE((v.debug), type_iter != context.type_stack().rend());
+      argument_indices.emplace_back(*iter, type_iter);
     }
 
     std::reverse(argument_indices.begin(), argument_indices.end());
-    jasmin::ValueStack value_stack;
+    nth::stack<jasmin::Value> value_stack;
 
-    auto iter = context.type_stack().rbegin();
-    for (size_t i = 1; i < argument_indices.size(); ++i) {
-      NTH_REQUIRE((v.debug), iter != context.type_stack().rend());
-      ++iter;
-    }
-    for (auto index : argument_indices) {
-      auto t = (*iter)[0].type();
+    for (auto [index, type_iter] : argument_indices) {
+      auto t = (*type_iter)[0].type();
 
       nth::interval range = context.emit.tree.subtree_range(index);
       context.emit.Evaluate(range, value_stack, {t});
-      rotation_count += type::JasminSize(t);
-      ++iter;
+      spec.parameters += type::JasminSize(t);
     }
+
     auto g = invocable_type.type().AsGenericFunction();
     jasmin::Execute(*static_cast<IrFunction const*>(g.data()), value_stack);
-    auto t = value_stack.pop<type::Type>();
+    auto t = value_stack.top().as<type::Type>();
     context.type_stack().push({type::QualifiedType::Constant(t)});
     NTH_REQUIRE((v.debug), t.kind() == type::Type::Kind::Function);
 
     if (g.evaluation() == type::Evaluation::PreferCompileTime or
         g.evaluation() == type::Evaluation::RequireCompileTime) {
-      jasmin::ValueStack value_stack;
+      nth::stack<jasmin::Value> value_stack;
       context.emit.Evaluate(context.emit.tree.subtree_range(index), value_stack,
                             {t});
     }

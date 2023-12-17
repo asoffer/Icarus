@@ -3,6 +3,7 @@
 #include "common/resources.h"
 #include "ir/foreign_function.h"
 #include "ir/module.h"
+#include "jasmin/core/metadata.h"
 #include "nth/debug/debug.h"
 #include "nth/debug/log/log.h"
 #include "type/serialize.h"
@@ -13,12 +14,11 @@ namespace {
 void SerializeContent(jasmin::Value op_code_value,
                       InstructionProto& instruction,
                       std::span<jasmin::Value const>& immediate_values) {
-  auto op_code_metadata = InstructionSet::OpCodeMetadata(op_code_value);
-  auto op_code =
-      static_cast<InstructionProto::OpCode>(op_code_metadata.op_code_value);
+  auto op_code = jasmin::Metadata<InstructionSet>.opcode(op_code_value);
+  auto op_code_metadata  = jasmin::Metadata<InstructionSet>.metadata(op_code);
   size_t immediate_count = op_code_metadata.immediate_value_count;
-  instruction.set_op_code(op_code);
-  switch (op_code) {
+  instruction.set_op_code(static_cast<InstructionProto::OpCode>(op_code));
+  switch (static_cast<InstructionProto::OpCode>(op_code)) {
     case InstructionProto::PUSH_STRING_LITERAL:
       instruction.mutable_content()->Add(resources.StringLiteralIndex(
           std::string(immediate_values[0].as<char const*>(),

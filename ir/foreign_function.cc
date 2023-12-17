@@ -9,7 +9,7 @@
 #include "ir/function.h"
 #include "ir/function_id.h"
 #include "ir/global_function_registry.h"
-#include "jasmin/instruction.h"
+#include "jasmin/core/instruction.h"
 #include "type/type.h"
 
 namespace ic {
@@ -63,7 +63,11 @@ IrFunction const& InsertForeignFunction(std::string_view name,
     void* result      = dlsym(RTLD_DEFAULT, std::string(name).c_str());
     char const* error = dlerror();
     if (error != nullptr) { NTH_UNIMPLEMENTED("{}") <<= {error}; }
-    fn.append<InvokeForeignFunction>(t, result);
+
+    auto const& parameters = fn.append<InvokeForeignFunction>(
+        {.parameters = static_cast<uint32_t>(t.parameters().size()),
+         .returns    = static_cast<uint32_t>(t.returns().size())},
+        t, result);
   }
   p->append<jasmin::Return>();
   global_function_registry.Register(

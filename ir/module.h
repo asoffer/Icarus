@@ -10,7 +10,7 @@
 #include "ir/function.h"
 #include "ir/global_function_registry.h"
 #include "ir/scope.h"
-#include "jasmin/value.h"
+#include "jasmin/core/value.h"
 #include "type/type.h"
 
 namespace ic {

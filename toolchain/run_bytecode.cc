@@ -14,9 +14,11 @@
 #include "ir/module.h"
 #include "ir/module.pb.h"
 #include "ir/program_arguments.h"
-#include "jasmin/execute.h"
+#include "jasmin/core/execute.h"
+#include "jasmin/core/value.h"
 #include "lexer/token_buffer.h"
 #include "nth/commandline/commandline.h"
+#include "nth/container/stack.h"
 #include "nth/debug/log/log.h"
 #include "nth/debug/log/stderr_log_sink.h"
 #include "nth/io/file.h"
@@ -92,7 +94,7 @@ nth::exit_code Run(nth::FlagValueSet flags, std::span<std::string_view const> ar
   }
   NTH_LOG((v.when(debug::run)), "{}") <<= {proto.DebugString()};
 
-  jasmin::ValueStack value_stack;
+  nth::stack<jasmin::Value> value_stack;
   jasmin::Execute(module.initializer(), value_stack);
   return nth::exit_code::success;
 }

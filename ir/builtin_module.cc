@@ -62,9 +62,9 @@ nth::NoDestructor<IrFunction> Slice([] {
 nth::NoDestructor<IrFunction> ForeignType([] {
   IrFunction f(3, 1);
   f.append<jasmin::Swap>();
-  f.append<jasmin::Drop>(1);
+  f.append<jasmin::Drop>();
   f.append<jasmin::Swap>();
-  f.append<jasmin::Drop>(1);
+  f.append<jasmin::Drop>();
   f.append<jasmin::Return>();
   return f;
 }());

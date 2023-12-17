@@ -3,6 +3,7 @@
 #include "common/resources.h"
 #include "ir/builtin_module.h"
 #include "ir/foreign_function.h"
+#include "jasmin/core/metadata.h"
 #include "nth/debug/debug.h"
 #include "nth/debug/log/log.h"
 #include "type/deserialize.h"
@@ -26,11 +27,7 @@ bool Deserializer::DeserializeFunction(ModuleProto const& module_proto,
                                        IrFunction& f) {
   for (auto const& instruction : proto.instructions()) {
     uint64_t op_code = static_cast<uint64_t>(instruction.op_code());
-
-    jasmin::Value op_code_value = jasmin::Value::Uninitialized();
-    op_code_value.set_raw_value(reinterpret_cast<uint64_t>(
-        InstructionSet::InstructionFunction(op_code)));
-    f.raw_append(op_code_value);
+    f.raw_append(jasmin::Metadata<InstructionSet>.metadata(op_code).function);
     switch (op_code) {
       case InstructionProto::PUSH_STRING_LITERAL: {
         auto const& string_literals = module_proto.string_literals();
@@ -74,7 +71,8 @@ bool Deserializer::DeserializeFunction(ModuleProto const& module_proto,
         }
       } break;
       default: {
-        auto op_code_metadata = InstructionSet::OpCodeMetadata(op_code_value);
+        auto op_code_metadata =
+            jasmin::Metadata<InstructionSet>.metadata(op_code);
         if (op_code_metadata.immediate_value_count !=
             instruction.content().size()) {
           return false;

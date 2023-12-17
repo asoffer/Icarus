@@ -9,13 +9,12 @@
 #include "ir/function_id.h"
 #include "ir/global_function_registry.h"
 #include "ir/program_arguments.h"
-#include "jasmin/value.h"
-#include "jasmin/value_stack.h"
+#include "jasmin/core/value.h"
 
 namespace ic {
 namespace {
 
-ffi_type* FfiType(type::Type t) {
+[[maybe_unused]] ffi_type* FfiType(type::Type t) {
   if (t == type::Char) {
     return std::is_signed_v<char> ? &ffi_type_schar : &ffi_type_uchar;
   }
@@ -32,7 +31,7 @@ ffi_type* FfiType(type::Type t) {
   return &ffi_type_pointer;
 }
 
-template <jasmin::SmallTrivialValue T>
+template <typename T>
 T Read(ffi_arg const& value) {
   T result;
   std::memcpy(&result, &value, sizeof(T));
@@ -41,22 +40,23 @@ T Read(ffi_arg const& value) {
 
 }  // namespace
 
-void LoadProgramArguments::execute(jasmin::ValueStack& value_stack) {
+std::array<jasmin::Value, 2> LoadProgramArguments::execute(
+    std::span<jasmin::Value, 0>) {
   Slice arguments = ProgramArguments();
-  value_stack.push(arguments.data());
-  value_stack.push(arguments.count());
+  return {jasmin::Value(arguments.data()), jasmin::Value(arguments.count())};
 }
 
-void RegisterForeignFunction::execute(jasmin::ValueStack& value_stack) {
-  type::Type t     = value_stack.pop<type::Type>();
-  size_t length    = value_stack.pop<size_t>();
-  char const* data = value_stack.pop<char const*>();
+jasmin::Value RegisterForeignFunction::consume(std::span<jasmin::Value, 3> inputs) {
+  char const* data = inputs[0].as<char const*>();
+  size_t length    = inputs[1].as<size_t>();
+  type::Type t     = inputs[2].as<type::Type>();
   auto const& f    = InsertForeignFunction(std::string_view(data, length),
                                            t.AsFunction(), false);
-  value_stack.push(&f);
+  return &f;
 }
 
-void InvokeForeignFunction::execute(jasmin::ValueStack& value_stack,
+void InvokeForeignFunction::consume(std::span<jasmin::Value> input,
+                                    std::span<jasmin::Value> output,
                                     type::FunctionType type,
                                     void const* fn_ptr) {
   std::span returns      = type.returns();
@@ -73,10 +73,10 @@ void InvokeForeignFunction::execute(jasmin::ValueStack& value_stack,
   argument_types.reserve(parameters.size());
   argument_values.reserve(parameters.size());
 
-  for (auto iter = value_stack.end() - parameters.size();
-       iter != value_stack.end(); ++iter, ++parameter_iter) {
+  for (auto iter = input.begin(); iter != input.end();
+       ++iter, ++parameter_iter) {
     argument_types.push_back(FfiType(parameter_iter->type));
-    argument_values.push_back(const_cast<void*>(iter->address()));
+    argument_values.push_back(static_cast<void*>(&*iter));
   }
 
   ffi_status status =
@@ -89,34 +89,32 @@ void InvokeForeignFunction::execute(jasmin::ValueStack& value_stack,
            reinterpret_cast<void (*)()>(const_cast<void*>(fn_ptr)),
            &return_value, argument_values.data());
 
-  for (size_t i = 0; i < parameters.size(); ++i) { value_stack.pop_value(); }
-
   if (not returns.empty()) {
     type::Type t = returns[0];
     if (t == type::Char) {
-      value_stack.push(Read<char>(return_value));
+      output[0] = Read<char>(return_value);
     } else if (t == type::I8) {
-      value_stack.push(Read<int8_t>(return_value));
+      output[0] = Read<int8_t>(return_value);
     } else if (t == type::I16) {
-      value_stack.push(Read<int16_t>(return_value));
+      output[0] = Read<int16_t>(return_value);
     } else if (t == type::I32) {
-      value_stack.push(Read<int32_t>(return_value));
+      output[0] = Read<int32_t>(return_value);
     } else if (t == type::I64) {
-      value_stack.push(Read<int64_t>(return_value));
+      output[0] = Read<int64_t>(return_value);
     } else if (t == type::U8) {
-      value_stack.push(Read<uint8_t>(return_value));
+      output[0] = Read<uint8_t>(return_value);
     } else if (t == type::U16) {
-      value_stack.push(Read<uint16_t>(return_value));
+      output[0] = Read<uint16_t>(return_value);
     } else if (t == type::U32) {
-      value_stack.push(Read<uint32_t>(return_value));
+      output[0] = Read<uint32_t>(return_value);
     } else if (t == type::U64) {
-      value_stack.push(Read<uint64_t>(return_value));
+      output[0] = Read<uint64_t>(return_value);
     } else if (t == type::F32) {
-      value_stack.push(Read<float>(return_value));
+      output[0] = Read<float>(return_value);
     } else if (t == type::F64) {
-      value_stack.push(Read<double>(return_value));
+      output[0] = Read<double>(return_value);
     } else {
-      value_stack.push(Read<char const*>(return_value));
+      output[0] = Read<char const*>(return_value);
     }
   }
 }

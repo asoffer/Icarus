@@ -4,51 +4,55 @@
 #include "common/module_id.h"
 #include "common/resources.h"
 #include "ir/serialize.h"
-#include "jasmin/execute.h"
+#include "jasmin/core/execute.h"
 #include "jasmin/instructions/arithmetic.h"
+#include "nth/container/interval.h"
+#include "nth/container/stack.h"
 #include "nth/debug/debug.h"
 #include "nth/debug/log/log.h"
 
 namespace ic {
 namespace {
 
+size_t ValueSize = 8;
+
 void StoreStackValue(IrFunction& f, type::ByteWidth offset, type::Type t) {
   type::ByteWidth type_width = type::Contour(t).byte_width();
   type::ByteWidth end        = offset + type_width;
   type::ByteWidth position =
-      end.aligned_backward_to(type::Alignment(jasmin::ValueSize));
+      end.aligned_backward_to(type::Alignment(ValueSize));
   if (position != end) {
     f.append<jasmin::StackOffset>(position.value());
     f.append<Store>((end - position).value());
   }
   while (position != offset) {
-    position -= type::ByteWidth(jasmin::ValueSize);
+    position -= type::ByteWidth(ValueSize);
     f.append<jasmin::StackOffset>(position.value());
-    f.append<Store>(jasmin::ValueSize);
+    f.append<Store>(ValueSize);
   }
 }
 
 void Load(IrFunction& f, type::ByteWidth width) {
-  size_t i = jasmin::ValueSize;
-  for (; i < width.value(); i += jasmin::ValueSize) {
+  size_t i = ValueSize;
+  for (; i < width.value(); i += ValueSize) {
     f.append<jasmin::Duplicate>();
-    f.append<jasmin::Push>(jasmin::ValueSize);
+    f.append<jasmin::Push>(ValueSize);
     f.append<AddPointer>();
     f.append<jasmin::Swap>();
-    f.append<jasmin::Load>(jasmin::ValueSize);
+    f.append<jasmin::Load>(ValueSize);
     f.append<jasmin::Swap>();
   }
 
-  f.append<jasmin::Load>(width.value() - (i - jasmin::ValueSize));
+  f.append<jasmin::Load>(width.value() - (i - ValueSize));
 }
 
 void LoadStackValue(IrFunction& f, type::ByteWidth offset, type::Type t) {
   type::ByteWidth type_width = type::Contour(t).byte_width();
   type::ByteWidth end        = offset + type_width;
-  while (offset + type::ByteWidth(jasmin::ValueSize) <= end) {
+  while (offset + type::ByteWidth(ValueSize) <= end) {
     f.append<jasmin::StackOffset>(offset.value());
-    f.append<jasmin::Load>(jasmin::ValueSize);
-    offset += type::ByteWidth(jasmin::ValueSize);
+    f.append<jasmin::Load>(ValueSize);
+    offset += type::ByteWidth(ValueSize);
   }
   if (offset < end) {
     f.append<jasmin::StackOffset>(offset.value());
@@ -108,8 +112,7 @@ void HandleParseTreeNodeScopeBlockStart(ParseNodeIndex index,
   context.current_function().append<NoOp>();
 }
 
-void HandleParseTreeNodeScopeBlock(ParseNodeIndex index,
-                                        EmitContext& context) {
+void HandleParseTreeNodeScopeBlock(ParseNodeIndex index, EmitContext& context) {
   // TODO: NTH_UNIMPLEMENTED();
 }
 
@@ -120,11 +123,12 @@ void HandleParseTreeNodeScopeBodyStart(ParseNodeIndex index,
 }
 
 void HandleParseTreeNodeScope(ParseNodeIndex index, EmitContext& context) {
-  jasmin::OpCodeRange final_jump = context.queue.front().branches.back();
-  auto land                      = context.current_function().append<NoOp>();
+  nth::interval<jasmin::InstructionIndex> final_jump =
+      context.queue.front().branches.back();
+  auto land = context.current_function().append<NoOp>();
   context.queue.front().branches.pop_back();
   context.current_function().set_value(
-      final_jump, 0, jasmin::OpCodeRange::Distance(land, final_jump));
+      final_jump, 0, land.lower_bound() - final_jump.lower_bound());
 }
 
 void HandleParseTreeNodeScopeLiteral(ParseNodeIndex index,
@@ -250,7 +254,7 @@ void HandleParseTreeNodeDeclaration(ParseNodeIndex index,
     if (decl_info.kind.constant()) {
       auto& f = context.current_function();
       f.append<jasmin::Return>();
-      jasmin::ValueStack value_stack;
+      nth::stack<jasmin::Value> value_stack;
       jasmin::Execute(f, value_stack);
       auto const* info = context.lexical_scopes.identifier(
           context.current_lexical_scope_index(),
@@ -274,7 +278,8 @@ void HandleParseTreeNodeDeclaration(ParseNodeIndex index,
     if (decl_info.kind.constant()) {
       auto& f = context.current_function();
       f.append<jasmin::Return>();
-      jasmin::ValueStack value_stack;
+      nth::stack<jasmin::Value> value_stack;
+
       jasmin::Execute(f, value_stack);
       auto const* info = context.lexical_scopes.identifier(
           context.current_lexical_scope_index(),
@@ -313,7 +318,10 @@ void HandleParseTreeNodeStatement(ParseNodeIndex index, EmitContext& context) {
           .Log<"For {}">(context.tree.first_descendant_index(index));
       size_t size_to_drop = iter->second.second;
       if (size_to_drop != 0) {
-        context.current_function().append<jasmin::Drop>(size_to_drop);
+        // TODO: Add a Drop function with an immediate value.
+        for (size_t i = 0; i < size_to_drop; ++i) {
+          context.current_function().append<jasmin::Drop>();
+        }
       }
     } break;
     default: break;
@@ -462,7 +470,7 @@ void HandleParseTreeNodeMemberExpression(ParseNodeIndex index,
     if (context.Node(index).token.Identifier() == Identifier("count")) {
       context.current_function().append<jasmin::Swap>();
     }
-    context.current_function().append<jasmin::Drop>(1);
+    context.current_function().append<jasmin::Drop>();
   } else {
     // TODO: Fix this bug.
     decltype(context.constants.mapped_range(index - 1)) mapped_range = nullptr;
@@ -474,7 +482,7 @@ void HandleParseTreeNodeMemberExpression(ParseNodeIndex index,
     }
     // auto const* mapped_range = context.constants.mapped_range(index - 1);
     NTH_REQUIRE((v.harden), mapped_range != nullptr);
-    context.current_function().append<jasmin::Drop>(1);
+    context.current_function().append<jasmin::Drop>();
 
     ModuleId module_id;
     bool successfully_deserialized =
@@ -501,7 +509,7 @@ void HandleParseTreeNodeIndexExpression(ParseNodeIndex index,
     auto t    = qt.type().AsSlice().element_type();
     auto size = type::Contour(t).byte_width();
     f.append<jasmin::Swap>();
-    f.append<jasmin::Drop>(1);
+    f.append<jasmin::Drop>();
     f.append<jasmin::Push>(size.value());
     f.append<jasmin::Multiply<int64_t>>();
     f.append<AddPointer>();
@@ -528,10 +536,12 @@ void HandleParseTreeNodeIndexExpression(ParseNodeIndex index,
 
 void HandleParseTreeNodeCallExpression(ParseNodeIndex index,
                                        EmitContext& context) {
-  auto iter = context.rotation_count.find(index);
-  NTH_REQUIRE((v.harden), iter != context.rotation_count.end());
-  context.current_function().append<Rotate>(iter->second + 1);
-  context.current_function().append<jasmin::Call>();
+  auto iter = context.instruction_spec.find(index);
+  NTH_REQUIRE((v.harden), iter != context.instruction_spec.end());
+  auto rotation_spec    = iter->second;
+  rotation_spec.returns = 0;
+  context.current_function().append<Rotate>(rotation_spec);
+  context.current_function().append<jasmin::Call>(iter->second);
 }
 
 void HandleParseTreeNodePointer(ParseNodeIndex index, EmitContext& context) {
@@ -561,7 +571,9 @@ void HandleParseTreeNodeImport(ParseNodeIndex index, EmitContext& context) {
 void HandleParseTreeNodeFunctionTypeParameters(ParseNodeIndex index,
                                                EmitContext& context) {
   context.current_function().append<ConstructParametersType>(
-      context.Node(index).child_count);
+      jasmin::InstructionSpecification{
+          .parameters = static_cast<uint32_t>(context.Node(index).child_count),
+          .returns    = 1});
 }
 
 void HandleParseTreeNodeWhileLoopStart(ParseNodeIndex index,
@@ -582,20 +594,22 @@ void HandleParseTreeNodeWhileLoop(ParseNodeIndex index, EmitContext& context) {
   // TODO: You don't really need all these no-ops.
   context.pop_lexical_scope();
 
-  jasmin::OpCodeRange jump_to_land = context.queue.front().branches.back();
+  nth::interval<jasmin::InstructionIndex> jump_to_land =
+      context.queue.front().branches.back();
   context.queue.front().branches.pop_back();
-  jasmin::OpCodeRange restart = context.queue.front().branches.back();
+  nth::interval<jasmin::InstructionIndex> restart =
+      context.queue.front().branches.back();
   context.queue.front().branches.pop_back();
 
   auto land =
       context.current_function().append_with_placeholders<jasmin::Jump>();
 
   context.current_function().set_value(
-      land, 0, jasmin::OpCodeRange::Distance(restart, land));
+      land, 0, restart.lower_bound() - land.lower_bound());
 
   land = context.current_function().append<NoOp>();
   context.current_function().set_value(
-      jump_to_land, 0, jasmin::OpCodeRange::Distance(land, jump_to_land));
+      jump_to_land, 0, land.lower_bound() - jump_to_land.lower_bound());
 }
 
 void HandleParseTreeNodeIfStatementTrueBranchStart(ParseNodeIndex index,
@@ -608,21 +622,25 @@ void HandleParseTreeNodeIfStatementTrueBranchStart(ParseNodeIndex index,
 
 void HandleParseTreeNodeIfStatementFalseBranchStart(ParseNodeIndex index,
                                                     EmitContext& context) {
-  jasmin::OpCodeRange jump = context.queue.front().branches.back();
+  nth::interval<jasmin::InstructionIndex> jump =
+      context.queue.front().branches.back();
   context.queue.front().branches.back() =
       context.current_function().append_with_placeholders<jasmin::Jump>();
-  jasmin::OpCodeRange land = context.current_function().append<NoOp>();
-  context.current_function().set_value(
-      jump, 0, jasmin::OpCodeRange::Distance(land, jump));
+  nth::interval<jasmin::InstructionIndex> land =
+      context.current_function().append<NoOp>();
+  context.current_function().set_value(jump, 0,
+                                       land.lower_bound() - jump.lower_bound());
 }
 
 void HandleParseTreeNodeIfStatement(ParseNodeIndex index,
                                     EmitContext& context) {
-  jasmin::OpCodeRange jump = context.queue.front().branches.back();
+  nth::interval<jasmin::InstructionIndex> jump =
+      context.queue.front().branches.back();
   context.queue.front().branches.pop_back();
-  jasmin::OpCodeRange land = context.current_function().append<NoOp>();
-  context.current_function().set_value(
-      jump, 0, jasmin::OpCodeRange::Distance(land, jump));
+  nth::interval<jasmin::InstructionIndex> land =
+      context.current_function().append<NoOp>();
+  context.current_function().set_value(jump, 0,
+                                       land.lower_bound() - jump.lower_bound());
   context.pop_lexical_scope();
 }
 
@@ -647,7 +665,8 @@ void HandleParseTreeNodeAssignedValueStart(ParseNodeIndex index,
 }
 
 void HandleParseTreeNodeAssignment(ParseNodeIndex index, EmitContext& context) {
-  context.current_function().append<Rotate>(2);
+  context.current_function().append<Rotate>(
+      jasmin::InstructionSpecification{.parameters = 2, .returns = 0});
   context.current_function().append<Store>(1);
 }
 
@@ -685,9 +704,9 @@ void EmitContext::Push(std::span<jasmin::Value const> vs, type::Type t) {
     current_function().append<PushType>(vs[0].as<type::Type>());
     return;
   } else if (t == type::Scope) {
-    auto & c = current_function();
+    auto& c = current_function();
     NTH_REQUIRE((v.harden), vs.size() == 1);
-    vs[0].as<Scope const *>()->AppendTo(c);
+    vs[0].as<Scope const*>()->AppendTo(c);
     return;
   }
   switch (t.kind()) {
@@ -808,9 +827,9 @@ void EmitIr(EmitContext& context) {
 }
 
 void EmitContext::Evaluate(nth::interval<ParseNodeIndex> subtree,
-                           jasmin::ValueStack& value_stack,
+                           nth::stack<jasmin::Value>& value_stack,
                            std::vector<type::Type> types) {
-  jasmin::ValueStack vs;
+  nth::stack<jasmin::Value> vs;
   size_t size = 0;
   for (type::Type t : types) { size += type::JasminSize(t); }
   IrFunction f(0, size);
@@ -821,7 +840,7 @@ void EmitContext::Evaluate(nth::interval<ParseNodeIndex> subtree,
   f.append<jasmin::Return>();
 
   jasmin::Execute(f, vs);
-  for (jasmin::Value v : vs) { value_stack.push(v); }
+  for (jasmin::Value v : vs.top_span(vs.size())) { value_stack.push(v); }
   constants.insert_or_assign(
       subtree, ComputedConstants(subtree.upper_bound() - 1, std::move(vs),
                                  std::move(types)));

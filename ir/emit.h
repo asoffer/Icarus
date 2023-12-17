@@ -1,6 +1,7 @@
 #ifndef ICARUS_IR_EMIT_H
 #define ICARUS_IR_EMIT_H
 
+#include <queue>
 #include <span>
 #include <vector>
 
@@ -12,9 +13,10 @@
 #include "ir/lexical_scope.h"
 #include "ir/local_storage.h"
 #include "ir/module.h"
-#include "jasmin/value_stack.h"
 #include "nth/base/attributes.h"
+#include "nth/container/interval.h"
 #include "nth/container/interval_map.h"
+#include "nth/container/stack.h"
 #include "parse/declaration.h"
 #include "parse/node_index.h"
 #include "parse/tree.h"
@@ -56,7 +58,8 @@ struct EmitContext {
   Module const& module(ModuleId id) const { return modules[id]; }
 
   struct ComputedConstants {
-    explicit ComputedConstants(ParseNodeIndex index, jasmin::ValueStack value,
+    explicit ComputedConstants(ParseNodeIndex index,
+                               nth::stack<jasmin::Value> value,
                                std::vector<type::Type> types)
         : index_(index), value_(std::move(value)), types_(std::move(types)) {}
 
@@ -67,12 +70,12 @@ struct EmitContext {
 
     std::span<type::Type const> types() const { return types_; }
     std::span<jasmin::Value const> value_span() const {
-      return std::span<jasmin::Value const>(value_.begin(), value_.end());
+      return value_.top_span(value_.size());
     }
 
    private:
     ParseNodeIndex index_;
-    jasmin::ValueStack value_;
+    nth::stack<jasmin::Value> value_;
     std::vector<type::Type> types_;
   };
 
@@ -81,7 +84,7 @@ struct EmitContext {
   void Push(ComputedConstants const& c);
 
   void Evaluate(nth::interval<ParseNodeIndex> subtree,
-                jasmin::ValueStack& value_stack, std::vector<type::Type> types);
+                nth::stack<jasmin::Value>& value_stack, std::vector<type::Type> types);
 
   ParseNode const& Node(ParseNodeIndex index) const { return tree[index]; }
 
@@ -90,7 +93,8 @@ struct EmitContext {
   absl::flat_hash_map<ParseNodeIndex, std::pair<type::ByteWidth, size_t>>
       statement_expression_info;
 
-  absl::flat_hash_map<ParseNodeIndex, size_t> rotation_count;
+  absl::flat_hash_map<ParseNodeIndex, jasmin::InstructionSpecification>
+      instruction_spec;
   absl::flat_hash_map<ParseNodeIndex, std::pair<ParseNodeIndex, ParseNodeIndex>>
       declarator;
 
@@ -187,7 +191,7 @@ struct EmitContext {
 
     nth::interval<ParseNodeIndex> range;
     std::vector<DeclarationInfo> declaration_stack;
-    std::vector<jasmin::OpCodeRange> branches;
+    std::vector<nth::interval<jasmin::InstructionIndex>> branches;
     std::vector<LexicalScope::Index> lexical_scopes = {LexicalScope::Index::Root()};
     std::vector<LexicalScope::Index> function_stack = {
         LexicalScope::Index::Root()};

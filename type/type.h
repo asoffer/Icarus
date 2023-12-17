@@ -8,7 +8,7 @@
 #include <utility>
 #include <vector>
 
-#include "jasmin/value.h"
+#include "jasmin/core/value.h"
 #include "nth/container/flyweight_set.h"
 #include "type/type_contour.h"
 #include "type/type_system.pb.h"
