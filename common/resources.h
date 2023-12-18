@@ -7,7 +7,6 @@
 
 #include "common/module_map.h"
 #include "nth/container/flyweight_set.h"
-#include "type/type.h"
 
 namespace ic {
 

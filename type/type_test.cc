@@ -73,14 +73,6 @@ NTH_TEST("type/buffer-pointer") {
              Char);
 }
 
-NTH_TEST("type/pattern") {
-  NTH_EXPECT(Pattern(Char) == Pattern(Char));
-  NTH_EXPECT(Pattern(Pattern(Char)) != Pattern(Char));
-  NTH_EXPECT(Pattern(Pattern(Char)).match_type() == Pattern(Char));
-  NTH_EXPECT(Pattern(Pattern(Char)).match_type().AsPattern().match_type() ==
-             Char);
-}
-
 NTH_TEST("type/slice") {
   NTH_EXPECT(Slice(Char) == Slice(Char));
   NTH_EXPECT(Slice(Slice(Char)) != Slice(Char));

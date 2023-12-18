@@ -10,7 +10,8 @@
 #include "ir/function_id.h"
 #include "ir/global_function_registry.h"
 #include "jasmin/core/instruction.h"
-#include "type/type.h"
+#include "type/function.h"
+#include "type/primitive.h"
 
 namespace ic {
 namespace {

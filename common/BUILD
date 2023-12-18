@@ -101,7 +101,6 @@ cc_library(
     hdrs = ["resources.h"],
     deps = [
         ":module_map",
-        "//type",
     ],
 )
 

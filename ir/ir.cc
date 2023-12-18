@@ -791,7 +791,7 @@ void HandleParseTreeNodeCallExpression(ParseNodeIndex index, IrContext& context,
     }
 
     auto g = invocable_type.type().AsGenericFunction();
-    jasmin::Execute(*static_cast<IrFunction const*>(g.data()), value_stack);
+    jasmin::Execute(g.function(), value_stack);
     auto t = value_stack.top().as<type::Type>();
     context.type_stack().push({type::QualifiedType::Constant(t)});
     NTH_REQUIRE((v.debug), t.kind() == type::Type::Kind::Function);

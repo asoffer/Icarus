@@ -16,6 +16,10 @@ uint64_t opaque_count = 0;
 
 }  // namespace
 
+#define IC_XMACRO_TYPE_KIND(kind)                                              \
+  Type::Type(kind##Type t) : data_(t.data_) {}
+#include "common/language/type_kind.xmacro.h"
+
 TypeSystem const& GlobalTypeSystem() { return *type_system; }
 
 #define IC_XMACRO_TYPE_KIND(k)                                                 \
@@ -69,22 +73,13 @@ BufferPointerType BufPtr(Type t) {
       type_system->buffer_pointee_types.insert(t).first));
 }
 
-PatternType Pattern(Type t) {
-  return PatternType(type_system->pattern_types.index(
-      type_system->pattern_types.insert(t).first));
-}
-
-GenericFunctionType GenericFunction(Evaluation e, void const* fn) {
+GenericFunctionType GenericFunction(Evaluation e, IrFunction const* fn) {
   return GenericFunctionType(type_system->generic_function_types.index(
       type_system->generic_function_types.insert(std::pair(fn, e)).first));
 }
 
 Type SliceType::element_type() const {
   return type_system->slice_element_types.from_index(data());
-}
-
-Type PatternType::match_type() const {
-  return type_system->pattern_types.from_index(data());
 }
 
 Type PointerType::pointee() const {
@@ -116,9 +111,9 @@ std::vector<Type> const& FunctionType::returns() const {
       std::get<1>(type_system->functions.from_index(data())));
 }
 
-void const* GenericFunctionType::data() const {
-  return type_system->generic_function_types.from_index(BasicType::data())
-      .first;
+IrFunction const& GenericFunctionType::function() const {
+  return *type_system->generic_function_types.from_index(BasicType::data())
+              .first;
 }
 
 Evaluation GenericFunctionType::evaluation() const {
@@ -136,7 +131,6 @@ size_t JasminSize(Type t) {
     case Type::Kind::Slice: return 2;
     case Type::Kind::Pointer: return 1;
     case Type::Kind::BufferPointer: return 1;
-    case Type::Kind::Pattern: return 1;
     case Type::Kind::GenericFunction: return 1;
     case Type::Kind::Opaque: NTH_UNREACHABLE("{}") <<= {t};
     case Type::Kind::DependentSum: NTH_UNREACHABLE("{}") <<= {t};
@@ -176,7 +170,7 @@ TypeContour Contour(Type t) {
       }
     case Type::Kind::Slice: return TypeContour(ByteWidth(16), Alignment(8));
     case Type::Kind::Function:
-    case Type::Kind::Pointer: 
+    case Type::Kind::Pointer:
     case Type::Kind::BufferPointer:
       return TypeContour(ByteWidth(8), Alignment(8));
     case Type::Kind::Opaque: NTH_UNREACHABLE("{}") <<= {t};

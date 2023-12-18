@@ -9,7 +9,7 @@
 #include "ir/function.h"
 #include "ir/function_id.h"
 #include "nth/container/flyweight_map.h"
-#include "type/type.h"
+#include "type/function.h"
 
 namespace ic {
 
