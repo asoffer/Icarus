@@ -63,6 +63,18 @@ cc_library(
 )
 
 cc_library(
+    name = "dependent",
+    hdrs = ["dependent.h"],
+    srcs = ["dependent.cc"],
+    deps = [
+        ":basic",
+        ":family",
+        "//common/language:type_kind",
+        "@asoffer_nth//nth/debug",
+    ],
+)
+
+cc_library(
     name = "dependent_product",
     hdrs = ["dependent_product.h"],
     deps = [
