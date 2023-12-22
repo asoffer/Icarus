@@ -69,9 +69,28 @@ cc_library(
     deps = [
         ":basic",
         ":family",
-        "//common/language:type_kind",
+        "//ir:function",
+        "//ir:type_erased_value",
+        "@asoffer_jasmin//jasmin/core:execute",
+        "@asoffer_jasmin//jasmin/core:value",
+        "@asoffer_nth//nth/container:flyweight_set",
+        "@asoffer_nth//nth/container:interval",
         "@asoffer_nth//nth/debug",
     ],
+)
+
+cc_test(
+    name = "dependent_test",
+    srcs = ["dependent_test.cc"],
+    deps = [
+        ":dependent",
+        ":parameters",
+        ":primitive",
+        "//ir:type_erased_value",
+        "//ir:function",
+        "@asoffer_jasmin//jasmin/core:value",
+        "@asoffer_nth//nth/test:main",
+    ]
 )
 
 cc_library(
