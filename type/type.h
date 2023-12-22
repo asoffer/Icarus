@@ -9,8 +9,6 @@
 #include "ir/function.h"
 #include "nth/container/flyweight_set.h"
 #include "type/basic.h"
-#include "type/dependent_product.h"
-#include "type/dependent_sum.h"
 #include "type/family.h"
 #include "type/function.h"
 #include "type/generic_function.h"

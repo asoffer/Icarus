@@ -94,28 +94,6 @@ cc_test(
 )
 
 cc_library(
-    name = "dependent_product",
-    hdrs = ["dependent_product.h"],
-    deps = [
-        ":basic",
-        ":family",
-        "//common/language:type_kind",
-        "@asoffer_nth//nth/debug",
-    ],
-)
-
-cc_library(
-    name = "dependent_sum",
-    hdrs = ["dependent_sum.h"],
-    deps = [
-        ":basic",
-        ":family",
-        "//common/language:type_kind",
-        "@asoffer_nth//nth/debug",
-    ],
-)
-
-cc_library(
     name = "family",
     hdrs = ["family.h"],
     deps = [
@@ -208,8 +186,6 @@ cc_library(
         ":alignment",
         ":basic",
         ":byte_width",
-        ":dependent_product",
-        ":dependent_sum",
         ":family",
         ":function",
         ":generic_function",
