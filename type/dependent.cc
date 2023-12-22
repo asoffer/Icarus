@@ -7,10 +7,10 @@
 #include "nth/container/stack.h"
 #include "type/primitive.h"
 
-namespace ic::type::internal_dependent {
+namespace ic::type {
 
-Term Term::DeBruijnIndex(uint16_t index) {
-  Term term;
+DependentTerm DependentTerm::DeBruijnIndex(uint16_t index) {
+  DependentTerm term;
   term.nodes_.push_back({
       .kind         = Node::Kind::DeBruijnIndex,
       .index        = index,
@@ -19,8 +19,8 @@ Term Term::DeBruijnIndex(uint16_t index) {
   return term;
 }
 
-Term Term::Value(TypeErasedValue const &value) {
-  Term term;
+DependentTerm DependentTerm::Value(TypeErasedValue const &value) {
+  DependentTerm term;
   term.nodes_.push_back({
       .kind  = Node::Kind::Value,
       .index = static_cast<uint16_t>(
@@ -30,7 +30,7 @@ Term Term::Value(TypeErasedValue const &value) {
   return term;
 }
 
-Term Term::Call(Term const &value, Term f) {
+DependentTerm DependentTerm::Call(DependentTerm const &value, DependentTerm f) {
   for (auto const &n : value.nodes_) {
     auto &node = f.nodes_.emplace_back(n);
     if (node.kind == Node::Kind::Value) {
@@ -47,7 +47,8 @@ Term Term::Call(Term const &value, Term f) {
   return f;
 }
 
-Term Term::Function(Term const &type, Term term) {
+DependentTerm DependentTerm::Function(DependentTerm const &type,
+                                      DependentTerm term) {
   for (auto const &n : type.nodes_) {
     auto &node = term.nodes_.emplace_back(n);
     if (node.kind == Node::Kind::Value) {
@@ -63,7 +64,8 @@ Term Term::Function(Term const &type, Term term) {
   return term;
 }
 
-TypeErasedValue Term::Call(TypeErasedValue const &f, TypeErasedValue const &v) {
+TypeErasedValue DependentTerm::Call(TypeErasedValue const &f,
+                                    TypeErasedValue const &v) {
   auto const &fn = *f.value()[0].as<IrFunction const *>();
   nth::stack<jasmin::Value> stack;
   for (jasmin::Value value : v.value()) { stack.push(value); }
@@ -73,13 +75,32 @@ TypeErasedValue Term::Call(TypeErasedValue const &f, TypeErasedValue const &v) {
                          std::vector(results.begin(), results.end()));
 }
 
-TypeErasedValue const *Term::evaluate() const {
+bool operator==(DependentTerm const &lhs, DependentTerm const &rhs) {
+  if (lhs.nodes_.size() != rhs.nodes_.size()) { return false; }
+  auto l = lhs.nodes_.begin();
+  auto r = rhs.nodes_.begin();
+  for (; l != lhs.nodes_.end(); ++l, ++r) {
+    if (l->kind != r->kind) { return false; }
+    if (l->kind == DependentTerm::Node::Kind::Value) {
+      if (lhs.values_.from_index(l->index) !=
+          rhs.values_.from_index(r->index)) {
+        return false;
+      }
+    } else {
+      if (l->index != r->index) { return false; }
+      if (l->subtree_size != r->subtree_size) { return false; }
+    }
+  }
+  return true;
+}
+
+TypeErasedValue const *DependentTerm::evaluate() const {
   if (nodes_.size() != 1) { return nullptr; }
   NTH_REQUIRE((v.harden), nodes_.back().kind == Node::Kind::Value);
   return &values_.from_index(nodes_.back().index);
 }
 
-void Term::Substitute(
+void DependentTerm::Substitute(
     size_t index, nth::interval<std::vector<Node>::reverse_iterator> range) {
   // Replace DeBruijn indices with the value when appropriate.
   std::queue<std::pair<decltype(range), size_t>> work_queue;
@@ -108,55 +129,64 @@ void Term::Substitute(
   }
 }
 
-void Term::PartiallyEvaluate() {
-  auto write_iter = nodes_.begin();
-  for (auto read_iter = nodes_.begin(); read_iter != nodes_.end();
-       ++read_iter) {
-    switch (read_iter->kind) {
-      case Node::Kind::DeBruijnIndex:
-      case Node::Kind::Function:
-      case Node::Kind::Value: *write_iter++ = *read_iter; break;
-      case Node::Kind::FunctionCall: {
-        if ((write_iter - 1)->kind == Node::Kind::Value) {
-          if ((write_iter - 2)->kind == Node::Kind::Value) {
-            auto v        = *--write_iter;
-            auto f        = *--write_iter;
-            *write_iter++ = Node{
-                .kind  = Node::Kind::Value,
-                .index = static_cast<uint16_t>(
-                    values_.index(values_
-                                      .insert(Call(values_.from_index(f.index),
-                                                   values_.from_index(v.index)))
-                                      .first)),
-                .subtree_size = 1,
-            };
-          } else if ((write_iter - 2)->kind == Node::Kind::Function) {
-            if ((write_iter - 3)->kind == Node::Kind::Value) {
-              auto v = *--write_iter;
-              write_iter -= 2;
-              auto value_index = v.index;
-              Substitute(
-                  value_index,
-                  nth::interval(std::make_reverse_iterator(write_iter),
-                                std::make_reverse_iterator(nodes_.begin())));
+void DependentTerm::PartiallyEvaluate() {
+  size_t size;
+  do {
+    size            = nodes_.size();
+    auto write_iter = nodes_.begin();
+    for (auto read_iter = nodes_.begin(); read_iter != nodes_.end();
+         ++read_iter) {
+      switch (read_iter->kind) {
+        case Node::Kind::DeBruijnIndex:
+        case Node::Kind::Function:
+        case Node::Kind::Value: *write_iter++ = *read_iter; break;
+        case Node::Kind::FunctionCall: {
+          if ((write_iter - 1)->kind == Node::Kind::Value) {
+            if ((write_iter - 2)->kind == Node::Kind::Value) {
+              auto v        = *--write_iter;
+              auto f        = *--write_iter;
+              *write_iter++ = Node{
+                  .kind         = Node::Kind::Value,
+                  .index        = static_cast<uint16_t>(values_.index(
+                             values_
+                                 .insert(Call(values_.from_index(f.index),
+                                              values_.from_index(v.index)))
+                                 .first)),
+                  .subtree_size = 1,
+              };
+            } else if ((write_iter - 2)->kind == Node::Kind::Function) {
+              if ((write_iter - 3)->kind == Node::Kind::Value) {
+                auto v = *--write_iter;
+                write_iter -= 2;
+                auto value_index = v.index;
+                Substitute(
+                    value_index,
+                    nth::interval(std::make_reverse_iterator(write_iter),
+                                  std::make_reverse_iterator(nodes_.begin())));
+              }
             }
+          } else {
+            *write_iter++ = *read_iter;
           }
-        } else {
-          *write_iter++ = *read_iter;
-        }
-      } break;
+        } break;
+      }
     }
-  }
-  nodes_.erase(write_iter, nodes_.end());
+    nodes_.erase(write_iter, nodes_.end());
+    // TODO: This is likely the most efficient way to guarantee completely
+    // simplifying.
+  } while (size != nodes_.size());
 }
 
-bool Term::bind(TypeErasedValue const &value) {
+bool DependentTerm::bind(TypeErasedValue const &value) {
   auto iter = nodes_.rbegin();
   NTH_REQUIRE((v.harden), iter->kind == Node::Kind::Function);
   ++iter;
   NTH_REQUIRE((v.harden), iter->kind == Node::Kind::Value);
   NTH_REQUIRE((v.harden), values_.from_index(iter->index).type() == Type_);
   if (value.type() != values_.from_index(iter->index).value()[0].as<Type>()) {
+    NTH_LOG("{} vs {}") <<={
+      value.type(), values_.from_index(iter->index).value()[0].as<Type>()
+    };
     return false;
   }
   ++iter;
@@ -168,4 +198,14 @@ bool Term::bind(TypeErasedValue const &value) {
   return true;
 }
 
-}  // namespace ic::type::internal_dependent
+DependentParameterMapping::Index DependentParameterMapping::Index::Type(
+    uint16_t n) {
+  return Index(Kind::Type, n);
+}
+
+DependentParameterMapping::Index DependentParameterMapping::Index::Value(
+    uint16_t n) {
+  return Index(Kind::Value, n);
+}
+
+}  // namespace ic::type

@@ -4,6 +4,7 @@
 #include <utility>
 #include <vector>
 
+#include "ir/type_erased_value.h"
 #include "nth/debug/debug.h"
 #include "nth/utility/no_destructor.h"
 
@@ -133,6 +134,7 @@ size_t JasminSize(Type t) {
     case Type::Kind::BufferPointer: return 1;
     case Type::Kind::GenericFunction: return 1;
     case Type::Kind::Opaque: NTH_UNREACHABLE("{}") <<= {t};
+    case Type::Kind::DependentFunction: NTH_UNREACHABLE("{}") <<= {t};
   }
 }
 
@@ -190,5 +192,55 @@ auto ToUnderlying(PrimitiveType::Kind k) {
     return ToUnderlying(begin) < value and value < ToUnderlying(end);          \
   }
 #include "common/language/primitive_types.xmacro.h"
+
+
+DependentFunctionType Dependent(DependentTerm const &term,
+                                DependentParameterMapping const &mapping) {
+  size_t term_index = type_system->dependent_terms.index(
+      type_system->dependent_terms.insert(term).first);
+  size_t mapping_index = type_system->dependent_mapping.index(
+      type_system->dependent_mapping.insert(mapping).first);
+  size_t pair_index = type_system->dependent_term_mapping_pairs.index(
+      type_system->dependent_term_mapping_pairs
+          .insert({term_index, mapping_index})
+          .first);
+  return DependentFunctionType(pair_index);
+}
+
+std::pair<DependentTerm const&, DependentParameterMapping const&>
+DependentFunctionType::components() const {
+  auto [term_index, mapping_index] =
+      type_system->dependent_term_mapping_pairs.from_index(data());
+  return std::pair<DependentTerm const&, DependentParameterMapping const&>(
+      type_system->dependent_terms.from_index(term_index),
+      type_system->dependent_mapping.from_index(term_index));
+}
+
+std::optional<Type> DependentFunctionType::operator()(
+    std::span<TypeErasedValue const> values) const {
+  auto [term, mapping] = components();
+  auto term_copy       = term;
+  for (auto index : mapping) {
+    switch (index.kind()) {
+      case DependentParameterMapping::Index::Kind::Type:
+        if (not term_copy.bind(
+                TypeErasedValue(Type_, {values[index.index()].type()}))) {
+          NTH_LOG("Returned");
+          return std::nullopt;
+        }
+        break;
+      case DependentParameterMapping::Index::Kind::Value:
+        if (not term_copy.bind(values[index.index()])) {
+          NTH_LOG("Returned");
+          return std::nullopt; }
+        break;
+    }
+  }
+  if (auto* v = term_copy.evaluate()) {
+          NTH_LOG("Returned");
+    return v->value()[0].as<Type>(); }
+          NTH_LOG("Returned");
+  return std::nullopt;
+}
 
 }  // namespace ic::type

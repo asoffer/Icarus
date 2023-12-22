@@ -7,8 +7,9 @@
 #include "type/function.h"
 #include "type/parameters.h"
 #include "type/primitive.h"
+#include "type/type.h"
 
-namespace ic::type::internal_dependent {
+namespace ic::type {
 namespace {
 
 using ::nth::debug::ElementsAreSequentially;
@@ -18,8 +19,8 @@ inline constexpr auto ValueIs = nth::debug::MakeProperty<"value-is">(
       return value.raw_value() == v.raw_value();
     });
 
-NTH_TEST("dependent/basic/value", Type t, auto v) {
-  auto value = Term::Value(TypeErasedValue(t, {v}));
+NTH_TEST("term/basic/value", Type t, auto v) {
+  auto value = DependentTerm::Value(TypeErasedValue(t, {v}));
   NTH_ASSERT(value.evaluate() != nullptr);
   NTH_ASSERT(value.evaluate()->type() == t);
   NTH_EXPECT(value.evaluate()->value() >>= ElementsAreSequentially(ValueIs(v)));
@@ -34,15 +35,16 @@ TypeErasedValue Identity(Type t) {
   return TypeErasedValue(Function(Parameters({{.type = t}}), {t}), {&id});
 }
 
-NTH_TEST("dependent/basic/call", Type t, auto v) {
-  auto value = Term::Call(Term::Value(TypeErasedValue(t, {v})),
-                          Term::Value(Identity(t)));
+NTH_TEST("term/basic/call", Type t, auto v) {
+  auto value =
+      DependentTerm::Call(DependentTerm::Value(TypeErasedValue(t, {v})),
+                          DependentTerm::Value(Identity(t)));
   NTH_ASSERT(value.evaluate() != nullptr);
   NTH_ASSERT(value.evaluate()->type() == t);
   NTH_ASSERT(value.evaluate()->value() >>= ElementsAreSequentially(ValueIs(v)));
 }
 
-NTH_INVOKE_TEST("dependent/basic/*") {
+NTH_INVOKE_TEST("term/basic/*") {
   co_yield nth::TestArguments{Bool, true};
   co_yield nth::TestArguments{Bool, false};
   co_yield nth::TestArguments{I32, int32_t{3}};
@@ -61,24 +63,26 @@ TypeErasedValue AddOne() {
   return TypeErasedValue(Function(Parameters({{.type = I64}}), {I64}), {&f});
 }
 
-NTH_TEST("dependent/call", int64_t v) {
+NTH_TEST("term/call", int64_t v) {
   auto value =
-      Term::Call(Term::Value(TypeErasedValue(I64, {v})), Term::Value(AddOne()));
+      DependentTerm::Call(DependentTerm::Value(TypeErasedValue(I64, {v})),
+                          DependentTerm::Value(AddOne()));
   NTH_ASSERT(value.evaluate() != nullptr);
   NTH_ASSERT(value.evaluate()->type() == I64);
   NTH_EXPECT(value.evaluate()->value() >>=
              ElementsAreSequentially(ValueIs(v + 1)));
 }
 
-NTH_INVOKE_TEST("dependent/call") {
+NTH_INVOKE_TEST("term/call") {
   co_yield int64_t{3};
   co_yield int64_t{4};
   co_yield int64_t{-3};
 }
 
-NTH_TEST("dependent/simplify/trivial") {
-  auto value = Term::Function(Term::Value(TypeErasedValue(Type_, {I64})),
-                              Term::DeBruijnIndex(0));
+NTH_TEST("term/simplify/trivial") {
+  auto value = DependentTerm::Function(
+      DependentTerm::Value(TypeErasedValue(Type_, {I64})),
+      DependentTerm::DeBruijnIndex(0));
   NTH_ASSERT(value.evaluate() == nullptr);
   NTH_ASSERT(value.bind(TypeErasedValue(I64, {int64_t{3}})));
   NTH_ASSERT(value.evaluate() != nullptr);
@@ -87,10 +91,11 @@ NTH_TEST("dependent/simplify/trivial") {
              ElementsAreSequentially(ValueIs(int64_t{3})));
 }
 
-NTH_TEST("dependent/simplify/basic") {
-  auto value =
-      Term::Function(Term::Value(TypeErasedValue(Type_, {I64})),
-                     Term::Call(Term::DeBruijnIndex(0), Term::Value(AddOne())));
+NTH_TEST("term/simplify/basic") {
+  auto value = DependentTerm::Function(
+      DependentTerm::Value(TypeErasedValue(Type_, {I64})),
+      DependentTerm::Call(DependentTerm::DeBruijnIndex(0),
+                          DependentTerm::Value(AddOne())));
   NTH_ASSERT(value.evaluate() == nullptr);
   NTH_ASSERT(value.bind(TypeErasedValue(I64, {int64_t{3}})));
   NTH_ASSERT(value.evaluate() != nullptr);
@@ -99,11 +104,12 @@ NTH_TEST("dependent/simplify/basic") {
              ElementsAreSequentially(ValueIs(int64_t{4})));
 }
 
-NTH_TEST("dependent/simplify/nested-call") {
-  auto value = Term::Function(
-      Term::Value(TypeErasedValue(Type_, {I64})),
-      Term::Call(Term::Call(Term::DeBruijnIndex(0), Term::Value(AddOne())),
-                 Term::Value(AddOne())));
+NTH_TEST("term/simplify/nested-call") {
+  auto value = DependentTerm::Function(
+      DependentTerm::Value(TypeErasedValue(Type_, {I64})),
+      DependentTerm::Call(DependentTerm::Call(DependentTerm::DeBruijnIndex(0),
+                                              DependentTerm::Value(AddOne())),
+                          DependentTerm::Value(AddOne())));
   NTH_ASSERT(value.evaluate() == nullptr);
   NTH_ASSERT(value.bind(TypeErasedValue(I64, {int64_t{3}})));
   NTH_ASSERT(value.evaluate() != nullptr);
@@ -112,10 +118,11 @@ NTH_TEST("dependent/simplify/nested-call") {
              ElementsAreSequentially(ValueIs(int64_t{5})));
 }
 
-NTH_TEST("dependent/simplify/dependent") {
-  auto value = Term::Function(
-      Term::Value(TypeErasedValue(Type_, {Type_})),
-      Term::Function(Term::DeBruijnIndex(0), Term::DeBruijnIndex(0)));
+NTH_TEST("term/simplify/dependent") {
+  auto value = DependentTerm::Function(
+      DependentTerm::Value(TypeErasedValue(Type_, {Type_})),
+      DependentTerm::Function(DependentTerm::DeBruijnIndex(0),
+                              DependentTerm::DeBruijnIndex(0)));
   NTH_ASSERT(value.evaluate() == nullptr);
   NTH_ASSERT(value.bind(TypeErasedValue(Type_, {I64})));
   NTH_ASSERT(value.evaluate() == nullptr);
@@ -126,13 +133,44 @@ NTH_TEST("dependent/simplify/dependent") {
              ElementsAreSequentially(ValueIs(int64_t{3})));
 }
 
-NTH_TEST("dependent/bind/failure") {
-  auto value = Term::Function(Term::Value(TypeErasedValue(Type_, {Bool})),
-                              Term::DeBruijnIndex(0));
+NTH_TEST("term/bind/failure") {
+  auto value = DependentTerm::Function(
+      DependentTerm::Value(TypeErasedValue(Type_, {Bool})),
+      DependentTerm::DeBruijnIndex(0));
   NTH_ASSERT(value.evaluate() == nullptr);
   NTH_ASSERT(not value.bind(TypeErasedValue(I64, {int64_t{3}})));
   NTH_EXPECT(value.evaluate() == nullptr);
 }
 
+NTH_TEST("dependent/evaluation") {
+  auto t = Dependent(
+      DependentTerm::Function(
+          DependentTerm::Value(TypeErasedValue(Type_, {Type_})),
+          DependentTerm::DeBruijnIndex(0)),
+      DependentParameterMapping({DependentParameterMapping::Index::Value(0)}));
+  std::array inputs{TypeErasedValue(Type_, {Char})};
+  NTH_EXPECT(t(inputs) == Char);
+}
+
+NTH_TEST("dependent/argument-reordering") {
+  auto t = Dependent(
+      DependentTerm::Function(
+          DependentTerm::Value(TypeErasedValue(Type_, {Type_})),
+          DependentTerm::Function(
+              DependentTerm::Value(TypeErasedValue(Type_, {I32})),
+              DependentTerm::DeBruijnIndex(1))),
+      DependentParameterMapping({DependentParameterMapping::Index::Value(1),
+                                 DependentParameterMapping::Index::Value(0)}));
+
+  // Incorrect type.
+  std::array inputs{TypeErasedValue(Type_, {Char}), TypeErasedValue(Type_, {Char})};
+  NTH_EXPECT(t(inputs) == std::nullopt);
+
+  // Correct type. Reordered.
+  inputs = std::array{TypeErasedValue(I32, {int32_t{17}}),
+                      TypeErasedValue(Type_, {Char})};
+  NTH_EXPECT(t(inputs) == Char);
+}
+
 }  // namespace
-}  // namespace ic::type::internal_dependent
+}  // namespace ic::type

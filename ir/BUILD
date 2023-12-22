@@ -248,7 +248,7 @@ cc_library(
     name = "type_erased_value",
     hdrs = ["type_erased_value.h"],
     deps = [
-        "//type",
+        "//type:basic",
     ],
 )
 

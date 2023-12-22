@@ -9,6 +9,7 @@
 #include "ir/function.h"
 #include "nth/container/flyweight_set.h"
 #include "type/basic.h"
+#include "type/dependent.h"
 #include "type/family.h"
 #include "type/function.h"
 #include "type/generic_function.h"
@@ -42,6 +43,9 @@ struct TypeSystem {
   nth::flyweight_set<Type> buffer_pointee_types;
   nth::flyweight_set<std::pair<IrFunction const*, Evaluation>> generic_function_types;
   nth::flyweight_set<Family> type_families;
+  nth::flyweight_set<DependentTerm> dependent_terms;
+  nth::flyweight_set<DependentParameterMapping> dependent_mapping;
+  nth::flyweight_set<std::pair<size_t, size_t>> dependent_term_mapping_pairs;
 };
 
 TypeSystem const& GlobalTypeSystem();
