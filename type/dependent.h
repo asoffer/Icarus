@@ -25,7 +25,9 @@ struct Term {
   static Term Value(TypeErasedValue const &value);
   static Term Call(Term const &type, Term f);
 
-  void specialize(TypeErasedValue const &value);
+  // Partially evaluates the term (which must represent a function) at the given
+  // `value`. If `bind` returns `false`, `*this` will not have been modified.
+  bool bind(TypeErasedValue const &value);
 
   // Returns a pointer to a fully-evaluated value if the expression can be
   // completely evaluated, and null otherwise.

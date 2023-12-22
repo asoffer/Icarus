@@ -5,6 +5,7 @@
 #include "ir/function.h"
 #include "jasmin/core/execute.h"
 #include "nth/container/stack.h"
+#include "type/primitive.h"
 
 namespace ic::type::internal_dependent {
 
@@ -63,7 +64,7 @@ Term Term::Function(Term const &type, Term term) {
 }
 
 TypeErasedValue Term::Call(TypeErasedValue const &f, TypeErasedValue const &v) {
-  auto const & fn = *f.value()[0].as<IrFunction const *>();
+  auto const &fn = *f.value()[0].as<IrFunction const *>();
   nth::stack<jasmin::Value> stack;
   for (jasmin::Value value : v.value()) { stack.push(value); }
   jasmin::Execute(fn, stack);
@@ -92,8 +93,10 @@ void Term::Substitute(
         case Node::Kind::Value: continue;
         case Node::Kind::FunctionCall: continue;
         case Node::Kind::Function:
-          work_queue.emplace(nth::interval(iter + 1, e), count + 1);
-          goto next_work_item;
+          work_queue.emplace(
+              nth::interval(iter + 1 + (iter + 1)->subtree_size, e), count + 1);
+          e = iter + 1 + (iter + 1)->subtree_size;
+          continue;
         case Node::Kind::DeBruijnIndex:
           if (iter->index == count) {
             iter->kind  = Node::Kind::Value;
@@ -102,7 +105,6 @@ void Term::Substitute(
           continue;
       }
     }
-  next_work_item:;
   }
 }
 
@@ -148,17 +150,22 @@ void Term::PartiallyEvaluate() {
   nodes_.erase(write_iter, nodes_.end());
 }
 
-void Term::specialize(TypeErasedValue const &value) {
+bool Term::bind(TypeErasedValue const &value) {
   auto iter = nodes_.rbegin();
   NTH_REQUIRE((v.harden), iter->kind == Node::Kind::Function);
   ++iter;
   NTH_REQUIRE((v.harden), iter->kind == Node::Kind::Value);
+  NTH_REQUIRE((v.harden), values_.from_index(iter->index).type() == Type_);
+  if (value.type() != values_.from_index(iter->index).value()[0].as<Type>()) {
+    return false;
+  }
   ++iter;
   Substitute(values_.index(values_.insert(value).first),
              nth::interval(iter, nodes_.rend()));
   nodes_.pop_back();
   nodes_.pop_back();
   PartiallyEvaluate();
+  return true;
 }
 
 }  // namespace ic::type::internal_dependent

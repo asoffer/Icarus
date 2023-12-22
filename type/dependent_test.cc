@@ -1,8 +1,8 @@
 #include "type/dependent.h"
 
 #include "ir/function.h"
-#include "jasmin/instructions/arithmetic.h"
 #include "ir/type_erased_value.h"
+#include "jasmin/instructions/arithmetic.h"
 #include "nth/test/test.h"
 #include "type/function.h"
 #include "type/parameters.h"
@@ -80,10 +80,11 @@ NTH_TEST("dependent/simplify/trivial") {
   auto value = Term::Function(Term::Value(TypeErasedValue(Type_, {I64})),
                               Term::DeBruijnIndex(0));
   NTH_ASSERT(value.evaluate() == nullptr);
-  value.specialize(TypeErasedValue(I64, {3}));
+  NTH_ASSERT(value.bind(TypeErasedValue(I64, {int64_t{3}})));
   NTH_ASSERT(value.evaluate() != nullptr);
   NTH_ASSERT(value.evaluate()->type() == I64);
-  NTH_EXPECT(value.evaluate()->value() >>= ElementsAreSequentially(ValueIs(3)));
+  NTH_EXPECT(value.evaluate()->value() >>=
+             ElementsAreSequentially(ValueIs(int64_t{3})));
 }
 
 NTH_TEST("dependent/simplify/basic") {
@@ -91,10 +92,11 @@ NTH_TEST("dependent/simplify/basic") {
       Term::Function(Term::Value(TypeErasedValue(Type_, {I64})),
                      Term::Call(Term::DeBruijnIndex(0), Term::Value(AddOne())));
   NTH_ASSERT(value.evaluate() == nullptr);
-  value.specialize(TypeErasedValue(I64, {3}));
+  NTH_ASSERT(value.bind(TypeErasedValue(I64, {int64_t{3}})));
   NTH_ASSERT(value.evaluate() != nullptr);
   NTH_ASSERT(value.evaluate()->type() == I64);
-  NTH_EXPECT(value.evaluate()->value() >>= ElementsAreSequentially(ValueIs(4)));
+  NTH_EXPECT(value.evaluate()->value() >>=
+             ElementsAreSequentially(ValueIs(int64_t{4})));
 }
 
 NTH_TEST("dependent/simplify/nested-call") {
@@ -103,10 +105,33 @@ NTH_TEST("dependent/simplify/nested-call") {
       Term::Call(Term::Call(Term::DeBruijnIndex(0), Term::Value(AddOne())),
                  Term::Value(AddOne())));
   NTH_ASSERT(value.evaluate() == nullptr);
-  value.specialize(TypeErasedValue(I64, {3}));
+  NTH_ASSERT(value.bind(TypeErasedValue(I64, {int64_t{3}})));
   NTH_ASSERT(value.evaluate() != nullptr);
   NTH_ASSERT(value.evaluate()->type() == I64);
-  NTH_EXPECT(value.evaluate()->value() >>= ElementsAreSequentially(ValueIs(5)));
+  NTH_EXPECT(value.evaluate()->value() >>=
+             ElementsAreSequentially(ValueIs(int64_t{5})));
+}
+
+NTH_TEST("dependent/simplify/dependent") {
+  auto value = Term::Function(
+      Term::Value(TypeErasedValue(Type_, {Type_})),
+      Term::Function(Term::DeBruijnIndex(0), Term::DeBruijnIndex(0)));
+  NTH_ASSERT(value.evaluate() == nullptr);
+  NTH_ASSERT(value.bind(TypeErasedValue(Type_, {I64})));
+  NTH_ASSERT(value.evaluate() == nullptr);
+  NTH_ASSERT(value.bind(TypeErasedValue(I64, {int64_t{3}})));
+  NTH_ASSERT(value.evaluate() != nullptr);
+  NTH_ASSERT(value.evaluate()->type() == I64);
+  NTH_EXPECT(value.evaluate()->value() >>=
+             ElementsAreSequentially(ValueIs(int64_t{3})));
+}
+
+NTH_TEST("dependent/bind/failure") {
+  auto value = Term::Function(Term::Value(TypeErasedValue(Type_, {Bool})),
+                              Term::DeBruijnIndex(0));
+  NTH_ASSERT(value.evaluate() == nullptr);
+  NTH_ASSERT(not value.bind(TypeErasedValue(I64, {int64_t{3}})));
+  NTH_EXPECT(value.evaluate() == nullptr);
 }
 
 }  // namespace
