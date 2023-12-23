@@ -74,11 +74,6 @@ BufferPointerType BufPtr(Type t) {
       type_system->buffer_pointee_types.insert(t).first));
 }
 
-GenericFunctionType GenericFunction(Evaluation e, IrFunction const* fn) {
-  return GenericFunctionType(type_system->generic_function_types.index(
-      type_system->generic_function_types.insert(std::pair(fn, e)).first));
-}
-
 Type SliceType::element_type() const {
   return type_system->slice_element_types.from_index(data());
 }
@@ -112,16 +107,6 @@ std::vector<Type> const& FunctionType::returns() const {
       std::get<1>(type_system->functions.from_index(data())));
 }
 
-IrFunction const& GenericFunctionType::function() const {
-  return *type_system->generic_function_types.from_index(BasicType::data())
-              .first;
-}
-
-Evaluation GenericFunctionType::evaluation() const {
-  return type_system->generic_function_types.from_index(BasicType::data())
-      .second;
-}
-
 OpaqueType Opaque() { return OpaqueType(opaque_count++); }
 
 size_t JasminSize(Type t) {
@@ -132,7 +117,6 @@ size_t JasminSize(Type t) {
     case Type::Kind::Slice: return 2;
     case Type::Kind::Pointer: return 1;
     case Type::Kind::BufferPointer: return 1;
-    case Type::Kind::GenericFunction: return 1;
     case Type::Kind::Opaque: NTH_UNREACHABLE("{}") <<= {t};
     case Type::Kind::DependentFunction: NTH_UNREACHABLE("{}") <<= {t};
   }
@@ -225,21 +209,16 @@ std::optional<Type> DependentFunctionType::operator()(
       case DependentParameterMapping::Index::Kind::Type:
         if (not term_copy.bind(
                 TypeErasedValue(Type_, {values[index.index()].type()}))) {
-          NTH_LOG("Returned");
           return std::nullopt;
         }
         break;
       case DependentParameterMapping::Index::Kind::Value:
         if (not term_copy.bind(values[index.index()])) {
-          NTH_LOG("Returned");
           return std::nullopt; }
         break;
     }
   }
-  if (auto* v = term_copy.evaluate()) {
-          NTH_LOG("Returned");
-    return v->value()[0].as<Type>(); }
-          NTH_LOG("Returned");
+  if (auto* v = term_copy.evaluate()) { return v->value()[0].as<Type>(); }
   return std::nullopt;
 }
 

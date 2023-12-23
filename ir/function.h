@@ -24,8 +24,8 @@ namespace ic {
 
 struct Store : jasmin::Instruction<Store> {
   static void consume(std::span<jasmin::Value, 2> input, uint8_t size) {
-    void* location      = input[0].as<void*>();
-    jasmin::Value value = input[1];
+    jasmin::Value value = input[0];
+    void* location      = input[1].as<void*>();
     jasmin::Value::Store(value, location, size);
   }
   static constexpr std::string_view debug() { return "store"; }

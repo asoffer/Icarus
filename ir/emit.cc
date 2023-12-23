@@ -710,7 +710,7 @@ void EmitContext::Push(std::span<jasmin::Value const> vs, type::Type t) {
     return;
   }
   switch (t.kind()) {
-    case type::Type::Kind::GenericFunction:
+    case type::Type::Kind::DependentFunction:
     case type::Type::Kind::Function: {
       NTH_REQUIRE((v.harden), vs.size() == 1);
       current_function().append<PushFunction>(vs[0]);

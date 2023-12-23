@@ -12,7 +12,6 @@
 #include "type/dependent.h"
 #include "type/family.h"
 #include "type/function.h"
-#include "type/generic_function.h"
 #include "type/opaque.h"
 #include "type/parameters.h"
 #include "type/pointer.h"
@@ -41,7 +40,6 @@ struct TypeSystem {
   nth::flyweight_set<Type> slice_element_types;
   nth::flyweight_set<Type> pointee_types;
   nth::flyweight_set<Type> buffer_pointee_types;
-  nth::flyweight_set<std::pair<IrFunction const*, Evaluation>> generic_function_types;
   nth::flyweight_set<Family> type_families;
   nth::flyweight_set<DependentTerm> dependent_terms;
   nth::flyweight_set<DependentParameterMapping> dependent_mapping;

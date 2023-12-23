@@ -117,18 +117,6 @@ cc_library(
 )
 
 cc_library(
-    name = "generic_function",
-    hdrs = ["generic_function.h"],
-    deps = [
-        ":basic",
-        ":function",
-        ":type_system_cc_proto",
-        "//common/language:type_kind",
-        "@asoffer_nth//nth/debug",
-    ],
-)
-
-cc_library(
     name = "opaque",
     hdrs = ["opaque.h"],
     deps = [
@@ -190,7 +178,6 @@ cc_library(
         ":dependent",
         ":family",
         ":function",
-        ":generic_function",
         ":opaque",
         ":parameters",
         ":pointer",

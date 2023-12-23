@@ -59,16 +59,6 @@ nth::NoDestructor<IrFunction> Slice([] {
   return f;
 }());
 
-nth::NoDestructor<IrFunction> ForeignType([] {
-  IrFunction f(3, 1);
-  f.append<jasmin::Swap>();
-  f.append<jasmin::Drop>();
-  f.append<jasmin::Swap>();
-  f.append<jasmin::Drop>();
-  f.append<jasmin::Return>();
-  return f;
-}());
-
 nth::NoDestructor<std::vector<std::string>> BuiltinNamesImpl;
 
 }  // namespace
@@ -122,18 +112,15 @@ Module BuiltinModule() {
                {type::Slice(type::Char)}),
            *Slice);
 
-  // TODO: There's something wrong with registration happening after this point.
-  m.Insert(
-      Identifier("foreign"),
-      {.qualified_type = type::QualifiedType::Constant(type::GenericFunction(
-           type::Evaluation::RequireCompileTime, &*ForeignType)),
-       .value          = {&*Foreign}});
-  global_function_registry.Register(
-      FunctionId(ModuleId::Builtin(), LocalFunctionId(next_id++)),
-      &*ForeignType);
-
-  global_function_registry.Register(
-      FunctionId(ModuleId::Builtin(), LocalFunctionId(next_id++)), &*Foreign);
+  Register(
+      "foreign",
+      type::Dependent(type::DependentTerm::Function(
+                          type::DependentTerm::Value(
+                              TypeErasedValue(type::Type_, {type::Type_})),
+                          type::DependentTerm::DeBruijnIndex(0)),
+                      type::DependentParameterMapping(
+                          {type::DependentParameterMapping::Index::Value(1)})),
+      *Foreign);
 
   return m;
 }

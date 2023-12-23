@@ -767,7 +767,7 @@ void HandleParseTreeNodeCallExpression(ParseNodeIndex index, IrContext& context,
       NTH_UNIMPLEMENTED("{} {}") <<= {parameters, node.child_count - 1};
     }
   } else if (invocable_type.type().kind() ==
-             type::Type::Kind::GenericFunction) {
+             type::Type::Kind::DependentFunction) {
     auto& spec = context.emit.instruction_spec[index];
     ++spec.parameters;
     std::vector<std::pair<ParseNodeIndex, TypeStack::const_iterator>> argument_indices;
@@ -780,28 +780,31 @@ void HandleParseTreeNodeCallExpression(ParseNodeIndex index, IrContext& context,
     }
 
     std::reverse(argument_indices.begin(), argument_indices.end());
-    nth::stack<jasmin::Value> value_stack;
+    std::vector<TypeErasedValue> arguments;
 
     for (auto [index, type_iter] : argument_indices) {
-      auto t = (*type_iter)[0].type();
-
-      nth::interval range = context.emit.tree.subtree_range(index);
-      context.emit.Evaluate(range, value_stack, {t});
-      spec.parameters += type::JasminSize(t);
-    }
-
-    auto g = invocable_type.type().AsGenericFunction();
-    jasmin::Execute(g.function(), value_stack);
-    auto t = value_stack.top().as<type::Type>();
-    context.type_stack().push({type::QualifiedType::Constant(t)});
-    NTH_REQUIRE((v.debug), t.kind() == type::Type::Kind::Function);
-
-    if (g.evaluation() == type::Evaluation::PreferCompileTime or
-        g.evaluation() == type::Evaluation::RequireCompileTime) {
+      auto qt = (*type_iter)[0];
       nth::stack<jasmin::Value> value_stack;
-      context.emit.Evaluate(context.emit.tree.subtree_range(index), value_stack,
-                            {t});
+      nth::interval range = context.emit.tree.subtree_range(index);
+      if (qt.constant()) {
+        context.emit.Evaluate(range, value_stack, {qt.type()});
+        std::span values = value_stack.top_span(value_stack.size());
+        arguments.emplace_back(qt.type(),
+                               std::vector(values.begin(), values.end()));
+      } else {
+        arguments.emplace_back(qt.type(), std::vector<jasmin::Value>{});
+      }
+      spec.parameters += type::JasminSize(qt.type());
     }
+
+    auto dep = invocable_type.type().AsDependentFunction();
+    std::optional t = dep(arguments);
+    context.type_stack().push({type::QualifiedType::Constant(*t)});
+    NTH_REQUIRE((v.debug), t->kind() == type::Type::Kind::Function);
+
+    nth::stack<jasmin::Value> value_stack;
+    context.emit.Evaluate(context.emit.tree.subtree_range(index), value_stack,
+                          {*t});
   } else {
     NTH_UNIMPLEMENTED("node = {} invocable_type = {}") <<=
         {node, invocable_type};

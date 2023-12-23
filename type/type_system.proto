@@ -11,10 +11,7 @@ message TypeProto {
     SLICE = 4;
     POINTER = 5;
     BUFFER_POINTER = 6;
-    GENERIC_FUNCTION = 7;
-    OPAQUE = 8;
-    DEPENDENT_PRODUCT = 9;
-    DEPENDENT_SUM = 10;
+    OPAQUE = 7;
   }
   Kind kind = 1;
   uint32 index = 2;
