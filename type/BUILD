@@ -68,7 +68,6 @@ cc_library(
     srcs = ["dependent.cc"],
     deps = [
         ":basic",
-        ":family",
         "//ir:function",
         "//ir:type_erased_value",
         "@asoffer_jasmin//jasmin/core:execute",
@@ -92,16 +91,6 @@ cc_test(
         "@asoffer_jasmin//jasmin/core:value",
         "@asoffer_nth//nth/test:main",
     ]
-)
-
-cc_library(
-    name = "family",
-    hdrs = ["family.h"],
-    deps = [
-        ":basic",
-        "//common/language:type_kind",
-        "@asoffer_nth//nth/debug",
-    ],
 )
 
 cc_library(
@@ -176,7 +165,6 @@ cc_library(
         ":basic",
         ":byte_width",
         ":dependent",
-        ":family",
         ":function",
         ":opaque",
         ":parameters",

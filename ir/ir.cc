@@ -799,8 +799,17 @@ void HandleParseTreeNodeCallExpression(ParseNodeIndex index, IrContext& context,
 
     auto dep = invocable_type.type().AsDependentFunction();
     std::optional t = dep(arguments);
+    if (not t) {
+      diag.Consume({
+          diag::Header(diag::MessageKind::Error),
+          diag::Text(
+              "Unable to call dependent function with the given arguments."),
+      });
+      context.type_stack().push(
+          {type::QualifiedType::Unqualified(type::Error)});
+      return;
+    }
     context.type_stack().push({type::QualifiedType::Constant(*t)});
-    NTH_REQUIRE((v.debug), t->kind() == type::Type::Kind::Function);
 
     nth::stack<jasmin::Value> value_stack;
     context.emit.Evaluate(context.emit.tree.subtree_range(index), value_stack,

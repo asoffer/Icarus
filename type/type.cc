@@ -127,6 +127,8 @@ TypeContour Contour(Type t) {
     case Type::Kind::Primitive:
       switch (t.AsPrimitive().kind()) {
         case PrimitiveType::Kind::Error:
+        case PrimitiveType::Kind::Bottom:
+        case PrimitiveType::Kind::Unit:
         default: NTH_UNREACHABLE();
         case PrimitiveType::Kind::NullType:
         case PrimitiveType::Kind::Scope_:
@@ -216,10 +218,19 @@ std::optional<Type> DependentFunctionType::operator()(
         if (not term_copy.bind(values[index.index()])) {
           return std::nullopt; }
         break;
+      case DependentParameterMapping::Index::Kind::Implicit:
+        if (not term_copy.bind(TypeErasedValue(Unit, {}))) {
+          return std::nullopt;
+        }
     }
   }
   if (auto* v = term_copy.evaluate()) { return v->value()[0].as<Type>(); }
   return std::nullopt;
+}
+
+Type Family(Type t) {
+  return Function(
+      Parameters(std::vector<ParametersType::Parameter>{{.type = t}}), {Type_});
 }
 
 }  // namespace ic::type

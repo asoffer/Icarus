@@ -10,7 +10,6 @@
 #include "nth/container/flyweight_set.h"
 #include "type/basic.h"
 #include "type/dependent.h"
-#include "type/family.h"
 #include "type/function.h"
 #include "type/opaque.h"
 #include "type/parameters.h"
@@ -40,13 +39,14 @@ struct TypeSystem {
   nth::flyweight_set<Type> slice_element_types;
   nth::flyweight_set<Type> pointee_types;
   nth::flyweight_set<Type> buffer_pointee_types;
-  nth::flyweight_set<Family> type_families;
   nth::flyweight_set<DependentTerm> dependent_terms;
   nth::flyweight_set<DependentParameterMapping> dependent_mapping;
   nth::flyweight_set<std::pair<size_t, size_t>> dependent_term_mapping_pairs;
 };
 
 TypeSystem const& GlobalTypeSystem();
+
+Type Family(Type t);
 
 }  // namespace ic::type
 

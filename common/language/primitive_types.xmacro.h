@@ -24,9 +24,10 @@
 
 #if not defined(IC_XMACRO_PRIMITIVE_TYPE_END_CATEGORY)
 #define IC_XMACRO_PRIMITIVE_TYPE_END_CATEGORY(category)
-#endif 
+#endif
 
-
+IC_XMACRO_PRIMITIVE_TYPE(Bottom, Bottom, "bottom")
+IC_XMACRO_PRIMITIVE_TYPE(Unit, Unit, "unit")
 IC_XMACRO_PRIMITIVE_TYPE(Error, Error, "error")
 IC_XMACRO_PRIMITIVE_TYPE(Bool, Bool, "bool")
 IC_XMACRO_PRIMITIVE_TYPE(NullType, NullType, "nulltype")

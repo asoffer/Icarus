@@ -143,8 +143,8 @@ void DependentTerm::PartiallyEvaluate() {
         case Node::Kind::FunctionCall: {
           if ((write_iter - 1)->kind == Node::Kind::Value) {
             if ((write_iter - 2)->kind == Node::Kind::Value) {
-              auto v        = *--write_iter;
               auto f        = *--write_iter;
+              auto v        = *--write_iter;
               *write_iter++ = Node{
                   .kind         = Node::Kind::Value,
                   .index        = static_cast<uint16_t>(values_.index(
@@ -165,6 +165,9 @@ void DependentTerm::PartiallyEvaluate() {
                                   std::make_reverse_iterator(nodes_.begin())));
               }
             }
+            else {
+              *write_iter++ = *read_iter;
+            }
           } else {
             *write_iter++ = *read_iter;
           }
@@ -184,9 +187,6 @@ bool DependentTerm::bind(TypeErasedValue const &value) {
   NTH_REQUIRE((v.harden), iter->kind == Node::Kind::Value);
   NTH_REQUIRE((v.harden), values_.from_index(iter->index).type() == Type_);
   if (value.type() != values_.from_index(iter->index).value()[0].as<Type>()) {
-    NTH_LOG("{} vs {}") <<={
-      value.type(), values_.from_index(iter->index).value()[0].as<Type>()
-    };
     return false;
   }
   ++iter;
@@ -206,6 +206,10 @@ DependentParameterMapping::Index DependentParameterMapping::Index::Type(
 DependentParameterMapping::Index DependentParameterMapping::Index::Value(
     uint16_t n) {
   return Index(Kind::Value, n);
+}
+
+DependentParameterMapping::Index DependentParameterMapping::Index::Implicit() {
+  return Index(Kind::Implicit, 0);
 }
 
 }  // namespace ic::type
