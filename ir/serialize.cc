@@ -88,6 +88,8 @@ void Serializer::Serialize(Module& module, ModuleProto& proto) {
       if (entry.qualified_type.type().kind() == type::Type::Kind::Function) {
         raw_value =
             global_function_registry.id(v.as<IrFunction const*>()).value();
+      } else if (entry.qualified_type.type().kind() == type::Type::Kind::Pointer) {
+        raw_value = global_pointer_registry.id(v.as<void*>());
       } else {
         raw_value = v.raw_value();
       }

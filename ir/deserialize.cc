@@ -148,6 +148,10 @@ bool Deserializer::Deserialize(ModuleProto const& proto, ModuleId id,
 
       value.push_back(
           &global_function_registry.function(FunctionId(mid, local_fn_id)));
+    } else if (t.kind() == type::Type::Kind::Pointer) {
+      if (exported_symbol.content().size() != 1) { return false; }
+      uint64_t n    = exported_symbol.content()[0];
+      value.push_back(global_pointer_registry.pointer(n));
     } else {
       for (uint64_t n : exported_symbol.content()) {
         jasmin::Value v = jasmin::Value::Uninitialized();
