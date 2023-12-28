@@ -1,0 +1,7 @@
+// This module provides an interface to symbols in the <errno.h> C-header file.
+
+let c ::= import "std.compat.c.types"
+
+let errno    ::= builtin.foreign("errno", *c.int)
+// let perror   ::= builtin.foreign("perror", [*]char -> ())
+let strerror ::= builtin.foreign("strerror", c.int -> [*]char)

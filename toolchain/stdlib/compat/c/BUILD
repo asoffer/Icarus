@@ -22,6 +22,12 @@ ic_library(
     deps = [":types"],
 )
 
+ic_library(
+    name = "errno",
+    srcs = ["errno.ic"],
+    deps = [":types"],
+)
+
 generated_ic_library(
     name = "limits",
     srcs = ["limits.template.ic"],
@@ -109,6 +115,7 @@ ic_library(
     visibility = ["//visibility:private"],
     deps = [
         ":ctype",
+        ":errno",
         ":limits",
         ":locale",
         ":string",
