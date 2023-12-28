@@ -20,12 +20,22 @@ nth::flyweight_map<std::pair<size_t, type::FunctionType>,
                    std::pair<type::FunctionType, IrFunction>>
     foreign_functions;
 
+nth::flyweight_map<std::pair<size_t, type::PointerType>,
+                   std::pair<type::PointerType, void*>>
+    foreign_pointers;
+
 }  // namespace
 
 nth::flyweight_map<std::pair<size_t, type::FunctionType>,
                    std::pair<type::FunctionType, IrFunction>> const&
 AllForeignFunctions() {
   return foreign_functions;
+}
+
+nth::flyweight_map<std::pair<size_t, type::PointerType>,
+                   std::pair<type::PointerType, void*>> const&
+AllForeignPointers() {
+  return foreign_pointers;
 }
 
 std::pair<type::FunctionType, IrFunction> const& LookupForeignFunction(
@@ -76,6 +86,34 @@ IrFunction const& InsertForeignFunction(std::string_view name,
                  LocalFunctionId(foreign_functions.index(iter))),
       p);
   return *p;
+}
+
+void* InsertForeignPointer(std::string_view name, type::PointerType t) {
+  auto [iter, inserted] = foreign_pointers.try_emplace(
+      std::make_pair(resources.StringLiteralIndex(name), t), t, nullptr);
+  if (not inserted) {
+    return iter->second.second;
+  }
+
+  dlerror();  // Clear existing errors.
+  iter->second.second = dlsym(RTLD_DEFAULT, std::string(name).c_str());
+  char const* error   = dlerror();
+  if (error != nullptr) { NTH_UNIMPLEMENTED("{}") <<= {error}; }
+
+  NTH_LOG("{}") <<= {iter->second.second};
+  global_pointer_registry.Register(foreign_pointers.index(iter),
+                                   iter->second.second);
+  return iter->second.second;
+}
+
+
+size_t ForeignPointerIndex(std::string_view name, type::PointerType t) {
+  return foreign_pointers.index(foreign_pointers.find(
+      std::make_pair(resources.StringLiteralIndex(name), t)));
+}
+
+std::pair<type::PointerType, void*> const& LookupForeignPointer(size_t index) {
+  return foreign_pointers.from_index(index).second;
 }
 
 }  // namespace ic

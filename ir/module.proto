@@ -16,7 +16,7 @@ message InstructionProto {
     PUSH_FUNCTION = 5;
     PUSH_STRING_LITERAL = 6;
     PUSH_TYPE = 7;
-    DROP = 8;
+    PUSH_POINTER = 8;
     TYPE_KIND = 9;
     TYPE_KIND_EQUALS = 10;
     ROTATE = 11;
@@ -46,6 +46,7 @@ message InstructionProto {
     DUPLICATE = 35;
     ASCII_ENCODE = 36;
     ASCII_DECODE = 37;
+    DROP = 38;
   }
   OpCode op_code = 1;
   repeated uint64 content = 2;
@@ -62,6 +63,11 @@ message ForeignFunctionProto {
   type.FunctionTypeProto type = 2;
 }
 
+message ForeignPointerProto {
+  uint32 name = 1;
+  type.TypeProto pointee = 2;
+}
+
 message SymbolProto {
   type.TypeProto type = 1;
   repeated uint64 content = 2;
@@ -75,10 +81,12 @@ message ModuleProto {
   repeated string string_literals = 2;
 
   repeated ForeignFunctionProto foreign_functions = 3;
+  repeated ForeignPointerProto foreign_pointers = 4;
 
-  type.TypeSystemProto type_system = 4;
+  type.TypeSystemProto type_system = 5;
 
-  map<uint32, string> identifiers = 5;
-  map<uint32, SymbolProto> exported_symbols = 6;
-  repeated string modules = 7;
+  map<uint32, string> identifiers = 6;
+  map<uint32, SymbolProto> exported_symbols = 7;
+
+  repeated string modules = 8;
 }

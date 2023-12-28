@@ -70,6 +70,15 @@ bool Deserializer::DeserializeFunction(ModuleProto const& module_proto,
               &m->functions()[function_id.local_function().value()]));
         }
       } break;
+      case InstructionProto::PUSH_POINTER: {
+        if (instruction.content().size() != 1) { return false; }
+        uint64_t index        = instruction.content()[0];
+        auto const& ptr       = module_proto.foreign_pointers()[index];
+        std::string_view name = module_proto.string_literals()[ptr.name()];
+        auto t                = type::Ptr(
+                           type::Deserialize(ptr.pointee(), module_proto.type_system()));
+        f.raw_append(LookupForeignPointer(ForeignPointerIndex(name, t)).second);
+      } break;
       default: {
         auto op_code_metadata =
             jasmin::Metadata<InstructionSet>.metadata(op_code);
@@ -109,6 +118,12 @@ bool Deserializer::Deserialize(ModuleProto const& proto, ModuleId id,
     InsertForeignFunction(
         proto.string_literals()[f.name()],
         type::DeserializeFunctionType(f.type(), proto.type_system()), true);
+  }
+
+  for (auto const& ptr : proto.foreign_pointers()) {
+    InsertForeignPointer(
+        proto.string_literals()[ptr.name()],
+        type::Ptr(type::Deserialize(ptr.pointee(), proto.type_system())));
   }
 
   auto const& identifiers = proto.identifiers();

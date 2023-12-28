@@ -715,6 +715,10 @@ void EmitContext::Push(std::span<jasmin::Value const> vs, type::Type t) {
       NTH_REQUIRE((v.harden), vs.size() == 1);
       current_function().append<PushFunction>(vs[0]);
     } break;
+    case type::Type::Kind::Pointer: {
+      NTH_REQUIRE((v.harden), vs.size() == 1);
+      current_function().append<PushPointer>(vs[0].as<void*>());
+    } break;
     case type::Type::Kind::Slice: {
       NTH_REQUIRE((v.harden), vs.size() == 2);
       if (t == type::Slice(type::Char)) {

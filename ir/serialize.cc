@@ -30,6 +30,10 @@ void SerializeContent(jasmin::Value op_code_value,
               .id(immediate_values[0].as<IrFunction const*>())
               .value());
       break;
+    case InstructionProto::PUSH_POINTER:
+      instruction.mutable_content()->Add(
+          global_pointer_registry.id(immediate_values[0].as<void*>()));
+      break;
     default: {
       for (size_t i = 0; i < immediate_count; ++i) {
         instruction.mutable_content()->Add(immediate_values[i].raw_value());
@@ -66,6 +70,13 @@ void Serializer::Serialize(Module& module, ModuleProto& proto) {
     auto& f                  = *proto.add_foreign_functions();
     f.set_name(name);
     type::SerializeFunctionType(type, *f.mutable_type());
+  }
+
+  for (auto const& [name_and_type, unused_value] : AllForeignPointers()) {
+    auto const& [name, type] = name_and_type;
+    auto& p                  = *proto.add_foreign_pointers();
+    p.set_name(name);
+    type::Serialize(type.pointee(), *p.mutable_pointee());
   }
 
   for (auto const& [id, entry] : module.entries()) {

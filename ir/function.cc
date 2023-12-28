@@ -52,9 +52,13 @@ jasmin::Value RegisterForeignFunction::consume(std::span<jasmin::Value, 3> input
   char const* data = inputs[0].as<char const*>();
   size_t length    = inputs[1].as<size_t>();
   type::Type t     = inputs[2].as<type::Type>();
-  auto const& f    = InsertForeignFunction(std::string_view(data, length),
-                                           t.AsFunction(), false);
-  return &f;
+  if (t.kind() == type::Type::Kind::Function) {
+    auto const& f = InsertForeignFunction(std::string_view(data, length),
+                                          t.AsFunction(), false);
+    return &f;
+  } else {
+    return InsertForeignPointer(std::string_view(data, length), t.AsPointer());
+  }
 }
 
 void InvokeForeignFunction::consume(std::span<jasmin::Value> input,

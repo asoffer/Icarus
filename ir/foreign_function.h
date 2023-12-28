@@ -28,6 +28,16 @@ IrFunction const& InsertForeignFunction(std::string_view name,
 
 size_t ForeignFunctionIndex(std::string_view name, type::FunctionType t);
 
+void* InsertForeignPointer(std::string_view name, type::PointerType t);
+
+nth::flyweight_map<std::pair<size_t, type::PointerType>,
+                   std::pair<type::PointerType, void*>> const&
+AllForeignPointers();
+
+size_t ForeignPointerIndex(std::string_view name, type::PointerType t);
+
+std::pair<type::PointerType, void*> const& LookupForeignPointer(size_t index);
+
 }  // namespace ic
 
 #endif  // ICARUS_IR_FOREIGN_FUNCTION_H
