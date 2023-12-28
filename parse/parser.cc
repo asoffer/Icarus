@@ -419,6 +419,12 @@ void Parser::HandleStatement(ParseTree& tree) {
   }
 }
 
+void Parser::HandleResolveEnumLiteral(ParseTree& tree) {
+  PopScope();
+  auto state = pop_state();
+  tree.append(ParseNode::Kind::EnumLiteral, state.token, state.subtree_start);
+}
+
 void Parser::HandleWhileLoopBody(ParseTree& tree) {
   tree.append_leaf(ParseNode::Kind::WhileLoopBodyStart, *iterator_);
   tree.back().scope_index = PushScope();
@@ -562,6 +568,53 @@ void Parser::HandleResolveStatementSequence(ParseTree& tree) {
   start.corresponding_statement_sequence = ParseNodeIndex(tree.size());
   tree.append(ParseNode::Kind::StatementSequence, Token::Invalid(),
               state.subtree_start);
+}
+
+void Parser::HandleBracedIdentifierSequence(ParseTree& tree) {
+  if (current_token().kind() == Token::Kind::LeftBrace) {
+    ++iterator_;
+    IgnoreAnyNewlines();
+    ExpandState(
+        State{
+            .kind               = State::Kind::IdentifierSequence,
+            .ambient_precedence = Precedence::Loosest(),
+            .subtree_start      = tree.size(),
+        },
+        State::Kind::ClosingBrace);
+  } else {
+    NTH_UNIMPLEMENTED("{}") <<= {current_token().kind()};
+  }
+}
+
+void Parser::HandleSubsequentIdentifierSequence(ParseTree& tree) {
+  if (current_token().kind() == Token::Kind::Eof or
+      current_token().kind() == Token::Kind::RightBrace) {
+    pop_and_discard_state();
+    return;
+  }
+
+  ExpandState(State::Kind::DeclaredSymbol, State::Kind::Newlines,
+              State::Kind::SubsequentIdentifierSequence);
+}
+
+void Parser::HandleResolveIdentifierSequence(ParseTree& tree) {
+  State state = pop_state();
+  auto& start = tree[ParseNodeIndex(state.subtree_start)];
+  NTH_REQUIRE(start.kind == ParseNode::Kind::ScopeStart);
+  start.corresponding_statement_sequence = ParseNodeIndex(tree.size());
+}
+
+void Parser::HandleIdentifierSequence(ParseTree& tree) {
+  tree.append_leaf(ParseNode::Kind::ScopeStart, Token::Invalid());
+  if (current_token().kind() == Token::Kind::Eof or
+      current_token().kind() == Token::Kind::RightBrace) {
+    ExpandState(State::Kind::ResolveIdentifierSequence);
+    return;
+  }
+
+  ExpandState(State::Kind::DeclaredSymbol, State::Kind::Newlines,
+              State::Kind::SubsequentIdentifierSequence,
+              State::Kind::ResolveIdentifierSequence);
 }
 
 void Parser::HandleResolveUninferredTypeDeclaration(ParseTree& tree) {
@@ -710,6 +763,23 @@ void Parser::HandleAtom(ParseTree& tree) {
             },
             State::Kind::ResolveFunctionLiteral);
       }
+      return;
+    } break;
+    case Token::Kind::Enum: {
+      tree.append_leaf(ParseNode::Kind::EnumLiteralStart, *iterator_++);
+      tree.back().scope_index = PushScope();
+      if (iterator_->kind() != Token::Kind::LeftBrace) { NTH_UNIMPLEMENTED(); }
+      ExpandState(
+          State{
+              .kind               = State::Kind::BracedIdentifierSequence,
+              .ambient_precedence = Precedence::Loosest(),
+              .subtree_start      = tree.size(),
+          },
+          State{
+              .kind               = State::Kind::ResolveEnumLiteral,
+              .ambient_precedence = Precedence::Loosest(),
+              .subtree_start      = tree.size() - 1,
+          });
       return;
     } break;
     case Token::Kind::Scope: {

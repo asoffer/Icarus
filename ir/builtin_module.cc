@@ -130,9 +130,9 @@ Module BuiltinModule() {
                   TypeErasedValue(type::Type_, {type::Type_})),
               type::DependentTerm::Function(
                   type::DependentTerm::Call(
+                      type::DependentTerm::DeBruijnIndex(0),
                       type::DependentTerm::Value(TypeErasedValue(
-                          type::Family(type::Type_), {&*FunctionOrPointer})),
-                      type::DependentTerm::DeBruijnIndex(0)),
+                          type::Family(type::Type_), {&*FunctionOrPointer}))),
                   type::DependentTerm::DeBruijnIndex(1))),
           type::DependentParameterMapping(
               {type::DependentParameterMapping::Index::Value(1),

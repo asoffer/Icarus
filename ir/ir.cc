@@ -974,6 +974,16 @@ void HandleParseTreeNodeFunctionLiteralSignature(
   context.emit.SetQualifiedType(start, qt);
 }
 
+void HandleParseTreeNodeEnumLiteralStart(ParseNodeIndex, IrContext&,
+                                         diag::DiagnosticConsumer&) {
+  NTH_UNIMPLEMENTED();
+}
+
+void HandleParseTreeNodeEnumLiteral(ParseNodeIndex, IrContext&,
+                                    diag::DiagnosticConsumer&) {
+  NTH_UNIMPLEMENTED();
+}
+
 void HandleParseTreeNodeWhileLoopStart(ParseNodeIndex index, IrContext& context,
                                        diag::DiagnosticConsumer& diag) {}
 

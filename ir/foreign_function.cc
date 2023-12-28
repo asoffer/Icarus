@@ -100,7 +100,6 @@ void* InsertForeignPointer(std::string_view name, type::PointerType t) {
   char const* error   = dlerror();
   if (error != nullptr) { NTH_UNIMPLEMENTED("{}") <<= {error}; }
 
-  NTH_LOG("{}") <<= {iter->second.second};
   global_pointer_registry.Register(foreign_pointers.index(iter),
                                    iter->second.second);
   return iter->second.second;

@@ -576,6 +576,14 @@ void HandleParseTreeNodeFunctionTypeParameters(ParseNodeIndex index,
           .returns    = 1});
 }
 
+void HandleParseTreeNodeEnumLiteralStart(ParseNodeIndex, EmitContext&) {
+  NTH_UNIMPLEMENTED();
+}
+
+void HandleParseTreeNodeEnumLiteral(ParseNodeIndex, EmitContext&) {
+  NTH_UNIMPLEMENTED();
+}
+
 void HandleParseTreeNodeWhileLoopStart(ParseNodeIndex index,
                                        EmitContext& context) {
   context.queue.front().branches.push_back(

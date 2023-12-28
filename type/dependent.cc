@@ -143,8 +143,8 @@ void DependentTerm::PartiallyEvaluate() {
         case Node::Kind::FunctionCall: {
           if ((write_iter - 1)->kind == Node::Kind::Value) {
             if ((write_iter - 2)->kind == Node::Kind::Value) {
-              auto f        = *--write_iter;
               auto v        = *--write_iter;
+              auto f        = *--write_iter;
               *write_iter++ = Node{
                   .kind         = Node::Kind::Value,
                   .index        = static_cast<uint16_t>(values_.index(

@@ -14,6 +14,11 @@ IC_XMACRO_PARSER_STATE(BracedStatementSequence)
 IC_XMACRO_PARSER_STATE(ResolveStatementSequence)
 IC_XMACRO_PARSER_STATE(SubsequentStatementSequence)
 
+IC_XMACRO_PARSER_STATE(IdentifierSequence)
+IC_XMACRO_PARSER_STATE(BracedIdentifierSequence)
+IC_XMACRO_PARSER_STATE(ResolveIdentifierSequence)
+IC_XMACRO_PARSER_STATE(SubsequentIdentifierSequence)
+
 IC_XMACRO_PARSER_STATE(InvocationArgumentSequence)
 IC_XMACRO_PARSER_STATE(ResolveInvocationArgumentSequence)
 
@@ -50,6 +55,8 @@ IC_XMACRO_PARSER_STATE(IfStatementTryElse)
 
 IC_XMACRO_PARSER_STATE(WhileLoopBody)
 IC_XMACRO_PARSER_STATE(ResolveWhileLoop)
+
+IC_XMACRO_PARSER_STATE(ResolveEnumLiteral)
 
 IC_XMACRO_PARSER_STATE(ResolveReturn)
 
