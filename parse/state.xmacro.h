@@ -58,6 +58,8 @@ IC_XMACRO_PARSER_STATE(ResolveWhileLoop)
 
 IC_XMACRO_PARSER_STATE(ResolveEnumLiteral)
 
+IC_XMACRO_PARSER_STATE(ResolveInterfaceLiteral)
+
 IC_XMACRO_PARSER_STATE(ResolveReturn)
 
 IC_XMACRO_PARSER_STATE(Atom)

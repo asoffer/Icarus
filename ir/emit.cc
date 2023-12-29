@@ -590,6 +590,14 @@ void HandleParseTreeNodeEnumLiteral(ParseNodeIndex, EmitContext&) {
   NTH_UNIMPLEMENTED();
 }
 
+void HandleParseTreeNodeInterfaceLiteralStart(ParseNodeIndex, EmitContext&) {
+  NTH_UNIMPLEMENTED();
+}
+
+void HandleParseTreeNodeInterfaceLiteral(ParseNodeIndex, EmitContext&) {
+  NTH_UNIMPLEMENTED();
+}
+
 void HandleParseTreeNodeWhileLoopStart(ParseNodeIndex index,
                                        EmitContext& context) {
   context.queue.front().branches.push_back(

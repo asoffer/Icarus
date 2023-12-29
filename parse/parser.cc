@@ -425,6 +425,13 @@ void Parser::HandleResolveEnumLiteral(ParseTree& tree) {
   tree.append(ParseNode::Kind::EnumLiteral, state.token, state.subtree_start);
 }
 
+void Parser::HandleResolveInterfaceLiteral(ParseTree& tree) {
+  PopScope();
+  auto state = pop_state();
+  tree.append(ParseNode::Kind::InterfaceLiteral, state.token,
+              state.subtree_start);
+}
+
 void Parser::HandleWhileLoopBody(ParseTree& tree) {
   tree.append_leaf(ParseNode::Kind::WhileLoopBodyStart, *iterator_);
   tree.back().scope_index = PushScope();
@@ -784,6 +791,29 @@ void Parser::HandleAtom(ParseTree& tree) {
           },
           State{
               .kind               = State::Kind::ResolveEnumLiteral,
+              .ambient_precedence = Precedence::Loosest(),
+              .subtree_start      = tree.size() - 1,
+          });
+      return;
+    } break;
+    case Token::Kind::Interface: {
+      tree.append_leaf(ParseNode::Kind::InterfaceLiteralStart, *iterator_++);
+      tree.back().scope_index = PushScope();
+      if (iterator_->kind() != Token::Kind::LeftBracket) { NTH_UNIMPLEMENTED(); }
+      ++iterator_;
+      if (iterator_->kind() != Token::Kind::Identifier) { NTH_UNIMPLEMENTED(); }
+      ++iterator_;
+      if (iterator_->kind() != Token::Kind::RightBracket) { NTH_UNIMPLEMENTED(); }
+      ++iterator_;
+      if (iterator_->kind() != Token::Kind::LeftBrace) { NTH_UNIMPLEMENTED(); }
+      ExpandState(
+          State{
+              .kind               = State::Kind::BracedStatementSequence,
+              .ambient_precedence = Precedence::Loosest(),
+              .subtree_start      = tree.size(),
+          },
+          State{
+              .kind               = State::Kind::ResolveInterfaceLiteral,
               .ambient_precedence = Precedence::Loosest(),
               .subtree_start      = tree.size() - 1,
           });

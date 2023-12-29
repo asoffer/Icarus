@@ -993,6 +993,16 @@ void HandleParseTreeNodeEnumLiteral(ParseNodeIndex, IrContext&,
   NTH_UNIMPLEMENTED();
 }
 
+void HandleParseTreeNodeInterfaceLiteralStart(ParseNodeIndex, IrContext&,
+                                              diag::DiagnosticConsumer&) {
+  NTH_UNIMPLEMENTED();
+}
+
+void HandleParseTreeNodeInterfaceLiteral(ParseNodeIndex, IrContext&,
+                                         diag::DiagnosticConsumer&) {
+  NTH_UNIMPLEMENTED();
+}
+
 void HandleParseTreeNodeWhileLoopStart(ParseNodeIndex index, IrContext& context,
                                        diag::DiagnosticConsumer& diag) {}
 
