@@ -485,6 +485,19 @@ void HandleParseTreeNodeMemberExpression(ParseNodeIndex index,
     NTH_REQUIRE((v.harden), mapped_range != nullptr);
     context.current_function().append<jasmin::Drop>();
 
+    // TODO: There's a bug that manifests here from time to time. An example of
+    // when it occurs is:
+    // ```
+    // fn() -> () {
+    //    let f = builtin.foreign(...)
+    //    f(...)
+    // }
+    // ```
+    // The problem is that the function literal body is evaluated and stored in
+    // the constant-mapped-range earlier than the function body is processed.
+    // This means that when we go to compute the constant `builtin` when
+    // processing the body, it's identified as the constant associated with the
+    // entire range (namely the function!).
     ModuleId module_id;
     bool successfully_deserialized =
         IcarusDeserializeValue(mapped_range->second.value_span(), module_id);

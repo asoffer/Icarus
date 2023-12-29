@@ -488,7 +488,6 @@ void HandleParseTreeNodeExpressionPrecedenceGroup(
       }
 
       if (return_type and return_type != type::Type_) {
-        NTH_LOG("{}") <<= {return_type};
         auto iter = context.Children(index).begin();
         diag.Consume({
             diag::Header(diag::MessageKind::Error),
@@ -710,35 +709,74 @@ void HandleParseTreeNodeIndexExpression(ParseNodeIndex index,
   }
 }
 
+struct Call {
+  struct Argument {
+    ParseNodeIndex index;
+    type::QualifiedType qualified_type;
+
+    type::Type type() const { return qualified_type.type(); }
+  };
+  Argument callee;
+  std::vector<Argument> arguments;
+  std::vector<Argument>::const_iterator postfix_start;
+};
+
 void HandleParseTreeNodeCallExpression(ParseNodeIndex index, IrContext& context,
                                        diag::DiagnosticConsumer& diag) {
-  auto node = context.Node(index);
-  IC_PROPAGATE_ERRORS(context, node, node.child_count - 1);
+  Call call;
 
-  auto iter = context.type_stack().rbegin();
-  for (size_t i = 2; i < node.child_count; ++i) {
-    NTH_REQUIRE((v.debug), iter != context.type_stack().rend());
-    ++iter;
+  auto& type_stack  = context.type_stack();
+  auto nodes        = context.ChildIndices(index);
+  int postfix_count = -1;
+  bool postfix      = true;
+  for (auto node_iter = nodes.begin(); node_iter != nodes.end(); ++node_iter) {
+    auto const& child_node = context.Node(*node_iter);
+    if (child_node.kind == ParseNode::Kind::PrefixInvocationArgumentEnd) {
+      NTH_REQUIRE((v.debug), not call.arguments.empty());
+      postfix = false;
+      call.callee = call.arguments.back();
+      call.arguments.pop_back();
+      continue;
+    }
+
+    if (child_node.kind == ParseNode::Kind::InvocationArgumentStart) {
+      continue;
+    }
+
+    auto qts = type_stack.top();
+    if (qts.size() != 1) { NTH_UNIMPLEMENTED("Unexpanded"); }
+    if (qts[0].type() == type::Error) {
+      for (; node_iter != nodes.end(); ++node_iter) { type_stack.pop(); }
+      type_stack.push({type::QualifiedType::Unqualified(type::Error)});
+      return;
+    }
+    call.arguments.push_back({.index = *node_iter, .qualified_type = qts[0]});
+    type_stack.pop();
+    if (postfix) { ++postfix_count; }
   }
-  auto invocable_type = (*iter)[0];
-  if (invocable_type.type().kind() == type::Type::Kind::Function) {
-    auto fn_type           = invocable_type.type().AsFunction();
+  if (postfix) {
+    call.callee = call.arguments.back();
+    call.arguments.pop_back();
+  }
+  std::reverse(call.arguments.begin(), call.arguments.end());
+  call.postfix_start = call.arguments.end() - postfix_count;
+
+  auto node = context.Node(index);
+  if (call.callee.type().kind() == type::Type::Kind::Function) {
+    auto fn_type           = call.callee.type().AsFunction();
     auto const& parameters = *fn_type.parameters();
     // TODO: Properly implement function call type-checking.
-    if (parameters.size() == node.child_count - 2) {
-      auto type_iter        = context.type_stack().rbegin();
+    if (parameters.size() == call.arguments.size()) {
+      auto type_iter        = call.arguments.begin();
       auto [iter, inserted] = context.emit.instruction_spec.try_emplace(index);
       auto& spec            = iter->second;
       NTH_REQUIRE((v.harden), inserted);
       ++spec.parameters;
-      for (size_t i = 0; i < parameters.size(); ++i) {
-        spec.parameters += type::JasminSize((*type_iter)[0].type());
-        ++type_iter;
+      for (auto iter = call.postfix_start; iter != call.arguments.end();
+           ++iter) {
+        spec.parameters += type::JasminSize(iter->type());
       }
       auto const& returns = fn_type.returns();
-      for (size_t i = 1; i < node.child_count; ++i) {
-        context.type_stack().pop();
-      }
       std::vector<type::QualifiedType> return_qts;
       for (type::Type r : returns) {
         spec.returns += type::JasminSize(r);
@@ -766,26 +804,14 @@ void HandleParseTreeNodeCallExpression(ParseNodeIndex index, IrContext& context,
         case type::Evaluation::RequireRuntime: break;
       }
     } else {
-      NTH_UNIMPLEMENTED("{} {}") <<= {parameters, node.child_count - 1};
+      NTH_UNIMPLEMENTED("{} {}") <<= {parameters, call.arguments.size()};
     }
-  } else if (invocable_type.type().kind() ==
-             type::Type::Kind::DependentFunction) {
+  } else if (call.callee.type().kind() == type::Type::Kind::DependentFunction) {
     auto& spec = context.emit.instruction_spec[index];
     ++spec.parameters;
-    std::vector<std::pair<ParseNodeIndex, TypeStack::const_iterator>> argument_indices;
-    auto type_iter = context.type_stack().rbegin();
-    for (auto iter = context.ChildIndices(index).begin();
-         context.Node(*iter).kind != ParseNode::Kind::InvocationArgumentStart;
-         ++iter, ++type_iter) {
-      NTH_REQUIRE((v.debug), type_iter != context.type_stack().rend());
-      argument_indices.emplace_back(*iter, type_iter);
-    }
-
-    std::reverse(argument_indices.begin(), argument_indices.end());
     std::vector<TypeErasedValue> arguments;
 
-    for (auto [index, type_iter] : argument_indices) {
-      auto qt = (*type_iter)[0];
+    for (auto [index, qt] : call.arguments) {
       nth::stack<jasmin::Value> value_stack;
       nth::interval range = context.emit.tree.subtree_range(index);
       if (qt.constant()) {
@@ -796,10 +822,13 @@ void HandleParseTreeNodeCallExpression(ParseNodeIndex index, IrContext& context,
       } else {
         arguments.emplace_back(qt.type(), std::vector<jasmin::Value>{});
       }
-      spec.parameters += type::JasminSize(qt.type());
     }
 
-    auto dep = invocable_type.type().AsDependentFunction();
+    for (auto iter = call.postfix_start; iter != call.arguments.end(); ++iter) {
+      spec.parameters += type::JasminSize(iter->type());
+    }
+
+    auto dep = call.callee.type().AsDependentFunction();
     std::optional t = dep(arguments);
     if (not t) {
       diag.Consume({
@@ -818,7 +847,7 @@ void HandleParseTreeNodeCallExpression(ParseNodeIndex index, IrContext& context,
                           {*t});
   } else {
     NTH_UNIMPLEMENTED("node = {} invocable_type = {}") <<=
-        {node, invocable_type};
+        {node, call.callee};
   }
 }
 
