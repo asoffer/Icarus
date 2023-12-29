@@ -129,5 +129,85 @@ NTH_TEST("parser/invoke/access-call") {
                                           MemberExpression(Identifier()))))));
 }
 
+
+NTH_TEST("parser/invoke/prefix-empty-suffix") {
+  diag::NullConsumer d;
+  TokenBuffer buffer = lex::Lex(R"(a'f())", d);
+  auto tree          = Parse(buffer, d).parse_tree;
+  NTH_EXPECT(FromRoot(tree) >>= Module(
+                 ModuleStart(),
+                 StatementSequence(
+                     ScopeStart(),
+                     Statement(StatementStart(),
+                               CallExpression(
+                                   Identifier(), PrefixInvocationArgumentEnd(),
+                                   Identifier(), InvocationArgumentStart())))));
+}
+
+NTH_TEST("parser/invoke/prefix-nonempty-suffix") {
+  diag::NullConsumer d;
+  TokenBuffer buffer = lex::Lex(R"(a'f(b, c))", d);
+  auto tree          = Parse(buffer, d).parse_tree;
+  NTH_EXPECT(FromRoot(tree) >>= Module(
+                 ModuleStart(),
+                 StatementSequence(
+                     ScopeStart(),
+                     Statement(StatementStart(),
+                               CallExpression(
+                                   Identifier(), PrefixInvocationArgumentEnd(),
+                                   Identifier(), InvocationArgumentStart(),
+                                   Identifier(), Identifier())))));
+}
+
+NTH_TEST("parser/invoke/named-argument") {
+  diag::NullConsumer d;
+  TokenBuffer buffer = lex::Lex(R"(f(a = b))", d);
+  auto tree          = Parse(buffer, d).parse_tree;
+  NTH_EXPECT(
+      FromRoot(tree) >>= Module(
+          ModuleStart(),
+          StatementSequence(
+              ScopeStart(),
+              Statement(StatementStart(),
+                        CallExpression(Identifier(), InvocationArgumentStart(),
+                                       NamedArgument(NamedArgumentStart(),
+                                                     Identifier()))))));
+}
+
+NTH_TEST("parser/invoke/positional-and-named-arguments") {
+  diag::NullConsumer d;
+  TokenBuffer buffer = lex::Lex(R"(f(a, b = c, d = e))", d);
+  auto tree          = Parse(buffer, d).parse_tree;
+  NTH_EXPECT(
+      FromRoot(tree) >>=
+      Module(ModuleStart(),
+             StatementSequence(
+                 ScopeStart(),
+                 Statement(
+                     StatementStart(),
+                     CallExpression(
+                         Identifier(), InvocationArgumentStart(), Identifier(),
+                         NamedArgument(NamedArgumentStart(), Identifier()),
+                         NamedArgument(NamedArgumentStart(), Identifier()))))));
+}
+
+NTH_TEST("parser/invoke/prefix-call-with-postfix-named-arguments") {
+  diag::NullConsumer d;
+  TokenBuffer buffer = lex::Lex(R"(a'f(b = c, d = e))", d);
+  auto tree          = Parse(buffer, d).parse_tree;
+  NTH_EXPECT(
+      FromRoot(tree) >>=
+      Module(ModuleStart(),
+             StatementSequence(
+                 ScopeStart(),
+                 Statement(
+                     StatementStart(),
+                     CallExpression(
+                         Identifier(), PrefixInvocationArgumentEnd(),
+                         Identifier(), InvocationArgumentStart(),
+                         NamedArgument(NamedArgumentStart(), Identifier()),
+                         NamedArgument(NamedArgumentStart(), Identifier()))))));
+}
+
 }  // namespace
 }  // namespace ic

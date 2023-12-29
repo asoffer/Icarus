@@ -838,6 +838,16 @@ void HandleParseTreeNodeIndexArgumentStart(ParseNodeIndex index,
                                            IrContext& context,
                                            diag::DiagnosticConsumer& diag) {}
 
+void HandleParseTreeNodeNamedArgument(ParseNodeIndex index, IrContext& context,
+                                      diag::DiagnosticConsumer& diag) {}
+
+void HandleParseTreeNodeNamedArgumentStart(ParseNodeIndex index,
+                                           IrContext& context,
+                                           diag::DiagnosticConsumer& diag) {}
+
+void HandleParseTreeNodePrefixInvocationArgumentEnd(
+    ParseNodeIndex index, IrContext& context, diag::DiagnosticConsumer& diag) {}
+
 void HandleParseTreeNodeInvocationArgumentStart(
     ParseNodeIndex index, IrContext& context, diag::DiagnosticConsumer& diag) {}
 

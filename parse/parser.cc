@@ -91,6 +91,13 @@ struct Parser {
             .subtree_start      = tree.size()};
   };
 
+  // Returns `true` if and only if the iterator is pointing to the start of a
+  // named argument.
+  bool NamedArgumentStart() const {
+    return iterator_->kind() == Token::Kind::Identifier and
+           (iterator_ + 1)->kind() == Token::Kind::Equal;
+  }
+
   void ExpandState(auto... states) {
     auto state = pop_state();
     int dummy;
@@ -684,6 +691,25 @@ void Parser::HandleExpression(ParseTree& tree) {
   ExpandState(State::Kind::TryPrefix, State::Kind::TryInfix);
 }
 
+void Parser::HandleSuffixOfCall(ParseTree& tree) {
+  NTH_REQUIRE((v.debug), current_token().kind() == Token::Kind::LeftParen);
+  ++iterator_;
+  IgnoreAnyNewlines();
+  tree.append(ParseNode::Kind::InvocationArgumentStart, current_token(),
+              tree.size());
+  ExpandState(State{.kind          = State::Kind::InvocationArgumentSequence,
+                    .subtree_start = state().back().subtree_start});
+  if (current_token().kind() != Token::Kind::RightParen) {
+    if (NamedArgumentStart()) {
+      tree.append_leaf(ParseNode::Kind::NamedArgumentStart, *iterator_);
+      iterator_ += 2;
+      push_state({.kind          = State::Kind::NamedArgument,
+                  .subtree_start = tree.size() - 1});
+    }
+    push_state(Expression(tree));
+  }
+}
+
 void Parser::HandleTryTermSuffix(ParseTree& tree) {
   switch (current_token().kind()) {
     case Token::Kind::Period: 
@@ -691,6 +717,15 @@ void Parser::HandleTryTermSuffix(ParseTree& tree) {
       push_state({.kind          = State::Kind::ResolveMemberTerm,
                   .subtree_start = state().back().subtree_start});
       return;
+    case Token::Kind::SingleQuote:
+      ++iterator_;
+      tree.append(ParseNode::Kind::PrefixInvocationArgumentEnd, current_token(),
+                  tree.size());
+        push_state({.kind          = State::Kind::SuffixOfCall,
+                  .subtree_start = state().back().subtree_start});
+        push_state({.kind          = State::Kind::Atom,
+                    .subtree_start = state().back().subtree_start});
+        return;
     case Token::Kind::LeftParen:
       ++iterator_;
       IgnoreAnyNewlines();
@@ -699,6 +734,12 @@ void Parser::HandleTryTermSuffix(ParseTree& tree) {
       push_state({.kind          = State::Kind::InvocationArgumentSequence,
                   .subtree_start = state().back().subtree_start});
       if (current_token().kind() != Token::Kind::RightParen) {
+        if (NamedArgumentStart()) {
+          tree.append_leaf(ParseNode::Kind::NamedArgumentStart, *iterator_);
+          iterator_ += 2;
+          push_state({.kind          = State::Kind::NamedArgument,
+                      .subtree_start = tree.size() - 1});
+        }
         push_state(Expression(tree));
       }
       return;
@@ -1040,6 +1081,11 @@ void Parser::HandleIndexArgumentSequence(ParseTree& tree) {
   }
 }
 
+void Parser::HandleNamedArgument(ParseTree& tree) {
+  tree.append(ParseNode::Kind::NamedArgument, current_token(),
+              pop_state().subtree_start);
+}
+
 void Parser::HandleInvocationArgumentSequence(ParseTree& tree) {
   IgnoreAnyNewlines();
   if (current_token().kind() == Token::Kind::RightParen) {
@@ -1048,7 +1094,16 @@ void Parser::HandleInvocationArgumentSequence(ParseTree& tree) {
   } else if (current_token().kind() == Token::Kind::Comma) {
     ++iterator_;
     IgnoreAnyNewlines();
-    ExpandState(Expression(tree), State::Kind::InvocationArgumentSequence);
+    if (NamedArgumentStart()) {
+      tree.append_leaf(ParseNode::Kind::NamedArgumentStart, *iterator_);
+      iterator_ += 2;
+      ExpandState(Expression(tree),
+                  State{.kind          = State::Kind::NamedArgument,
+                        .subtree_start = tree.size() - 1},
+                  State::Kind::InvocationArgumentSequence);
+    } else {
+      ExpandState(Expression(tree), State::Kind::InvocationArgumentSequence);
+    }
   } else {
     NTH_UNREACHABLE("{}") <<= {current_token().kind()};
   }

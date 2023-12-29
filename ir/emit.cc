@@ -557,6 +557,14 @@ void HandleParseTreeNodeBufferPointer(ParseNodeIndex index,
 void HandleParseTreeNodeIndexArgumentStart(ParseNodeIndex index,
                                            EmitContext& context) {}
 
+void HandleParseTreeNodePrefixInvocationArgumentEnd(ParseNodeIndex index,
+                                                    EmitContext& context) {}
+
+void HandleParseTreeNodeNamedArgument(ParseNodeIndex index, EmitContext& context) {}
+
+void HandleParseTreeNodeNamedArgumentStart(ParseNodeIndex index,
+                                           EmitContext& context) {}
+
 void HandleParseTreeNodeInvocationArgumentStart(ParseNodeIndex index,
                                                 EmitContext& context) {}
 
