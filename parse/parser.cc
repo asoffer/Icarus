@@ -509,6 +509,13 @@ void Parser::HandleParenthesizedExpression(ParseTree& tree) {
   if (current_token().kind() == Token::Kind::LeftParen) {
     ++iterator_;
     IgnoreAnyNewlines();
+    if (current_token().kind() == Token::Kind::RightParen) {
+      auto state = pop_state();
+      tree.append(ParseNode::Kind::EmptyParenthesis, state.token,
+                  state.subtree_start);
+      ++iterator_;
+      return;
+    }
     ExpandState(Expression(tree), State::Kind::ClosingParenthesis);
   } else {
     NTH_UNIMPLEMENTED();

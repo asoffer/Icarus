@@ -470,7 +470,9 @@ void HandleParseTreeNodeExpressionPrecedenceGroup(
         });
       }
       NTH_REQUIRE(context.type_stack().group_count() >= 2);
-      type::Type return_type = context.type_stack().top()[0].type();
+      std::span return_types = context.type_stack().top();
+      std::optional<type::Type> return_type;
+      if (not return_types.empty()) { return_type = return_types[0].type(); }
       context.type_stack().pop();
       type::Type parameters_type = context.type_stack().top()[0].type();
       auto iter                  = context.Children(index).begin();
@@ -485,7 +487,8 @@ void HandleParseTreeNodeExpressionPrecedenceGroup(
         });
       }
 
-      if (return_type != type::Type_) {
+      if (return_type and return_type != type::Type_) {
+        NTH_LOG("{}") <<= {return_type};
         auto iter = context.Children(index).begin();
         diag.Consume({
             diag::Header(diag::MessageKind::Error),
@@ -818,6 +821,12 @@ void HandleParseTreeNodeCallExpression(ParseNodeIndex index, IrContext& context,
     NTH_UNIMPLEMENTED("node = {} invocable_type = {}") <<=
         {node, invocable_type};
   }
+}
+
+void HandleParseTreeNodeEmptyParenthesis(ParseNodeIndex index,
+                                         IrContext& context,
+                                         diag::DiagnosticConsumer& diag) {
+  context.type_stack().push({});
 }
 
 void HandleParseTreeNodeDeclaredIdentifier(ParseNodeIndex index,

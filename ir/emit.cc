@@ -576,6 +576,12 @@ void HandleParseTreeNodeFunctionTypeParameters(ParseNodeIndex index,
           .returns    = 1});
 }
 
+void HandleParseTreeNodeEmptyParenthesis(ParseNodeIndex index,
+                                         EmitContext& context) {
+  jasmin::Value v = type::Bottom;
+  context.Push(std::span(&v, 1), type::Type_);
+}
+
 void HandleParseTreeNodeEnumLiteralStart(ParseNodeIndex, EmitContext&) {
   NTH_UNIMPLEMENTED();
 }

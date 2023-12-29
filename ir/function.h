@@ -102,17 +102,7 @@ struct ConstructParametersType : jasmin::Instruction<ConstructParametersType> {
 struct ConstructFunctionType : jasmin::Instruction<ConstructFunctionType> {
   static std::string_view name() { return "construct-function-type"; }
 
-  static type::Type consume(std::span<jasmin::Value, 2> inputs) {
-    auto parameter   = inputs[0].as<type::Type>();
-    auto return_type = inputs[1].as<type::Type>();
-    if (parameter.kind() == type::Type::Kind::Parameters) {
-      return type::Function(parameter.AsParameters(), std::vector{return_type});
-    } else {
-      return type::Function(type::Parameters({{.name = Identifier("").value(),
-                                               .type = parameter}}),
-                            std::vector{return_type});
-    }
-  }
+  static type::Type consume(std::span<jasmin::Value, 2> inputs);
 };
 
 struct ConstructOpaqueType : jasmin::Instruction<ConstructOpaqueType> {

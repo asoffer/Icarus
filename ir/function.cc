@@ -125,4 +125,18 @@ void InvokeForeignFunction::consume(std::span<jasmin::Value> input,
   }
 }
 
+type::Type ConstructFunctionType::consume(std::span<jasmin::Value, 2> inputs) {
+  auto parameter   = inputs[0].as<type::Type>();
+  auto return_type = inputs[1].as<type::Type>();
+  std::vector<type::Type> returns;
+  if (return_type != type::Bottom) { returns.push_back(return_type); }
+  if (parameter.kind() == type::Type::Kind::Parameters) {
+    return type::Function(parameter.AsParameters(), std::move(returns));
+  } else {
+    return type::Function(
+        type::Parameters({{.name = Identifier("").value(), .type = parameter}}),
+        std::move(returns));
+  }
+}
+
 }  // namespace ic
