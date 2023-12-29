@@ -56,6 +56,7 @@ IC_XMACRO_PRIMITIVE_TYPE(Type, Type_, "type")
 IC_XMACRO_PRIMITIVE_TYPE(Module, Module, "module")
 // TODO: Unspellable primitive types should be designated separately so we don't
 // have to work around the lexer's configuration.
+IC_XMACRO_PRIMITIVE_TYPE(Interface_, Interface, "unspellable-interface")
 IC_XMACRO_PRIMITIVE_TYPE(Scope_, Scope, "unspellable-scope")
 
 #undef IC_XMACRO_PRIMITIVE_TYPE

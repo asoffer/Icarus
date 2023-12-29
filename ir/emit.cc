@@ -232,7 +232,8 @@ Iteration HandleParseTreeNodeFunctionLiteralStart(ParseNodeIndex index,
     StoreStackValue(f, *storage_iter, iter->type);
   }
 
-  // TODO: We should be able to jump directly rather than iterate and check.
+  // TODO: We should be able to jump directly rather than iterate and check,
+  // since nested functions make this wrong.
   while (context.Node(index).kind !=
          ParseNode::Kind::FunctionLiteralSignature) {
     ++index;
@@ -590,20 +591,26 @@ void HandleParseTreeNodeEnumLiteral(ParseNodeIndex, EmitContext&) {
   NTH_UNIMPLEMENTED();
 }
 
-void HandleParseTreeNodeExtensionStart(ParseNodeIndex, EmitContext&) {
-  NTH_UNIMPLEMENTED();
+Iteration HandleParseTreeNodeExtensionStart(ParseNodeIndex index,
+                                            EmitContext& context) {
+  // TODO: Iteration is wrong in the presence of nesting, and slow when we could
+  // have precomputed this.
+  while (context.Node(index).kind != ParseNode::Kind::Extension) { ++index; }
+  return Iteration::SkipTo(index);
 }
 
-void HandleParseTreeNodeExtension(ParseNodeIndex, EmitContext&) {
-  NTH_UNIMPLEMENTED();
-}
+void HandleParseTreeNodeExtendWith(ParseNodeIndex, EmitContext&) {}
 
-void HandleParseTreeNodeInterfaceLiteralStart(ParseNodeIndex, EmitContext&) {
-  NTH_UNIMPLEMENTED();
-}
+void HandleParseTreeNodeExtension(ParseNodeIndex, EmitContext&) {}
 
-void HandleParseTreeNodeInterfaceLiteral(ParseNodeIndex, EmitContext&) {
-  NTH_UNIMPLEMENTED();
+void HandleParseTreeNodeInterfaceLiteralStart(ParseNodeIndex, EmitContext&) {}
+
+void HandleParseTreeNodeInterfaceLiteral(ParseNodeIndex index,
+                                         EmitContext& context) {
+  context.current_function().append<ConstructInterface>(
+      jasmin::InstructionSpecification{
+          .parameters = static_cast<uint32_t>(context.Node(index).child_count) - 2,
+          .returns    = 1});
 }
 
 void HandleParseTreeNodeWhileLoopStart(ParseNodeIndex index,

@@ -48,7 +48,7 @@ def _ic_compile_impl(ctx):
             src_file.path,
             "--output={}".format(icm_file.path),
             "--module-map={}".format(mod_file.path),
-            "--debug-parser=true",
+            # "--debug-parser=true",
             # "--debug-type-check=true",
             # "--debug-emit=true",
         ],

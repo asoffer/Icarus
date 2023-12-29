@@ -446,6 +446,7 @@ void Parser::HandleResolveInterfaceLiteral(ParseTree& tree) {
   auto state = pop_state();
   tree.append(ParseNode::Kind::InterfaceLiteral, state.token,
               state.subtree_start);
+  tree.set_back_child_count();
 }
 
 void Parser::HandleWhileLoopBody(ParseTree& tree) {
@@ -753,6 +754,7 @@ void Parser::HandleTryTermSuffix(ParseTree& tree) {
 
 void Parser::HandleExtensionWithToEnd(ParseTree& tree) {
   if (current_token().kind() != Token::Kind::With) { NTH_UNIMPLEMENTED(); }
+  tree.append(ParseNode::Kind::ExtendWith, Token::Invalid(), tree.size());
   ++iterator_;
   ExpandState(
       State{

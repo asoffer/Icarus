@@ -994,23 +994,40 @@ void HandleParseTreeNodeEnumLiteral(ParseNodeIndex, IrContext&,
 }
 
 void HandleParseTreeNodeExtensionStart(ParseNodeIndex, IrContext&,
-                                       diag::DiagnosticConsumer&) {
-  NTH_UNIMPLEMENTED();
+                                       diag::DiagnosticConsumer&) {}
+
+Iteration HandleParseTreeNodeExtendWith(ParseNodeIndex index,
+                                        IrContext& context,
+                                        diag::DiagnosticConsumer& diag) {
+  std::span qts = context.type_stack().top();
+  for (auto qt : qts) {
+    if (qt.type() == type::Error) {
+      context.type_stack().pop();
+      context.type_stack().push(
+          {type::QualifiedType::Unqualified(type::Error)});
+      return Iteration::SkipTo(index + 2);
+    }
+  }
+
+  if (not RequireConstant(qts[0], type::Type_, diag)) {
+    context.MakeError(1);
+    return Iteration::SkipTo(index + 2);
+ }
+ std::optional type = context.EvaluateAs<type::Type>(index - 1);
+ if (not type) { NTH_UNIMPLEMENTED(); }
+ // TODO: Register the extension.
+ return Iteration::SkipTo(index + 2);
 }
 
 void HandleParseTreeNodeExtension(ParseNodeIndex, IrContext&,
-                                  diag::DiagnosticConsumer&) {
-  NTH_UNIMPLEMENTED();
-}
+                                  diag::DiagnosticConsumer&) {}
 
 void HandleParseTreeNodeInterfaceLiteralStart(ParseNodeIndex, IrContext&,
-                                              diag::DiagnosticConsumer&) {
-  NTH_UNIMPLEMENTED();
-}
+                                              diag::DiagnosticConsumer&) {}
 
-void HandleParseTreeNodeInterfaceLiteral(ParseNodeIndex, IrContext&,
+void HandleParseTreeNodeInterfaceLiteral(ParseNodeIndex, IrContext& context,
                                          diag::DiagnosticConsumer&) {
-  NTH_UNIMPLEMENTED();
+  context.type_stack().push({type::QualifiedType::Constant(type::Interface)});
 }
 
 void HandleParseTreeNodeWhileLoopStart(ParseNodeIndex index, IrContext& context,

@@ -26,7 +26,7 @@ message InstructionProto {
     CONSTRUCT_FUNCTION = 15;
     CONSTRUCT_PARAMETERS = 16;
     CONSTRUCT_SLICE = 17;
-    SWAP = 18;
+    CONSTRUCT_INTERFACE = 18;
     REGISTER_FOREIGN_FUNCTION = 19;
     INVOKE_FOREIGN_FUNCTION = 20;
     NOT = 21;
@@ -47,6 +47,7 @@ message InstructionProto {
     ASCII_ENCODE = 36;
     ASCII_DECODE = 37;
     DROP = 38;
+    SWAP = 39;
   }
   OpCode op_code = 1;
   repeated uint64 content = 2;

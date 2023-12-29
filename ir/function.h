@@ -99,6 +99,13 @@ struct ConstructParametersType : jasmin::Instruction<ConstructParametersType> {
   }
 };
 
+struct ConstructInterface : jasmin::Instruction<ConstructInterface> {
+  static std::string_view name() { return "construct-interface"; }
+
+  static void consume(std::span<jasmin::Value> inputs,
+                      std::span<jasmin::Value> outputs);
+};
+
 struct ConstructFunctionType : jasmin::Instruction<ConstructFunctionType> {
   static std::string_view name() { return "construct-function-type"; }
 
@@ -179,13 +186,13 @@ using InstructionSet = jasmin::MakeInstructionSet<
     jasmin::Push, PushFunction, PushStringLiteral, PushType, PushPointer,
     TypeKind, jasmin::Equal<type::Type::Kind>, Rotate, ConstructOpaqueType,
     ConstructPointerType, ConstructBufferPointerType, ConstructFunctionType,
-    ConstructParametersType, ConstructSliceType, jasmin::Swap,
+    ConstructParametersType, ConstructSliceType, ConstructInterface,
     RegisterForeignFunction, InvokeForeignFunction, jasmin::Not, NoOp, Store,
     jasmin::Load, jasmin::StackAllocate, jasmin::StackOffset,
     jasmin::Add<int64_t>, jasmin::Subtract<int64_t>, jasmin::Multiply<int64_t>,
     jasmin::Mod<int64_t>, jasmin::Equal<int64_t>, jasmin::LessThan<int64_t>,
     AddPointer, LoadProgramArguments, jasmin::Duplicate, AsciiEncode,
-    AsciiDecode, jasmin::Drop>;
+    AsciiDecode, jasmin::Drop, jasmin::Swap>;
 using IrFunction = jasmin::Function<InstructionSet>;
 
 }  // namespace ic

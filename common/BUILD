@@ -59,6 +59,14 @@ cc_test(
 )
 
 cc_library(
+    name = "interface",
+    hdrs = ["interface.h"],
+    deps = [
+    ],
+)
+
+
+cc_library(
     name = "module_id",
     hdrs = ["module_id.h"],
     deps = [

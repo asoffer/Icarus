@@ -93,6 +93,7 @@ cc_library(
         "//common:identifier",
         "//common:module_id",
         "//common:resources",
+        "//common:interface",
         "//type:basic",
         "//type:function",
         "//type:opaque",
