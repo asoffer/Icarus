@@ -62,20 +62,6 @@ cc_library(
     ],
 )
 
-cc_test(
-    name = "parser_test",
-    srcs = ["parser_test.cc"],
-    deps = [
-        ":parser",
-        "//common:resources",
-        "//diagnostics/consumer:null",
-        "//lexer",
-        "//lexer:token_matchers",
-        "@asoffer_nth//nth/test:main",
-        "@asoffer_nth//nth/meta:type",
-    ],
-)
-
 cc_library(
     name = "precedence",
     hdrs = ["precedence.h"],

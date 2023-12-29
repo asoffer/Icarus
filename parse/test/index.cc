@@ -1,17 +1,12 @@
-#include "parse/parser.h"
-
-#include <stack>
-#include <variant>
-
-#include "common/resources.h"
 #include "diagnostics/consumer/null.h"
 #include "lexer/lexer.h"
-#include "nth/meta/type.h"
 #include "nth/test/test.h"
-#include "parse/test/tree_node_ref.h"
+#include "parse/parser.h"
 #include "parse/test/matchers.h"
+#include "parse/test/tree_node_ref.h"
 
 namespace ic {
+namespace {
 
 NTH_TEST("parser/index/empty") {
   diag::NullConsumer d;
@@ -88,4 +83,5 @@ NTH_TEST("parser/index/multiple-arguments") {
                                            Identifier(), Identifier())))));
 }
 
+}  // namespace
 }  // namespace ic
