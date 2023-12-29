@@ -910,6 +910,11 @@ void Parser::HandleAtom(ParseTree& tree) {
       }
       return;
     } break;
+    case Token::Kind::Backtick: {
+      ++iterator_;
+      if (iterator_->kind() != Token::Kind::Identifier) { NTH_UNIMPLEMENTED(); }
+      k = ParseNode::Kind::Binding;
+    } break;
     case Token::Kind::LeftBracket: {
       NTH_UNIMPLEMENTED();
     } break;

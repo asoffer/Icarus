@@ -603,6 +603,19 @@ void HandleParseTreeNodeExtendWith(ParseNodeIndex, EmitContext&) {}
 
 void HandleParseTreeNodeExtension(ParseNodeIndex, EmitContext&) {}
 
+void HandleParseTreeNodeBinding(ParseNodeIndex, EmitContext&) {
+  NTH_UNIMPLEMENTED();
+}
+
+void HandleParseTreeNodePatternStart(ParseNodeIndex index,
+                                     EmitContext& context) {
+  NTH_UNIMPLEMENTED();
+}
+
+void HandleParseTreeNodePattern(ParseNodeIndex, EmitContext&) {
+  NTH_UNIMPLEMENTED();
+}
+
 void HandleParseTreeNodeInterfaceLiteralStart(ParseNodeIndex, EmitContext&) {}
 
 void HandleParseTreeNodeInterfaceLiteral(ParseNodeIndex index,

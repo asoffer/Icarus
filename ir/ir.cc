@@ -103,7 +103,7 @@ struct IrContext {
     type_stack().push({type::QualifiedType::Unqualified(type::Error)});
   }
 
-  std::vector<DeclarationInfo>& declaration_stack() {
+  nth::stack<DeclarationInfo>& declaration_stack() {
     return queue.front().declaration_stack;
   }
 
@@ -139,7 +139,7 @@ struct IrContext {
 
     nth::interval<ParseNodeIndex> interval;
     std::vector<Token::Kind> operator_stack;
-    std::vector<DeclarationInfo> declaration_stack;
+    nth::stack<DeclarationInfo> declaration_stack;
     std::vector<LexicalScope::Index> lexical_scopes;
     std::vector<LexicalScope::Index> functions;
 
@@ -293,8 +293,8 @@ void HandleParseTreeNodeAddress(ParseNodeIndex index, IrContext& context,
 
 void HandleParseTreeNodeDeclaration(ParseNodeIndex index, IrContext& context,
                                     diag::DiagnosticConsumer& diag) {
-  DeclarationInfo info = context.declaration_stack().back();
-  context.declaration_stack().pop_back();
+  DeclarationInfo info = context.declaration_stack().top();
+  context.declaration_stack().pop();
   if (not info.kind.has_initializer()) {
     NTH_REQUIRE((v.debug), not info.kind.inferred_type());
     context.type_stack().pop();
@@ -562,8 +562,7 @@ void HandleParseTreeNodeExpressionPrecedenceGroup(
 void HandleParseTreeNodeDeclarationStart(ParseNodeIndex index,
                                          IrContext& context,
                                          diag::DiagnosticConsumer&) {
-  context.declaration_stack().emplace_back() =
-      context.Node(index).declaration_info;
+  context.declaration_stack().push(context.Node(index).declaration_info);
 }
 
 void HandleParseTreeNodeMemberExpression(ParseNodeIndex index,
@@ -832,7 +831,7 @@ void HandleParseTreeNodeEmptyParenthesis(ParseNodeIndex index,
 void HandleParseTreeNodeDeclaredIdentifier(ParseNodeIndex index,
                                            IrContext& context,
                                            diag::DiagnosticConsumer& diag) {
-  context.declaration_stack().back().index = index;
+  context.declaration_stack().top().index = index;
 }
 
 void HandleParseTreeNodeIndexArgumentStart(ParseNodeIndex index,
@@ -1018,9 +1017,18 @@ Iteration HandleParseTreeNodeExtendWith(ParseNodeIndex index,
  // TODO: Register the extension.
  return Iteration::SkipTo(index + 2);
 }
-
 void HandleParseTreeNodeExtension(ParseNodeIndex, IrContext&,
                                   diag::DiagnosticConsumer&) {}
+
+void HandleParseTreeNodeBinding(ParseNodeIndex index, IrContext&context,
+                                diag::DiagnosticConsumer&diag) {
+  context.declaration_stack().push({});
+}
+
+void HandleParseTreeNodePattern(ParseNodeIndex, IrContext&,
+                                diag::DiagnosticConsumer&) {
+  NTH_UNIMPLEMENTED();
+}
 
 void HandleParseTreeNodeInterfaceLiteralStart(ParseNodeIndex, IrContext&,
                                               diag::DiagnosticConsumer&) {}
