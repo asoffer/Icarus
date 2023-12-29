@@ -590,6 +590,14 @@ void HandleParseTreeNodeEnumLiteral(ParseNodeIndex, EmitContext&) {
   NTH_UNIMPLEMENTED();
 }
 
+void HandleParseTreeNodeExtensionStart(ParseNodeIndex, EmitContext&) {
+  NTH_UNIMPLEMENTED();
+}
+
+void HandleParseTreeNodeExtension(ParseNodeIndex, EmitContext&) {
+  NTH_UNIMPLEMENTED();
+}
+
 void HandleParseTreeNodeInterfaceLiteralStart(ParseNodeIndex, EmitContext&) {
   NTH_UNIMPLEMENTED();
 }

@@ -347,6 +347,22 @@ void Parser::HandleStatement(ParseTree& tree) {
                   });
       tree.append_leaf(ParseNode::Kind::DeclarationStart, *++iterator_);
       break;
+    case Token::Kind::Extend:
+      tree.append_leaf(ParseNode::Kind::ExtensionStart, *iterator_);
+      ExpandState(
+          State{
+              .kind               = State::Kind::Expression,
+              .ambient_precedence = Precedence::Loosest(),
+              .subtree_start      = tree.size(),
+          },
+          State{
+              .kind               = State::Kind::ExtensionWithToEnd,
+              .ambient_precedence = Precedence::Loosest(),
+              .subtree_start      = tree.size(),
+          }
+          );
+      ++iterator_;
+      return;
     case Token::Kind::Return:
       tree.back().statement_kind = ParseNode::StatementKind::Return;
       ExpandState(Expression(tree),
@@ -734,6 +750,33 @@ void Parser::HandleTryTermSuffix(ParseTree& tree) {
     default: pop_and_discard_state(); break;
   }
 }
+
+void Parser::HandleExtensionWithToEnd(ParseTree& tree) {
+  if (current_token().kind() != Token::Kind::With) { NTH_UNIMPLEMENTED(); }
+  ++iterator_;
+  ExpandState(
+      State{
+          .kind               = State::Kind::ParenthesizedExpression,
+          .ambient_precedence = Precedence::Loosest(),
+          .subtree_start      = tree.size(),
+      },
+      State{
+          .kind               = State::Kind::BracedStatementSequence,
+          .ambient_precedence = Precedence::Loosest(),
+          .subtree_start      = tree.size(),
+      },
+      State{
+          .kind               = State::Kind::ResolveExtension,
+          .ambient_precedence = Precedence::Loosest(),
+          .subtree_start      = state().back().subtree_start - 1,
+      });
+}
+void Parser::HandleResolveExtension(ParseTree& tree) {
+  PopScope();
+  auto state = pop_state();
+  tree.append(ParseNode::Kind::Extension, state.token, state.subtree_start);
+}
+
 
 void Parser::HandleAtom(ParseTree& tree) {
   ParseNode::Kind k;
