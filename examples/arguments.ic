@@ -4,13 +4,13 @@ let io ::= import "std.io"
 // returns a slice of character slices. That is, a value of type `\\char`.
 
 io.Print("There are ")
-io.PrintNum(builtin.arguments().count)
+io.PrintNum(builtin.arguments().count as i64)
 io.Print(" program argument(s):")
 
 var i: u64 = 0
 while (i < builtin.arguments().count) {
   io.Print("\n  ")
-  io.PrintNum(i)
+  io.PrintNum(i as i64)
   io.Print(": ")
   io.Print(builtin.arguments()[i])
   i = i + 1

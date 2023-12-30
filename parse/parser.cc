@@ -993,6 +993,7 @@ void Parser::HandleTryPrefix(ParseTree& tree) {
 void Parser::HandleTryInfix(ParseTree& tree) {
   Precedence p = Precedence::Loosest();
   switch (current_token().kind()) {
+    case Token::Kind::As: p = Precedence::As(); break;
     case Token::Kind::Star: p = Precedence::MultiplyDivide(); break;
 #define IC_XMACRO_TOKEN_KIND_BINARY_OPERATOR(kind, symbol, precedence_group)   \
   case Token::Kind::kind:                                                      \

@@ -532,6 +532,16 @@ void HandleParseTreeNodeExpressionPrecedenceGroup(
       context.PopTypeStack(1 + node.child_count / 2);
       context.type_stack().push({current});
     } break;
+    case Token::Kind::As: {
+      if (context.type_stack().top()[0] !=
+          type::QualifiedType::Constant(type::Type_)) {
+        NTH_UNIMPLEMENTED();
+      }
+      context.PopTypeStack(1 + node.child_count / 2);
+      std::optional t = context.EvaluateAs<type::Type>(index - 1);
+      if (not t) { NTH_UNIMPLEMENTED(); }
+      context.type_stack().push({type::QualifiedType::Constant(*t)});
+    } break;
     case Token::Kind::Less:
     case Token::Kind::Greater:
     case Token::Kind::LessEqual:
@@ -709,22 +719,70 @@ void HandleParseTreeNodeIndexExpression(ParseNodeIndex index,
   }
 }
 
-struct Call {
+struct InvocationSuccess {};
+struct ParameterArgumentCountMismatch {
+  size_t parameters;
+  size_t arguments;
+};
+struct InvalidBinding{
+  size_t index;
+  type::Type parameter;
+  type::Type argument;
+};
+using InvocationResult =
+    std::variant<InvocationSuccess, ParameterArgumentCountMismatch, InvalidBinding>;
+
+struct CallArguments {
   struct Argument {
     ParseNodeIndex index;
     type::QualifiedType qualified_type;
 
     type::Type type() const { return qualified_type.type(); }
   };
+
+  InvocationResult Invoke(type::FunctionType fn_type) {
+    auto const& parameters = *fn_type.parameters();
+    // TODO: Properly implement function call type-checking.
+    if (parameters.size() != arguments.size()) {
+      return ParameterArgumentCountMismatch{.parameters = parameters.size(),
+                                            .arguments  = arguments.size()};
+    }
+
+    for (size_t i = 0; i < arguments.size(); ++i) {
+      if (not type::ImplicitCast(arguments[i].type(), parameters[i].type)) {
+        return InvalidBinding{
+            .index     = i,
+            .parameter = parameters[i].type,
+            .argument  = arguments[i].type(),
+        };
+      } 
+    }
+
+    return InvocationSuccess{};
+  }
+
+  jasmin::InstructionSpecification MakeInstructionSpecification(
+      type::FunctionType fn_type) const {
+    jasmin::InstructionSpecification spec{.parameters = 1, .returns = 0};
+    auto iter = (*fn_type.parameters()).begin();
+    for (size_t i = 0; i < std::distance(postfix_start, arguments.end()); ++i) {
+      spec.parameters += type::JasminSize(iter->type);
+      ++iter;
+    }
+
+    for (type::Type r : fn_type.returns()) {
+      spec.returns += type::JasminSize(r);
+    }
+    return spec;
+  }
+
   Argument callee;
   std::vector<Argument> arguments;
   std::vector<Argument>::const_iterator postfix_start;
 };
 
-void HandleParseTreeNodeCallExpression(ParseNodeIndex index, IrContext& context,
-                                       diag::DiagnosticConsumer& diag) {
-  Call call;
-
+bool PopulateCall(ParseNodeIndex index, IrContext& context,
+                  CallArguments& call) {
   auto& type_stack  = context.type_stack();
   auto nodes        = context.ChildIndices(index);
   int postfix_count = -1;
@@ -733,7 +791,7 @@ void HandleParseTreeNodeCallExpression(ParseNodeIndex index, IrContext& context,
     auto const& child_node = context.Node(*node_iter);
     if (child_node.kind == ParseNode::Kind::PrefixInvocationArgumentEnd) {
       NTH_REQUIRE((v.debug), not call.arguments.empty());
-      postfix = false;
+      postfix     = false;
       call.callee = call.arguments.back();
       call.arguments.pop_back();
       continue;
@@ -748,63 +806,92 @@ void HandleParseTreeNodeCallExpression(ParseNodeIndex index, IrContext& context,
     if (qts[0].type() == type::Error) {
       for (; node_iter != nodes.end(); ++node_iter) { type_stack.pop(); }
       type_stack.push({type::QualifiedType::Unqualified(type::Error)});
-      return;
+      return false;
     }
     call.arguments.push_back({.index = *node_iter, .qualified_type = qts[0]});
     type_stack.pop();
     if (postfix) { ++postfix_count; }
   }
+
   if (postfix) {
     call.callee = call.arguments.back();
     call.arguments.pop_back();
   }
   std::reverse(call.arguments.begin(), call.arguments.end());
   call.postfix_start = call.arguments.end() - postfix_count;
+  return true;
+}
 
+void HandleParseTreeNodeCallExpression(ParseNodeIndex index, IrContext& context,
+                                       diag::DiagnosticConsumer& diag) {
+  CallArguments call;
+  if (not PopulateCall(index, context, call)) { return; }
   auto node = context.Node(index);
+
   if (call.callee.type().kind() == type::Type::Kind::Function) {
     auto fn_type           = call.callee.type().AsFunction();
-    auto const& parameters = *fn_type.parameters();
-    // TODO: Properly implement function call type-checking.
-    if (parameters.size() == call.arguments.size()) {
-      auto type_iter        = call.arguments.begin();
-      auto [iter, inserted] = context.emit.instruction_spec.try_emplace(index);
-      auto& spec            = iter->second;
-      NTH_REQUIRE((v.harden), inserted);
-      ++spec.parameters;
-      for (auto iter = call.postfix_start; iter != call.arguments.end();
-           ++iter) {
-        spec.parameters += type::JasminSize(iter->type());
-      }
-      auto const& returns = fn_type.returns();
-      std::vector<type::QualifiedType> return_qts;
-      for (type::Type r : returns) {
-        spec.returns += type::JasminSize(r);
-        return_qts.push_back(type::QualifiedType::Unqualified(r));
-      }
-      context.type_stack().push(return_qts);
-
-      switch (fn_type.evaluation()) {
-        case type::Evaluation::PreferCompileTime: NTH_UNIMPLEMENTED();
-        case type::Evaluation::RequireCompileTime: {
-          nth::interval range = context.emit.tree.subtree_range(index);
-          nth::stack<jasmin::Value> value_stack;
-          context.emit.Evaluate(range, value_stack, returns);
-          auto module_id = context.EvaluateAs<ModuleId>(index);
-          if (module_id == ModuleId::Invalid()) {
+    InvocationResult result = call.Invoke(fn_type);
+    bool success = std::visit(
+        [&](auto const& r) {
+          constexpr auto t = nth::type<decltype(r)>.decayed();
+          if constexpr (t == nth::type<InvocationSuccess>) {
+            return true;
+          } else if constexpr (t == nth::type<ParameterArgumentCountMismatch>) {
             diag.Consume({
                 diag::Header(diag::MessageKind::Error),
-                diag::Text(InterpolateString<"No module found named \"{}\"">(
-                    *context.EvaluateAs<std::string_view>(index - 1))),
+                diag::Text(InterpolateString<
+                           "Incorrect number of arguments passed to function: "
+                                      "Expected {}, but {} were provided.">(r.parameters,
+                                                                 r.arguments)),
+                diag::SourceQuote(context.Node(index).token),
             });
-            return;
+          } else if constexpr (t == nth::type<InvalidBinding>) {
+            diag.Consume({
+                diag::Header(diag::MessageKind::Error),
+                diag::Text(InterpolateString<
+                           "Argument at position {} cannot be passed to "
+                                      "function. Expected a {} but argument has type {}">(
+                    r.index, r.parameter, r.argument)),
+                diag::SourceQuote(context.Node(index).token),
+            });
           }
-        } break;
-        case type::Evaluation::PreferRuntime:
-        case type::Evaluation::RequireRuntime: break;
-      }
-    } else {
-      NTH_UNIMPLEMENTED("{} {}") <<= {parameters, call.arguments.size()};
+          return false;
+        },
+        result);
+    if (not success) {
+      context.type_stack().push(
+          {type::QualifiedType::Unqualified(type::Error)});
+      return;
+    }
+    // TODO: Properly implement function call type-checking.
+    auto [iter, inserted]  = context.emit.instruction_spec.try_emplace(
+         index, call.MakeInstructionSpecification(fn_type));
+    NTH_REQUIRE((v.harden), inserted);
+    auto const& returns = fn_type.returns();
+    std::vector<type::QualifiedType> return_qts;
+    for (type::Type r : returns) {
+      return_qts.push_back(type::QualifiedType::Unqualified(r));
+    }
+    context.type_stack().push(return_qts);
+
+    switch (fn_type.evaluation()) {
+      case type::Evaluation::PreferCompileTime: NTH_UNIMPLEMENTED();
+      case type::Evaluation::RequireCompileTime: {
+        nth::interval range = context.emit.tree.subtree_range(index);
+        nth::stack<jasmin::Value> value_stack;
+        context.emit.Evaluate(range, value_stack, returns);
+        auto module_id = context.EvaluateAs<ModuleId>(index);
+        if (module_id == ModuleId::Invalid()) {
+          diag.Consume({
+              diag::Header(diag::MessageKind::Error),
+              diag::Text(InterpolateString<"No module found named \"{}\"">(
+                  *context.EvaluateAs<std::string_view>(index - 1))),
+          });
+          return;
+        }
+      } break;
+      case type::Evaluation::PreferRuntime:
+      case type::Evaluation::RequireRuntime: break;
     }
   } else if (call.callee.type().kind() == type::Type::Kind::DependentFunction) {
     auto& spec = context.emit.instruction_spec[index];

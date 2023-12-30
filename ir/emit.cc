@@ -423,6 +423,11 @@ void HandleParseTreeNodeExpressionPrecedenceGroup(ParseNodeIndex index,
       context.current_function().append<jasmin::LessThan<int64_t>>();
       context.current_function().append<jasmin::Not>();
     } break;
+    case Token::Kind::As: {
+      context.current_function().append<jasmin::Drop>();
+      // TODO: Cast. For now most integer casts are correct enough at the jasmin
+      // level, we can ignore this. (Jasmin debug info would flag it though).
+    } break;
     default: NTH_UNIMPLEMENTED("{}") <<= {operator_node.token};
   }
 }

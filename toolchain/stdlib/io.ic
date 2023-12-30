@@ -3,7 +3,7 @@ let stdio ::= import "std.compat.c.stdio"
 
 let Print ::= fn(let s: \char) -> () {
   let printf ::= builtin.foreign("printf", ([*]char, c.int, [*]char) -> c.int)
-  printf("%.*s".data, s.count, s.data)
+  printf("%.*s".data, s.count as i32, s.data)
 }
 
 let PrintNum ::= fn(let n: i64) -> () {
