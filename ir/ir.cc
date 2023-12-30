@@ -761,9 +761,9 @@ struct CallArguments {
     return InvocationSuccess{};
   }
 
-  jasmin::InstructionSpecification MakeInstructionSpecification(
-      type::FunctionType fn_type) const {
+  jasmin::InstructionSpecification MakeInstructionSpecification() const {
     jasmin::InstructionSpecification spec{.parameters = 1, .returns = 0};
+    auto fn_type = callee.type().AsFunction();
     auto iter = (*fn_type.parameters()).begin();
     for (size_t i = 0; i < std::distance(postfix_start, arguments.end()); ++i) {
       spec.parameters += type::JasminSize(iter->type);
@@ -863,9 +863,9 @@ void HandleParseTreeNodeCallExpression(ParseNodeIndex index, IrContext& context,
           {type::QualifiedType::Unqualified(type::Error)});
       return;
     }
-    // TODO: Properly implement function call type-checking.
+
     auto [iter, inserted]  = context.emit.instruction_spec.try_emplace(
-         index, call.MakeInstructionSpecification(fn_type));
+         index, call.MakeInstructionSpecification());
     NTH_REQUIRE((v.harden), inserted);
     auto const& returns = fn_type.returns();
     std::vector<type::QualifiedType> return_qts;
