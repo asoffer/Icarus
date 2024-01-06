@@ -933,8 +933,14 @@ void HandleParseTreeNodeCallExpression(ParseNodeIndex index, IrContext& context,
     context.emit.Evaluate(context.emit.tree.subtree_range(index), value_stack,
                           {*t});
   } else {
-    NTH_UNIMPLEMENTED("node = {} invocable_type = {}") <<=
-        {node, call.callee};
+    diag.Consume({
+        diag::Header(diag::MessageKind::Error),
+        diag::Text(InterpolateString<"Objects of type {} are not invocable.">(
+            call.callee.type())),
+    });
+    context.type_stack().push({type::QualifiedType::Unqualified(type::Error)});
+    return;
+
   }
 }
 
@@ -1215,7 +1221,7 @@ void HandleParseTreeNodeIfStatementFalseBranchStart(ParseNodeIndex index,
 void HandleParseTreeNodeIfStatement(ParseNodeIndex index, IrContext& context,
                                     diag::DiagnosticConsumer& diag) {
   if (context.type_stack().top()[0].type() != type::Bool) {
-    NTH_UNIMPLEMENTED();
+    NTH_UNIMPLEMENTED("{}") <<= {context.type_stack().top()[0]};
   }
   context.pop_lexical_scope();
   context.type_stack().pop();

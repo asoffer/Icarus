@@ -1,26 +1,27 @@
-c     ::= import "std.c.stdio"
-errno ::= import "std.c.errno"
-io    ::= import "std.io"
+let c     ::= import "std.compat.c.stdio"
+let errno ::= import "std.compat.c.errno"
+let io    ::= import "std.io"
 
 // This example uses the C API to access a file. In particular, it opens
 // attempts to open a file, print the first line, and then close the file. If
 // the file cannot be opened, an error is printed instead.
 
-f := c.fopen("examples/example_file.txt".data, "r".data)
+let f := c.fopen("examples/example_file.txt".data, "r".data)
 
 // TODO: Support freeing any pointer type generically?
-free ::= builtin.foreign("free", [*]char -> ())
+let free    ::= builtin.foreign("free", [*]char -> ())
+let getline ::= builtin.foreign("getline", (*[*]char, *u64, *c.FILE) -> i64)
 
-if (errno.get() == errno.error.SUCCESS) {
+if (@errno.errno == 0) {
   io.Print("First line of file is:\n")
-  p: [*]char
-  num: u64
-  c.getline(&p, &num, f)
+  var p: [*]char
+  var num: u64
+  getline(&p, &num, f)
   io.Print(builtin.slice(p, num))
   free(p)
   c.fclose(f)
 } else {
   io.Print("Error when loading file: errno = ")
-  io.Print(errno.get())
+  io.PrintNum(@errno.errno as i64)
 }
 io.Print("\n")

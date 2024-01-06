@@ -11,9 +11,35 @@ constexpr std::string_view HorizontalBorder =
     "──────────────────────────────────────────────────────────────────────────"
     "──────";
 
+constexpr uint32_t Digits(uint32_t n) {
+  uint32_t digits = 0;
+  while (n != 0) {
+    ++digits;
+    n /= 10;
+  }
+  return digits;
+}
+static_assert(Digits(1) == 1);
+static_assert(Digits(9) == 1);
+static_assert(Digits(10) == 2);
+static_assert(Digits(11) == 2);
+static_assert(Digits(99) == 2);
+static_assert(Digits(100) == 3);
+static_assert(Digits(101) == 3);
+
 void DrawLineRange(DiagnosticConsumer &consumer, uint32_t indentation,
                    uint32_t start, uint32_t end) {
-  absl::FPrintF(stderr, "%*s╭───┬%s╮\n", 4 + indentation, "", HorizontalBorder);
+  constexpr size_t width   = 2 * 10 + 3;
+  char digit_border[width] = {};
+  char *p                  = digit_border;
+  for (uint32_t i = 0; i < Digits(end - 1) + 2; ++i) {
+    std::memcpy(p, "─", std::strlen("─"));
+    p += std::strlen("─");
+  }
+  *p = '\0';
+
+  absl::FPrintF(stderr, "%*s╭%s┬%s╮\n", 4 + indentation, "", digit_border,
+                HorizontalBorder);
 
   for (uint32_t n = start; n < end; ++n) {
     std::string_view line_text = consumer.Line(n);
@@ -22,7 +48,8 @@ void DrawLineRange(DiagnosticConsumer &consumer, uint32_t indentation,
                   79 - indentation - line_text.size(), "");
   }
 
-  absl::FPrintF(stderr, "%*s╰───┴%s╯\n", 4 + indentation, "", HorizontalBorder);
+  absl::FPrintF(stderr, "%*s╰%s┴%s╯\n", 4 + indentation, "", digit_border,
+                HorizontalBorder);
 }
 
 }  // namespace
@@ -44,8 +71,9 @@ void StreamingConsumer::Process(MessageComponent const &component) {
   } else if (auto const *q = component.As<SourceQuote>()) {
     auto [line, column] = LineAndColumn(q->token());
 
-    DrawLineRange(*this, indentation_, std::max<uint32_t>(line - 1, 1),
-                  std::min<uint32_t>(line + 2, lines() + 1));
+    uint32_t start = std::max<uint32_t>(line - 1, 1);
+    uint32_t end   = std::min<uint32_t>(line + 2, lines() + 1);
+    DrawLineRange(*this, indentation_, start, end);
   } else {
     NTH_UNIMPLEMENTED();
   }

@@ -250,7 +250,69 @@ void HandleParseTreeNodeDeclaration(ParseNodeIndex index,
   auto const& decl_info = context.queue.front().declaration_stack.back();
   if (not decl_info.kind.has_initializer()) {
     NTH_REQUIRE((v.debug), not decl_info.kind.inferred_type());
-    if (not decl_info.kind.parameter()) { NTH_UNIMPLEMENTED(); }
+    if (not decl_info.kind.parameter()) {
+      auto const* info = context.lexical_scopes.identifier(
+          context.current_lexical_scope_index(),
+          context.Node(decl_info.index).token.Identifier());
+      auto& f = context.current_function();
+      auto t = info->qualified_type.type();
+      switch (t.kind()) {
+        case type::Type::Kind::Primitive:
+          switch (t.AsPrimitive().kind()) {
+            case type::PrimitiveType::Kind::Bool:
+              f.append<jasmin::Push>(false);
+              break;
+            case type::PrimitiveType::Kind::Char:
+              f.append<jasmin::Push>('\0');
+              break;
+            case type::PrimitiveType::Kind::Byte:
+              f.append<jasmin::Push>(std::byte{});
+              break;
+            case type::PrimitiveType::Kind::I8:
+              f.append<jasmin::Push>(int8_t{0});
+              break;
+            case type::PrimitiveType::Kind::I16:
+              f.append<jasmin::Push>(int16_t{0});
+              break;
+            case type::PrimitiveType::Kind::I32:
+              f.append<jasmin::Push>(int32_t{0});
+              break;
+            case type::PrimitiveType::Kind::I64:
+              f.append<jasmin::Push>(int64_t{0});
+              break;
+            case type::PrimitiveType::Kind::U8:
+              f.append<jasmin::Push>(uint8_t{0});
+              break;
+            case type::PrimitiveType::Kind::U16:
+              f.append<jasmin::Push>(uint16_t{0});
+              break;
+            case type::PrimitiveType::Kind::U32:
+              f.append<jasmin::Push>(uint32_t{0});
+              break;
+            case type::PrimitiveType::Kind::U64:
+              f.append<jasmin::Push>(uint64_t{0});
+              break;
+            case type::PrimitiveType::Kind::F32:
+              f.append<jasmin::Push>(float{0});
+              break;
+            case type::PrimitiveType::Kind::F64:
+              f.append<jasmin::Push>(double{0});
+              break;
+            default:
+            NTH_UNIMPLEMENTED("Default initialization for {}") <<=
+                {info->qualified_type};
+          }
+        case type::Type::Kind::Pointer:
+        case type::Type::Kind::BufferPointer: f.append<PushNull>(); break;
+        default:
+          NTH_UNIMPLEMENTED("Default initialization for {}") <<=
+              {info->qualified_type};
+      }
+      auto range = context.current_storage().range(index);
+      context.current_function().append<jasmin::StackOffset>(
+          range.lower_bound().value());
+      context.current_function().append<Store>(range.length().value());
+    }
   } else if (decl_info.kind.inferred_type()) {
     if (decl_info.kind.constant()) {
       auto& f = context.current_function();

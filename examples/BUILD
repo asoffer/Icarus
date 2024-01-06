@@ -1,29 +1,28 @@
 load("//toolchain:ic_rule.bzl", "ic_binary")
 
-# filegroup(
-#     name = "example_file",
-#     srcs = ["example_file.txt"],
-# )
-# 
+filegroup(
+    name = "example_file",
+    srcs = ["example_file.txt"],
+)
+
 ic_binary(
     name = "arguments",
     srcs = ["arguments.ic"],
     deps = ["//toolchain/stdlib:io"],
 )
 
-# TODO: Fix this target.
-# ic_binary(
-#     name = "c_file",
-#     srcs = ["c_file.ic"],
-#     deps = [
-#         "//toolchain/stdlib/c:errno",
-#         "//toolchain/stdlib/c:stdio",
-#         "//toolchain/stdlib:io",
-#     ],
-#     data = [
-#         ":example_file",
-#     ],
-# )
+ic_binary(
+    name = "c_file",
+    srcs = ["c_file.ic"],
+    deps = [
+        "//toolchain/stdlib/compat/c:errno",
+        "//toolchain/stdlib/compat/c:stdio",
+        "//toolchain/stdlib:io",
+    ],
+    data = [
+        ":example_file",
+    ],
+)
 
 ic_binary(
     name = "date_time",

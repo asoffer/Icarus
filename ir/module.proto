@@ -17,7 +17,7 @@ message InstructionProto {
     PUSH_STRING_LITERAL = 6;
     PUSH_TYPE = 7;
     PUSH_POINTER = 8;
-    TYPE_KIND = 9;
+    PUSH_NULL = 9;
     TYPE_KIND_EQUALS = 10;
     ROTATE = 11;
     CONSTRUCT_OPAQUE_TYPE = 12;
@@ -48,6 +48,7 @@ message InstructionProto {
     ASCII_DECODE = 37;
     DROP = 38;
     SWAP = 39;
+    TYPE_KIND = 40;
   }
   OpCode op_code = 1;
   repeated uint64 content = 2;

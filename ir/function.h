@@ -39,6 +39,12 @@ struct PushFunction : jasmin::Instruction<PushFunction> {
   }
 };
 
+struct PushNull : jasmin::Instruction<PushNull> {
+  static std::string_view name() { return "push-null"; }
+
+  static void* execute(std::span<jasmin::Value, 0>) { return nullptr; }
+};
+
 struct PushPointer : jasmin::Instruction<PushPointer> {
   static std::string_view name() { return "push-pointer"; }
 
@@ -184,7 +190,7 @@ struct Rotate : jasmin::Instruction<Rotate> {
 
 using InstructionSet = jasmin::MakeInstructionSet<
     jasmin::Push, PushFunction, PushStringLiteral, PushType, PushPointer,
-    TypeKind, jasmin::Equal<type::Type::Kind>, Rotate, ConstructOpaqueType,
+    PushNull, jasmin::Equal<type::Type::Kind>, Rotate, ConstructOpaqueType,
     ConstructPointerType, ConstructBufferPointerType, ConstructFunctionType,
     ConstructParametersType, ConstructSliceType, ConstructInterface,
     RegisterForeignFunction, InvokeForeignFunction, jasmin::Not, NoOp, Store,
@@ -192,7 +198,7 @@ using InstructionSet = jasmin::MakeInstructionSet<
     jasmin::Add<int64_t>, jasmin::Subtract<int64_t>, jasmin::Multiply<int64_t>,
     jasmin::Mod<int64_t>, jasmin::Equal<int64_t>, jasmin::LessThan<int64_t>,
     AddPointer, LoadProgramArguments, jasmin::Duplicate, AsciiEncode,
-    AsciiDecode, jasmin::Drop, jasmin::Swap>;
+    AsciiDecode, jasmin::Drop, jasmin::Swap, TypeKind>;
 using IrFunction = jasmin::Function<InstructionSet>;
 
 }  // namespace ic
