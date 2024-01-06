@@ -151,19 +151,19 @@ struct NoOp : jasmin::Instruction<NoOp> {
 };
 
 struct AddPointer : jasmin::Instruction<AddPointer> {
-  static std::byte const* execute(std::span<jasmin::Value, 2> inputs) {
+  static std::byte const* consume(std::span<jasmin::Value, 2> inputs) {
     return inputs[0].as<std::byte const*>() + inputs[1].as<uint64_t>();
   }
 };
 
 struct AsciiEncode : jasmin::Instruction<AsciiEncode> {
-  static void execute(std::span<jasmin::Value, 1> inputs) {
+  static void consume(std::span<jasmin::Value, 1> inputs) {
     inputs[0] = static_cast<char>(inputs[0].as<uint8_t>());
   }
 };
 
 struct AsciiDecode : jasmin::Instruction<AsciiDecode> {
-  static void execute(std::span<jasmin::Value, 1> inputs) {
+  static void consume(std::span<jasmin::Value, 1> inputs) {
     inputs[0] = static_cast<uint8_t>(inputs[0].as<char>());
   }
 };
