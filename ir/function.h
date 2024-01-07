@@ -5,6 +5,7 @@
 #include <string_view>
 
 #include "common/identifier.h"
+#include "common/integer.h"
 #include "ir/function_id.h"
 #include "jasmin/core/function.h"
 #include "jasmin/core/instruction.h"
@@ -198,7 +199,9 @@ using InstructionSet = jasmin::MakeInstructionSet<
     jasmin::Add<int64_t>, jasmin::Subtract<int64_t>, jasmin::Multiply<int64_t>,
     jasmin::Mod<int64_t>, jasmin::Equal<int64_t>, jasmin::LessThan<int64_t>,
     AddPointer, LoadProgramArguments, jasmin::Duplicate, AsciiEncode,
-    AsciiDecode, jasmin::Drop, jasmin::Swap, TypeKind>;
+    AsciiDecode, jasmin::Drop, jasmin::Swap, TypeKind, jasmin::Negate<int8_t>,
+    jasmin::Negate<int16_t>, jasmin::Negate<int32_t>, jasmin::Negate<int64_t>,
+    jasmin::Negate<Integer>, jasmin::Negate<float>, jasmin::Negate<double>>;
 using IrFunction = jasmin::Function<InstructionSet>;
 
 }  // namespace ic

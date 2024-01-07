@@ -286,6 +286,14 @@ Iteration HandleParseTreeNodeScopeLiteralStart(ParseNodeIndex index,
   return Iteration::SkipTo(index + 2);
 }
 
+void HandleParseTreeNodeMinus(ParseNodeIndex index, IrContext& context,
+                              diag::DiagnosticConsumer& diag) {
+  IC_PROPAGATE_ERRORS(context, context.Node(index), 1);
+  // TODO: Type-check.
+  context.emit.SetQualifiedType(index, context.emit.QualifiedTypeOf(index - 1));
+  return;
+}
+
 void HandleParseTreeNodeAddress(ParseNodeIndex index, IrContext& context,
                                 diag::DiagnosticConsumer& diag) {
   if (TryDiagnoseUnexpanded(context.type_stack(), diag,

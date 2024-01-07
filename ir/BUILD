@@ -91,6 +91,7 @@ cc_library(
         ":function_id",
         ":program_arguments",
         "//common:identifier",
+        "//common:integer",
         "//common:module_id",
         "//common:resources",
         "//common:interface",

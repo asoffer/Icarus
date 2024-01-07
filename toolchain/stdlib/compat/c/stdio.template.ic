@@ -12,7 +12,7 @@ let _IOLBF ::= null
 let _IONBF ::= null
 
 let BUFSIZ       ::= {{{BUFSIZ}}}
-// let EOF          ::= {{{EOF}}}  TODO: Enable when negation is support
+let EOF          ::= {{{EOF}}}
 let FOPEN_MAX    ::= {{{FOPEN_MAX}}}
 let FILENAME_MAX ::= {{{FILENAME_MAX}}}
 let L_tmpnam     ::= {{{L_tmpnam}}}

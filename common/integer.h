@@ -30,6 +30,8 @@ struct Integer : private StrongIdentifierType<Integer, uint32_t> {
   explicit Integer(raw_t, uint32_t n) : StrongIdentifierType(n) {}
 
  public:
+  Integer() : Integer(0u) {}
+
   // If the value numerically lies in the range [-2^23, 2^23), it is
   // represented inline. Otherwise its value is stored in
   // `internal_integer::integers` and an index into that set is stored along
@@ -62,6 +64,16 @@ struct Integer : private StrongIdentifierType<Integer, uint32_t> {
 
   friend bool operator!=(Integer lhs, Integer rhs) {
     return lhs.value() != rhs.value();
+  }
+
+  Integer operator-() const {
+    // TODO: Negating the most negative case isn't handled here properly.
+    if (value() >= InlineLimit) {
+      return Integer(
+          -internal_integer::integers.from_index(value() & (InlineLimit - 1)));
+    } else {
+      return Integer(-static_cast<int64_t>(value()));
+    }
   }
 
   template <typename H>

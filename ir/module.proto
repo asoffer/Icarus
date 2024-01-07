@@ -49,6 +49,13 @@ message InstructionProto {
     DROP = 38;
     SWAP = 39;
     TYPE_KIND = 40;
+    NEGATE_I8 = 41;
+    NEGATE_I16 = 42;
+    NEGATE_I32 = 43;
+    NEGATE_I64 = 44;
+    NEGATE_INTEGER = 45;
+    NEGATE_F32 = 46;
+    NEGATE_F64 = 47;
   }
   OpCode op_code = 1;
   repeated uint64 content = 2;

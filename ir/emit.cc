@@ -81,6 +81,40 @@ void HandleParseTreeNodeSliceStart(ParseNodeIndex index, EmitContext& context) {
 }
 void HandleParseTreeNodeBufferPointerStart(ParseNodeIndex index,
                                            EmitContext& context) {}
+void HandleParseTreeNodeMinusStart(ParseNodeIndex index,
+                                           EmitContext& context) {}
+
+void HandleParseTreeNodeMinus(ParseNodeIndex index, EmitContext& context) {
+  auto qt = context.QualifiedTypeOf(index - 1);
+  if (qt.type().kind() == type::Type::Kind::Primitive) {
+    switch (qt.type().AsPrimitive().kind()) {
+      case type::PrimitiveType::Kind::I8:
+        context.current_function().append<jasmin::Negate<int8_t>>();
+        break;
+      case type::PrimitiveType::Kind::I16:
+        context.current_function().append<jasmin::Negate<int16_t>>();
+        break;
+      case type::PrimitiveType::Kind::I32:
+        context.current_function().append<jasmin::Negate<int32_t>>();
+        break;
+      case type::PrimitiveType::Kind::I64:
+        context.current_function().append<jasmin::Negate<int64_t>>();
+        break;
+      case type::PrimitiveType::Kind::Integer:
+        context.current_function().append<jasmin::Negate<Integer>>();
+        break;
+      case type::PrimitiveType::Kind::F32:
+        context.current_function().append<jasmin::Negate<float>>();
+        break;
+      case type::PrimitiveType::Kind::F64:
+        context.current_function().append<jasmin::Negate<double>>();
+        break;
+      default: NTH_UNREACHABLE();
+    }
+  } else {
+    NTH_UNIMPLEMENTED("{}") <<= {qt};
+  }
+}
 
 void HandleParseTreeNodeAddressStart(ParseNodeIndex index,
                                      EmitContext& context) {
