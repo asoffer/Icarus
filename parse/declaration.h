@@ -28,6 +28,7 @@ namespace ic {
 // language of "having an initializer".
 struct DeclarationKind {
   enum class Constness : uint8_t { NonConstant = 0, Constant = 4 };
+  enum class Addressability : uint8_t { Unaddressable = 0, Addressable = 16 };
   using enum Constness;
 
   constexpr DeclarationKind() : DeclarationKind(0) {}
@@ -62,11 +63,20 @@ struct DeclarationKind {
     }
   }
 
+  constexpr void set_addressable(bool addressable) {
+    if (addressable) {
+      data_ |= uint8_t{16};
+    } else {
+      data_ &= ~uint8_t{16};
+    }
+  }
+
   constexpr bool explicit_type() const { return data_ & uint8_t{1}; }
   constexpr bool inferred_type() const { return not explicit_type(); }
   constexpr bool has_initializer() const { return data_ & uint8_t{2}; }
   constexpr bool constant() const { return data_ & uint8_t{4}; }
   constexpr bool parameter() const { return data_ & uint8_t{8}; }
+  constexpr bool addressable() const { return data_ & uint8_t{16}; }
 
  private:
   explicit constexpr DeclarationKind(uint8_t n) : data_(n) {}

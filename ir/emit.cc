@@ -25,6 +25,7 @@ void StoreStackValue(IrFunction& f, type::ByteWidth offset, type::Type t) {
     f.append<jasmin::StackOffset>(position.value());
     f.append<Store>((end - position).value());
   }
+  NTH_REQUIRE((v.debug), position >= offset);
   while (position != offset) {
     position -= type::ByteWidth(ValueSize);
     f.append<jasmin::StackOffset>(position.value());

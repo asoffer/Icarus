@@ -253,6 +253,7 @@ void Parser::HandleDeclaration(ParseTree& tree) {
   switch (current_token().kind()) {
     case Token::Kind::Let:
       PushDeclaration();
+      CurrentDeclaration().set_addressable(false);
       ExpandState(State::Kind::DeclaredSymbol,
                   State::Kind::ColonToEndOfDeclaration,
                   State{
@@ -263,6 +264,7 @@ void Parser::HandleDeclaration(ParseTree& tree) {
       break;
     case Token::Kind::Var:
       PushDeclaration();
+      CurrentDeclaration().set_addressable(true);
       ExpandState(State::Kind::DeclaredSymbol,
                   State::Kind::ColonToEndOfDeclaration,
                   State{
@@ -328,6 +330,7 @@ void Parser::HandleStatement(ParseTree& tree) {
   switch (current_token().kind()) {
     case Token::Kind::Let:
       PushDeclaration();
+      CurrentDeclaration().set_addressable(false);
       ExpandState(State::Kind::DeclaredSymbol,
                   State::Kind::ColonToEndOfDeclaration,
                   State{
@@ -342,6 +345,7 @@ void Parser::HandleStatement(ParseTree& tree) {
       break;
     case Token::Kind::Var:
       PushDeclaration();
+      CurrentDeclaration().set_addressable(true);
       ExpandState(State::Kind::DeclaredSymbol,
                   State::Kind::ColonToEndOfDeclaration,
                   State{

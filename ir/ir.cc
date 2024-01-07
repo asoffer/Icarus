@@ -41,6 +41,13 @@ namespace {
     }                                                                          \
   } while (false);
 
+type::QualifiedType QualifiedBy(type::Type t, DeclarationInfo info) {
+  type::Qualifier q = type::Qualifier::Unqualified();
+  if (info.kind.constant()) { q |= type::Qualifier::Constant(); }
+  if (info.kind.addressable()) { q |= type::Qualifier::Addressable(); }
+  return type::QualifiedType(q, t);
+}
+
 template <typename T>
 type::Type FromConstant() {
   auto t = nth::type<T>;
@@ -287,8 +294,17 @@ void HandleParseTreeNodeAddress(ParseNodeIndex index, IrContext& context,
   }
   auto qt = context.type_stack().top()[0];
   context.type_stack().pop();
-  context.type_stack().push(
-      {type::QualifiedType::Unqualified(type::Ptr(qt.type()))});
+  if (qt.addressable()) {
+    context.type_stack().push(
+        {type::QualifiedType::Unqualified(type::Ptr(qt.type()))});
+  } else {
+    diag.Consume({
+        diag::Header(diag::MessageKind::Error),
+        diag::Text("Expression is not addressable"),
+        diag::SourceQuote(context.Node(index - 1).token),
+    });
+    context.type_stack().push({type::QualifiedType::Unqualified(type::Error)});
+  }
 }
 
 void HandleParseTreeNodeDeclaration(ParseNodeIndex index, IrContext& context,
@@ -301,8 +317,7 @@ void HandleParseTreeNodeDeclaration(ParseNodeIndex index, IrContext& context,
     std::optional type = context.EvaluateAs<type::Type>(index - 1);
     if (not type) { NTH_UNIMPLEMENTED(); }
 
-    auto qt = info.kind.constant() ? type::QualifiedType::Constant(*type)
-                                   : type::QualifiedType::Unqualified(*type);
+    auto qt = QualifiedBy(*type, info);
     context.current_lexical_scope().insert_identifier(
         context.Node(info.index).token.Identifier(),
         {
@@ -314,12 +329,10 @@ void HandleParseTreeNodeDeclaration(ParseNodeIndex index, IrContext& context,
     context.current_storage().insert(index, *type);
     context.emit.SetQualifiedType(index, qt);
   } else if (info.kind.inferred_type()) {
-    type::QualifiedType qt;
-    if (info.kind.constant()) {
-      qt = type::QualifiedType::Constant(context.type_stack().top()[0].type());
-    } else {
-      qt = type::QualifiedType::Unqualified(
-          context.type_stack().top()[0].type());
+    IC_PROPAGATE_ERRORS(context, context.Node(index), 1);
+    type::QualifiedType qt =
+        QualifiedBy(context.type_stack().top()[0].type(), info);
+    if (not info.kind.constant()) {
       context.current_storage().insert(index, qt.type());
     }
     context.emit.SetQualifiedType(index, qt);
@@ -986,10 +999,9 @@ void TryDiagnoseUnaryTypeConstructorError(TypeStack& type_stack,
               type_constructor, type_stack.top()[0].type())),
       diag::SourceQuote(token),
   });
-  bool constant = type_stack.top()[0].constant();
+auto q  = type_stack.top()[0].qualifier();
   type_stack.pop();
-  type_stack.push({constant ? type::QualifiedType::Constant(type::Error)
-                            : type::QualifiedType::Unqualified(type::Error)});
+  type_stack.push({type::QualifiedType(q, type::Error)});
 }
 
 void HandleParseTreeNodePointer(ParseNodeIndex index, IrContext& context,

@@ -82,6 +82,7 @@ struct Type {
 };
 
 struct Qualifier {
+  static constexpr Qualifier Addressable() { return Qualifier(2); }
   static constexpr Qualifier Constant() { return Qualifier(1); }
   static constexpr Qualifier Unqualified() { return Qualifier(0); }
 
@@ -93,6 +94,10 @@ struct Qualifier {
   friend constexpr bool operator>=(Qualifier lhs, Qualifier rhs) {
     return rhs <= lhs;
   }
+  constexpr Qualifier& operator|=(Qualifier q) {
+    data_ |= q.data_;
+    return *this;
+  }
 
   template <typename H>
   friend H AbslHashValue(H h, Qualifier q) {
@@ -101,6 +106,7 @@ struct Qualifier {
 
   friend void NthPrint(auto& p, auto&, Qualifier q) {
     if (q.data_ == 1) { p.write("c"); }
+    if (q.data_ == 2) { p.write("a"); }
   }
 
  private:
@@ -127,6 +133,7 @@ struct QualifiedType {
   friend bool operator==(QualifiedType, QualifiedType) = default;
 
   bool constant() const { return qualifier() >= Qualifier::Constant(); }
+  bool addressable() const { return qualifier() >= Qualifier::Addressable(); }
 
   template <typename H>
   friend H AbslHashValue(H h, QualifiedType q) {
