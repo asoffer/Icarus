@@ -68,6 +68,7 @@ cc_library(
     srcs = ["dependent.cc"],
     deps = [
         ":basic",
+        ":refinement",
         "//ir:function",
         "//ir:type_erased_value",
         "@asoffer_jasmin//jasmin/core:execute",
@@ -147,6 +148,18 @@ cc_library(
 )
 
 cc_library(
+    name = "refinement",
+    hdrs = ["refinement.h"],
+    deps = [
+        ":basic",
+        "//common/language:type_kind",
+        "//ir:function",
+        "//ir:type_erased_value",
+        "@asoffer_nth//nth/debug",
+    ],
+)
+
+cc_library(
     name = "serialize",
     hdrs = ["serialize.h"],
     srcs = ["serialize.cc"],
@@ -170,10 +183,12 @@ cc_library(
         ":parameters",
         ":pointer",
         ":primitive",
+        ":refinement",
         ":type_contour",
         ":type_system_cc_proto",
         "//common/language:type_kind",
         "//ir:function",
+        "@asoffer_jasmin//jasmin/core:execute",
         "@asoffer_nth//nth/container:flyweight_set",
         "@asoffer_nth//nth/debug",
         "@asoffer_nth//nth/utility:no_destructor",

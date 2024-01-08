@@ -63,9 +63,8 @@ struct DependentParameterMapping {
   struct Index {
     static Index Type(uint16_t n);
     static Index Value(uint16_t n);
-    static Index Implicit();
 
-    enum class Kind : uint8_t { Type, Value, Implicit };
+    enum class Kind : uint8_t { Type, Value };
 
     constexpr Kind kind() const { return kind_; }
     constexpr uint16_t index() const { return index_; }

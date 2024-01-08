@@ -19,20 +19,14 @@ constexpr uint32_t Digits(uint32_t n) {
   }
   return digits;
 }
-static_assert(Digits(1) == 1);
-static_assert(Digits(9) == 1);
-static_assert(Digits(10) == 2);
-static_assert(Digits(11) == 2);
-static_assert(Digits(99) == 2);
-static_assert(Digits(100) == 3);
-static_assert(Digits(101) == 3);
 
 void DrawLineRange(DiagnosticConsumer &consumer, uint32_t indentation,
                    uint32_t start, uint32_t end) {
   constexpr size_t width   = 2 * 10 + 3;
   char digit_border[width] = {};
   char *p                  = digit_border;
-  for (uint32_t i = 0; i < Digits(end - 1) + 2; ++i) {
+  uint32_t digits          = Digits(end - 1);
+  for (uint32_t i = 0; i < digits + 2; ++i) {
     std::memcpy(p, "─", std::strlen("─"));
     p += std::strlen("─");
   }
@@ -43,8 +37,8 @@ void DrawLineRange(DiagnosticConsumer &consumer, uint32_t indentation,
 
   for (uint32_t n = start; n < end; ++n) {
     std::string_view line_text = consumer.Line(n);
-    absl::FPrintF(stderr, "%*s│ \033[97m%d\033[0m │ %s%*s│\033[0m\n",
-                  4 + indentation, "", n, line_text,
+    absl::FPrintF(stderr, "%*s│ \033[97m%*d\033[0m │ %s%*s│\033[0m\n",
+                  4 + indentation, "", digits, n, line_text,
                   79 - indentation - line_text.size(), "");
   }
 

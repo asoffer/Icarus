@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "ir/type_erased_value.h"
+#include "jasmin/core/execute.h"
 #include "nth/debug/debug.h"
 #include "nth/utility/no_destructor.h"
 
@@ -93,6 +94,23 @@ Evaluation FunctionType::evaluation() const {
   return std::get<2>(type_system->functions.from_index(data()));
 }
 
+Type RefinementType::underlying() const {
+  return type_system->refinements.from_index(data()).first;
+}
+
+bool RefinementType::operator()(TypeErasedValue const& v) const {
+  IrFunction const& fn = *type_system->refinements.from_index(data()).second;
+  nth::stack<jasmin::Value> stack;
+  for (jasmin::Value value : v.value()) { stack.push(value); }
+  jasmin::Execute(fn, stack);
+  return stack.top().as<bool>();
+}
+
+RefinementType Refinement(Type t, IrFunction const* f) {
+  return RefinementType(type_system->refinements.index(
+      type_system->refinements.insert({t, f}).first));
+}
+
 std::vector<ParametersType::Parameter> const& ParametersType::operator*()
     const {
   return type_system->parameters.from_index(data());
@@ -119,6 +137,8 @@ size_t JasminSize(Type t) {
     case Type::Kind::BufferPointer: return 1;
     case Type::Kind::Opaque: NTH_UNREACHABLE("{}") <<= {t};
     case Type::Kind::DependentFunction: NTH_UNREACHABLE("{}") <<= {t};
+    case Type::Kind::Refinement:
+      return JasminSize(t.AsRefinement().underlying());
   }
 }
 
@@ -128,7 +148,6 @@ TypeContour Contour(Type t) {
       switch (t.AsPrimitive().kind()) {
         case PrimitiveType::Kind::Error:
         case PrimitiveType::Kind::Bottom:
-        case PrimitiveType::Kind::Unit:
         default: NTH_UNREACHABLE();
         case PrimitiveType::Kind::NullType:
         case PrimitiveType::Kind::Scope_:
@@ -216,12 +235,9 @@ std::optional<Type> DependentFunctionType::operator()(
         break;
       case DependentParameterMapping::Index::Kind::Value:
         if (not term_copy.bind(values[index.index()])) {
-          return std::nullopt; }
-        break;
-      case DependentParameterMapping::Index::Kind::Implicit:
-        if (not term_copy.bind(TypeErasedValue(Unit, {}))) {
           return std::nullopt;
         }
+        break;
     }
   }
   if (auto* v = term_copy.evaluate()) { return v->value()[0].as<Type>(); }

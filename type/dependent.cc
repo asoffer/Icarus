@@ -6,6 +6,7 @@
 #include "jasmin/core/execute.h"
 #include "nth/container/stack.h"
 #include "type/primitive.h"
+#include "type/refinement.h"
 
 namespace ic::type {
 
@@ -186,9 +187,18 @@ bool DependentTerm::bind(TypeErasedValue const &value) {
   ++iter;
   NTH_REQUIRE((v.harden), iter->kind == Node::Kind::Value);
   NTH_REQUIRE((v.harden), values_.from_index(iter->index).type() == Type_);
-  if (value.type() != values_.from_index(iter->index).value()[0].as<Type>()) {
+  Type parameter     = values_.from_index(iter->index).value()[0].as<Type>();
+  Type argument_type = value.type();
+  if (parameter == argument_type) {
+    // Okay.
+  } else if (parameter.kind() == Type::Kind::Refinement and
+             parameter.AsRefinement().underlying() == Type_ and
+             parameter.AsRefinement()(value)) {
+    // Okay.
+  } else {
     return false;
   }
+
   ++iter;
   Substitute(values_.index(values_.insert(value).first),
              nth::interval(iter, nodes_.rend()));
@@ -206,10 +216,6 @@ DependentParameterMapping::Index DependentParameterMapping::Index::Type(
 DependentParameterMapping::Index DependentParameterMapping::Index::Value(
     uint16_t n) {
   return Index(Kind::Value, n);
-}
-
-DependentParameterMapping::Index DependentParameterMapping::Index::Implicit() {
-  return Index(Kind::Implicit, 0);
 }
 
 }  // namespace ic::type

@@ -15,6 +15,7 @@
 #include "type/parameters.h"
 #include "type/pointer.h"
 #include "type/primitive.h"
+#include "type/refinement.h"
 #include "type/type_contour.h"
 #include "type/type_system.pb.h"
 
@@ -42,6 +43,7 @@ struct TypeSystem {
   nth::flyweight_set<DependentTerm> dependent_terms;
   nth::flyweight_set<DependentParameterMapping> dependent_mapping;
   nth::flyweight_set<std::pair<size_t, size_t>> dependent_term_mapping_pairs;
+  nth::flyweight_set<std::pair<Type, IrFunction const*>> refinements;
 };
 
 TypeSystem const& GlobalTypeSystem();

@@ -16,14 +16,11 @@ nth::NoDestructor<IrFunction> FunctionOrPointer([] {
   f.append<jasmin::Duplicate>();
   f.append<jasmin::Push>(type::Type::Kind::Function);
   f.append<jasmin::Equal<type::Type::Kind>>();
-  f.append<jasmin::JumpIf>(10);
+  f.append<jasmin::Duplicate>();
+  f.append<jasmin::JumpIf>(6);
+  f.append<jasmin::Drop>();
   f.append<jasmin::Push>(type::Type::Kind::Pointer);
   f.append<jasmin::Equal<type::Type::Kind>>();
-  f.append<jasmin::JumpIf>(6);
-  f.append<PushType>(type::Bottom);
-  f.append<jasmin::Return>();
-  f.append<jasmin::Drop>();
-  f.append<PushType>(type::Unit);
   f.append<jasmin::Return>();
   return f;
 }());
@@ -122,22 +119,16 @@ Module BuiltinModule() {
                {type::Slice(type::Char)}),
            *Slice);
 
-  Register(
-      "foreign",
-      type::Dependent(
-          type::DependentTerm::Function(
-              type::DependentTerm::Value(
-                  TypeErasedValue(type::Type_, {type::Type_})),
-              type::DependentTerm::Function(
-                  type::DependentTerm::Call(
-                      type::DependentTerm::DeBruijnIndex(0),
-                      type::DependentTerm::Value(TypeErasedValue(
-                          type::Family(type::Type_), {&*FunctionOrPointer}))),
-                  type::DependentTerm::DeBruijnIndex(1))),
-          type::DependentParameterMapping(
-              {type::DependentParameterMapping::Index::Value(1),
-               type::DependentParameterMapping::Index::Implicit()})),
-      *Foreign);
+  Register("foreign",
+           type::Dependent(
+               type::DependentTerm::Function(
+                   type::DependentTerm::Value(TypeErasedValue(
+                       type::Type_,
+                       {type::Refinement(type::Type_, &*FunctionOrPointer)})),
+                   type::DependentTerm::DeBruijnIndex(0)),
+               type::DependentParameterMapping(
+                   {type::DependentParameterMapping::Index::Value(1)})),
+           *Foreign);
   return m;
 }
 
