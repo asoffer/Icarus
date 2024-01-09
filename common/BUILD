@@ -59,14 +59,6 @@ cc_test(
 )
 
 cc_library(
-    name = "interface",
-    hdrs = ["interface.h"],
-    deps = [
-    ],
-)
-
-
-cc_library(
     name = "module_id",
     hdrs = ["module_id.h"],
     deps = [
@@ -81,6 +73,16 @@ cc_library(
     deps = [
         ":module_id",
         "@asoffer_nth//nth/container:flyweight_set",
+    ],
+)
+
+cc_library(
+    name = "pattern",
+    hdrs = ["pattern.h"],
+    deps = [
+        "//ir:function",
+        "//ir:type_erased_value",
+        "@asoffer_jasmin//jasmin/core:execute",
     ],
 )
 

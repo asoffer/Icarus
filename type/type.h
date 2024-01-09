@@ -6,13 +6,14 @@
 #include <utility>
 #include <vector>
 
-#include "ir/function.h"
+#include "common/pattern.h"
 #include "nth/container/flyweight_set.h"
 #include "type/basic.h"
 #include "type/dependent.h"
 #include "type/function.h"
 #include "type/opaque.h"
 #include "type/parameters.h"
+#include "type/pattern.h"
 #include "type/pointer.h"
 #include "type/primitive.h"
 #include "type/refinement.h"
@@ -43,7 +44,8 @@ struct TypeSystem {
   nth::flyweight_set<DependentTerm> dependent_terms;
   nth::flyweight_set<DependentParameterMapping> dependent_mapping;
   nth::flyweight_set<std::pair<size_t, size_t>> dependent_term_mapping_pairs;
-  nth::flyweight_set<std::pair<Type, IrFunction const*>> refinements;
+  nth::flyweight_set<std::pair<Type, ::ic::Pattern>> refinements;
+  nth::flyweight_set<Type> pattern_match_types;
 };
 
 TypeSystem const& GlobalTypeSystem();

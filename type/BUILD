@@ -127,6 +127,15 @@ cc_library(
 )
 
 cc_library(
+    name = "pattern",
+    hdrs = ["pattern.h"],
+    deps = [
+        ":basic",
+        "//common/language:type_kind",
+    ],
+)
+
+cc_library(
     name = "pointer",
     hdrs = ["pointer.h"],
     deps = [
@@ -153,6 +162,7 @@ cc_library(
     deps = [
         ":basic",
         "//common/language:type_kind",
+        "//common:pattern",
         "//ir:function",
         "//ir:type_erased_value",
         "@asoffer_nth//nth/debug",
@@ -181,14 +191,14 @@ cc_library(
         ":function",
         ":opaque",
         ":parameters",
+        ":pattern",
         ":pointer",
         ":primitive",
         ":refinement",
         ":type_contour",
         ":type_system_cc_proto",
         "//common/language:type_kind",
-        "//ir:function",
-        "@asoffer_jasmin//jasmin/core:execute",
+        "//common:pattern",
         "@asoffer_nth//nth/container:flyweight_set",
         "@asoffer_nth//nth/debug",
         "@asoffer_nth//nth/utility:no_destructor",

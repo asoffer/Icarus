@@ -1,7 +1,7 @@
 #ifndef ICARUS_TYPE_REFINEMENT_H
 #define ICARUS_TYPE_REFINEMENT_H
 
-#include "ir/function.h"
+#include "common/pattern.h"
 #include "ir/type_erased_value.h"
 #include "type/basic.h"
 
@@ -23,7 +23,7 @@ struct RefinementType : internal_type::BasicType {
   friend Type;
   friend void SerializeTypeSystem(TypeSystemProto&);
   friend void DeserializeTypeSystem(TypeSystemProto const&);
-  friend RefinementType Refinement(Type, IrFunction const*);
+  friend RefinementType Refinement(Type, ::ic::Pattern p);
 
   explicit constexpr RefinementType(uint64_t n)
       : internal_type::BasicType(Type::Kind::Refinement, n) {}
@@ -32,7 +32,7 @@ struct RefinementType : internal_type::BasicType {
 // TODO: Accepting an opaque function here is not a viable long-term strategy.
 // We want users to be able to provide proofs that an object satisfies the
 // refinement without actually invoking it.
-RefinementType Refinement(Type t, IrFunction const* f);
+RefinementType Refinement(Type t, ::ic::Pattern p);
 
 }  // namespace ic::type
 

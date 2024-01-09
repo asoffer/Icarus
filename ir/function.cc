@@ -1,5 +1,4 @@
 #include "ir/function.h"
-#include "common/interface.h"
 
 #include <ffi.h>
 
@@ -142,7 +141,6 @@ type::Type ConstructFunctionType::consume(std::span<jasmin::Value, 2> inputs) {
 
 void ConstructInterface::consume(std::span<jasmin::Value> inputs,
                                  std::span<jasmin::Value> outputs) {
-  outputs[0] = Interface{};
 }
 
 }  // namespace ic

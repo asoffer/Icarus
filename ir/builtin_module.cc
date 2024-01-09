@@ -3,6 +3,7 @@
 #include <string_view>
 
 #include "common/identifier.h"
+#include "common/pattern.h"
 #include "ir/global_function_registry.h"
 #include "nth/utility/no_destructor.h"
 #include "type/type.h"
@@ -119,16 +120,17 @@ Module BuiltinModule() {
                {type::Slice(type::Char)}),
            *Slice);
 
-  Register("foreign",
-           type::Dependent(
-               type::DependentTerm::Function(
-                   type::DependentTerm::Value(TypeErasedValue(
-                       type::Type_,
-                       {type::Refinement(type::Type_, &*FunctionOrPointer)})),
-                   type::DependentTerm::DeBruijnIndex(0)),
-               type::DependentParameterMapping(
-                   {type::DependentParameterMapping::Index::Value(1)})),
-           *Foreign);
+  Register(
+      "foreign",
+      type::Dependent(type::DependentTerm::Function(
+                          type::DependentTerm::Value(TypeErasedValue(
+                              type::Type_,
+                              {type::Refinement(
+                                  type::Type_, Pattern(&*FunctionOrPointer))})),
+                          type::DependentTerm::DeBruijnIndex(0)),
+                      type::DependentParameterMapping(
+                          {type::DependentParameterMapping::Index::Value(1)})),
+      *Foreign);
   return m;
 }
 

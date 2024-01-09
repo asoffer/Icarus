@@ -4,8 +4,8 @@
 #include <utility>
 #include <vector>
 
+#include "common/pattern.h"
 #include "ir/type_erased_value.h"
-#include "jasmin/core/execute.h"
 #include "nth/debug/debug.h"
 #include "nth/utility/no_destructor.h"
 
@@ -75,6 +75,11 @@ BufferPointerType BufPtr(Type t) {
       type_system->buffer_pointee_types.insert(t).first));
 }
 
+PatternType Pattern(Type t) {
+  return PatternType(type_system->pattern_match_types.index(
+      type_system->pattern_match_types.insert(t).first));
+}
+
 Type SliceType::element_type() const {
   return type_system->slice_element_types.from_index(data());
 }
@@ -85,6 +90,10 @@ Type PointerType::pointee() const {
 
 Type BufferPointerType::pointee() const {
   return type_system->buffer_pointee_types.from_index(data());
+}
+
+Type PatternType::match_type() const {
+  return type_system->pattern_match_types.from_index(data());
 }
 
 ParametersType FunctionType::parameters() const {
@@ -99,16 +108,13 @@ Type RefinementType::underlying() const {
 }
 
 bool RefinementType::operator()(TypeErasedValue const& v) const {
-  IrFunction const& fn = *type_system->refinements.from_index(data()).second;
-  nth::stack<jasmin::Value> stack;
-  for (jasmin::Value value : v.value()) { stack.push(value); }
-  jasmin::Execute(fn, stack);
-  return stack.top().as<bool>();
+  auto const& pattern = type_system->refinements.from_index(data()).second;
+  return pattern(v);
 }
 
-RefinementType Refinement(Type t, IrFunction const* f) {
+RefinementType Refinement(Type t, ::ic::Pattern p) {
   return RefinementType(type_system->refinements.index(
-      type_system->refinements.insert({t, f}).first));
+      type_system->refinements.insert({t, p}).first));
 }
 
 std::vector<ParametersType::Parameter> const& ParametersType::operator*()
@@ -131,6 +137,7 @@ size_t JasminSize(Type t) {
   switch (t.kind()) {
     case Type::Kind::Primitive: return 1;
     case Type::Kind::Parameters: NTH_UNREACHABLE("{}") <<= {t};
+    case Type::Kind::Pattern:
     case Type::Kind::Function: return 1;
     case Type::Kind::Slice: return 2;
     case Type::Kind::Pointer: return 1;
