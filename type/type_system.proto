@@ -12,6 +12,9 @@ message TypeProto {
     POINTER = 5;
     BUFFER_POINTER = 6;
     OPAQUE = 7;
+    DEPENDENT_FUNCTION = 8;
+    PATTERN = 9;
+    REFINEMENT = 10;
   }
   Kind kind = 1;
   uint32 index = 2;

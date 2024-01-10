@@ -59,8 +59,11 @@ Type Deserialize(TypeProto const& proto, TypeSystemProto const& ts) {
     case TypeProto::POINTER:
       return DeserializePointerType(ts.pointers(proto.index()), ts);
     case TypeProto::BUFFER_POINTER:
-      return DeserializeBufferPointerType(ts.buffer_pointers(proto.index()), ts);
+      return DeserializeBufferPointerType(ts.buffer_pointers(proto.index()),
+                                          ts);
     case TypeProto::OPAQUE: return OpaqueType(proto.index());
+    case TypeProto::PATTERN: return PatternType(proto.index());
+    case TypeProto::REFINEMENT: return RefinementType(proto.index());
     default: NTH_UNREACHABLE("{}") <<= {proto.DebugString()};
   }
 }

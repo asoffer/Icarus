@@ -19,7 +19,7 @@ struct PatternType : internal_type::BasicType {
  private:
   friend Type;
   friend void SerializeTypeSystem(TypeSystemProto&);
-  friend void DeserializeTypeSystem(TypeSystemProto const&);
+  friend Type Deserialize(TypeProto const&, TypeSystemProto const&);
   friend PatternType Pattern(Type);
 
   explicit constexpr PatternType(uint64_t n)

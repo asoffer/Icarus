@@ -644,6 +644,8 @@ void HandleParseTreeNodeIndexExpression(ParseNodeIndex index,
         EmitContext::ValueCategory::Value) {
       Load(f, size);
     }
+  } else if (qt.type() == type::Type_) {
+    f.append<ConstructRefinementType>();
   } else {
     NTH_UNREACHABLE();
   }

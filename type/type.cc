@@ -186,6 +186,7 @@ TypeContour Contour(Type t) {
     case Type::Kind::BufferPointer:
       return TypeContour(ByteWidth(8), Alignment(8));
     case Type::Kind::Opaque: NTH_UNREACHABLE("{}") <<= {t};
+    case Type::Kind::Refinement: return Contour(t.AsRefinement().underlying());
     default: NTH_UNIMPLEMENTED("{}") <<= {t.kind()};
   }
 }

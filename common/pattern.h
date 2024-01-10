@@ -7,7 +7,7 @@
 namespace ic {
 
 struct Pattern {
-  explicit constexpr Pattern(jasmin::Function<> const *f) : f_(f) {}
+  explicit constexpr Pattern(jasmin::Function<> const *f = nullptr) : f_(f) {}
 
   template <typename H>
   friend H AbslHashValue(H h, Pattern p) {

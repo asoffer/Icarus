@@ -736,7 +736,13 @@ void HandleParseTreeNodeIndexExpression(ParseNodeIndex index,
         NTH_UNIMPLEMENTED();
       }
     } break;
-    default: NTH_UNIMPLEMENTED();
+    case type::Type::Kind::Primitive: {
+      if (qt.type() != type::Type_) { NTH_UNIMPLEMENTED("{}") <<= {qt}; }
+      // TODO: If the pattern isn't constant that should mean the entire thing
+      // isn't a constant.
+      context.type_stack().push({qt});
+    } break;
+      default: NTH_UNIMPLEMENTED("{}") <<= {qt};
   }
 }
 
@@ -1187,7 +1193,8 @@ void HandleParseTreeNodeInterfaceLiteralStart(ParseNodeIndex, IrContext&,
 
 void HandleParseTreeNodeInterfaceLiteral(ParseNodeIndex, IrContext& context,
                                          diag::DiagnosticConsumer&) {
-  context.type_stack().push({type::QualifiedType::Constant(type::Interface)});
+  context.type_stack().push(
+      {type::QualifiedType::Constant(type::Pattern(type::Type_))});
 }
 
 void HandleParseTreeNodeWhileLoopStart(ParseNodeIndex index, IrContext& context,

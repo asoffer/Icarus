@@ -6,6 +6,7 @@
 
 #include "common/identifier.h"
 #include "common/integer.h"
+#include "common/pattern.h"
 #include "ir/function_id.h"
 #include "jasmin/core/function.h"
 #include "jasmin/core/instruction.h"
@@ -20,6 +21,7 @@
 #include "type/opaque.h"
 #include "type/parameters.h"
 #include "type/pointer.h"
+#include "type/refinement.h"
 
 namespace ic {
 
@@ -113,6 +115,15 @@ struct ConstructInterface : jasmin::Instruction<ConstructInterface> {
                       std::span<jasmin::Value> outputs);
 };
 
+struct ConstructRefinementType : jasmin::Instruction<ConstructRefinementType> {
+  static std::string_view name() { return "construct-parameters-type"; }
+
+  static type::Type consume(std::span<jasmin::Value, 2> inputs) {
+    return type::Refinement(inputs[0].as<type::Type>(),
+                            inputs[1].as<Pattern>());
+  }
+};
+
 struct ConstructFunctionType : jasmin::Instruction<ConstructFunctionType> {
   static std::string_view name() { return "construct-function-type"; }
 
@@ -201,7 +212,8 @@ using InstructionSet = jasmin::MakeInstructionSet<
     AddPointer, LoadProgramArguments, jasmin::Duplicate, AsciiEncode,
     AsciiDecode, jasmin::Drop, jasmin::Swap, TypeKind, jasmin::Negate<int8_t>,
     jasmin::Negate<int16_t>, jasmin::Negate<int32_t>, jasmin::Negate<int64_t>,
-    jasmin::Negate<Integer>, jasmin::Negate<float>, jasmin::Negate<double>>;
+    jasmin::Negate<Integer>, jasmin::Negate<float>, jasmin::Negate<double>,
+    ConstructRefinementType>;
 using IrFunction = jasmin::Function<InstructionSet>;
 
 }  // namespace ic

@@ -4,12 +4,14 @@
 
 #include <deque>
 
+#include "common/pattern.h"
 #include "common/slice.h"
 #include "ir/foreign_function.h"
 #include "ir/function_id.h"
 #include "ir/global_function_registry.h"
 #include "ir/program_arguments.h"
 #include "jasmin/core/value.h"
+#include "nth/utility/no_destructor.h"
 #include "type/function.h"
 #include "type/primitive.h"
 
@@ -139,8 +141,20 @@ type::Type ConstructFunctionType::consume(std::span<jasmin::Value, 2> inputs) {
   }
 }
 
+IrFunction const & AlwaysTrue() {
+  static nth::NoDestructor<IrFunction> f([] {
+    IrFunction f(1, 1);
+    f.append<jasmin::Drop>();
+    f.append<jasmin::Push>(true);
+    f.append<jasmin::Return>();
+    return f;
+  }());
+  return *f;
+}
+
 void ConstructInterface::consume(std::span<jasmin::Value> inputs,
                                  std::span<jasmin::Value> outputs) {
+  outputs[0] = Pattern(&AlwaysTrue());
 }
 
 }  // namespace ic

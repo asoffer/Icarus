@@ -23,7 +23,7 @@ struct RefinementType : internal_type::BasicType {
  private:
   friend Type;
   friend void SerializeTypeSystem(TypeSystemProto&);
-  friend void DeserializeTypeSystem(TypeSystemProto const&);
+  friend Type Deserialize(TypeProto const&, TypeSystemProto const&);
   friend RefinementType Refinement(Type, ::ic::Pattern p);
 
   explicit constexpr RefinementType(uint64_t n)
