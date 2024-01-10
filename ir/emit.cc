@@ -4,7 +4,7 @@
 #include "common/module_id.h"
 #include "common/resources.h"
 #include "ir/serialize.h"
-#include "jasmin/core/execute.h"
+#include "jasmin/core/function.h"
 #include "jasmin/instructions/arithmetic.h"
 #include "nth/container/interval.h"
 #include "nth/container/stack.h"
@@ -353,7 +353,7 @@ void HandleParseTreeNodeDeclaration(ParseNodeIndex index,
       auto& f = context.current_function();
       f.append<jasmin::Return>();
       nth::stack<jasmin::Value> value_stack;
-      jasmin::Execute(f, value_stack);
+      f.invoke(value_stack);
       auto const* info = context.lexical_scopes.identifier(
           context.current_lexical_scope_index(),
           context.Node(decl_info.index).token.Identifier());
@@ -377,8 +377,7 @@ void HandleParseTreeNodeDeclaration(ParseNodeIndex index,
       auto& f = context.current_function();
       f.append<jasmin::Return>();
       nth::stack<jasmin::Value> value_stack;
-
-      jasmin::Execute(f, value_stack);
+      f.invoke(value_stack);
       auto const* info = context.lexical_scopes.identifier(
           context.current_lexical_scope_index(),
           context.Node(decl_info.index).token.Identifier());
@@ -1016,7 +1015,7 @@ void EmitContext::Evaluate(nth::interval<ParseNodeIndex> subtree,
   EmitIr(*this);
   f.append<jasmin::Return>();
 
-  jasmin::Execute(f, vs);
+  f.invoke(vs);
   for (jasmin::Value v : vs.top_span(vs.size())) { value_stack.push(v); }
   constants.insert_or_assign(
       subtree, ComputedConstants(subtree.upper_bound() - 1, std::move(vs),

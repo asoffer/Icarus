@@ -14,8 +14,8 @@ namespace {
 void SerializeContent(jasmin::Value op_code_value,
                       InstructionProto& instruction,
                       std::span<jasmin::Value const>& immediate_values) {
-  auto op_code = jasmin::Metadata<InstructionSet>.opcode(op_code_value);
-  auto op_code_metadata  = jasmin::Metadata<InstructionSet>.metadata(op_code);
+  auto op_code = jasmin::Metadata<InstructionSet>().opcode(op_code_value);
+  auto op_code_metadata  = jasmin::Metadata<InstructionSet>().metadata(op_code);
   size_t immediate_count = op_code_metadata.immediate_value_count;
   instruction.set_op_code(static_cast<InstructionProto::OpCode>(op_code));
   switch (static_cast<InstructionProto::OpCode>(op_code)) {

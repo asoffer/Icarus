@@ -68,10 +68,10 @@ cc_library(
     srcs = ["dependent.cc"],
     deps = [
         ":basic",
+        ":function",
         ":refinement",
-        "//ir:function",
         "//ir:type_erased_value",
-        "@asoffer_jasmin//jasmin/core:execute",
+        "@asoffer_jasmin//jasmin/core:function",
         "@asoffer_jasmin//jasmin/core:value",
         "@asoffer_nth//nth/container:flyweight_set",
         "@asoffer_nth//nth/container:interval",
@@ -88,8 +88,9 @@ cc_test(
         ":primitive",
         ":type",
         "//ir:type_erased_value",
-        "//ir:function",
         "@asoffer_jasmin//jasmin/core:value",
+        "@asoffer_jasmin//jasmin/instructions:arithmetic",
+        "@asoffer_jasmin//jasmin/instructions:common",
         "@asoffer_nth//nth/test:main",
     ]
 )
@@ -161,10 +162,11 @@ cc_library(
     hdrs = ["refinement.h"],
     deps = [
         ":basic",
+        ":primitive",
         "//common/language:type_kind",
         "//common:pattern",
-        "//ir:function",
         "//ir:type_erased_value",
+        "@asoffer_jasmin//jasmin/core:function",
         "@asoffer_nth//nth/debug",
     ],
 )

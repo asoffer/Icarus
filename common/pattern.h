@@ -1,14 +1,13 @@
 #ifndef ICARUS_COMMON_PATTERN_H
 #define ICARUS_COMMON_PATTERN_H
 
-#include "ir/function.h"
 #include "ir/type_erased_value.h"
-#include "jasmin/core/execute.h"
+#include "jasmin/core/function.h"
 
 namespace ic {
 
 struct Pattern {
-  explicit constexpr Pattern(IrFunction const *f) : f_(f) {}
+  explicit constexpr Pattern(jasmin::Function<> const *f) : f_(f) {}
 
   template <typename H>
   friend H AbslHashValue(H h, Pattern p) {
@@ -20,12 +19,12 @@ struct Pattern {
   bool operator()(TypeErasedValue const &v) const {
     nth::stack<jasmin::Value> stack;
     for (jasmin::Value value : v.value()) { stack.push(value); }
-    jasmin::Execute(*f_, stack);
+    f_->invoke(stack);
     return stack.top().as<bool>();
   }
 
  private:
-  IrFunction const *f_;
+  jasmin::Function<> const *f_;
 };
 
 }  // namespace ic

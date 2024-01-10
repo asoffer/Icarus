@@ -27,7 +27,7 @@ bool Deserializer::DeserializeFunction(ModuleProto const& module_proto,
                                        IrFunction& f) {
   for (auto const& instruction : proto.instructions()) {
     uint64_t op_code = static_cast<uint64_t>(instruction.op_code());
-    f.raw_append(jasmin::Metadata<InstructionSet>.metadata(op_code).function);
+    f.raw_append(jasmin::Metadata<InstructionSet>().metadata(op_code).function);
     switch (op_code) {
       case InstructionProto::PUSH_STRING_LITERAL: {
         auto const& string_literals = module_proto.string_literals();
@@ -81,7 +81,7 @@ bool Deserializer::DeserializeFunction(ModuleProto const& module_proto,
       } break;
       default: {
         auto op_code_metadata =
-            jasmin::Metadata<InstructionSet>.metadata(op_code);
+            jasmin::Metadata<InstructionSet>().metadata(op_code);
         if (op_code_metadata.immediate_value_count !=
             instruction.content().size()) {
           return false;

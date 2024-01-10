@@ -4,6 +4,7 @@
 #include "common/pattern.h"
 #include "ir/type_erased_value.h"
 #include "type/basic.h"
+#include "type/type_system.pb.h"
 
 namespace ic::type {
 

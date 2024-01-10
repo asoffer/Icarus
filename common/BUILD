@@ -80,9 +80,8 @@ cc_library(
     name = "pattern",
     hdrs = ["pattern.h"],
     deps = [
-        "//ir:function",
         "//ir:type_erased_value",
-        "@asoffer_jasmin//jasmin/core:execute",
+        "@asoffer_jasmin//jasmin/core:function",
     ],
 )
 

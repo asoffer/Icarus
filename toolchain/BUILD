@@ -59,7 +59,7 @@ cc_binary(
         "//ir:module_cc_proto",
         "//ir:program_arguments",
         "//lexer:token_buffer",
-        "@asoffer_jasmin//jasmin/core:execute",
+        "@asoffer_jasmin//jasmin/core:function",
         "@asoffer_nth//nth/commandline:main",
         "@asoffer_nth//nth/container:stack",
         "@asoffer_nth//nth/debug/log",

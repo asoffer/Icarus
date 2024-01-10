@@ -1,8 +1,8 @@
 #include "type/dependent.h"
 
-#include "ir/function.h"
 #include "ir/type_erased_value.h"
 #include "jasmin/instructions/arithmetic.h"
+#include "jasmin/instructions/common.h"
 #include "nth/test/test.h"
 #include "type/function.h"
 #include "type/parameters.h"
@@ -13,6 +13,9 @@ namespace ic::type {
 namespace {
 
 using ::nth::debug::ElementsAreSequentially;
+
+using InstructionSet =
+    jasmin::MakeInstructionSet<jasmin::Push, jasmin::Add<int64_t>>;
 
 inline constexpr auto ValueIs = nth::debug::MakeProperty<"value-is">(
     [](auto const &value, jasmin::Value v) {
@@ -27,8 +30,8 @@ NTH_TEST("term/basic/value", Type t, auto v) {
 }
 
 TypeErasedValue Identity(Type t) {
-  static IrFunction id = [] {
-    IrFunction f(1, 1);
+  static jasmin::Function<InstructionSet> id = [] {
+    jasmin::Function<InstructionSet> f(1, 1);
     f.append<jasmin::Return>();
     return f;
   }();
@@ -53,8 +56,8 @@ NTH_INVOKE_TEST("term/basic/*") {
 }
 
 TypeErasedValue AddOne() {
-  static IrFunction f = [] {
-    IrFunction f(1, 1);
+  static jasmin::Function<InstructionSet> f = [] {
+    jasmin::Function<InstructionSet> f(1, 1);
     f.append<jasmin::Push>(int64_t{1});
     f.append<jasmin::Add<int64_t>>();
     f.append<jasmin::Return>();

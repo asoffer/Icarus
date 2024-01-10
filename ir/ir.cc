@@ -11,7 +11,7 @@
 #include "common/string.h"
 #include "ir/lexical_scope.h"
 #include "ir/type_stack.h"
-#include "jasmin/core/execute.h"
+#include "jasmin/core/function.h"
 #include "jasmin/core/value.h"
 #include "nth/container/stack.h"
 #include "nth/debug/debug.h"

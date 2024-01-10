@@ -2,10 +2,10 @@
 
 #include <queue>
 
-#include "ir/function.h"
-#include "jasmin/core/execute.h"
+#include "jasmin/core/function.h"
 #include "nth/container/stack.h"
 #include "type/primitive.h"
+#include "type/function.h"
 #include "type/refinement.h"
 
 namespace ic::type {
@@ -67,10 +67,10 @@ DependentTerm DependentTerm::Function(DependentTerm const &type,
 
 TypeErasedValue DependentTerm::Call(TypeErasedValue const &f,
                                     TypeErasedValue const &v) {
-  auto const &fn = *f.value()[0].as<IrFunction const *>();
+  auto const &fn = *f.value()[0].as<jasmin::Function<> const *>();
   nth::stack<jasmin::Value> stack;
   for (jasmin::Value value : v.value()) { stack.push(value); }
-  jasmin::Execute(fn, stack);
+  fn.invoke(stack);
   std::span results = stack.top_span(stack.size());
   return TypeErasedValue(f.type().AsFunction().returns()[0],
                          std::vector(results.begin(), results.end()));
