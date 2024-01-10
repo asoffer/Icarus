@@ -4,8 +4,8 @@
 #include <utility>
 #include <vector>
 
+#include "common/any_value.h"
 #include "common/pattern.h"
-#include "ir/type_erased_value.h"
 #include "nth/debug/debug.h"
 #include "nth/utility/no_destructor.h"
 
@@ -107,7 +107,7 @@ Type RefinementType::underlying() const {
   return type_system->refinements.from_index(data()).first;
 }
 
-bool RefinementType::operator()(TypeErasedValue const& v) const {
+bool RefinementType::operator()(AnyValue const& v) const {
   auto const& pattern = type_system->refinements.from_index(data()).second;
   return pattern(v);
 }
@@ -206,9 +206,8 @@ auto ToUnderlying(PrimitiveType::Kind k) {
   }
 #include "common/language/primitive_types.xmacro.h"
 
-
-DependentFunctionType Dependent(DependentTerm const &term,
-                                DependentParameterMapping const &mapping) {
+DependentFunctionType Dependent(DependentTerm const& term,
+                                DependentParameterMapping const& mapping) {
   size_t term_index = type_system->dependent_terms.index(
       type_system->dependent_terms.insert(term).first);
   size_t mapping_index = type_system->dependent_mapping.index(
@@ -230,14 +229,13 @@ DependentFunctionType::components() const {
 }
 
 std::optional<Type> DependentFunctionType::operator()(
-    std::span<TypeErasedValue const> values) const {
+    std::span<AnyValue const> values) const {
   auto [term, mapping] = components();
   auto term_copy       = term;
   for (auto index : mapping) {
     switch (index.kind()) {
       case DependentParameterMapping::Index::Kind::Type:
-        if (not term_copy.bind(
-                TypeErasedValue(Type_, {values[index.index()].type()}))) {
+        if (not term_copy.bind(AnyValue(Type_, values[index.index()].type()))) {
           return std::nullopt;
         }
         break;

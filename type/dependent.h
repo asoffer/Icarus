@@ -4,7 +4,7 @@
 #include <cstdint>
 #include <vector>
 
-#include "ir/type_erased_value.h"
+#include "common/any_value.h"
 #include "nth/container/flyweight_set.h"
 #include "nth/container/interval.h"
 #include "type/basic.h"
@@ -21,7 +21,7 @@ struct DependentTerm {
 
   static DependentTerm DeBruijnIndex(uint16_t index);
   static DependentTerm Function(DependentTerm const &type, DependentTerm term);
-  static DependentTerm Value(TypeErasedValue const &value);
+  static DependentTerm Value(AnyValue const &value);
   static DependentTerm Call(DependentTerm const &type, DependentTerm f);
 
   template <typename H>
@@ -40,23 +40,22 @@ struct DependentTerm {
 
   // Partially evaluates the term (which must represent a function) at the given
   // `value`. If `bind` returns `false`, `*this` will not have been modified.
-  bool bind(TypeErasedValue const &value);
+  bool bind(AnyValue const &value);
 
   // Returns a pointer to a fully-evaluated value if the expression can be
   // completely evaluated, and null otherwise.
-  TypeErasedValue const *evaluate() const;
+  AnyValue const *evaluate() const;
 
  private:
   void Substitute(size_t index,
                   nth::interval<std::vector<Node>::reverse_iterator> range);
 
-  static TypeErasedValue Call(TypeErasedValue const &f,
-                              TypeErasedValue const &v);
+  static AnyValue Call(AnyValue const &f, AnyValue const &v);
 
   void PartiallyEvaluate();
 
   std::vector<Node> nodes_;
-  nth::flyweight_set<TypeErasedValue> values_;
+  nth::flyweight_set<AnyValue> values_;
 };
 
 struct DependentParameterMapping {
@@ -107,7 +106,7 @@ struct DependentParameterMapping {
 };
 
 struct DependentFunctionType : internal_type::BasicType {
-  std::optional<Type> operator()(std::span<TypeErasedValue const>) const;
+  std::optional<Type> operator()(std::span<AnyValue const>) const;
 
  private:
   friend DependentFunctionType Dependent(DependentTerm const &,

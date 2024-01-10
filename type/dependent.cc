@@ -4,8 +4,8 @@
 
 #include "jasmin/core/function.h"
 #include "nth/container/stack.h"
-#include "type/primitive.h"
 #include "type/function.h"
+#include "type/primitive.h"
 #include "type/refinement.h"
 
 namespace ic::type {
@@ -20,7 +20,7 @@ DependentTerm DependentTerm::DeBruijnIndex(uint16_t index) {
   return term;
 }
 
-DependentTerm DependentTerm::Value(TypeErasedValue const &value) {
+DependentTerm DependentTerm::Value(AnyValue const &value) {
   DependentTerm term;
   term.nodes_.push_back({
       .kind  = Node::Kind::Value,
@@ -65,15 +65,14 @@ DependentTerm DependentTerm::Function(DependentTerm const &type,
   return term;
 }
 
-TypeErasedValue DependentTerm::Call(TypeErasedValue const &f,
-                                    TypeErasedValue const &v) {
+AnyValue DependentTerm::Call(AnyValue const &f, AnyValue const &v) {
   auto const &fn = *f.value()[0].as<jasmin::Function<> const *>();
   nth::stack<jasmin::Value> stack;
   for (jasmin::Value value : v.value()) { stack.push(value); }
   fn.invoke(stack);
   std::span results = stack.top_span(stack.size());
-  return TypeErasedValue(f.type().AsFunction().returns()[0],
-                         std::vector(results.begin(), results.end()));
+  return AnyValue(f.type().AsFunction().returns()[0],
+                  std::vector(results.begin(), results.end()));
 }
 
 bool operator==(DependentTerm const &lhs, DependentTerm const &rhs) {
@@ -95,7 +94,7 @@ bool operator==(DependentTerm const &lhs, DependentTerm const &rhs) {
   return true;
 }
 
-TypeErasedValue const *DependentTerm::evaluate() const {
+AnyValue const *DependentTerm::evaluate() const {
   if (nodes_.size() != 1) { return nullptr; }
   NTH_REQUIRE((v.harden), nodes_.back().kind == Node::Kind::Value);
   return &values_.from_index(nodes_.back().index);
@@ -165,8 +164,7 @@ void DependentTerm::PartiallyEvaluate() {
                     nth::interval(std::make_reverse_iterator(write_iter),
                                   std::make_reverse_iterator(nodes_.begin())));
               }
-            }
-            else {
+            } else {
               *write_iter++ = *read_iter;
             }
           } else {
@@ -181,7 +179,7 @@ void DependentTerm::PartiallyEvaluate() {
   } while (size != nodes_.size());
 }
 
-bool DependentTerm::bind(TypeErasedValue const &value) {
+bool DependentTerm::bind(AnyValue const &value) {
   auto iter = nodes_.rbegin();
   NTH_REQUIRE((v.harden), iter->kind == Node::Kind::Function);
   ++iter;

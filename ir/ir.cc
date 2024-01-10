@@ -65,7 +65,7 @@ type::Type FromConstant() {
 std::optional<type::QualifiedType> FindInfixOperator(
     Token::Kind kind, std::span<type::QualifiedType const> argument_types) {
   if (argument_types.size() != 2) { return std::nullopt; }
-  if (type::ImplicitCast(argument_types[1].type(), argument_types[0].type())) {
+  if (type::ImplicitCast(AnyValue::JustType(argument_types[1].type()), argument_types[0].type())) {
     return type::QualifiedType::Unqualified(argument_types[0].type());
   }
   return std::nullopt;
@@ -380,7 +380,7 @@ void HandleParseTreeNodeDeclaration(ParseNodeIndex index, IrContext& context,
     auto type_iter     = ++iter;
     std::optional type = context.EvaluateAs<type::Type>(*type_iter);
     if (not type) { NTH_UNIMPLEMENTED(); }
-    if (not type::ImplicitCast(init_qt.type(), *type)) {
+    if (not type::ImplicitCast(AnyValue::JustType(init_qt.type()), *type)) {
       auto token = context.Node(index).token;
     diag.Consume({
           diag::Header(diag::MessageKind::Error),
@@ -577,8 +577,10 @@ void HandleParseTreeNodeExpressionPrecedenceGroup(
         types.push_back((*iter)[0]);
       }
       for (size_t i = 0; i + 1 < types.size(); ++i) {
-        if (not type::ImplicitCast(types[i].type(), types[i + 1].type()) and
-            not type::ImplicitCast(types[i + 1].type(), types[i].type())) {
+        if (not type::ImplicitCast(AnyValue::JustType(types[i].type()),
+                                   types[i + 1].type()) and
+            not type::ImplicitCast(AnyValue::JustType(types[i + 1].type()),
+                                   types[i].type())) {
           NTH_UNIMPLEMENTED();
         }
       }
@@ -776,13 +778,14 @@ struct CallArguments {
     }
 
     for (size_t i = 0; i < arguments.size(); ++i) {
-      if (not type::ImplicitCast(arguments[i].type(), parameters[i].type)) {
+      if (not type::ImplicitCast(AnyValue::JustType(arguments[i].type()),
+                                 parameters[i].type)) {
         return InvalidBinding{
             .index     = i,
             .parameter = parameters[i].type,
             .argument  = arguments[i].type(),
         };
-      } 
+      }
     }
 
     return InvocationSuccess{};
@@ -923,7 +926,7 @@ void HandleParseTreeNodeCallExpression(ParseNodeIndex index, IrContext& context,
   } else if (call.callee.type().kind() == type::Type::Kind::DependentFunction) {
     auto& spec = context.emit.instruction_spec[index];
     ++spec.parameters;
-    std::vector<TypeErasedValue> arguments;
+    std::vector<AnyValue> arguments;
 
     for (auto [index, qt] : call.arguments) {
       nth::stack<jasmin::Value> value_stack;
@@ -1287,7 +1290,8 @@ void HandleParseTreeNodeAssignment(ParseNodeIndex index, IrContext& context,
   }
   // TODO: Check for assignability?
 
-  if (not type::ImplicitCast(rhs_qt.type(), lhs_qt.type())) {
+  if (not type::ImplicitCast(AnyValue::JustType(rhs_qt.type()),
+                             lhs_qt.type())) {
     auto token = context.Node(index).token;
     diag.Consume({
         diag::Header(diag::MessageKind::Error),

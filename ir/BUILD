@@ -249,14 +249,6 @@ cc_library(
 )
 
 cc_library(
-    name = "type_erased_value",
-    hdrs = ["type_erased_value.h"],
-    deps = [
-        "//type:basic",
-    ],
-)
-
-cc_library(
     name = "type_stack",
     hdrs = ["type_stack.h"],
     srcs = ["type_stack.cc"],

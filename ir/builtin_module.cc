@@ -2,6 +2,7 @@
 
 #include <string_view>
 
+#include "common/any_value.h"
 #include "common/identifier.h"
 #include "common/pattern.h"
 #include "ir/global_function_registry.h"
@@ -144,7 +145,7 @@ Module BuiltinModule() {
   Register("foreign",
            type::Dependent(
                type::DependentTerm::Function(
-                   type::DependentTerm::Value(TypeErasedValue(
+                   type::DependentTerm::Value(AnyValue(
                        type::Type_,
                        {type::Refinement(type::Type_,
                                          Pattern(&FunctionOrPointer()))})),

@@ -49,6 +49,7 @@ cc_library(
     srcs = ["cast.cc"],
     deps = [
         ":type",
+        "//common:any_value",
     ],
 )
 
@@ -70,7 +71,7 @@ cc_library(
         ":basic",
         ":function",
         ":refinement",
-        "//ir:type_erased_value",
+        "//common:any_value",
         "@asoffer_jasmin//jasmin/core:function",
         "@asoffer_jasmin//jasmin/core:value",
         "@asoffer_nth//nth/container:flyweight_set",
@@ -87,7 +88,7 @@ cc_test(
         ":parameters",
         ":primitive",
         ":type",
-        "//ir:type_erased_value",
+        "//common:any_value",
         "@asoffer_jasmin//jasmin/core:value",
         "@asoffer_jasmin//jasmin/instructions:arithmetic",
         "@asoffer_jasmin//jasmin/instructions:common",
@@ -164,8 +165,8 @@ cc_library(
         ":basic",
         ":primitive",
         "//common/language:type_kind",
+        "//common:any_value",
         "//common:pattern",
-        "//ir:type_erased_value",
         "@asoffer_jasmin//jasmin/core:function",
         "@asoffer_nth//nth/debug",
     ],

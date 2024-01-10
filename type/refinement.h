@@ -1,8 +1,8 @@
 #ifndef ICARUS_TYPE_REFINEMENT_H
 #define ICARUS_TYPE_REFINEMENT_H
 
+#include "common/any_value.h"
 #include "common/pattern.h"
-#include "ir/type_erased_value.h"
 #include "type/basic.h"
 #include "type/type_system.pb.h"
 
@@ -18,7 +18,7 @@ struct RefinementType : internal_type::BasicType {
     p.write("[??]");
   }
 
-  bool operator()(TypeErasedValue const&) const;
+  bool operator()(AnyValue const&) const;
 
  private:
   friend Type;

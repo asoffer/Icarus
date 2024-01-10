@@ -1,7 +1,7 @@
 #ifndef ICARUS_COMMON_PATTERN_H
 #define ICARUS_COMMON_PATTERN_H
 
-#include "ir/type_erased_value.h"
+#include "common/any_value.h"
 #include "jasmin/core/function.h"
 
 namespace ic {
@@ -16,7 +16,8 @@ struct Pattern {
 
   friend bool operator==(Pattern, Pattern) = default;
 
-  bool operator()(TypeErasedValue const &v) const {
+  bool operator()(AnyValue const &v) const {
+    NTH_REQUIRE((v.debug), v.has_value());
     nth::stack<jasmin::Value> stack;
     for (jasmin::Value value : v.value()) { stack.push(value); }
     f_->invoke(stack);

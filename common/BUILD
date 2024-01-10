@@ -1,6 +1,14 @@
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
+    name = "any_value",
+    hdrs = ["any_value.h"],
+    deps = [
+        "//type:basic",
+    ],
+)
+
+cc_library(
     name = "debug",
     hdrs = ["debug.h"],
 )
@@ -80,7 +88,7 @@ cc_library(
     name = "pattern",
     hdrs = ["pattern.h"],
     deps = [
-        "//ir:type_erased_value",
+        ":any_value",
         "@asoffer_jasmin//jasmin/core:function",
     ],
 )
