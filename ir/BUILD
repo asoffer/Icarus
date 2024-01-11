@@ -93,6 +93,7 @@ cc_library(
         ":program_arguments",
         "//common:identifier",
         "//common:integer",
+        "//common:interface",
         "//common:module_id",
         "//common:pattern",
         "//common:resources",
@@ -113,6 +114,8 @@ cc_library(
         "@asoffer_jasmin//jasmin/instructions:stack",
         "@asoffer_nth//nth/container:flyweight_map",
         "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/container:flat_hash_set",
+        "@com_google_absl//absl/container:node_hash_map",
     ],
 )
 

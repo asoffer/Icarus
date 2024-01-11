@@ -57,6 +57,8 @@ message InstructionProto {
     NEGATE_F32 = 46;
     NEGATE_F64 = 47;
     CONSTRUCT_REFINEMENT = 48;
+    PUSH_INTERFACE = 49;
+    CHECK_INTERFACE_SATISFACTION = 50;
   }
   OpCode op_code = 1;
   repeated uint64 content = 2;

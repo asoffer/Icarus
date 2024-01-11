@@ -6,6 +6,7 @@
 
 #include "absl/container/flat_hash_map.h"
 #include "common/debug.h"
+#include "common/interface.h"
 #include "common/module_id.h"
 #include "common/resources.h"
 #include "common/string.h"
@@ -57,6 +58,8 @@ type::Type FromConstant() {
     return type::Module;
   } else if constexpr (t == nth::type<std::string_view>) {
     return type::Slice(type::Char);
+  } else if constexpr (t == nth::type<Interface>) {
+    return type::Interface;
   } else {
     NTH_UNREACHABLE("No specified `ic::type::Type` associated with `{}`") <<=
         {t};
@@ -65,7 +68,8 @@ type::Type FromConstant() {
 std::optional<type::QualifiedType> FindInfixOperator(
     Token::Kind kind, std::span<type::QualifiedType const> argument_types) {
   if (argument_types.size() != 2) { return std::nullopt; }
-  if (type::ImplicitCast(AnyValue::JustType(argument_types[1].type()), argument_types[0].type())) {
+  if (type::ImplicitCast(AnyValue::JustType(argument_types[1].type()),
+                         argument_types[0].type())) {
     return type::QualifiedType::Unqualified(argument_types[0].type());
   }
   return std::nullopt;
@@ -433,6 +437,8 @@ void HandleParseTreeNodeStatementSequence(ParseNodeIndex index,
                                           IrContext& context,
                                           diag::DiagnosticConsumer& diag) {}
 
+bool InterfaceLocallyComplete(Interface intf) { return not false; }
+
 Iteration HandleParseTreeNodeIdentifier(ParseNodeIndex index,
                                         IrContext& context,
                                         diag::DiagnosticConsumer& diag) {
@@ -454,10 +460,21 @@ Iteration HandleParseTreeNodeIdentifier(ParseNodeIndex index,
   if (auto* decl_info = context.emit.lexical_scopes.identifier(
           context.current_lexical_scope_index(), id)) {
     auto const& [decl_id_index, decl_index, decl_qt] = *decl_info;
+
     context.emit.declarator.emplace(index,
                                     std::pair{decl_id_index, decl_index});
     context.emit.SetQualifiedType(index, decl_qt);
+
+    if (decl_qt == type::QualifiedType::Constant(type::Interface)) {
+      // To evaluate, it is important that the declarator is already set.
+      std::optional intf = context.EvaluateAs<Interface>(index);
+      NTH_REQUIRE((v.debug), intf.has_value());
+      if (not InterfaceLocallyComplete(*intf)) { return Iteration::PauseRetry; }
+    }
+
     context.type_stack().push({decl_qt});
+    // TODO: We should actually have interfaces be their own type that is
+    // implicitly convertible to a pattern.
     return Iteration::Continue;
   } else {
     auto item     = context.queue.front();
@@ -766,10 +783,20 @@ struct CallArguments {
     ParseNodeIndex index;
     type::QualifiedType qualified_type;
 
+    AnyValue any_value(EmitContext& context) const {
+      if (qualified_type.constant()) {
+        nth::stack<jasmin::Value> value_stack;
+        context.Evaluate(context.tree.subtree_range(index), value_stack,
+                         {type()});
+        return AnyValue(type(), value_stack.top_span(value_stack.size()));
+      } else {
+        return AnyValue::JustType(type());
+      }
+    };
     type::Type type() const { return qualified_type.type(); }
   };
 
-  InvocationResult Invoke(type::FunctionType fn_type) {
+  InvocationResult Invoke(type::FunctionType fn_type, EmitContext& context) {
     auto const& parameters = *fn_type.parameters();
     // TODO: Properly implement function call type-checking.
     if (parameters.size() != arguments.size()) {
@@ -778,7 +805,7 @@ struct CallArguments {
     }
 
     for (size_t i = 0; i < arguments.size(); ++i) {
-      if (not type::ImplicitCast(AnyValue::JustType(arguments[i].type()),
+      if (not type::ImplicitCast(arguments[i].any_value(context),
                                  parameters[i].type)) {
         return InvalidBinding{
             .index     = i,
@@ -860,7 +887,7 @@ void HandleParseTreeNodeCallExpression(ParseNodeIndex index, IrContext& context,
 
   if (call.callee.type().kind() == type::Type::Kind::Function) {
     auto fn_type           = call.callee.type().AsFunction();
-    InvocationResult result = call.Invoke(fn_type);
+    InvocationResult result = call.Invoke(fn_type, context.emit);
     bool success = std::visit(
         [&](auto const& r) {
           constexpr auto t = nth::type<decltype(r)>.decayed();
@@ -1196,8 +1223,7 @@ void HandleParseTreeNodeInterfaceLiteralStart(ParseNodeIndex, IrContext&,
 
 void HandleParseTreeNodeInterfaceLiteral(ParseNodeIndex, IrContext& context,
                                          diag::DiagnosticConsumer&) {
-  context.type_stack().push(
-      {type::QualifiedType::Constant(type::Pattern(type::Type_))});
+  context.type_stack().push({type::QualifiedType::Constant(type::Interface)});
 }
 
 void HandleParseTreeNodeWhileLoopStart(ParseNodeIndex index, IrContext& context,

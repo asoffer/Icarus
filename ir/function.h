@@ -6,6 +6,7 @@
 
 #include "common/identifier.h"
 #include "common/integer.h"
+#include "common/interface.h"
 #include "common/pattern.h"
 #include "ir/function_id.h"
 #include "jasmin/core/function.h"
@@ -190,6 +191,11 @@ struct LoadProgramArguments : jasmin::Instruction<LoadProgramArguments> {
   static std::array<jasmin::Value, 2> execute(std::span<jasmin::Value, 0>);
 };
 
+struct CheckInterfaceSatisfaction
+    : jasmin::Instruction<CheckInterfaceSatisfaction> {
+  static bool consume(std::span<jasmin::Value, 1>, Interface);
+};
+
 struct Rotate : jasmin::Instruction<Rotate> {
   static void execute(std::span<jasmin::Value> values,
                       std::span<jasmin::Value>) {
@@ -213,8 +219,10 @@ using InstructionSet = jasmin::MakeInstructionSet<
     AsciiDecode, jasmin::Drop, jasmin::Swap, TypeKind, jasmin::Negate<int8_t>,
     jasmin::Negate<int16_t>, jasmin::Negate<int32_t>, jasmin::Negate<int64_t>,
     jasmin::Negate<Integer>, jasmin::Negate<float>, jasmin::Negate<double>,
-    ConstructRefinementType>;
+    ConstructRefinementType, CheckInterfaceSatisfaction>;
 using IrFunction = jasmin::Function<InstructionSet>;
+
+void Extend(Interface intf, type::Type t);
 
 }  // namespace ic
 

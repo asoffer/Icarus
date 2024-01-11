@@ -67,6 +67,16 @@ cc_test(
 )
 
 cc_library(
+    name = "interface",
+    hdrs = ["interface.h"],
+    srcs = ["interface.cc"],
+    deps = [
+        ":strong_identifier_type",
+        "@asoffer_jasmin//jasmin/core:value",
+    ],
+)
+
+cc_library(
     name = "module_id",
     hdrs = ["module_id.h"],
     deps = [

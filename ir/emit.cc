@@ -723,7 +723,9 @@ Iteration HandleParseTreeNodeExtensionStart(ParseNodeIndex index,
   return Iteration::SkipTo(index);
 }
 
-void HandleParseTreeNodeExtendWith(ParseNodeIndex, EmitContext&) {}
+void HandleParseTreeNodeExtendWith(ParseNodeIndex, EmitContext&) {
+  NTH_LOG("Here");
+}
 
 void HandleParseTreeNodeExtension(ParseNodeIndex, EmitContext&) {}
 

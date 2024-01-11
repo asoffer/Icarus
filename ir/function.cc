@@ -2,8 +2,10 @@
 
 #include <ffi.h>
 
-#include <deque>
-
+#include "absl/container/flat_hash_map.h"
+#include "absl/container/flat_hash_set.h"
+#include "absl/container/node_hash_map.h"
+#include "common/interface.h"
 #include "common/pattern.h"
 #include "common/slice.h"
 #include "ir/foreign_function.h"
@@ -141,20 +143,30 @@ type::Type ConstructFunctionType::consume(std::span<jasmin::Value, 2> inputs) {
   }
 }
 
-IrFunction const & AlwaysTrue() {
-  static nth::NoDestructor<IrFunction> f([] {
-    IrFunction f(1, 1);
-    f.append<jasmin::Drop>();
-    f.append<jasmin::Push>(true);
-    f.append<jasmin::Return>();
-    return f;
-  }());
-  return *f;
+absl::node_hash_map<Interface, IrFunction> satisfaction;
+absl::flat_hash_map<type::Type, absl::flat_hash_set<Interface>> extensions;
+
+bool CheckInterfaceSatisfaction::consume(std::span<jasmin::Value, 1> input,
+                                         Interface intf) {
+  auto iter = extensions.find(input[0].as<type::Type>());
+  if (iter == extensions.end()) { return false; }
+  return iter->second.contains(intf);
+}
+
+void Extend(Interface intf, type::Type t) { extensions[t].insert(intf); }
+
+IrFunction SatisfiesInterface(Interface intf) {
+  IrFunction f(1, 1);
+  f.append<CheckInterfaceSatisfaction>(intf);
+  f.append<jasmin::Return>();
+  return f;
 }
 
 void ConstructInterface::consume(std::span<jasmin::Value> inputs,
                                  std::span<jasmin::Value> outputs) {
-  outputs[0] = Pattern(&AlwaysTrue());
+  Interface intf(Interface::construct_new);
+  auto [iter, inserted] = satisfaction.emplace(intf, SatisfiesInterface(intf));
+  outputs[0]            = intf;  // Pattern(&iter->second);
 }
 
 }  // namespace ic

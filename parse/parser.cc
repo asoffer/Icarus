@@ -370,8 +370,11 @@ void Parser::HandleStatement(ParseTree& tree) {
               .kind               = State::Kind::ExtensionWithToEnd,
               .ambient_precedence = Precedence::Loosest(),
               .subtree_start      = tree.size(),
-          }
-          );
+          },
+          State{
+              .kind          = State::Kind::ResolveStatement,
+              .subtree_start = tree.size() - 2,
+          });
       ++iterator_;
       return;
     case Token::Kind::Return:
@@ -819,7 +822,6 @@ void Parser::HandleExtensionWithToEnd(ParseTree& tree) {
       });
 }
 void Parser::HandleResolveExtension(ParseTree& tree) {
-  PopScope();
   auto state = pop_state();
   tree.append(ParseNode::Kind::Extension, state.token, state.subtree_start);
 }
