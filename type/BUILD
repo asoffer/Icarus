@@ -50,6 +50,7 @@ cc_library(
     deps = [
         ":type",
         "//common:any_value",
+        "//common:integer",
     ],
 )
 

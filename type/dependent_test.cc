@@ -1,6 +1,6 @@
 #include "type/dependent.h"
 
-#include "ir/type_erased_value.h"
+#include "common/any_value.h"
 #include "jasmin/instructions/arithmetic.h"
 #include "jasmin/instructions/common.h"
 #include "nth/test/test.h"
@@ -23,25 +23,24 @@ inline constexpr auto ValueIs = nth::debug::MakeProperty<"value-is">(
     });
 
 NTH_TEST("term/basic/value", Type t, auto v) {
-  auto value = DependentTerm::Value(TypeErasedValue(t, {v}));
+  auto value = DependentTerm::Value(AnyValue(t, {v}));
   NTH_ASSERT(value.evaluate() != nullptr);
   NTH_ASSERT(value.evaluate()->type() == t);
   NTH_EXPECT(value.evaluate()->value() >>= ElementsAreSequentially(ValueIs(v)));
 }
 
-TypeErasedValue Identity(Type t) {
+AnyValue Identity(Type t) {
   static jasmin::Function<InstructionSet> id = [] {
     jasmin::Function<InstructionSet> f(1, 1);
     f.append<jasmin::Return>();
     return f;
   }();
-  return TypeErasedValue(Function(Parameters({{.type = t}}), {t}), {&id});
+  return AnyValue(Function(Parameters({{.type = t}}), {t}), {&id});
 }
 
 NTH_TEST("term/basic/call", Type t, auto v) {
-  auto value =
-      DependentTerm::Call(DependentTerm::Value(TypeErasedValue(t, {v})),
-                          DependentTerm::Value(Identity(t)));
+  auto value = DependentTerm::Call(DependentTerm::Value(AnyValue(t, {v})),
+                                   DependentTerm::Value(Identity(t)));
   NTH_ASSERT(value.evaluate() != nullptr);
   NTH_ASSERT(value.evaluate()->type() == t);
   NTH_ASSERT(value.evaluate()->value() >>= ElementsAreSequentially(ValueIs(v)));
@@ -55,7 +54,7 @@ NTH_INVOKE_TEST("term/basic/*") {
   co_yield nth::TestArguments{I32, int32_t{-3}};
 }
 
-TypeErasedValue AddOne() {
+AnyValue AddOne() {
   static jasmin::Function<InstructionSet> f = [] {
     jasmin::Function<InstructionSet> f(1, 1);
     f.append<jasmin::Push>(int64_t{1});
@@ -63,13 +62,12 @@ TypeErasedValue AddOne() {
     f.append<jasmin::Return>();
     return f;
   }();
-  return TypeErasedValue(Function(Parameters({{.type = I64}}), {I64}), {&f});
+  return AnyValue(Function(Parameters({{.type = I64}}), {I64}), {&f});
 }
 
 NTH_TEST("term/call", int64_t v) {
-  auto value =
-      DependentTerm::Call(DependentTerm::Value(TypeErasedValue(I64, {v})),
-                          DependentTerm::Value(AddOne()));
+  auto value = DependentTerm::Call(DependentTerm::Value(AnyValue(I64, {v})),
+                                   DependentTerm::Value(AddOne()));
   NTH_ASSERT(value.evaluate() != nullptr);
   NTH_ASSERT(value.evaluate()->type() == I64);
   NTH_EXPECT(value.evaluate()->value() >>=
@@ -83,11 +81,11 @@ NTH_INVOKE_TEST("term/call") {
 }
 
 NTH_TEST("term/simplify/trivial") {
-  auto value = DependentTerm::Function(
-      DependentTerm::Value(TypeErasedValue(Type_, {I64})),
-      DependentTerm::DeBruijnIndex(0));
+  auto value =
+      DependentTerm::Function(DependentTerm::Value(AnyValue(Type_, {I64})),
+                              DependentTerm::DeBruijnIndex(0));
   NTH_ASSERT(value.evaluate() == nullptr);
-  NTH_ASSERT(value.bind(TypeErasedValue(I64, {int64_t{3}})));
+  NTH_ASSERT(value.bind(AnyValue(I64, {int64_t{3}})));
   NTH_ASSERT(value.evaluate() != nullptr);
   NTH_ASSERT(value.evaluate()->type() == I64);
   NTH_EXPECT(value.evaluate()->value() >>=
@@ -96,11 +94,11 @@ NTH_TEST("term/simplify/trivial") {
 
 NTH_TEST("term/simplify/basic") {
   auto value = DependentTerm::Function(
-      DependentTerm::Value(TypeErasedValue(Type_, {I64})),
+      DependentTerm::Value(AnyValue(Type_, {I64})),
       DependentTerm::Call(DependentTerm::DeBruijnIndex(0),
                           DependentTerm::Value(AddOne())));
   NTH_ASSERT(value.evaluate() == nullptr);
-  NTH_ASSERT(value.bind(TypeErasedValue(I64, {int64_t{3}})));
+  NTH_ASSERT(value.bind(AnyValue(I64, {int64_t{3}})));
   NTH_ASSERT(value.evaluate() != nullptr);
   NTH_ASSERT(value.evaluate()->type() == I64);
   NTH_EXPECT(value.evaluate()->value() >>=
@@ -109,12 +107,12 @@ NTH_TEST("term/simplify/basic") {
 
 NTH_TEST("term/simplify/nested-call") {
   auto value = DependentTerm::Function(
-      DependentTerm::Value(TypeErasedValue(Type_, {I64})),
+      DependentTerm::Value(AnyValue(Type_, {I64})),
       DependentTerm::Call(DependentTerm::Call(DependentTerm::DeBruijnIndex(0),
                                               DependentTerm::Value(AddOne())),
                           DependentTerm::Value(AddOne())));
   NTH_ASSERT(value.evaluate() == nullptr);
-  NTH_ASSERT(value.bind(TypeErasedValue(I64, {int64_t{3}})));
+  NTH_ASSERT(value.bind(AnyValue(I64, {int64_t{3}})));
   NTH_ASSERT(value.evaluate() != nullptr);
   NTH_ASSERT(value.evaluate()->type() == I64);
   NTH_EXPECT(value.evaluate()->value() >>=
@@ -123,13 +121,13 @@ NTH_TEST("term/simplify/nested-call") {
 
 NTH_TEST("term/simplify/dependent") {
   auto value = DependentTerm::Function(
-      DependentTerm::Value(TypeErasedValue(Type_, {Type_})),
+      DependentTerm::Value(AnyValue(Type_, {Type_})),
       DependentTerm::Function(DependentTerm::DeBruijnIndex(0),
                               DependentTerm::DeBruijnIndex(0)));
   NTH_ASSERT(value.evaluate() == nullptr);
-  NTH_ASSERT(value.bind(TypeErasedValue(Type_, {I64})));
+  NTH_ASSERT(value.bind(AnyValue(Type_, {I64})));
   NTH_ASSERT(value.evaluate() == nullptr);
-  NTH_ASSERT(value.bind(TypeErasedValue(I64, {int64_t{3}})));
+  NTH_ASSERT(value.bind(AnyValue(I64, {int64_t{3}})));
   NTH_ASSERT(value.evaluate() != nullptr);
   NTH_ASSERT(value.evaluate()->type() == I64);
   NTH_EXPECT(value.evaluate()->value() >>=
@@ -137,41 +135,38 @@ NTH_TEST("term/simplify/dependent") {
 }
 
 NTH_TEST("term/bind/failure") {
-  auto value = DependentTerm::Function(
-      DependentTerm::Value(TypeErasedValue(Type_, {Bool})),
-      DependentTerm::DeBruijnIndex(0));
+  auto value =
+      DependentTerm::Function(DependentTerm::Value(AnyValue(Type_, {Bool})),
+                              DependentTerm::DeBruijnIndex(0));
   NTH_ASSERT(value.evaluate() == nullptr);
-  NTH_ASSERT(not value.bind(TypeErasedValue(I64, {int64_t{3}})));
+  NTH_ASSERT(not value.bind(AnyValue(I64, {int64_t{3}})));
   NTH_EXPECT(value.evaluate() == nullptr);
 }
 
 NTH_TEST("dependent/evaluation") {
   auto t = Dependent(
-      DependentTerm::Function(
-          DependentTerm::Value(TypeErasedValue(Type_, {Type_})),
-          DependentTerm::DeBruijnIndex(0)),
+      DependentTerm::Function(DependentTerm::Value(AnyValue(Type_, {Type_})),
+                              DependentTerm::DeBruijnIndex(0)),
       DependentParameterMapping({DependentParameterMapping::Index::Value(0)}));
-  std::array inputs{TypeErasedValue(Type_, {Char})};
+  std::array inputs{AnyValue(Type_, {Char})};
   NTH_EXPECT(t(inputs) == Char);
 }
 
 NTH_TEST("dependent/argument-reordering") {
   auto t = Dependent(
       DependentTerm::Function(
-          DependentTerm::Value(TypeErasedValue(Type_, {Type_})),
-          DependentTerm::Function(
-              DependentTerm::Value(TypeErasedValue(Type_, {I32})),
-              DependentTerm::DeBruijnIndex(1))),
+          DependentTerm::Value(AnyValue(Type_, {Type_})),
+          DependentTerm::Function(DependentTerm::Value(AnyValue(Type_, {I32})),
+                                  DependentTerm::DeBruijnIndex(1))),
       DependentParameterMapping({DependentParameterMapping::Index::Value(1),
                                  DependentParameterMapping::Index::Value(0)}));
 
   // Incorrect type.
-  std::array inputs{TypeErasedValue(Type_, {Char}), TypeErasedValue(Type_, {Char})};
+  std::array inputs{AnyValue(Type_, {Char}), AnyValue(Type_, {Char})};
   NTH_EXPECT(t(inputs) == std::nullopt);
 
   // Correct type. Reordered.
-  inputs = std::array{TypeErasedValue(I32, {int32_t{17}}),
-                      TypeErasedValue(Type_, {Char})};
+  inputs = std::array{AnyValue(I32, {int32_t{17}}), AnyValue(Type_, {Char})};
   NTH_EXPECT(t(inputs) == Char);
 }
 

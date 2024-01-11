@@ -66,6 +66,23 @@ struct Integer : private StrongIdentifierType<Integer, uint32_t> {
     return lhs.value() != rhs.value();
   }
 
+  friend bool operator<(Integer lhs, Integer rhs) {
+    if (lhs.value() >= InlineLimit) {
+      if (rhs.value() < InlineLimit) { return false; }
+      return internal_integer::integers.from_index(lhs.value() &
+                                                   (InlineLimit - 1)) <
+             internal_integer::integers.from_index(rhs.value() &
+                                                   (InlineLimit - 1));
+    } else if (rhs.value() >= InlineLimit) {
+      return true;
+    } else {
+      return lhs.value() < rhs.value();
+    }
+  }
+  friend bool operator<=(Integer lhs, Integer rhs) { return not(rhs < lhs); }
+  friend bool operator>(Integer lhs, Integer rhs) { return rhs < lhs; }
+  friend bool operator>=(Integer lhs, Integer rhs) { return rhs <= lhs; }
+
   Integer operator-() const {
     // TODO: Negating the most negative case isn't handled here properly.
     if (value() >= InlineLimit) {
