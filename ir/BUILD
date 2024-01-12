@@ -16,6 +16,19 @@ cc_library(
 )
 
 cc_library(
+    name = "declaration",
+    hdrs = ["declaration.h"],
+    srcs = ["declaration.cc"],
+    deps = [
+        "//common:identifier",
+        "//common:string",
+        "//diagnostics/consumer",
+        "//parse:tree",
+        "@asoffer_nth//nth/container:stack",
+    ],
+)
+
+cc_library(
     name = "dependent_modules",
     hdrs = ["dependent_modules.h"],
     srcs = ["dependent_modules.cc"],

@@ -25,6 +25,7 @@ cc_binary(
         "//diagnostics:message",
         "//diagnostics/consumer:streaming",
         "//ir",
+        "//ir:declaration",
         "//ir:dependent_modules",
         "//ir:deserialize",
         "//ir:emit",

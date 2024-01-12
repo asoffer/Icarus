@@ -12,6 +12,7 @@
 #include "common/string.h"
 #include "diagnostics/consumer/streaming.h"
 #include "diagnostics/message.h"
+#include "ir/declaration.h"
 #include "ir/dependent_modules.h"
 #include "ir/deserialize.h"
 #include "ir/emit.h"
@@ -74,6 +75,9 @@ nth::exit_code Compile(nth::FlagValueSet flags, nth::file_path const& source) {
   if (consumer.count() != 0) { return nth::exit_code::generic_error; }
   auto [parse_tree, scope_tree] = Parse(token_buffer, consumer);
   if (consumer.count() != 0) { return nth::exit_code::generic_error; }
+  if (not AssignDeclarationsToIdentifiers(parse_tree, consumer)) {
+    return nth::exit_code::generic_error;
+  }
   consumer.set_parse_tree(parse_tree);
 
   DependentModules dependencies;

@@ -45,6 +45,7 @@ struct ParseNode {
     struct {
     } unused = {};
     ParseNodeIndex corresponding_statement_sequence;
+    ParseNodeIndex corresponding_declaration;
     LexicalScope::Index scope_index;
     DeclarationInfo declaration_info;
     StatementKind statement_kind;
