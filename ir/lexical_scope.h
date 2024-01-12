@@ -23,26 +23,11 @@ struct LexicalScope {
     static Index Invalid();
   };
 
-  struct DeclarationInfo {
-    ParseNodeIndex declaration;
-    ParseNodeIndex identifier;
-    type::QualifiedType qualified_type;
-  };
-
-  DeclarationInfo const *identifier(Identifier id) const;
-
-  void insert_identifier(Identifier id, DeclarationInfo const &info) {
-    [[maybe_unused]] auto [iter, inserted] = identifiers_.emplace(id, info);
-    NTH_REQUIRE((v.harden), inserted);
-  }
-
  private:
   friend struct LexicalScopeTree;
 
   explicit LexicalScope(uint32_t distance_to_parent)
       : parent_distance_(distance_to_parent) {}
-
-  absl::flat_hash_map<Identifier, DeclarationInfo> identifiers_;
 
   uint32_t parent_distance_;
 };
@@ -104,9 +89,6 @@ struct LexicalScopeTree {
 
   LexicalScope &operator[](LexicalScope::Index index);
   LexicalScope const &operator[](LexicalScope::Index index) const;
-
-  LexicalScope::DeclarationInfo const *identifier(LexicalScope::Index index,
-                                                  Identifier id) const;
 
   LexicalScopeTree() : scopes_(1, LexicalScope(1)) {}
 

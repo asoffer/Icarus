@@ -102,6 +102,7 @@ bool AssignDeclarationsToIdentifiers(ParseTree &tree,
   bool error = false;
   ::ic::tree<absl::flat_hash_map<Identifier, Entry>> entry_tree;
   nth::stack<size_t> indices{0};
+  nth::stack<std::vector<ParseNodeIndex>> decl_ids;
 
   absl::flat_hash_map<Identifier, Entry> *ptr = nullptr;
   auto [start, end]                           = tree.node_range();
@@ -118,7 +119,13 @@ bool AssignDeclarationsToIdentifiers(ParseTree &tree,
         indices.pop();
         ptr = &entry_tree[indices.top()];
         break;
+      case ParseNode::Kind::Declaration: {
+        for (auto d : decl_ids.top()) { tree[d].corresponding_declaration = i; }
+        decl_ids.pop();
+      } break;
+      case ParseNode::Kind::DeclarationStart: decl_ids.emplace(); break;
       case ParseNode::Kind::DeclaredIdentifier: {
+        decl_ids.top().push_back(i);
         auto &decl_id = (*ptr)[tree[i].token.Identifier()].declaration;
         if (decl_id) {
           error = true;
@@ -160,7 +167,7 @@ bool AssignDeclarationsToIdentifiers(ParseTree &tree,
         } else {
           found = true;
           for (auto index : entry.identifiers) {
-            tree[index].corresponding_declaration = *decl_entry.declaration;
+            tree[index].corresponding_declaration_identifier = *decl_entry.declaration;
           }
         }
       }

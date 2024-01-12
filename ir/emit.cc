@@ -81,8 +81,8 @@ void HandleParseTreeNodeSliceStart(ParseNodeIndex index, EmitContext& context) {
 }
 void HandleParseTreeNodeBufferPointerStart(ParseNodeIndex index,
                                            EmitContext& context) {}
-void HandleParseTreeNodeMinusStart(ParseNodeIndex index,
-                                           EmitContext& context) {}
+void HandleParseTreeNodeMinusStart(ParseNodeIndex index, EmitContext& context) {
+}
 
 void HandleParseTreeNodeMinus(ParseNodeIndex index, EmitContext& context) {
   auto qt = context.QualifiedTypeOf(index - 1);
@@ -286,11 +286,8 @@ void HandleParseTreeNodeDeclaration(ParseNodeIndex index,
   if (not decl_info.kind.has_initializer()) {
     NTH_REQUIRE((v.debug), not decl_info.kind.inferred_type());
     if (not decl_info.kind.parameter()) {
-      auto const* info = context.lexical_scopes.identifier(
-          context.current_lexical_scope_index(),
-          context.Node(decl_info.index).token.Identifier());
       auto& f = context.current_function();
-      auto t = info->qualified_type.type();
+      auto t  = context.QualifiedTypeOf(index).type();
       switch (t.kind()) {
         case type::Type::Kind::Primitive:
           switch (t.AsPrimitive().kind()) {
@@ -333,15 +330,11 @@ void HandleParseTreeNodeDeclaration(ParseNodeIndex index,
             case type::PrimitiveType::Kind::F64:
               f.append<jasmin::Push>(double{0});
               break;
-            default:
-            NTH_UNIMPLEMENTED("Default initialization for {}") <<=
-                {info->qualified_type};
+            default: NTH_UNIMPLEMENTED("Default initialization for {}") <<= {t};
           }
         case type::Type::Kind::Pointer:
         case type::Type::Kind::BufferPointer: f.append<PushNull>(); break;
-        default:
-          NTH_UNIMPLEMENTED("Default initialization for {}") <<=
-              {info->qualified_type};
+        default: NTH_UNIMPLEMENTED("Default initialization for {}") <<= {t};
       }
       auto range = context.current_storage().range(index);
       context.current_function().append<jasmin::StackOffset>(
@@ -354,15 +347,10 @@ void HandleParseTreeNodeDeclaration(ParseNodeIndex index,
       f.append<jasmin::Return>();
       nth::stack<jasmin::Value> value_stack;
       f.invoke(value_stack);
-      auto const* info = context.lexical_scopes.identifier(
-          context.current_lexical_scope_index(),
-          context.Node(decl_info.index).token.Identifier());
-      NTH_REQUIRE(info != nullptr);
+      auto t = context.QualifiedTypeOf(index).type();
       context.constants.insert_or_assign(
           context.tree.subtree_range(index),
-          EmitContext::ComputedConstants(decl_info.index,
-                                         std::move(value_stack),
-                                         {info->qualified_type.type()}));
+          EmitContext::ComputedConstants(index, std::move(value_stack), {t}));
       delete &f;
       context.pop_function();
     } else {
@@ -378,15 +366,10 @@ void HandleParseTreeNodeDeclaration(ParseNodeIndex index,
       f.append<jasmin::Return>();
       nth::stack<jasmin::Value> value_stack;
       f.invoke(value_stack);
-      auto const* info = context.lexical_scopes.identifier(
-          context.current_lexical_scope_index(),
-          context.Node(decl_info.index).token.Identifier());
-      NTH_REQUIRE(info != nullptr);
+      auto t = context.QualifiedTypeOf(index).type();
       context.constants.insert_or_assign(
           context.tree.subtree_range(index),
-          EmitContext::ComputedConstants(decl_info.index,
-                                         std::move(value_stack),
-                                         {info->qualified_type.type()}));
+          EmitContext::ComputedConstants(index, std::move(value_stack), {t}));
       delete &f;
       context.pop_function();
     } else {

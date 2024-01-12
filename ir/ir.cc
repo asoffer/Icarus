@@ -280,13 +280,7 @@ void HandleParseTreeNodeScopeLiteral(ParseNodeIndex index, IrContext& context,
 Iteration HandleParseTreeNodeScopeLiteralStart(ParseNodeIndex index,
                                                IrContext& context,
                                                diag::DiagnosticConsumer& diag) {
-  context.current_lexical_scope().insert_identifier(
-      context.Node(index + 1).token.Identifier(),
-      {
-          .declaration    = index + 1,
-          .identifier     = index + 1,
-          .qualified_type = type::QualifiedType::Constant(type::Bool),  // TODO
-      });
+  // TODO
   return Iteration::SkipTo(index + 2);
 }
 
@@ -330,14 +324,6 @@ void HandleParseTreeNodeDeclaration(ParseNodeIndex index, IrContext& context,
     if (not type) { NTH_UNIMPLEMENTED(); }
 
     auto qt = QualifiedBy(*type, info);
-    context.current_lexical_scope().insert_identifier(
-        context.Node(info.index).token.Identifier(),
-        {
-            .declaration    = info.index,
-            .identifier     = index,
-            .qualified_type = qt,
-        });
-
     context.current_storage().insert(index, *type);
     context.emit.SetQualifiedType(index, qt);
   } else if (info.kind.inferred_type()) {
@@ -348,14 +334,6 @@ void HandleParseTreeNodeDeclaration(ParseNodeIndex index, IrContext& context,
       context.current_storage().insert(index, qt.type());
     }
     context.emit.SetQualifiedType(index, qt);
-
-    context.current_lexical_scope().insert_identifier(
-        context.Node(info.index).token.Identifier(),
-        {
-            .declaration    = info.index,
-            .identifier     = index,
-            .qualified_type = qt,
-        });
     context.type_stack().pop();
   } else {
     auto types_iter      = context.type_stack().rbegin();
@@ -398,13 +376,6 @@ void HandleParseTreeNodeDeclaration(ParseNodeIndex index, IrContext& context,
     }
     type::QualifiedType qt = type::QualifiedType::Unqualified(*type);
     context.current_storage().insert(index, qt.type());
-    context.current_lexical_scope().insert_identifier(
-        context.Node(info.index).token.Identifier(),
-        {
-            .declaration    = info.index,
-            .identifier     = index,
-            .qualified_type = qt,
-        });
     context.emit.SetQualifiedType(index, qt);
   }
 }
@@ -456,11 +427,10 @@ Iteration HandleParseTreeNodeIdentifier(ParseNodeIndex index,
     return Iteration::Continue;
   }
 
-  // TODO: Actually want to traverse up the scope until you find it.
-  if (auto* decl_info = context.emit.lexical_scopes.identifier(
-          context.current_lexical_scope_index(), id)) {
-    auto const& [decl_id_index, decl_index, decl_qt] = *decl_info;
-
+  auto decl_id_index = context.Node(index).corresponding_declaration_identifier;
+  auto decl_index    = context.Node(decl_id_index).corresponding_declaration;
+  if (auto decl_qt = context.emit.QualifiedTypeOf(decl_index);
+      decl_qt.type() != type::Type()) {
     context.emit.declarator.emplace(index,
                                     std::pair{decl_id_index, decl_index});
     context.emit.SetQualifiedType(index, decl_qt);
@@ -531,7 +501,7 @@ void HandleParseTreeNodeExpressionPrecedenceGroup(
             diag::Header(diag::MessageKind::Error),
             diag::Text(
                 InterpolateString<"Function returns must be types, but you "
-                                  "provided a(n) `{}`.">(parameters_type)),
+                                  "provided a(n) `{}`.">(return_type)),
             diag::SourceQuote(iter->token),
         });
       }
@@ -1146,17 +1116,17 @@ void HandleParseTreeNodeFunctionLiteralSignature(
   for (; iter != indices.end(); ++iter) {
     // Get DeclaredIdentifier from declaration.
     // TODO: There may be many!
-    auto decl_iter = context.Children(*iter).begin();
-    while (decl_iter->kind != ParseNode::Kind::DeclaredIdentifier) {
+    auto decl_iter = context.ChildIndices(*iter).begin();
+    while (context.Node(*decl_iter).kind !=
+           ParseNode::Kind::DeclaredIdentifier) {
       ++decl_iter;
     }
 
-    if (auto* decl_info = context.current_lexical_scope().identifier(
-            decl_iter->token.Identifier())) {
-      parameters.push_back({.type = decl_info->qualified_type.type()});
-    } else {
-      NTH_UNIMPLEMENTED();
-    }
+    parameters.push_back(
+        {.type = context.emit
+                     .QualifiedTypeOf(
+                         context.Node(*decl_iter).corresponding_declaration)
+                     .type()});
   }
 
   std::reverse(parameters.begin(), parameters.end());

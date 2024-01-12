@@ -10,13 +10,6 @@ LexicalScope::Index LexicalScope::Index::Invalid() {
   return Index(std::numeric_limits<Index::underlying_type>::max());
 }
 
-LexicalScope::DeclarationInfo const *LexicalScope::identifier(
-    Identifier id) const {
-  auto iter = identifiers_.find(id);
-  if (iter == identifiers_.end()) { return nullptr; }
-  return &iter->second;
-}
-
 LexicalScope::Index LexicalScopeTree::insert_child(
     LexicalScope::Index parent_index) {
   LexicalScope::Index index(scopes_.size());
@@ -36,14 +29,6 @@ LexicalScope const &LexicalScopeTree::operator[](
     LexicalScope::Index index) const {
   NTH_REQUIRE(index.value() < scopes_.size());
   return scopes_[index.value()];
-}
-
-LexicalScope::DeclarationInfo const *LexicalScopeTree::identifier(
-    LexicalScope::Index index, Identifier id) const {
-  for (auto const &scope : ancestors(index)) {
-    if (auto const *info = scope.identifier(id)) { return info; }
-  }
-  return nullptr;
 }
 
 }  // namespace ic

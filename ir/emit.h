@@ -52,7 +52,7 @@ struct EmitContext {
                            NTH_ATTRIBUTE(lifetimebound),
                        LexicalScopeTree& scopes, Module& module)
       : tree(tree), lexical_scopes(scopes), current_module{module}, modules(modules) {
-    types_.reserve(tree.size());
+    types_.resize(tree.size());
   }
 
   Module const& module(ModuleId id) const { return modules[id]; }
