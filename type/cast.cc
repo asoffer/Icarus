@@ -28,39 +28,40 @@ bool ImplicitCast(Type from, Type to) {
 }  // namespace
 
 bool ImplicitCast(AnyValue const &from, Type to) {
-  if (not from.has_value()) { return ImplicitCast(from.type(), to); }
-  if (to.kind() == Type::Kind::Refinement) {
-    if (to.AsRefinement().underlying() != from.type()) { return false; }
-    return to.AsRefinement()(from);
-  } else if (from.type() == Integer and to.kind() == Type::Kind::Primitive) {
-    auto n = from.value()[0].as<::ic::Integer>();
-    switch (to.AsPrimitive().kind()) {
-      default: NTH_UNREACHABLE();
-      case PrimitiveType::Kind::I8:
-        return n >= std::numeric_limits<int8_t>::lowest() and
-               n <= std::numeric_limits<int8_t>::max();
-      case PrimitiveType::Kind::U8:
-        return true;
-        // TODO: Right now this would break some c-headers that use ascii_encode
-        // return n <= std::numeric_limits<uint8_t>::max();
-      case PrimitiveType::Kind::I16:
-        return n >= std::numeric_limits<int16_t>::lowest() and
-               n <= std::numeric_limits<int16_t>::max();
-      case PrimitiveType::Kind::U16:
-        return n <= std::numeric_limits<uint16_t>::max();
-      case PrimitiveType::Kind::I32:
-        return n >= std::numeric_limits<int32_t>::lowest() and
-               n <= std::numeric_limits<int32_t>::max();
-      case PrimitiveType::Kind::U32:
-        return n <= std::numeric_limits<uint32_t>::max();
-      case PrimitiveType::Kind::I64:
-        return n >= std::numeric_limits<int64_t>::lowest() and
-               n <= std::numeric_limits<int64_t>::max();
-      case PrimitiveType::Kind::U64:
-        return n <= std::numeric_limits<uint64_t>::max();
+  if (from.has_value()) {
+    if (to.kind() == Type::Kind::Refinement) {
+      if (to.AsRefinement().underlying() != from.type()) { return false; }
+      return to.AsRefinement()(from);
+    } else if (from.type() == Integer and to.kind() == Type::Kind::Primitive) {
+      auto n = from.value()[0].as<::ic::Integer>();
+      switch (to.AsPrimitive().kind()) {
+        default: NTH_UNREACHABLE();
+        case PrimitiveType::Kind::I8:
+          return n >= std::numeric_limits<int8_t>::lowest() and
+                 n <= std::numeric_limits<int8_t>::max();
+        case PrimitiveType::Kind::U8:
+          return true;
+          // TODO: Right now this would break some c-headers that use
+          // ascii_encode return n <= std::numeric_limits<uint8_t>::max();
+        case PrimitiveType::Kind::I16:
+          return n >= std::numeric_limits<int16_t>::lowest() and
+                 n <= std::numeric_limits<int16_t>::max();
+        case PrimitiveType::Kind::U16:
+          return n <= std::numeric_limits<uint16_t>::max();
+        case PrimitiveType::Kind::I32:
+          return n >= std::numeric_limits<int32_t>::lowest() and
+                 n <= std::numeric_limits<int32_t>::max();
+        case PrimitiveType::Kind::U32:
+          return n <= std::numeric_limits<uint32_t>::max();
+        case PrimitiveType::Kind::I64:
+          return n >= std::numeric_limits<int64_t>::lowest() and
+                 n <= std::numeric_limits<int64_t>::max();
+        case PrimitiveType::Kind::U64:
+          return n <= std::numeric_limits<uint64_t>::max();
+      }
     }
   }
-  return false;
+  return ImplicitCast(from.type(), to);
 }
 
 }  // namespace ic::type

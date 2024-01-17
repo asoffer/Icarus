@@ -707,7 +707,6 @@ Iteration HandleParseTreeNodeExtensionStart(ParseNodeIndex index,
 }
 
 void HandleParseTreeNodeExtendWith(ParseNodeIndex, EmitContext&) {
-  NTH_LOG("Here");
 }
 
 void HandleParseTreeNodeExtension(ParseNodeIndex, EmitContext&) {}

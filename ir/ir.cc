@@ -545,10 +545,14 @@ void HandleParseTreeNodeExpressionPrecedenceGroup(
           type::QualifiedType::Constant(type::Type_)) {
         NTH_UNIMPLEMENTED();
       }
-      context.PopTypeStack(1 + node.child_count / 2);
+      context.type_stack().pop();
+      bool constant = context.type_stack().top()[0].constant();
+      context.PopTypeStack( node.child_count / 2);
       std::optional t = context.EvaluateAs<type::Type>(index - 1);
       if (not t) { NTH_UNIMPLEMENTED(); }
-      context.type_stack().push({type::QualifiedType::Constant(*t)});
+      context.type_stack().push({constant
+                                     ? type::QualifiedType::Constant(*t)
+                                     : type::QualifiedType::Unqualified(*t)});
     } break;
     case Token::Kind::Less:
     case Token::Kind::Greater:
