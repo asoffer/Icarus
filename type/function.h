@@ -39,6 +39,16 @@ struct FunctionType : internal_type::BasicType {
     if (returns.size() != 1) { p.write(")"); }
   }
 
+  friend void JasminSerialize(jasmin::Writer auto& w, FunctionType t) {
+    JasminSerialize(w, Type(t));
+  }
+  friend bool JasminDeserialize(jasmin::Reader auto& r, FunctionType& ft) {
+    Type t;
+    if (not JasminDeserialize(r, t)) { return false; }
+    ft = t.AsFunction();
+    return true;
+  }
+
  private:
   friend Type;
   friend void SerializeTypeSystem(TypeSystemProto&);

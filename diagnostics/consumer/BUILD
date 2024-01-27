@@ -9,8 +9,8 @@ cc_library(
         "//lexer:token",
         "//parse:tree",
         "//diagnostics:message",
-        "@asoffer_nth//nth/base:attributes",
-        "@asoffer_nth//nth/debug",
+        "@nth_cc//nth/base:attributes",
+        "@nth_cc//nth/debug",
     ],
 )
 
@@ -30,7 +30,7 @@ cc_library(
         ":consumer",
         "//diagnostics:message",
         "@com_google_absl//absl/strings:str_format",
-        "@asoffer_nth//nth/debug",
-        "@asoffer_nth//nth/strings:text",
+        "@nth_cc//nth/debug",
+        "@nth_cc//nth/strings:text",
     ],
 )

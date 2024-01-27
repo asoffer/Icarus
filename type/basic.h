@@ -7,6 +7,8 @@
 #include <utility>
 
 #include "jasmin/core/value.h"
+#include "jasmin/serialize/reader.h"
+#include "jasmin/serialize/writer.h"
 #include "type/type_contour.h"
 
 namespace ic::type {
@@ -186,6 +188,32 @@ struct BasicType {
 };
 
 }  // namespace internal_type
+
+void JasminSerialize(jasmin::Writer auto& w, Type::Kind k) {
+  jasmin::WriteFixed(w, static_cast<uint8_t>(k));
+}
+void JasminSerialize(jasmin::Writer auto& w, Type t) {
+  uint64_t n;
+  static_assert(sizeof(n) == sizeof(t));
+  std::memcpy(&n, &t, sizeof(n));
+  jasmin::WriteFixed(w, n);
+}
+
+
+bool JasminDeserialize(jasmin::Reader auto& r, Type::Kind& k) {
+  uint8_t n;
+  if (not jasmin::ReadFixed(r, n)) { return false; }
+  k = static_cast<Type::Kind>(n);
+  return true;
+}
+bool JasminDeserialize(jasmin::Reader auto& r, Type& t) {
+  uint64_t n;
+  static_assert(sizeof(n) == sizeof(t));
+  if (not jasmin::ReadFixed(r, n)) { return false; }
+  std::memcpy(&t, &n, sizeof(n));
+  return true;
+}
+
 }  // namespace ic::type
 
 #endif  // ICARUS_TYPE_BASIC_H

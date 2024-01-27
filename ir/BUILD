@@ -11,7 +11,7 @@ cc_library(
         "//common:module_id",
         "//common:pattern",
         "//type",
-        "@asoffer_nth//nth/utility:no_destructor",
+        "@nth_cc//nth/utility:no_destructor",
     ],
 )
 
@@ -24,7 +24,7 @@ cc_library(
         "//common:string",
         "//diagnostics/consumer",
         "//parse:tree",
-        "@asoffer_nth//nth/container:stack",
+        "@nth_cc//nth/container:stack",
     ],
 )
 
@@ -35,7 +35,7 @@ cc_library(
     deps = [
         ":module",
         "//common:module_id",
-        "@asoffer_nth//nth/debug",
+        "@nth_cc//nth/debug",
     ],
 )
 
@@ -50,10 +50,11 @@ cc_library(
         ":module",
         ":module_cc_proto",
         "//type:deserialize",
-        "@asoffer_jasmin//jasmin/core:metadata",
-        "@asoffer_nth//nth/base:attributes",
-        "@asoffer_nth//nth/debug",
-        "@asoffer_nth//nth/debug/log",
+        "@jasmin//jasmin/serialize:deserialize",
+        "@jasmin//jasmin/serialize:string_reader",
+        "@nth_cc//nth/base:attributes",
+        "@nth_cc//nth/debug",
+        "@nth_cc//nth/debug/log",
     ],
 )
 
@@ -78,14 +79,14 @@ cc_library(
         "//parse:node_xmacro",
         "//parse:tree",
         "//type",
-        "@asoffer_jasmin//jasmin/instructions:arithmetic",
-        "@asoffer_jasmin//jasmin/core:function",
-        "@asoffer_nth//nth/debug",
-        "@asoffer_nth//nth/debug/log",
-        "@asoffer_nth//nth/container:interval_map",
-        "@asoffer_nth//nth/container:stack",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/container:btree",
+        "@jasmin//jasmin/instructions:arithmetic",
+        "@jasmin//jasmin/core:function",
+        "@nth_cc//nth/debug",
+        "@nth_cc//nth/debug/log",
+        "@nth_cc//nth/container:interval_map",
+        "@nth_cc//nth/container:stack",
     ],
 )
 
@@ -110,6 +111,7 @@ cc_library(
         "//common:module_id",
         "//common:pattern",
         "//common:resources",
+        "//common:string_literal",
         "//type:basic",
         "//type:function",
         "//type:opaque",
@@ -117,18 +119,22 @@ cc_library(
         "//type:primitive",
         "//type:pointer",
         "//type:refinement",
-        "@asoffer_jasmin//jasmin/core:function",
-        "@asoffer_jasmin//jasmin/core:instruction",
-        "@asoffer_jasmin//jasmin/core:value",
-        "@asoffer_jasmin//jasmin/instructions:arithmetic",
-        "@asoffer_jasmin//jasmin/instructions:bool",
-        "@asoffer_jasmin//jasmin/instructions:common",
-        "@asoffer_jasmin//jasmin/instructions:compare",
-        "@asoffer_jasmin//jasmin/instructions:stack",
-        "@asoffer_nth//nth/container:flyweight_map",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/container:flat_hash_set",
         "@com_google_absl//absl/container:node_hash_map",
+        "@jasmin//jasmin/core:function",
+        "@jasmin//jasmin/core:instruction",
+        "@jasmin//jasmin/core:input",
+        "@jasmin//jasmin/core:output",
+        "@jasmin//jasmin/core:program",
+        "@jasmin//jasmin/core:value",
+        "@jasmin//jasmin/instructions:arithmetic",
+        "@jasmin//jasmin/instructions:bool",
+        "@jasmin//jasmin/instructions:common",
+        "@jasmin//jasmin/instructions:compare",
+        "@jasmin//jasmin/instructions:stack",
+        "@jasmin//jasmin/serialize:writer",
+        "@nth_cc//nth/container:flyweight_map",
     ],
 )
 
@@ -137,7 +143,7 @@ cc_library(
     hdrs = ["function_id.h"],
     deps = [
         "//common:module_id",
-        "@asoffer_nth//nth/strings:interpolate",
+        "@nth_cc//nth/strings:interpolate",
     ],
 )
 
@@ -158,11 +164,11 @@ cc_library(
         "//parse:tree",
         "//type",
         "//type:cast",
-        "@asoffer_jasmin//jasmin/core:function",
-        "@asoffer_jasmin//jasmin/core:value",
-        "@asoffer_nth//nth/debug",
-        "@asoffer_nth//nth/debug/log",
         "@com_google_absl//absl/container:flat_hash_map",
+        "@jasmin//jasmin/core:function",
+        "@jasmin//jasmin/core:value",
+        "@nth_cc//nth/debug",
+        "@nth_cc//nth/debug/log",
     ],
 )
 
@@ -176,8 +182,8 @@ cc_library(
         "//type",
         "//type:alignment",
         "//type:byte_width",
-        "@asoffer_nth//nth/container:interval",
         "@com_google_absl//absl/container:flat_hash_map",
+        "@nth_cc//nth/container:interval",
     ],
 )
 
@@ -190,11 +196,11 @@ cc_library(
         ":scope",
         "//common:identifier",
         "//type",
-        "@asoffer_jasmin//jasmin/core:value",
-        "@asoffer_nth//nth/debug",
-        "@asoffer_nth//nth/debug/log",
         "@com_google_absl//absl/container:inlined_vector",
         "@com_google_absl//absl/container:flat_hash_map",
+        "@jasmin//jasmin/core:value",
+        "@nth_cc//nth/debug",
+        "@nth_cc//nth/debug/log",
     ],
 )
 
@@ -218,8 +224,8 @@ cc_library(
     srcs = ["program_arguments.cc"],
     deps = [
         "//common:slice",
-        "@asoffer_nth//nth/utility:no_destructor",
         "@com_google_absl//absl/synchronization",
+        "@nth_cc//nth/utility:no_destructor",
     ],
 )
 
@@ -233,9 +239,9 @@ cc_library(
         "//common:strong_identifier_type",
         "//parse:node_index",
         "//type",
-        "@asoffer_nth//nth/debug",
-        "@asoffer_nth//nth/utility:iterator_range",
         "@com_google_absl//absl/container:flat_hash_map",
+        "@nth_cc//nth/debug",
+        "@nth_cc//nth/utility:iterator_range",
     ]
 )
 
@@ -258,9 +264,10 @@ cc_library(
         ":module_cc_proto",
         "//common:resources",
         "//type:serialize",
-        "@asoffer_jasmin//jasmin/core:metadata",
-        "@asoffer_nth//nth/debug",
-        "@asoffer_nth//nth/debug/log",
+        "@jasmin//jasmin/serialize",
+        "@jasmin//jasmin/serialize:string_writer",
+        "@nth_cc//nth/debug",
+        "@nth_cc//nth/debug/log",
     ],
 )
 
@@ -270,6 +277,6 @@ cc_library(
     srcs = ["type_stack.cc"],
     deps = [
         "//type",
-        "@asoffer_nth//nth/debug",
+        "@nth_cc//nth/debug",
     ],
 )

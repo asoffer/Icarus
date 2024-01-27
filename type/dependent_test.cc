@@ -15,7 +15,7 @@ namespace {
 using ::nth::debug::ElementsAreSequentially;
 
 using InstructionSet =
-    jasmin::MakeInstructionSet<jasmin::Push, jasmin::Add<int64_t>>;
+    jasmin::MakeInstructionSet<jasmin::Push<int64_t>, jasmin::Add<int64_t>>;
 
 inline constexpr auto ValueIs = nth::debug::MakeProperty<"value-is">(
     [](auto const &value, jasmin::Value v) {
@@ -57,7 +57,7 @@ NTH_INVOKE_TEST("term/basic/*") {
 AnyValue AddOne() {
   static jasmin::Function<InstructionSet> f = [] {
     jasmin::Function<InstructionSet> f(1, 1);
-    f.append<jasmin::Push>(int64_t{1});
+    f.append<jasmin::Push<int64_t>>(1);
     f.append<jasmin::Add<int64_t>>();
     f.append<jasmin::Return>();
     return f;

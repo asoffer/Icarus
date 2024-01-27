@@ -17,7 +17,7 @@ cc_library(
         ":node_xmacro",
         "//ir:lexical_scope",
         "//lexer:token",
-        "@asoffer_nth//nth/strings:interpolate",
+        "@nth_cc//nth/strings:interpolate",
     ],
 )
 
@@ -58,7 +58,7 @@ cc_library(
         "//ir:lexical_scope",
         "//lexer:token",
         "//lexer:token_buffer",
-        "@asoffer_nth//nth/debug",
+        "@nth_cc//nth/debug",
     ],
 )
 
@@ -68,7 +68,7 @@ cc_library(
     srcs = ["precedence.cc"],
     deps = [
         "//common/language:precedence",
-        "@asoffer_nth//nth/debug",
+        "@nth_cc//nth/debug",
     ],
 )
 
@@ -79,8 +79,8 @@ cc_library(
     deps = [
         ":node",
         ":node_index",
-        "@asoffer_nth//nth/container:interval",
-        "@asoffer_nth//nth/debug",
-        "@asoffer_nth//nth/utility:iterator_range",
+        "@nth_cc//nth/container:interval",
+        "@nth_cc//nth/debug",
+        "@nth_cc//nth/utility:iterator_range",
     ],
 )

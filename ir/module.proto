@@ -4,72 +4,6 @@ import "type/type_system.proto";
 
 package ic;
 
-message InstructionProto {
-  enum OpCode {
-    // Note: This needs to be kept in sync with the `jasmin::InstructionSet`
-    // defined in "ir/function.h"
-    CALL = 0;
-    JUMP = 1;
-    JUMP_IF = 2;
-    RETURN = 3;
-    PUSH = 4;
-    PUSH_FUNCTION = 5;
-    PUSH_STRING_LITERAL = 6;
-    PUSH_TYPE = 7;
-    PUSH_POINTER = 8;
-    PUSH_NULL = 9;
-    TYPE_KIND_EQUALS = 10;
-    ROTATE = 11;
-    CONSTRUCT_OPAQUE_TYPE = 12;
-    CONSTRUCT_POINTER = 13;
-    CONSTRUCT_BUFFER_POINTER = 14;
-    CONSTRUCT_FUNCTION = 15;
-    CONSTRUCT_PARAMETERS = 16;
-    CONSTRUCT_SLICE = 17;
-    CONSTRUCT_INTERFACE = 18;
-    REGISTER_FOREIGN_FUNCTION = 19;
-    INVOKE_FOREIGN_FUNCTION = 20;
-    NOT = 21;
-    NOOP = 22;
-    STORE = 23;
-    LOAD = 24;
-    STACK_ALLOCATE = 25;
-    STACK_OFFSET = 26;
-    ADD_I64 = 27;
-    SUB_I64 = 28;
-    MUL_I64 = 29;
-    MOD_I64 = 30;
-    EQ_I64 = 31;
-    LT_I64 = 32;
-    ADD_POINTER = 33;
-    LOAD_PROGRAM_ARGUMENTS = 34;
-    DUPLICATE = 35;
-    ASCII_ENCODE = 36;
-    ASCII_DECODE = 37;
-    DROP = 38;
-    SWAP = 39;
-    TYPE_KIND = 40;
-    NEGATE_I8 = 41;
-    NEGATE_I16 = 42;
-    NEGATE_I32 = 43;
-    NEGATE_I64 = 44;
-    NEGATE_INTEGER = 45;
-    NEGATE_F32 = 46;
-    NEGATE_F64 = 47;
-    CONSTRUCT_REFINEMENT = 48;
-    PUSH_INTERFACE = 49;
-    CHECK_INTERFACE_SATISFACTION = 50;
-  }
-  OpCode op_code = 1;
-  repeated uint64 content = 2;
-}
-
-message FunctionProto {
-  uint32 parameters = 1;
-  uint32 returns = 2;
-  repeated InstructionProto instructions = 3;
-}
-
 message ForeignFunctionProto {
   uint32 name = 1;
   type.FunctionTypeProto type = 2;
@@ -86,9 +20,7 @@ message SymbolProto {
 }
 
 message ModuleProto {
-  // Subroutines defined within the module. The first one (at index zero) is the 
-  // initializer, at which execution begins.
-  repeated FunctionProto functions = 1;
+  bytes program = 1;
 
   repeated string string_literals = 2;
 

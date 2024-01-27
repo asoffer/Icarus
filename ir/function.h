@@ -8,15 +8,20 @@
 #include "common/integer.h"
 #include "common/interface.h"
 #include "common/pattern.h"
+#include "common/string_literal.h"
 #include "ir/function_id.h"
 #include "jasmin/core/function.h"
+#include "jasmin/core/input.h"
 #include "jasmin/core/instruction.h"
+#include "jasmin/core/output.h"
+#include "jasmin/core/program.h"
 #include "jasmin/core/value.h"
 #include "jasmin/instructions/arithmetic.h"
 #include "jasmin/instructions/bool.h"
 #include "jasmin/instructions/common.h"
 #include "jasmin/instructions/compare.h"
 #include "jasmin/instructions/stack.h"
+#include "jasmin/serialize/writer.h"
 #include "type/basic.h"
 #include "type/function.h"
 #include "type/opaque.h"
@@ -26,78 +31,62 @@
 
 namespace ic {
 
+struct PushNull : jasmin::Instruction<PushNull> {
+  static void execute(jasmin::Input<>, jasmin::Output<void*> out) {
+    out.set(nullptr);
+  }
+};
+
 struct Store : jasmin::Instruction<Store> {
-  static void consume(std::span<jasmin::Value, 2> input, uint8_t size) {
-    jasmin::Value value = input[0];
-    void* location      = input[1].as<void*>();
+  static void consume(jasmin::Input<jasmin::Value, void*> input,
+                      jasmin::Output<>, uint8_t size) {
+    auto [value, location] = input;
     jasmin::Value::Store(value, location, size);
   }
-  static constexpr std::string_view debug() { return "store"; }
 };
 
-struct PushFunction : jasmin::Instruction<PushFunction> {
-  static std::string_view name() { return "push-function"; }
-
-  static jasmin::Value execute(std::span<jasmin::Value, 0>, jasmin::Value v) {
-    return v;
+// TODO: Remove Hack.
+struct VoidConstPtr {
+  VoidConstPtr(void const* ptr = nullptr) : ptr_(ptr) {}
+  void const* ptr() const { return ptr_; }
+  friend void JasminSerialize(jasmin::Writer auto&, VoidConstPtr s) {
+    NTH_UNIMPLEMENTED();
   }
-};
-
-struct PushNull : jasmin::Instruction<PushNull> {
-  static std::string_view name() { return "push-null"; }
-
-  static void* execute(std::span<jasmin::Value, 0>) { return nullptr; }
-};
-
-struct PushPointer : jasmin::Instruction<PushPointer> {
-  static std::string_view name() { return "push-pointer"; }
-
-  static jasmin::Value execute(std::span<jasmin::Value, 0>, jasmin::Value v) {
-    return v;
+  friend bool JasminDeserialize(jasmin::Reader auto&, VoidConstPtr& s) {
+    NTH_UNIMPLEMENTED();
   }
+
+ private:
+  void const* ptr_;
 };
 
 struct PushStringLiteral : jasmin::Instruction<PushStringLiteral> {
-  static std::string_view name() { return "push-string-literal"; }
-
-  static std::array<jasmin::Value, 2> execute(std::span<jasmin::Value, 0>,
-                                              char const* data, size_t length) {
-    return {jasmin::Value(data), jasmin::Value(length)};
-  }
-};
-
-struct PushType : jasmin::Instruction<PushType> {
-  static std::string_view name() { return "push-type"; }
-  static type::Type execute(std::span<jasmin::Value, 0>, type::Type t) {
-    return t;
+  static void execute(jasmin::Input<>, jasmin::Output<char const*, size_t> out,
+                      StringLiteral s) {
+    std::string_view str = s.str();
+    out.set(str.data(), str.size());
   }
 };
 
 struct RegisterForeignFunction : jasmin::Instruction<RegisterForeignFunction> {
-  static std::string_view name() { return "register-foreign-function"; }
-
-  static jasmin::Value consume(std::span<jasmin::Value, 3> inputs);
+  static void consume(jasmin::Input<char const*, size_t, type::Type> in,
+                      jasmin::Output<void const*> out);
 };
 
 struct InvokeForeignFunction : jasmin::Instruction<InvokeForeignFunction> {
-  static std::string_view name() { return "invoke-foreign-function"; }
-
   static void consume(std::span<jasmin::Value> input,
                       std::span<jasmin::Value> output, type::FunctionType type,
-                      void const* fn_ptr);
+                      VoidConstPtr fn_ptr);
 };
 
 struct TypeKind : jasmin::Instruction<TypeKind> {
-  static std::string_view name() { return "type-kind"; }
-
-  static type::Type::Kind consume(std::span<jasmin::Value, 1> inputs) {
-    return inputs[0].as<type::Type>().kind();
+  static void consume(jasmin::Input<type::Type> in,
+                      jasmin::Output<type::Type::Kind> out) {
+    out.set(in.get<0>().kind());
   }
 };
 
 struct ConstructParametersType : jasmin::Instruction<ConstructParametersType> {
-  static std::string_view name() { return "construct-parameters-type"; }
-
   static void consume(std::span<jasmin::Value> inputs,
                       std::span<jasmin::Value> outputs) {
     std::vector<type::ParametersType::Parameter> parameters;
@@ -110,90 +99,83 @@ struct ConstructParametersType : jasmin::Instruction<ConstructParametersType> {
 };
 
 struct ConstructInterface : jasmin::Instruction<ConstructInterface> {
-  static std::string_view name() { return "construct-interface"; }
-
   static void consume(std::span<jasmin::Value> inputs,
                       std::span<jasmin::Value> outputs);
 };
 
 struct ConstructRefinementType : jasmin::Instruction<ConstructRefinementType> {
-  static std::string_view name() { return "construct-parameters-type"; }
-
-  static type::Type consume(std::span<jasmin::Value, 2> inputs) {
-    return type::Refinement(inputs[0].as<type::Type>(),
-                            inputs[1].as<Pattern>());
+  static void consume(jasmin::Input<type::Type, Pattern> in,
+                      jasmin::Output<type::Type> out) {
+    out.set(type::Refinement(in.get<0>(), in.get<1>()));
   }
 };
 
 struct ConstructFunctionType : jasmin::Instruction<ConstructFunctionType> {
-  static std::string_view name() { return "construct-function-type"; }
-
-  static type::Type consume(std::span<jasmin::Value, 2> inputs);
+  static void consume(jasmin::Input<type::Type, type::Type> in,
+                      jasmin::Output<type::Type> out);
 };
 
 struct ConstructOpaqueType : jasmin::Instruction<ConstructOpaqueType> {
-  static std::string_view name() { return "construct-opaque-type"; }
-
-  static type::Type execute(std::span<jasmin::Value, 0>) {
-    return type::Opaque();
+  static void consume(jasmin::Input<>, jasmin::Output<type::Type> out) {
+    out.set(type::Opaque());
   }
 };
 
 struct ConstructPointerType : jasmin::Instruction<ConstructPointerType> {
-  static std::string_view name() { return "construct-pointer-type"; }
-
-  static type::Type consume(std::span<jasmin::Value, 1> inputs) {
-    return type::Ptr(inputs[0].as<type::Type>());
+  static void consume(jasmin::Input<type::Type> in,
+                      jasmin::Output<type::Type> out) {
+    out.set(type::Ptr(in.get<0>()));
   }
 };
 
 struct ConstructBufferPointerType
     : jasmin::Instruction<ConstructBufferPointerType> {
-  static std::string_view name() { return "construct-buffer-pointer-type"; }
-
-  static type::Type consume(std::span<jasmin::Value, 1> inputs) {
-    return type::BufPtr(inputs[0].as<type::Type>());
+  static void consume(jasmin::Input<type::Type> in,
+                      jasmin::Output<type::Type> out) {
+    out.set(type::BufPtr(in.get<0>()));
   }
 };
 
 struct ConstructSliceType : jasmin::Instruction<ConstructSliceType> {
-  static std::string_view name() { return "construct-slice-type"; }
-
-  static type::Type consume(std::span<jasmin::Value, 1> inputs) {
-    return type::Slice(inputs[0].as<type::Type>());
+  static void consume(jasmin::Input<type::Type> in,
+                      jasmin::Output<type::Type> out) {
+    out.set(type::Slice(in.get<0>()));
   }
 };
 
 struct NoOp : jasmin::Instruction<NoOp> {
-  static std::string_view name() { return "no-op"; }
-  static void execute(std::span<jasmin::Value, 0>) {}
+  static void execute(jasmin::Input<>, jasmin::Output<>) {}
 };
 
 struct AddPointer : jasmin::Instruction<AddPointer> {
-  static std::byte const* consume(std::span<jasmin::Value, 2> inputs) {
-    return inputs[0].as<std::byte const*>() + inputs[1].as<uint64_t>();
+  static void consume(jasmin::Input<std::byte const*, uint64_t> in,
+                      jasmin::Output<std::byte const*> out) {
+    auto [p, d] = in;
+    out.set(p + d);
   }
 };
 
 struct AsciiEncode : jasmin::Instruction<AsciiEncode> {
-  static void consume(std::span<jasmin::Value, 1> inputs) {
-    inputs[0] = static_cast<char>(inputs[0].as<uint8_t>());
+  static void consume(jasmin::Input<uint8_t> in, jasmin::Output<char> out) {
+    out.set(in.get<0>());
   }
 };
 
 struct AsciiDecode : jasmin::Instruction<AsciiDecode> {
-  static void consume(std::span<jasmin::Value, 1> inputs) {
-    inputs[0] = static_cast<uint8_t>(inputs[0].as<char>());
+  static void consume(jasmin::Input<char> in, jasmin::Output<uint8_t> out) {
+    out.set(in.get<0>());
   }
 };
 
 struct LoadProgramArguments : jasmin::Instruction<LoadProgramArguments> {
-  static std::array<jasmin::Value, 2> execute(std::span<jasmin::Value, 0>);
+  static void execute(jasmin::Input<> in,
+                      jasmin::Output<std::byte const*, uint64_t> out);
 };
 
 struct CheckInterfaceSatisfaction
     : jasmin::Instruction<CheckInterfaceSatisfaction> {
-  static bool consume(std::span<jasmin::Value, 1>, Interface);
+  static void consume(jasmin::Input<type::Type>, jasmin::Output<bool>,
+                      Interface);
 };
 
 struct Rotate : jasmin::Instruction<Rotate> {
@@ -206,21 +188,32 @@ struct Rotate : jasmin::Instruction<Rotate> {
   }
 };
 
+template <typename... Is>
+using PushInstructions = jasmin::MakeInstructionSet<jasmin::Push<Is>...>;
+
 using InstructionSet = jasmin::MakeInstructionSet<
-    jasmin::Push, PushFunction, PushStringLiteral, PushType, PushPointer,
-    PushNull, jasmin::Equal<type::Type::Kind>, Rotate, ConstructOpaqueType,
-    ConstructPointerType, ConstructBufferPointerType, ConstructFunctionType,
-    ConstructParametersType, ConstructSliceType, ConstructInterface,
-    RegisterForeignFunction, InvokeForeignFunction, jasmin::Not, NoOp, Store,
-    jasmin::Load, jasmin::StackAllocate, jasmin::StackOffset,
-    jasmin::Add<int64_t>, jasmin::Subtract<int64_t>, jasmin::Multiply<int64_t>,
-    jasmin::Mod<int64_t>, jasmin::Equal<int64_t>, jasmin::LessThan<int64_t>,
-    AddPointer, LoadProgramArguments, jasmin::Duplicate, AsciiEncode,
-    AsciiDecode, jasmin::Drop, jasmin::Swap, TypeKind, jasmin::Negate<int8_t>,
-    jasmin::Negate<int16_t>, jasmin::Negate<int32_t>, jasmin::Negate<int64_t>,
-    jasmin::Negate<Integer>, jasmin::Negate<float>, jasmin::Negate<double>,
-    ConstructRefinementType, CheckInterfaceSatisfaction>;
+    PushInstructions<bool, char, std::byte, int8_t, int16_t, int32_t, int64_t,
+                     uint8_t, uint16_t, uint32_t, uint64_t, float, double,
+                     Integer, type::Type, jasmin::Function<> const*,
+                     type::Type::Kind, ModuleId, VoidConstPtr>,
+    PushNull, PushStringLiteral, jasmin::Equal<type::Type::Kind>, Rotate,
+    ConstructOpaqueType, ConstructPointerType, ConstructBufferPointerType,
+    ConstructFunctionType, ConstructParametersType, ConstructSliceType,
+    ConstructInterface, RegisterForeignFunction, InvokeForeignFunction,
+    jasmin::Not, NoOp, Store, jasmin::Load, jasmin::StackAllocate,
+    jasmin::StackOffset, jasmin::Add<int64_t>, jasmin::Subtract<int64_t>,
+    jasmin::Multiply<int64_t>, jasmin::Mod<int64_t>, jasmin::Equal<int64_t>,
+    jasmin::LessThan<int64_t>, AddPointer, LoadProgramArguments,
+    jasmin::Duplicate, AsciiEncode, AsciiDecode, jasmin::Drop, jasmin::Swap,
+    TypeKind, jasmin::Negate<int8_t>, jasmin::Negate<int16_t>,
+    jasmin::Negate<int32_t>, jasmin::Negate<int64_t>, jasmin::Negate<Integer>,
+    jasmin::Negate<float>, jasmin::Negate<double>, ConstructRefinementType,
+    CheckInterfaceSatisfaction>;
+
 using IrFunction = jasmin::Function<InstructionSet>;
+using Program    = jasmin::Program<InstructionSet>;
+
+inline Program global_program;
 
 void Extend(Interface intf, type::Type t);
 

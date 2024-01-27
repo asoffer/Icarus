@@ -1,5 +1,7 @@
 #include "ir/module.h"
 
+#include "absl/strings/str_cat.h"
+
 namespace ic {
 
 Module::Entry const Module::DefaultEntry{
@@ -22,8 +24,12 @@ IrFunction& Module::add_function(size_t parameters, size_t returns) {
 }
 IrFunction& Module::add_function(ModuleId id, size_t parameters,
                                  size_t returns) {
-  auto& f = functions_.emplace_back(parameters, returns);
-  FunctionId fn_id(id, LocalFunctionId(functions_.size() - 1));
+  size_t count = global_program.function_count();
+  auto& f =
+      global_program.declare(absl::StrCat("fn.", count), parameters, returns)
+          .function;
+  NTH_LOG("{}")<<={&f};
+  FunctionId fn_id(id, LocalFunctionId(count));
   global_function_registry.Register(fn_id, &f);
   return f;
 }

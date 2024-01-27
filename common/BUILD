@@ -23,7 +23,7 @@ cc_test(
     srcs = ["errno_test.cc"],
     deps = [
         ":errno",
-        "@asoffer_nth//nth/test:main",
+        "@nth_cc//nth/test:main",
     ]
 )
 
@@ -33,9 +33,9 @@ cc_library(
     srcs = ["file.cc"],
     deps = [
         ":errno",
-        "@asoffer_nth//nth/debug",
-        "@asoffer_nth//nth/io:file",
-        "@asoffer_nth//nth/io:file_path",
+        "@nth_cc//nth/debug",
+        "@nth_cc//nth/io:file",
+        "@nth_cc//nth/io:file_path",
     ],
 )
 
@@ -44,7 +44,7 @@ cc_library(
     hdrs = ["identifier.h"],
     deps = [
         ":strong_identifier_type",
-        "@asoffer_nth//nth/container:flyweight_set",
+        "@nth_cc//nth/container:flyweight_set",
     ],
 )
 
@@ -53,7 +53,9 @@ cc_library(
     hdrs = ["integer.h"],
     deps = [
         ":strong_identifier_type",
-        "@asoffer_nth//nth/container:flyweight_set",
+        "@jasmin//jasmin/serialize:reader",
+        "@jasmin//jasmin/serialize:writer",
+        "@nth_cc//nth/container:flyweight_set",
     ],
 )
 
@@ -62,7 +64,7 @@ cc_test(
     srcs = ["integer_test.cc"],
     deps = [
         ":integer",
-        "@asoffer_nth//nth/test:main",
+        "@nth_cc//nth/test:main",
     ]
 )
 
@@ -72,7 +74,9 @@ cc_library(
     srcs = ["interface.cc"],
     deps = [
         ":strong_identifier_type",
-        "@asoffer_jasmin//jasmin/core:value",
+        "@jasmin//jasmin/core:value",
+        "@jasmin//jasmin/serialize:reader",
+        "@jasmin//jasmin/serialize:writer",
     ],
 )
 
@@ -80,7 +84,9 @@ cc_library(
     name = "module_id",
     hdrs = ["module_id.h"],
     deps = [
-        "@asoffer_jasmin//jasmin/core:value",
+        "@jasmin//jasmin/core:value",
+        "@jasmin//jasmin/serialize:reader",
+        "@jasmin//jasmin/serialize:writer",
     ],
 )
 
@@ -90,7 +96,7 @@ cc_library(
     srcs = ["module_map.cc"],
     deps = [
         ":module_id",
-        "@asoffer_nth//nth/container:flyweight_set",
+        "@nth_cc//nth/container:flyweight_set",
     ],
 )
 
@@ -99,7 +105,7 @@ cc_library(
     hdrs = ["pattern.h"],
     deps = [
         ":any_value",
-        "@asoffer_jasmin//jasmin/core:function",
+        "@jasmin//jasmin/core:function",
     ],
 )
 
@@ -107,11 +113,24 @@ cc_library(
     name = "string",
     hdrs = ["string.h"],
     deps = [
-        "@asoffer_nth//nth/io:string_printer",
-        "@asoffer_nth//nth/strings:interpolate",
-        "@asoffer_nth//nth/strings/format:universal",
+        "@nth_cc//nth/io:string_printer",
+        "@nth_cc//nth/strings:interpolate",
+        "@nth_cc//nth/strings/format:universal",
     ],
 )
+
+cc_library(
+    name = "string_literal",
+    hdrs = ["string_literal.h"],
+    srcs = ["string_literal.cc"],
+    deps = [
+        ":strong_identifier_type",
+        "@jasmin//jasmin/serialize:reader",
+        "@jasmin//jasmin/serialize:writer",
+        "@nth_cc//nth/container:flyweight_set",
+    ],
+)
+
 
 cc_library(
     name = "strong_identifier_type",

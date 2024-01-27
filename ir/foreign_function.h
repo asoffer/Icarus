@@ -17,10 +17,10 @@ IrFunction const* ForeignFunction(std::string const& name,
                                   type::FunctionType t);
 
 nth::flyweight_map<std::pair<size_t, type::FunctionType>,
-                   std::pair<type::FunctionType, IrFunction>> const&
+                   std::pair<type::FunctionType, IrFunction const*>> const&
 AllForeignFunctions();
 
-std::pair<type::FunctionType, IrFunction> const& LookupForeignFunction(
+std::pair<type::FunctionType, IrFunction const*> const& LookupForeignFunction(
     LocalFunctionId id);
 
 IrFunction const& InsertForeignFunction(std::string_view name,

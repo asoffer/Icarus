@@ -1,3 +1,5 @@
 bazel_dep(name = "abseil-cpp", repo_name = "com_google_absl", version = "20230125.1")
-bazel_dep(name = "bazel_skylib", repo_name = "bazel_skylib", version = "1.4.2")
+bazel_dep(name = "bazel_skylib", repo_name = "bazel_skylib", version = "1.5.0")
+bazel_dep(name = "nth-cc", repo_name = "nth_cc", version = "20240125.00")
+bazel_dep(name = "jasmin", repo_name = "jasmin", version = "20240125.01")
 bazel_dep(name = "protobuf", repo_name = "com_google_protobuf", version = "3.19.6")

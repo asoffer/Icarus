@@ -16,7 +16,7 @@
 namespace ic {
 
 struct Module {
-  explicit Module() { functions_.emplace_back(0, 0); }
+  explicit Module() { init_ = &global_program.declare("~", 0, 0).function; }
 
   struct Entry {
     type::QualifiedType qualified_type =
@@ -26,13 +26,8 @@ struct Module {
   Entry const& Lookup(Identifier id) const;
   void Insert(Identifier id, Entry e);
 
-  constexpr IrFunction& initializer() { return functions_[0]; }
-  constexpr IrFunction const& initializer() const { return functions_[0]; }
-
-  constexpr std::deque<IrFunction>& functions() { return functions_; }
-  constexpr std::deque<IrFunction> const& functions() const {
-    return functions_;
-  }
+  constexpr IrFunction& initializer() { return *init_; }
+  constexpr IrFunction const& initializer() const { return *init_; }
 
   IrFunction& add_function(size_t parameters, size_t returns);
   IrFunction& add_function(ModuleId id, size_t parameters, size_t returns);
@@ -45,7 +40,7 @@ struct Module {
   static Entry const DefaultEntry;
 
   absl::flat_hash_map<Identifier, Entry> entries_;
-  std::deque<IrFunction> functions_;
+  IrFunction* init_;
   std::deque<Scope> scopes_;
 };
 

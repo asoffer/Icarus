@@ -17,7 +17,7 @@ namespace ic {
 namespace {
 
 nth::flyweight_map<std::pair<size_t, type::FunctionType>,
-                   std::pair<type::FunctionType, IrFunction>>
+                   std::pair<type::FunctionType, IrFunction const*>>
     foreign_functions;
 
 nth::flyweight_map<std::pair<size_t, type::PointerType>,
@@ -27,7 +27,7 @@ nth::flyweight_map<std::pair<size_t, type::PointerType>,
 }  // namespace
 
 nth::flyweight_map<std::pair<size_t, type::FunctionType>,
-                   std::pair<type::FunctionType, IrFunction>> const&
+                   std::pair<type::FunctionType, IrFunction const*>> const&
 AllForeignFunctions() {
   return foreign_functions;
 }
@@ -38,7 +38,7 @@ AllForeignPointers() {
   return foreign_pointers;
 }
 
-std::pair<type::FunctionType, IrFunction> const& LookupForeignFunction(
+std::pair<type::FunctionType, IrFunction const*> const& LookupForeignFunction(
     LocalFunctionId id) {
   return foreign_functions.from_index(id.value()).second;
 }
@@ -51,10 +51,9 @@ size_t ForeignFunctionIndex(std::string_view name, type::FunctionType t) {
 IrFunction const& InsertForeignFunction(std::string_view name,
                                         type::FunctionType t, bool implement) {
   auto [iter, inserted] = foreign_functions.try_emplace(
-      std::make_pair(resources.StringLiteralIndex(name), t), t,
-      IrFunction(0, 0));
+      std::make_pair(resources.StringLiteralIndex(name), t), t, nullptr);
   if (not inserted) {
-    return iter->second.second;
+    return *iter->second.second;
   }
 
   size_t jasmin_parameter_size = 0;
@@ -65,9 +64,10 @@ IrFunction const& InsertForeignFunction(std::string_view name,
   for (type::Type return_type : t.returns()) {
     jasmin_return_size += type::JasminSize(return_type);
   }
-  auto& fn = iter->second.second;
-  fn.~IrFunction();
-  auto* p = new (&fn) IrFunction(jasmin_parameter_size, jasmin_return_size);
+  auto& fn =
+      global_program
+          .declare(std::string(name), jasmin_parameter_size, jasmin_return_size)
+          .function;
 
   if (implement) {
     dlerror();  // Clear existing errors.
@@ -80,12 +80,13 @@ IrFunction const& InsertForeignFunction(std::string_view name,
          .returns    = static_cast<uint32_t>(t.returns().size())},
         t, result);
   }
-  p->append<jasmin::Return>();
+  fn.append<jasmin::Return>();
   global_function_registry.Register(
       FunctionId(ModuleId::Foreign(),
                  LocalFunctionId(foreign_functions.index(iter))),
-      p);
-  return *p;
+      &fn);
+  iter->second.second = &fn;
+  return fn;
 }
 
 void* InsertForeignPointer(std::string_view name, type::PointerType t) {

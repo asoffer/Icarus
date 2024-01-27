@@ -7,8 +7,8 @@ cc_library(
     deps = [
         ":tree_node_ref",
         "//parse:node_xmacro",
-        "@asoffer_nth//nth/debug",
-        "@asoffer_nth//nth/test",
+        "@nth_cc//nth/debug",
+        "@nth_cc//nth/test",
     ],
 )
 
@@ -20,9 +20,9 @@ cc_library(
         "//parse:node",
         "//parse:node_index",
         "//parse:tree",
-        "@asoffer_nth//nth/base:attributes",
-        "@asoffer_nth//nth/container:stack",
-        "@asoffer_nth//nth/meta:type",
+        "@nth_cc//nth/base:attributes",
+        "@nth_cc//nth/container:stack",
+        "@nth_cc//nth/meta:type",
     ],
 )
 
@@ -33,7 +33,7 @@ COMMON_PARSER_TEST_DEPS = [
     "//lexer",
     "//lexer:token_matchers",
     "//parse:parser",
-    "@asoffer_nth//nth/test:main",
+    "@nth_cc//nth/test:main",
 ]
 
 cc_test(name = "access", srcs = ["access.cc"], deps = COMMON_PARSER_TEST_DEPS)

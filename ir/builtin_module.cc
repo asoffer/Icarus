@@ -17,12 +17,15 @@ IrFunction const &FunctionOrPointer() {
     IrFunction f(1, 1);
     f.append<TypeKind>();
     f.append<jasmin::Duplicate>();
-    f.append<jasmin::Push>(type::Type::Kind::Function);
+    f.append<jasmin::Push<type::Type::Kind>>(type::Type::Kind::Function);
     f.append<jasmin::Equal<type::Type::Kind>>();
     f.append<jasmin::Duplicate>();
-    f.append<jasmin::JumpIf>(6);
+    // TODO: You should be able to appned JumpIf.
+    nth::interval<jasmin::InstructionIndex> jump =
+        f.append_with_placeholders<jasmin::JumpIf>();
+    f.set_value(jump, 0, 6);
     f.append<jasmin::Drop>();
-    f.append<jasmin::Push>(type::Type::Kind::Pointer);
+    f.append<jasmin::Push<type::Type::Kind>>(type::Type::Kind::Pointer);
     f.append<jasmin::Equal<type::Type::Kind>>();
     f.append<jasmin::Return>();
     return f;

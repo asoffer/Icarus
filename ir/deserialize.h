@@ -14,8 +14,6 @@ struct Deserializer {
   Deserializer(DependentModules& dm NTH_ATTRIBUTE(lifetimebound))
       : dependent_modules_(dm) {}
   bool Deserialize(ModuleProto const& proto, ModuleId id, Module& module);
-  bool DeserializeFunction(ModuleProto const& m, FunctionProto const& proto,
-                           IrFunction& f);
 
   // Populates `dm` from the given collection of serialized modules. Serialized
   // modules must constitute all transitive dependencies of the

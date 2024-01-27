@@ -26,7 +26,7 @@ cc_library(
         ":token",
         ":token_buffer",
         "//diagnostics/consumer",
-        "@asoffer_nth//nth/debug",
+        "@nth_cc//nth/debug",
     ],
 )
 
@@ -37,7 +37,7 @@ cc_test(
         ":lexer",
         ":token_matchers",
         "//diagnostics/consumer:null",
-        "@asoffer_nth//nth/test:main",
+        "@nth_cc//nth/test:main",
     ],
 )
 
@@ -56,7 +56,7 @@ cc_library(
     deps = [
         ":token",
         "//common:identifier",
-        "@asoffer_nth//nth/debug/property",
+        "@nth_cc//nth/debug/property",
     ],
 )
 
@@ -68,10 +68,10 @@ cc_library(
         ":token_kind_xmacro",
         "//common:identifier",
         "//common:integer",
-        "@asoffer_nth//nth/debug",
-        "@asoffer_nth//nth/io:printer",
-        "@asoffer_nth//nth/strings:interpolate",
-        "@asoffer_nth//nth/strings/format:universal",
+        "@nth_cc//nth/debug",
+        "@nth_cc//nth/io:printer",
+        "@nth_cc//nth/strings:interpolate",
+        "@nth_cc//nth/strings/format:universal",
     ],
 )
 
@@ -80,10 +80,10 @@ cc_test(
     srcs = ["token_test.cc"],
     deps = [
         ":token",
-        "@asoffer_nth//nth/test:main",
-        "@asoffer_nth//nth/io:string_printer",
-        "@asoffer_nth//nth/strings:interpolate",
-        "@asoffer_nth//nth/strings/format:universal",
+        "@nth_cc//nth/test:main",
+        "@nth_cc//nth/io:string_printer",
+        "@nth_cc//nth/strings:interpolate",
+        "@nth_cc//nth/strings/format:universal",
     ],
 )
 
@@ -95,7 +95,7 @@ cc_library(
         "//common:resources",
         ":token",
         "//diagnostics/consumer",
-        "@asoffer_nth//nth/container:flyweight_set",
-        "@asoffer_nth//nth/debug",
+        "@nth_cc//nth/container:flyweight_set",
+        "@nth_cc//nth/debug",
     ],
 )

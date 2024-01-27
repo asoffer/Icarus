@@ -10,7 +10,7 @@ cc_test(
     srcs = ["alignment_test.cc"],
     deps = [
         ":alignment",
-        "@asoffer_nth//nth/test:main",
+        "@nth_cc//nth/test:main",
     ]
 )
 
@@ -20,8 +20,10 @@ cc_library(
     deps = [
         ":type_contour",
         "//common/language:type_kind",
-        "@asoffer_jasmin//jasmin/core:value",
-        "@asoffer_nth//nth/debug",
+        "@jasmin//jasmin/core:value",
+        "@jasmin//jasmin/serialize:reader",
+        "@jasmin//jasmin/serialize:writer",
+        "@nth_cc//nth/debug",
     ],
 )
 
@@ -39,7 +41,7 @@ cc_test(
     srcs = ["byte_width_test.cc"],
     deps = [
         ":byte_width",
-        "@asoffer_nth//nth/test:main",
+        "@nth_cc//nth/test:main",
     ]
 )
 
@@ -73,11 +75,11 @@ cc_library(
         ":function",
         ":refinement",
         "//common:any_value",
-        "@asoffer_jasmin//jasmin/core:function",
-        "@asoffer_jasmin//jasmin/core:value",
-        "@asoffer_nth//nth/container:flyweight_set",
-        "@asoffer_nth//nth/container:interval",
-        "@asoffer_nth//nth/debug",
+        "@jasmin//jasmin/core:function",
+        "@jasmin//jasmin/core:value",
+        "@nth_cc//nth/container:flyweight_set",
+        "@nth_cc//nth/container:interval",
+        "@nth_cc//nth/debug",
     ],
 )
 
@@ -90,10 +92,10 @@ cc_test(
         ":primitive",
         ":type",
         "//common:any_value",
-        "@asoffer_jasmin//jasmin/core:value",
-        "@asoffer_jasmin//jasmin/instructions:arithmetic",
-        "@asoffer_jasmin//jasmin/instructions:common",
-        "@asoffer_nth//nth/test:main",
+        "@jasmin//jasmin/core:value",
+        "@jasmin//jasmin/instructions:arithmetic",
+        "@jasmin//jasmin/instructions:common",
+        "@nth_cc//nth/test:main",
     ]
 )
 
@@ -105,7 +107,7 @@ cc_library(
         ":parameters",
         ":type_system_cc_proto",
         "//common/language:type_kind",
-        "@asoffer_nth//nth/debug",
+        "@nth_cc//nth/debug",
     ],
 )
 
@@ -115,7 +117,7 @@ cc_library(
     deps = [
         ":basic",
         "//common/language:type_kind",
-        "@asoffer_nth//nth/debug",
+        "@nth_cc//nth/debug",
     ],
 )
 
@@ -125,7 +127,7 @@ cc_library(
     deps = [
         ":basic",
         "//common/language:type_kind",
-        "@asoffer_nth//nth/debug",
+        "@nth_cc//nth/debug",
     ],
 )
 
@@ -144,7 +146,7 @@ cc_library(
     deps = [
         ":basic",
         "//common/language:type_kind",
-        "@asoffer_nth//nth/debug",
+        "@nth_cc//nth/debug",
     ],
 )
 
@@ -155,7 +157,7 @@ cc_library(
         ":basic",
         "//common/language:primitive_types",
         "//common/language:type_kind",
-        "@asoffer_nth//nth/debug",
+        "@nth_cc//nth/debug",
     ],
 )
 
@@ -168,8 +170,8 @@ cc_library(
         "//common/language:type_kind",
         "//common:any_value",
         "//common:pattern",
-        "@asoffer_jasmin//jasmin/core:function",
-        "@asoffer_nth//nth/debug",
+        "@jasmin//jasmin/core:function",
+        "@nth_cc//nth/debug",
     ],
 )
 
@@ -203,9 +205,9 @@ cc_library(
         ":type_system_cc_proto",
         "//common/language:type_kind",
         "//common:pattern",
-        "@asoffer_nth//nth/container:flyweight_set",
-        "@asoffer_nth//nth/debug",
-        "@asoffer_nth//nth/utility:no_destructor",
+        "@nth_cc//nth/container:flyweight_set",
+        "@nth_cc//nth/debug",
+        "@nth_cc//nth/utility:no_destructor",
     ],
 )
 
@@ -234,6 +236,6 @@ cc_test(
     srcs = ["type_test.cc"],
     deps = [
         ":type",
-        "@asoffer_nth//nth/test:main",
+        "@nth_cc//nth/test:main",
     ]
 )

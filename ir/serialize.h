@@ -9,7 +9,6 @@ namespace ic {
 
 struct Serializer {
   void Serialize(Module& module, ModuleProto& proto);
-  void SerializeFunction(IrFunction const& function, FunctionProto& proto);
 };
 
 }  // namespace ic

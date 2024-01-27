@@ -46,29 +46,30 @@ T Read(ffi_arg const& value) {
 
 }  // namespace
 
-std::array<jasmin::Value, 2> LoadProgramArguments::execute(
-    std::span<jasmin::Value, 0>) {
+void LoadProgramArguments::execute(
+    jasmin::Input<> in, jasmin::Output<std::byte const*, uint64_t> out) {
   Slice arguments = ProgramArguments();
-  return {jasmin::Value(arguments.data()), jasmin::Value(arguments.count())};
+  out.set(arguments.data(), arguments.count());
 }
 
-jasmin::Value RegisterForeignFunction::consume(std::span<jasmin::Value, 3> inputs) {
-  char const* data = inputs[0].as<char const*>();
-  size_t length    = inputs[1].as<size_t>();
-  type::Type t     = inputs[2].as<type::Type>();
+void RegisterForeignFunction::consume(
+    jasmin::Input<char const*, size_t, type::Type> in,
+    jasmin::Output<void const*> out) {
+  auto [data, length, t] = in;
   if (t.kind() == type::Type::Kind::Function) {
     auto const& f = InsertForeignFunction(std::string_view(data, length),
                                           t.AsFunction(), false);
-    return &f;
+    out.set(&f);
   } else {
-    return InsertForeignPointer(std::string_view(data, length), t.AsPointer());
+    out.set(
+        InsertForeignPointer(std::string_view(data, length), t.AsPointer()));
   }
 }
 
 void InvokeForeignFunction::consume(std::span<jasmin::Value> input,
                                     std::span<jasmin::Value> output,
                                     type::FunctionType type,
-                                    void const* fn_ptr) {
+VoidConstPtr fn_ptr) {
   std::span returns      = type.returns();
   auto const& parameters = *type.parameters();
   auto parameter_iter    = parameters.begin();
@@ -96,7 +97,7 @@ void InvokeForeignFunction::consume(std::span<jasmin::Value> input,
 
   ffi_arg return_value;
   ffi_call(&call_interface,
-           reinterpret_cast<void (*)()>(const_cast<void*>(fn_ptr)),
+           reinterpret_cast<void (*)()>(const_cast<void*>(fn_ptr.ptr())),
            &return_value, argument_values.data());
 
   if (not returns.empty()) {
@@ -129,28 +130,29 @@ void InvokeForeignFunction::consume(std::span<jasmin::Value> input,
   }
 }
 
-type::Type ConstructFunctionType::consume(std::span<jasmin::Value, 2> inputs) {
-  auto parameter   = inputs[0].as<type::Type>();
-  auto return_type = inputs[1].as<type::Type>();
+void ConstructFunctionType::consume(jasmin::Input<type::Type, type::Type> in,
+                                    jasmin::Output<type::Type> out) {
+  auto [parameter, return_type] = in;
   std::vector<type::Type> returns;
   if (return_type != type::Bottom) { returns.push_back(return_type); }
   if (parameter.kind() == type::Type::Kind::Parameters) {
-    return type::Function(parameter.AsParameters(), std::move(returns));
+    out.set(type::Function(parameter.AsParameters(), std::move(returns)));
   } else {
-    return type::Function(
+    out.set(type::Function(
         type::Parameters({{.name = Identifier("").value(), .type = parameter}}),
-        std::move(returns));
+        std::move(returns)));
   }
 }
 
 absl::node_hash_map<Interface, IrFunction> satisfaction;
 absl::flat_hash_map<type::Type, absl::flat_hash_set<Interface>> extensions;
 
-bool CheckInterfaceSatisfaction::consume(std::span<jasmin::Value, 1> input,
+void CheckInterfaceSatisfaction::consume(jasmin::Input<type::Type> in,
+                                         jasmin::Output<bool> out,
                                          Interface intf) {
-  auto iter = extensions.find(input[0].as<type::Type>());
-  if (iter == extensions.end()) { return false; }
-  return iter->second.contains(intf);
+  auto iter = extensions.find(in.get<0>());
+  if (iter == extensions.end()) { out.set(false); }
+  out.set(iter->second.contains(intf));
 }
 
 void Extend(Interface intf, type::Type t) { extensions[t].insert(intf); }
