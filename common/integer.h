@@ -4,8 +4,6 @@
 #include <cstdint>
 
 #include "common/strong_identifier_type.h"
-#include "jasmin/serialize/reader.h"
-#include "jasmin/serialize/writer.h"
 #include "nth/container/flyweight_set.h"
 #include "nth/debug/debug.h"
 
@@ -60,13 +58,6 @@ struct Integer : private StrongIdentifierType<Integer, uint32_t> {
   static Integer FromRepresentation(uint32_t n) { return Integer(raw_t{}, n); }
   static uint32_t ToRepresentation(Integer n) { return n.value(); }
 
-  friend void JasminSerialize(jasmin::Writer auto&, Integer) {
-    NTH_UNIMPLEMENTED();
-  }
-  friend bool JasminDeserialize(jasmin::Reader auto&, Integer&) {
-    NTH_UNIMPLEMENTED();
-  }
-
   friend bool operator==(Integer lhs, Integer rhs) {
     return lhs.value() == rhs.value();
   }
@@ -116,7 +107,15 @@ struct Integer : private StrongIdentifierType<Integer, uint32_t> {
     }
   }
 
- private:
+  friend bool NthSerialize(auto &, Integer) {
+    NTH_UNIMPLEMENTED();
+    return true;
+  }
+
+  friend bool NthDeserialize(auto &, Integer&) {
+    NTH_UNIMPLEMENTED();
+    return true;
+  }
 };
 
 }  // namespace ic

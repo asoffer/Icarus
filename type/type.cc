@@ -22,7 +22,7 @@ uint64_t opaque_count = 0;
   Type::Type(kind##Type t) : data_(t.data_) {}
 #include "common/language/type_kind.xmacro.h"
 
-TypeSystem const& GlobalTypeSystem() { return *type_system; }
+TypeSystem& GlobalTypeSystem() { return *type_system; }
 
 #define IC_XMACRO_TYPE_KIND(k)                                                 \
   static_assert(sizeof(Type) == sizeof(k##Type));                              \
@@ -37,12 +37,11 @@ TypeSystem const& GlobalTypeSystem() { return *type_system; }
 #include "common/language/type_kind.xmacro.h"
 
 ParametersType Parameters(std::vector<ParametersType::Parameter> const& p) {
-  return ParametersType(
-      type_system->parameters.index(type_system->parameters.insert(p).first));
+  return type_system->parameter_type(p);
 }
+
 ParametersType Parameters(std::vector<ParametersType::Parameter>&& p) {
-  return ParametersType(type_system->parameters.index(
-      type_system->parameters.insert(std::move(p)).first));
+  return type_system->parameter_type(std::move(p));
 }
 
 FunctionType Function(ParametersType pt, std::vector<Type>&& r, Evaluation e) {
@@ -60,20 +59,9 @@ FunctionType Function(ParametersType pt, std::vector<Type> const& r,
       type_system->functions.insert({pt, rt, e}).first));
 }
 
-SliceType Slice(Type t) {
-  return SliceType(type_system->slice_element_types.index(
-      type_system->slice_element_types.insert(t).first));
-}
-
-PointerType Ptr(Type t) {
-  return PointerType(type_system->pointee_types.index(
-      type_system->pointee_types.insert(t).first));
-}
-
-BufferPointerType BufPtr(Type t) {
-  return BufferPointerType(type_system->buffer_pointee_types.index(
-      type_system->buffer_pointee_types.insert(t).first));
-}
+SliceType Slice(Type t) { return type_system->slice_type(t); }
+PointerType Ptr(Type t) { return type_system->pointer_type(t); }
+BufferPointerType BufPtr(Type t) { return type_system->buffer_pointer_type(t); }
 
 PatternType Pattern(Type t) {
   return PatternType(type_system->pattern_match_types.index(
@@ -248,11 +236,6 @@ std::optional<Type> DependentFunctionType::operator()(
   }
   if (auto* v = term_copy.evaluate()) { return v->value()[0].as<Type>(); }
   return std::nullopt;
-}
-
-Type Family(Type t) {
-  return Function(
-      Parameters(std::vector<ParametersType::Parameter>{{.type = t}}), {Type_});
 }
 
 }  // namespace ic::type

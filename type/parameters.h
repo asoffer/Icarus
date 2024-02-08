@@ -10,6 +10,8 @@ namespace ic::type {
 
 // Represents a set of parameters to an invocable type.
 struct ParametersType : internal_type::BasicType {
+  explicit ParametersType() = default;
+
   struct Parameter {
     uint64_t name;
     Type type;
@@ -39,13 +41,21 @@ struct ParametersType : internal_type::BasicType {
     }
   }
 
+  friend bool NthSerialize(auto& s, ParametersType pt) {
+    return nth::io::serialize(s, Type(pt));
+  }
+
+  friend bool NthDeserialize(auto& d, ParametersType& pt) {
+    Type t;
+    if (not nth::io::deserialize(d, t)) { return false; }
+    pt = t.AsParameters();
+    return true;
+  }
+
  private:
   friend Type;
-  friend ParametersType Parameters(std::vector<ParametersType::Parameter>&&);
-  friend ParametersType Parameters(
-      std::vector<ParametersType::Parameter> const&);
+  friend struct TypeSystem;
 
-  explicit ParametersType() = default;
   explicit constexpr ParametersType(uint64_t n)
       : internal_type::BasicType(Type::Kind::Parameters, n) {}
 };
@@ -53,7 +63,6 @@ struct ParametersType : internal_type::BasicType {
 ParametersType Parameters(std::vector<ParametersType::Parameter>&& p);
 ParametersType Parameters(std::vector<ParametersType::Parameter> const& p);
 
-
 }  // namespace ic::type
 
-#endif // ICARUS_TYPE_PARAMETERS_H
+#endif  // ICARUS_TYPE_PARAMETERS_H

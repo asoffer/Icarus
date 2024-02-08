@@ -28,6 +28,21 @@ cc_test(
 )
 
 cc_library(
+    name = "foreign_function",
+    hdrs = ["foreign_function.h"],
+    srcs = ["foreign_function.cc"],
+    deps = [
+        ":string_literal",
+        ":strong_identifier_type",
+        "//type:function",
+        "@nth_cc//nth/container:flyweight_map",
+        "@nth_cc//nth/io/serialize",
+        "@nth_cc//nth/io/serialize:deserialize",
+        "@com_google_absl//absl/container:flat_hash_map",
+    ],
+)
+
+cc_library(
     name = "file",
     hdrs = ["file.h"],
     srcs = ["file.cc"],
@@ -53,8 +68,6 @@ cc_library(
     hdrs = ["integer.h"],
     deps = [
         ":strong_identifier_type",
-        "@jasmin//jasmin/serialize:reader",
-        "@jasmin//jasmin/serialize:writer",
         "@nth_cc//nth/container:flyweight_set",
     ],
 )
@@ -75,8 +88,6 @@ cc_library(
     deps = [
         ":strong_identifier_type",
         "@jasmin//jasmin/core:value",
-        "@jasmin//jasmin/serialize:reader",
-        "@jasmin//jasmin/serialize:writer",
     ],
 )
 
@@ -85,8 +96,6 @@ cc_library(
     hdrs = ["module_id.h"],
     deps = [
         "@jasmin//jasmin/core:value",
-        "@jasmin//jasmin/serialize:reader",
-        "@jasmin//jasmin/serialize:writer",
     ],
 )
 
@@ -125,8 +134,8 @@ cc_library(
     srcs = ["string_literal.cc"],
     deps = [
         ":strong_identifier_type",
-        "@jasmin//jasmin/serialize:reader",
-        "@jasmin//jasmin/serialize:writer",
+        "@nth_cc//nth/io/serialize",
+        "@nth_cc//nth/io/serialize:deserialize",
         "@nth_cc//nth/container:flyweight_set",
     ],
 )

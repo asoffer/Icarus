@@ -28,6 +28,9 @@ struct StrongIdentifierType {
   underlying_type const &value() const & { return value_; }
   underlying_type &&value() && { return std::move(value_); }
 
+ protected:
+  underlying_type &mutable_value() & { return value_; }
+
  private:
   underlying_type value_;
 };

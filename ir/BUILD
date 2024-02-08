@@ -42,19 +42,21 @@ cc_library(
 cc_library(
     name = "deserialize",
     hdrs = ["deserialize.h"],
-    srcs = ["deserialize.cc"],
     deps = [
         ":builtin_module",
         ":dependent_modules",
         ":function",
         ":module",
-        ":module_cc_proto",
+        "//common:foreign_function",
+        "//common:string_literal",
         "//type:deserialize",
-        "@jasmin//jasmin/serialize:deserialize",
-        "@jasmin//jasmin/serialize:string_reader",
+        "@jasmin//jasmin/core:serialization",
         "@nth_cc//nth/base:attributes",
+        "@nth_cc//nth/container:black_hole",
         "@nth_cc//nth/debug",
         "@nth_cc//nth/debug/log",
+        "@nth_cc//nth/io/serialize:deserialize",
+        "@nth_cc//nth/io/serialize:string_reader",
     ],
 )
 
@@ -81,8 +83,6 @@ cc_library(
         "//type",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/container:btree",
-        "@jasmin//jasmin/instructions:arithmetic",
-        "@jasmin//jasmin/core:function",
         "@nth_cc//nth/debug",
         "@nth_cc//nth/debug/log",
         "@nth_cc//nth/container:interval_map",
@@ -133,7 +133,6 @@ cc_library(
         "@jasmin//jasmin/instructions:common",
         "@jasmin//jasmin/instructions:compare",
         "@jasmin//jasmin/instructions:stack",
-        "@jasmin//jasmin/serialize:writer",
         "@nth_cc//nth/container:flyweight_map",
     ],
 )
@@ -204,20 +203,6 @@ cc_library(
     ],
 )
 
-proto_library(
-    name = "module_proto",
-    srcs = ["module.proto"],
-    deps = [
-        "//type:type_system_proto",
-    ],
-)
-
-cc_proto_library(
-    name = "module_cc_proto",
-    visibility = ["//visibility:public"],
-    deps = [":module_proto"],
-)
-
 cc_library(
     name = "program_arguments",
     hdrs = ["program_arguments.h"],
@@ -257,17 +242,16 @@ cc_library(
 cc_library(
     name = "serialize",
     hdrs = ["serialize.h"],
-    srcs = ["serialize.cc"],
     deps = [
         ":function",
         ":module",
-        ":module_cc_proto",
-        "//common:resources",
-        "//type:serialize",
-        "@jasmin//jasmin/serialize",
-        "@jasmin//jasmin/serialize:string_writer",
+        "//common:foreign_function",
+        "//common:string_literal",
+        "@jasmin//jasmin/core:serialization",
         "@nth_cc//nth/debug",
         "@nth_cc//nth/debug/log",
+        "@nth_cc//nth/io/serialize",
+        "@nth_cc//nth/io/serialize:string_writer",
     ],
 )
 

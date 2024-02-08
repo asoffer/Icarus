@@ -1,7 +1,6 @@
 common \
   --color=yes \
   --experimental_enable_bzlmod \
-  --experimental_enable_bzlmod \
   --registry=https://raw.githubusercontent.com/asoffer/bazel-registry/main \
   --registry=https://bcr.bazel.build
 build \

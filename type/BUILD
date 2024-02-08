@@ -21,9 +21,10 @@ cc_library(
         ":type_contour",
         "//common/language:type_kind",
         "@jasmin//jasmin/core:value",
-        "@jasmin//jasmin/serialize:reader",
-        "@jasmin//jasmin/serialize:writer",
         "@nth_cc//nth/debug",
+        "@nth_cc//nth/io/serialize",
+        "@nth_cc//nth/io/serialize:deserialize",
+        "@nth_cc//nth/io/serialize:reader",
     ],
 )
 
@@ -59,10 +60,12 @@ cc_library(
 cc_library(
     name = "deserialize",
     hdrs = ["deserialize.h"],
-    srcs = ["deserialize.cc"],
     deps = [
+        ":parameters",
         ":type",
-        ":type_system_cc_proto",
+        "@nth_cc//nth/io/serialize:deserialize",
+        "@nth_cc//nth/io/serialize:reader",
+        "@nth_cc//nth/meta:concepts",
     ],
 )
 
@@ -105,9 +108,10 @@ cc_library(
     deps = [
         ":basic",
         ":parameters",
-        ":type_system_cc_proto",
         "//common/language:type_kind",
         "@nth_cc//nth/debug",
+        "@nth_cc//nth/io/serialize:deserialize",
+        "@nth_cc//nth/io/serialize",
     ],
 )
 
@@ -175,13 +179,31 @@ cc_library(
     ],
 )
 
+cc_test(
+    name = "round_trip_test",
+    srcs = ["round_trip_test.cc"],
+    deps = [
+        ":deserialize",
+        ":serialize",
+        ":type",
+        ":type_system",
+        "@nth_cc//nth/io/serialize",
+        "@nth_cc//nth/io/serialize:deserialize",
+        "@nth_cc//nth/io/serialize:string_reader",
+        "@nth_cc//nth/io/serialize:string_writer",
+        "@nth_cc//nth/test:main",
+    ],
+)
+
 cc_library(
     name = "serialize",
     hdrs = ["serialize.h"],
-    srcs = ["serialize.cc"],
     deps = [
+        ":parameters",
         ":type",
-        ":type_system_cc_proto",
+        "@nth_cc//nth/io/serialize",
+        "@nth_cc//nth/io/serialize:writer",
+        "@nth_cc//nth/meta:concepts",
     ],
 )
 
@@ -190,21 +212,7 @@ cc_library(
     hdrs = ["type.h"],
     srcs = ["type.cc"],
     deps = [
-        ":alignment",
-        ":basic",
-        ":byte_width",
-        ":dependent",
-        ":function",
-        ":opaque",
-        ":parameters",
-        ":pattern",
-        ":pointer",
-        ":primitive",
-        ":refinement",
-        ":type_contour",
-        ":type_system_cc_proto",
-        "//common/language:type_kind",
-        "//common:pattern",
+        ":type_system",
         "@nth_cc//nth/container:flyweight_set",
         "@nth_cc//nth/debug",
         "@nth_cc//nth/utility:no_destructor",
@@ -220,22 +228,46 @@ cc_library(
     ],
 )
 
-proto_library(
-    name = "type_system_proto",
-    srcs = ["type_system.proto"],
-    deps = [],
-)
-
-cc_proto_library(
-    name = "type_system_cc_proto",
-    deps = [":type_system_proto"],
-)
-
 cc_test(
     name = "type_test",
     srcs = ["type_test.cc"],
     deps = [
         ":type",
+        "@nth_cc//nth/test:main",
+    ]
+)
+
+cc_library(
+    name = "type_system",
+    hdrs = ["type_system.h"],
+    srcs = ["type_system.cc"],
+    deps = [
+        ":alignment",
+        ":basic",
+        ":byte_width",
+        ":dependent",
+        ":function",
+        ":opaque",
+        ":parameters",
+        ":pattern",
+        ":pointer",
+        ":primitive",
+        ":refinement",
+        ":type_contour",
+        "//common/language:type_kind",
+        "//common:pattern",
+        "@nth_cc//nth/container:flyweight_set",
+        "@nth_cc//nth/debug",
+        "@nth_cc//nth/utility:no_destructor",
+    ],
+)
+
+cc_test(
+    name = "type_system_test",
+    srcs = ["type_system_test.cc"],
+    deps = [
+        ":type",
+        ":type_system",
         "@nth_cc//nth/test:main",
     ]
 )

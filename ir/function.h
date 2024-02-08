@@ -21,7 +21,6 @@
 #include "jasmin/instructions/common.h"
 #include "jasmin/instructions/compare.h"
 #include "jasmin/instructions/stack.h"
-#include "jasmin/serialize/writer.h"
 #include "type/basic.h"
 #include "type/function.h"
 #include "type/opaque.h"
@@ -49,11 +48,15 @@ struct Store : jasmin::Instruction<Store> {
 struct VoidConstPtr {
   VoidConstPtr(void const* ptr = nullptr) : ptr_(ptr) {}
   void const* ptr() const { return ptr_; }
-  friend void JasminSerialize(jasmin::Writer auto&, VoidConstPtr s) {
+
+  friend bool NthSerialize(auto&, VoidConstPtr) {
     NTH_UNIMPLEMENTED();
+    return true;
   }
-  friend bool JasminDeserialize(jasmin::Reader auto&, VoidConstPtr& s) {
+
+  friend bool NthDeserialize(auto&, VoidConstPtr&) {
     NTH_UNIMPLEMENTED();
+    return true;
   }
 
  private:

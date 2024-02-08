@@ -5,9 +5,10 @@
 #include <utility>
 #include <vector>
 
+#include "nth/io/serialize/deserialize.h"
+#include "nth/io/serialize/serialize.h"
 #include "type/basic.h"
 #include "type/parameters.h"
-#include "type/type_system.pb.h"
 
 namespace ic::type {
 
@@ -39,20 +40,19 @@ struct FunctionType : internal_type::BasicType {
     if (returns.size() != 1) { p.write(")"); }
   }
 
-  friend void JasminSerialize(jasmin::Writer auto& w, FunctionType t) {
-    JasminSerialize(w, Type(t));
+  friend bool NthSerialize(auto& s, FunctionType ft) {
+    return nth::io::serialize(s, Type(ft));
   }
-  friend bool JasminDeserialize(jasmin::Reader auto& r, FunctionType& ft) {
+
+  friend bool NthDeserialize(auto& d, FunctionType& ft) {
     Type t;
-    if (not JasminDeserialize(r, t)) { return false; }
+    if (not nth::io::deserialize(d, t)) { return false; }
     ft = t.AsFunction();
     return true;
   }
 
  private:
   friend Type;
-  friend void SerializeTypeSystem(TypeSystemProto&);
-  friend void DeserializeTypeSystem(TypeSystemProto const&);
   friend FunctionType Function(ParametersType, std::vector<Type>&&, Evaluation);
   friend FunctionType Function(ParametersType, std::vector<Type> const&,
                                Evaluation);

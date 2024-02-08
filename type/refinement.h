@@ -4,7 +4,6 @@
 #include "common/any_value.h"
 #include "common/pattern.h"
 #include "type/basic.h"
-#include "type/type_system.pb.h"
 
 namespace ic::type {
 
@@ -22,8 +21,6 @@ struct RefinementType : internal_type::BasicType {
 
  private:
   friend Type;
-  friend void SerializeTypeSystem(TypeSystemProto&);
-  friend Type Deserialize(TypeProto const&, TypeSystemProto const&);
   friend RefinementType Refinement(Type, ::ic::Pattern p);
 
   explicit constexpr RefinementType(uint64_t n)

@@ -17,7 +17,7 @@ struct PointerType : internal_type::BasicType {
 
  private:
   friend Type;
-  friend PointerType Ptr(Type);
+  friend struct TypeSystem;
 
   explicit PointerType() = default;
   explicit constexpr PointerType(uint64_t n)
@@ -36,7 +36,7 @@ struct BufferPointerType : internal_type::BasicType {
 
  private:
   friend Type;
-  friend BufferPointerType BufPtr(Type);
+  friend struct TypeSystem;
 
   explicit BufferPointerType() = default;
   explicit constexpr BufferPointerType(uint64_t n)
@@ -55,9 +55,7 @@ struct SliceType : internal_type::BasicType {
 
  private:
   friend Type;
-  friend void SerializeTypeSystem(TypeSystemProto& );
-  friend void DeserializeTypeSystem(TypeSystemProto const& );
-  friend SliceType Slice(Type);
+  friend struct TypeSystem;
 
   explicit SliceType() = default;
   explicit constexpr SliceType(uint64_t n) : BasicType(Type::Kind::Slice, n) {}

@@ -23,4 +23,6 @@ std::string_view StringLiteral::str() const {
   return strings.from_index(index());
 }
 
+nth::flyweight_set<std::string> const &StringLiteral::All() { return strings; }
+
 }  // namespace ic

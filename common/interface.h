@@ -7,8 +7,6 @@
 
 #include "common/strong_identifier_type.h"
 #include "jasmin/core/value.h"
-#include "jasmin/serialize/reader.h"
-#include "jasmin/serialize/writer.h"
 
 namespace ic {
 
@@ -31,11 +29,14 @@ struct Interface : StrongIdentifierType<Interface, uint32_t> {
     return true;
   }
 
-  friend bool JasminDeserialize(jasmin::Reader auto &r, Interface &) {
+  friend bool NthSerialize(auto &, Interface) {
     NTH_UNIMPLEMENTED();
+    return true;
   }
-  friend void JasminSerialize(jasmin::Writer auto &w, Interface) {
+
+  friend bool NthDeserialize(auto &, Interface &) {
     NTH_UNIMPLEMENTED();
+    return true;
   }
 };
 

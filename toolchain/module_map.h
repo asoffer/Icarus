@@ -2,14 +2,15 @@
 #define ICARUS_TOOLCHAIN_MODULE_MAP_H
 
 #include <optional>
+#include <string>
 #include <vector>
 
-#include "ir/module.pb.h"
+#include "ir/module.h"
 #include "nth/io/file_path.h"
 
 namespace ic {
 
-std::optional<std::vector<ModuleProto>> PopulateModuleMap(
+std::optional<std::vector<Module>> PopulateModuleMap(
     nth::file_path const& module_map_file);
 
 }  // namespace ic

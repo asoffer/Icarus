@@ -13,9 +13,6 @@
 
 namespace ic {
 
-IrFunction const* ForeignFunction(std::string const& name,
-                                  type::FunctionType t);
-
 nth::flyweight_map<std::pair<size_t, type::FunctionType>,
                    std::pair<type::FunctionType, IrFunction const*>> const&
 AllForeignFunctions();

@@ -22,9 +22,6 @@ struct DependentModules {
   size_t count() const { return modules_.size(); }
 
  private:
-  // TODO: Expose what's necessary.
-  friend struct Deserializer;
-
   // All module that the currently-being-compiled module depends on
   // transitively. Modules are ordered according to some topological sorting
   // so that if `b` depends on `a`, then `a` appears before `b`.

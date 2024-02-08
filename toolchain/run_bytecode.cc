@@ -6,23 +6,23 @@
 #include "absl/debugging/failure_signal_handler.h"
 #include "absl/debugging/symbolize.h"
 #include "common/debug.h"
+#include "common/file.h"
 #include "common/string.h"
 #include "diagnostics/consumer/streaming.h"
 #include "diagnostics/message.h"
 #include "ir/dependent_modules.h"
 #include "ir/deserialize.h"
 #include "ir/module.h"
-#include "ir/module.pb.h"
 #include "ir/program_arguments.h"
 #include "jasmin/core/function.h"
 #include "jasmin/core/value.h"
-#include "lexer/token_buffer.h"
 #include "nth/commandline/commandline.h"
 #include "nth/container/stack.h"
 #include "nth/debug/log/log.h"
 #include "nth/debug/log/stderr_log_sink.h"
 #include "nth/io/file.h"
 #include "nth/io/file_path.h"
+#include "nth/io/serialize/string_reader.h"
 #include "nth/process/exit_code.h"
 #include "toolchain/module_map.h"
 
@@ -39,60 +39,29 @@ nth::exit_code Run(nth::FlagValueSet flags, std::span<std::string_view const> ar
   auto const* debug_run       = flags.try_get<bool>("debug-run");
   if (debug_run) { ic::debug::run = *debug_run; }
 
-  std::ifstream in(input.path());
-
   SetProgramArguments(
       std::vector<std::string>(arguments.begin(), arguments.end()));
 
   diag::StreamingConsumer consumer;
 
-  if (not in.is_open()) {
-    consumer.Consume({
-        diag::Header(diag::MessageKind::Error),
-        diag::Text(
-            InterpolateString<"Failed to load the content from {}.">(input)),
-    });
-    return nth::exit_code::generic_error;
-  }
-
-  ModuleProto proto;
-  Module module;
-
-  TokenBuffer token_buffer;
-
-  std::optional dependent_module_protos = PopulateModuleMap(module_map_path);
-  if (not dependent_module_protos) {
+  std::optional dependent_modules = PopulateModuleMap(module_map_path);
+  if (not dependent_modules) {
     consumer.Consume({
         diag::Header(diag::MessageKind::Error),
         diag::Text(InterpolateString<
                    "Failed to load the content from the module map file {}.">(
             module_map_path)),
     });
-
     return nth::exit_code::generic_error;
   }
 
-  DependentModules dependencies;
-  Deserializer d(dependencies);
-  if (not d.DeserializeDependentModules(*dependent_module_protos,
-                                        dependencies)) {
-    consumer.Consume({diag::Header(diag::MessageKind::Error),
-                      diag::Text("Failed to deserialize dependent modules.")});
+  std::optional serialized_content = ReadFileToString(input);
+  if (not serialized_content) { return nth::exit_code::generic_error; }
+  ModuleDeserializer<nth::io::string_reader> deserializer(*serialized_content);
+  Module module;
+  if (not nth::io::deserialize(deserializer, module)) {
     return nth::exit_code::generic_error;
   }
-
-  if (not proto.ParseFromIstream(&in) or
-      not d.Deserialize(proto, ModuleId::Current(), module)) {
-    NTH_LOG((v.debug), "{}") <<= {proto.DebugString()};
-    consumer.Consume({
-        diag::Header(diag::MessageKind::Error),
-        diag::Text(
-            InterpolateString<"Failed to parse the module content from {}.">(
-                input)),
-    });
-    return nth::exit_code::generic_error;
-  }
-  NTH_LOG((v.when(debug::run)), "{}") <<= {proto.DebugString()};
 
   nth::stack<jasmin::Value> value_stack;
   module.initializer().invoke(value_stack);

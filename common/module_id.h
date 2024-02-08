@@ -6,8 +6,6 @@
 #include <utility>
 
 #include "jasmin/core/value.h"
-#include "jasmin/serialize/writer.h"
-#include "jasmin/serialize/reader.h"
 
 namespace ic {
 
@@ -42,11 +40,14 @@ struct ModuleId {
     }
   }
 
-  friend void JasminSerialize(jasmin::Writer auto& w, ModuleId id) {
-    jasmin::WriteInteger(w, id.value());
+  friend bool NthSerialize(auto &, ModuleId) {
+    NTH_UNIMPLEMENTED();
+    return true;
   }
-  friend bool JasminDeserialize(jasmin::Reader auto& r, ModuleId& id) {
-    return jasmin::ReadInteger(r, id.id_);
+
+  friend bool NthDeserialize(auto &, ModuleId &) {
+    NTH_UNIMPLEMENTED();
+    return true;
   }
 
   friend bool IcarusDeserializeValue(std::span<jasmin::Value const> values,

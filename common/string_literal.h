@@ -6,10 +6,10 @@
 #include <string_view>
 
 #include "common/strong_identifier_type.h"
-#include "jasmin/serialize/reader.h"
-#include "jasmin/serialize/writer.h"
 #include "nth/container/flyweight_set.h"
 #include "nth/debug/debug.h"
+#include "nth/io/serialize/deserialize.h"
+#include "nth/io/serialize/serialize.h"
 
 namespace ic {
 
@@ -25,21 +25,13 @@ struct StringLiteral : private StrongIdentifierType<StringLiteral, uint32_t> {
 
   std::string_view str() const;
 
-  friend void JasminSerialize(jasmin::Writer auto &w, StringLiteral s) {
-    std::string_view str = s.str();
-    jasmin::WriteInteger(w, str.size());
-    w.write(std::span<std::byte const>(
-        reinterpret_cast<std::byte const *>(str.data()), str.size()));
+  friend bool NthSerialize(auto &s, StringLiteral lit) {
+    return nth::io::serialize(s, lit.str());
   }
-  friend bool JasminDeserialize(jasmin::Reader auto &r, StringLiteral &s) {
-    size_t n;
-    if (not jasmin::ReadInteger(r, n)) { return false; }
-    std::string str(n, '\0');
-    if (not r.read(std::span<std::byte>(
-            reinterpret_cast<std::byte *>(str.data()), str.size()))) {
-      return false;
-    }
-    s = StringLiteral(std::move(s));
+  friend bool NthDeserialize(auto &d, StringLiteral &s) {
+    std::string content;
+    if (not nth::io::deserialize(d, content)) { return false; }
+    s = StringLiteral(std::move(content));
     return true;
   }
 
@@ -55,6 +47,8 @@ struct StringLiteral : private StrongIdentifierType<StringLiteral, uint32_t> {
   friend H AbslHashValue(H h, StringLiteral s) {
     return H::combine(std::move(h), s.value());
   }
+
+  static nth::flyweight_set<std::string> const &All();
 
   friend void NthPrint(auto &p, auto &f, StringLiteral s) { f(p, s.str()); }
 };

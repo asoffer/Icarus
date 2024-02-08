@@ -13,8 +13,6 @@ struct OpaqueType : internal_type::BasicType {
 
  private:
   friend Type;
-  friend void Serialize(Type type, TypeProto& proto);
-  friend Type Deserialize(TypeProto const&, TypeSystemProto const&);
   friend OpaqueType Opaque();
 
   explicit OpaqueType() = default;
