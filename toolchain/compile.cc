@@ -60,6 +60,9 @@ nth::exit_code Compile(nth::FlagValueSet flags, nth::file_path const& source) {
     return nth::exit_code::generic_error;
   }
 
+  StringLiteral::CompleteGeneration();
+  ForeignFunction::CompleteGeneration();
+
   std::optional content = ReadFileToString(source);
   if (not content) {
     consumer.Consume({

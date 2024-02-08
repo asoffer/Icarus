@@ -36,9 +36,11 @@ cc_library(
         ":strong_identifier_type",
         "//type:function",
         "@nth_cc//nth/container:flyweight_map",
+        "@nth_cc//nth/container:flyweight_set",
         "@nth_cc//nth/io/serialize",
         "@nth_cc//nth/io/serialize:deserialize",
         "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/synchronization",
     ],
 )
 
@@ -136,7 +138,8 @@ cc_library(
         ":strong_identifier_type",
         "@nth_cc//nth/io/serialize",
         "@nth_cc//nth/io/serialize:deserialize",
-        "@nth_cc//nth/container:flyweight_set",
+        "@nth_cc//nth/container:flyweight_map",
+        "@com_google_absl//absl/synchronization",
     ],
 )
 

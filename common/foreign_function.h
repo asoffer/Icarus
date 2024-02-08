@@ -94,8 +94,9 @@ struct ForeignFunction
     f(p, fn.name());
   }
 
+  static void CompleteGeneration();
   // TODO: Use a better container/reference.
-  static std::vector<ForeignFunction> All();
+  static std::vector<ForeignFunction> LatestGeneration();
 
  private:
   ForeignFunction(uint32_t n);

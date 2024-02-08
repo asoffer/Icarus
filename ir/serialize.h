@@ -109,8 +109,10 @@ struct ModuleSerializer : jasmin::ProgramSerializer, W {
   friend bool NthSerialize(ModuleSerializer& s, Module const&) {
     absl::flat_hash_map<Identifier, Module::Entry> entries;
     return nth::io::serialize(
-        s, nth::io::as_sequence(StringLiteral::All()), type::GlobalTypeSystem(),
-        nth::io::as_sequence(ForeignFunction::All()), entries, global_program);
+        s, nth::io::as_sequence(StringLiteral::LatestGeneration()),
+        type::GlobalTypeSystem(),
+        nth::io::as_sequence(ForeignFunction::LatestGeneration()), entries,
+        global_program);
   }
 
  private:

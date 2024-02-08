@@ -6,7 +6,7 @@
 #include <string_view>
 
 #include "common/strong_identifier_type.h"
-#include "nth/container/flyweight_set.h"
+#include "nth/container/flyweight_map.h"
 #include "nth/debug/debug.h"
 #include "nth/io/serialize/deserialize.h"
 #include "nth/io/serialize/serialize.h"
@@ -48,7 +48,8 @@ struct StringLiteral : private StrongIdentifierType<StringLiteral, uint32_t> {
     return H::combine(std::move(h), s.value());
   }
 
-  static nth::flyweight_set<std::string> const &All();
+  static void CompleteGeneration();
+  static std::vector<std::string_view> LatestGeneration();
 
   friend void NthPrint(auto &p, auto &f, StringLiteral s) { f(p, s.str()); }
 };
