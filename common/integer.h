@@ -6,6 +6,8 @@
 #include "common/strong_identifier_type.h"
 #include "nth/container/flyweight_set.h"
 #include "nth/debug/debug.h"
+#include "nth/io/serialize/deserialize.h"
+#include "nth/io/serialize/serialize.h"
 
 namespace ic {
 namespace internal_integer {
@@ -107,13 +109,20 @@ struct Integer : private StrongIdentifierType<Integer, uint32_t> {
     }
   }
 
-  friend bool NthSerialize(auto &, Integer) {
-    NTH_UNIMPLEMENTED();
-    return true;
+  friend bool NthSerialize(auto &s, Integer n) {
+    if (n.value() >= InlineLimit) {
+      auto value =
+          internal_integer::integers.from_index(n.value() & (InlineLimit - 1));
+      return nth::io::serialize_integer(s, value);
+    } else {
+      return nth::io::serialize_integer(s, n.value());
+    }
   }
 
-  friend bool NthDeserialize(auto &, Integer&) {
-    NTH_UNIMPLEMENTED();
+  friend bool NthDeserialize(auto &d, Integer &n) {
+    int64_t num;
+    if (not nth::io::deserialize_integer(d, num)) { return false; }
+    n = Integer(num);
     return true;
   }
 };

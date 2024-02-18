@@ -1,7 +1,6 @@
 #include "toolchain/module_map.h"
 
 #include <cstddef>
-#include <fstream>
 #include <string>
 #include <string_view>
 
@@ -9,16 +8,16 @@
 #include "common/file.h"
 #include "common/resources.h"
 #include "ir/deserialize.h"
+#include "nth/io/reader/string.h"
 #include "nth/io/serialize/deserialize.h"
-#include "nth/io/serialize/string_reader.h"
 
 namespace ic {
 
-std::optional<std::vector<Module>> PopulateModuleMap(
+std::optional<DependentModules> PopulateModuleMap(
     nth::file_path const& module_map_file) {
   std::optional content = ReadFileToString(module_map_file);
   if (not content) { return std::nullopt; }
-  std::vector<Module> dependent_modules;
+  DependentModules dependent_modules;
   for (std::string_view line : absl::StrSplit(*content, absl::ByChar('\n'))) {
     if (line.empty()) { continue; }
     size_t count = 0;
@@ -31,14 +30,15 @@ std::optional<std::vector<Module>> PopulateModuleMap(
       }
     }
     auto id = resources.module_map.add(name);
-    NTH_REQUIRE(dependent_modules.size() + 1 == id.value());
+    NTH_REQUIRE((v.harden), dependent_modules.count() == id.value());
 
-    std::optional serialized_module_content = ReadFileToString(module_map_file);
+    std::optional path = nth::file_path::try_construct(location);
+    if (not path) { return std::nullopt; }
+    std::optional serialized_module_content = ReadFileToString(*path);
     if (not serialized_module_content) { return std::nullopt; }
     ModuleDeserializer<nth::io::string_reader> deserializer(
         *serialized_module_content);
-    if (not nth::io::deserialize(deserializer,
-                                 dependent_modules.emplace_back())) {
+    if (not nth::io::deserialize(deserializer, dependent_modules.add(name))) {
       return std::nullopt;
     }
   }

@@ -25,8 +25,13 @@ Type Reindex(Type t, TypeSystem const& from, TypeSystem& to) {
       }
       return to.parameter_type(std::move(ps));
     } break;
-
-    default: NTH_UNIMPLEMENTED();
+    case Type::Kind::Opaque:
+      return t;  // TODO: This doesn't actually work, but type systems don't
+                 // support the required functionality to make it work yet. The
+                 // problem is you could merge two opaque types with the same
+                 // index from different modules, but we don't have any
+                 // mechanism yet to distinguish them anyway.
+    default: NTH_UNIMPLEMENTED("{}") <<= {t.kind()};
   }
 }
 
@@ -61,6 +66,20 @@ void TypeSystem::merge_from(TypeSystem const& ts) {
     buffer_pointer_type(Reindex(t, ts, *this));
   }
   for (Type t : ts.slice_element_types) { slice_type(Reindex(t, ts, *this)); }
+  absl::flat_hash_map<std::vector<Type>, uint64_t> reindexed_rets;
+  for (std::vector<Type> const& rets : ts.returns) {
+    std::vector<Type> v;
+    v.reserve(rets.size());
+    for (Type t : rets) { v.push_back(Reindex(t, ts, *this)); }
+    auto iter = returns.insert(v).first;
+    reindexed_rets.emplace(std::move(v), returns.index(iter));
+  }
+  for (auto const& [p, n, e] : ts.functions) {
+    auto iter = reindexed_rets.find(ts.returns.from_index(n));
+    NTH_REQUIRE((v.debug), iter != reindexed_rets.end());
+    functions.insert(
+        std::make_tuple(Reindex(p, ts, *this).AsParameters(), iter->second, e));
+  }
 }
 
 }  // namespace ic::type

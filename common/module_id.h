@@ -6,6 +6,8 @@
 #include <utility>
 
 #include "jasmin/core/value.h"
+#include "nth/io/serialize/deserialize.h"
+#include "nth/io/serialize/serialize.h"
 
 namespace ic {
 
@@ -16,7 +18,9 @@ struct ModuleId {
   static constexpr ModuleId Invalid() {
     return ModuleId(std::numeric_limits<uint32_t>::max());
   }
-  static constexpr ModuleId Builtin() { return ModuleId(0); }
+  static constexpr ModuleId Builtin() {
+    return ModuleId(std::numeric_limits<uint32_t>::max() - 3);
+  }
   static constexpr ModuleId Foreign() {
     return ModuleId(std::numeric_limits<uint32_t>::max() - 2);
   }
@@ -40,13 +44,14 @@ struct ModuleId {
     }
   }
 
-  friend bool NthSerialize(auto &, ModuleId) {
-    NTH_UNIMPLEMENTED();
-    return true;
+  friend bool NthSerialize(auto &s, ModuleId id) {
+    return nth::io::serialize_integer(s, id.value());
   }
 
-  friend bool NthDeserialize(auto &, ModuleId &) {
-    NTH_UNIMPLEMENTED();
+  friend bool NthDeserialize(auto &d, ModuleId &id) {
+    uint32_t n;
+    if (not nth::io::deserialize_integer(d, n)) { return false; }
+    id = ModuleId(n);
     return true;
   }
 

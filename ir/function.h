@@ -14,7 +14,7 @@
 #include "jasmin/core/input.h"
 #include "jasmin/core/instruction.h"
 #include "jasmin/core/output.h"
-#include "jasmin/core/program.h"
+#include "jasmin/core/program_fragment.h"
 #include "jasmin/core/value.h"
 #include "jasmin/instructions/arithmetic.h"
 #include "jasmin/instructions/bool.h"
@@ -214,9 +214,7 @@ using InstructionSet = jasmin::MakeInstructionSet<
     CheckInterfaceSatisfaction>;
 
 using IrFunction = jasmin::Function<InstructionSet>;
-using Program    = jasmin::Program<InstructionSet>;
-
-inline Program global_program;
+using ProgramFragment    = jasmin::ProgramFragment<InstructionSet>;
 
 void Extend(Interface intf, type::Type t);
 

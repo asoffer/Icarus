@@ -1,9 +1,9 @@
 #include <string>
 
+#include "nth/io/reader/string.h"
 #include "nth/io/serialize/deserialize.h"
 #include "nth/io/serialize/serialize.h"
-#include "nth/io/serialize/string_reader.h"
-#include "nth/io/serialize/string_writer.h"
+#include "nth/io/writer/string.h"
 #include "nth/test/test.h"
 #include "type/deserialize.h"
 #include "type/serialize.h"

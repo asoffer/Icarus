@@ -24,10 +24,9 @@ IrFunction& Module::add_function(size_t parameters, size_t returns) {
 }
 IrFunction& Module::add_function(ModuleId id, size_t parameters,
                                  size_t returns) {
-  size_t count = global_program.function_count();
-  auto& f =
-      global_program.declare(absl::StrCat("fn.", count), parameters, returns)
-          .function;
+  size_t count = program_.function_count();
+  auto& f = program_.declare(absl::StrCat("fn.", count), parameters, returns)
+                .function;
   NTH_LOG("{}")<<={&f};
   FunctionId fn_id(id, LocalFunctionId(count));
   global_function_registry.Register(fn_id, &f);
@@ -35,5 +34,10 @@ IrFunction& Module::add_function(ModuleId id, size_t parameters,
 }
 
 Scope& Module::add_scope() { return scopes_.emplace_back(); }
+
+IrFunction& Module::insert_initializer() {
+  init_ = &program_.declare("~", 0, 0).function;
+  return *init_;
+}
 
 }  // namespace ic

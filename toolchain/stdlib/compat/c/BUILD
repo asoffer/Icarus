@@ -115,12 +115,12 @@ ic_library(
     visibility = ["//visibility:private"],
     deps = [
         ":ctype",
-        ":errno",
-        ":limits",
-        ":locale",
+        # ":errno",
+        # ":limits",
+        # ":locale",
         ":string",
-        ":stdio",
+        # ":stdio",
         ":types",
-        ":time",
+        # ":time",
     ],
 )

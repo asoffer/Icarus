@@ -20,7 +20,7 @@ struct ModuleMap {
   auto end() const { return by_name_.end(); }
 
  private:
-  nth::flyweight_set<std::string> by_name_ = {"~builtin~"};
+  nth::flyweight_set<std::string> by_name_ = {};
 };
 
 }  // namespace ic

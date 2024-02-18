@@ -22,9 +22,9 @@ cc_library(
         "//common/language:type_kind",
         "@jasmin//jasmin/core:value",
         "@nth_cc//nth/debug",
+        "@nth_cc//nth/io/reader",
         "@nth_cc//nth/io/serialize",
         "@nth_cc//nth/io/serialize:deserialize",
-        "@nth_cc//nth/io/serialize:reader",
     ],
 )
 
@@ -63,8 +63,8 @@ cc_library(
     deps = [
         ":parameters",
         ":type",
+        "@nth_cc//nth/io/reader",
         "@nth_cc//nth/io/serialize:deserialize",
-        "@nth_cc//nth/io/serialize:reader",
         "@nth_cc//nth/meta:concepts",
     ],
 )
@@ -187,10 +187,10 @@ cc_test(
         ":serialize",
         ":type",
         ":type_system",
+        "@nth_cc//nth/io/reader:string",
         "@nth_cc//nth/io/serialize",
         "@nth_cc//nth/io/serialize:deserialize",
-        "@nth_cc//nth/io/serialize:string_reader",
-        "@nth_cc//nth/io/serialize:string_writer",
+        "@nth_cc//nth/io/writer:string",
         "@nth_cc//nth/test:main",
     ],
 )
@@ -202,7 +202,7 @@ cc_library(
         ":parameters",
         ":type",
         "@nth_cc//nth/io/serialize",
-        "@nth_cc//nth/io/serialize:writer",
+        "@nth_cc//nth/io/writer",
         "@nth_cc//nth/meta:concepts",
     ],
 )

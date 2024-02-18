@@ -8,16 +8,17 @@
 #include "common/foreign_function.h"
 #include "common/integer.h"
 #include "common/string_literal.h"
+#include "ir/foreign_function.h"
 #include "ir/module.h"
 #include "jasmin/core/serialization.h"
 #include "nth/container/black_hole.h"
+#include "nth/io/reader/reader.h"
 #include "nth/io/serialize/deserialize.h"
-#include "nth/io/serialize/reader.h"
 
 namespace ic {
 
 template <nth::io::reader R>
-struct ModuleDeserializer : jasmin::ProgramDeserializer, R {
+struct ModuleDeserializer : jasmin::ProgramFragmentDeserializer, R {
   explicit ModuleDeserializer(std::string_view content) : R(content) {}
 
   friend bool NthDeserialize(ModuleDeserializer& d, std::string& s) {
@@ -39,8 +40,96 @@ struct ModuleDeserializer : jasmin::ProgramDeserializer, R {
     return nth::io::deserialize_sequence(d, set);
   }
 
-  friend bool NthDeserialize(ModuleDeserializer& d, Module::Entry& symbol) {
-    return false;
+  friend bool NthDeserialize(ModuleDeserializer& d, Module::Entry& entry) {
+    type::Type t;
+    if (not nth::io::deserialize(d, t)) { return false; }
+    entry.qualified_type = type::QualifiedType::Constant(t);
+    switch (t.kind()) {
+      case type::Type::Kind::Primitive: {
+        auto p = t.AsPrimitive();
+        switch (p.kind()) {
+          case type::PrimitiveType::Kind::Bool: {
+            bool x;
+            if (not nth::io::deserialize(d, x)) { return false; }
+            entry.value.emplace_back(x);
+          } break;
+          case type::PrimitiveType::Kind::Char: {
+            char x;
+            if (not nth::io::deserialize(d, x)) { return false; }
+            entry.value.emplace_back(x);
+          } break;
+          case type::PrimitiveType::Kind::Byte: {
+            std::byte x;
+            if (not nth::io::deserialize(d, x)) { return false; }
+            entry.value.emplace_back(x);
+          } break;
+          case type::PrimitiveType::Kind::I8: {
+            int8_t x;
+            if (not nth::io::deserialize(d, x)) { return false; }
+            entry.value.emplace_back(x);
+          } break;
+          case type::PrimitiveType::Kind::I16: {
+            int16_t x;
+            if (not nth::io::deserialize(d, x)) { return false; }
+            entry.value.emplace_back(x);
+          } break;
+          case type::PrimitiveType::Kind::I32: {
+            int32_t x;
+            if (not nth::io::deserialize(d, x)) { return false; }
+            entry.value.emplace_back(x);
+          } break;
+          case type::PrimitiveType::Kind::I64: {
+            int64_t x;
+            if (not nth::io::deserialize(d, x)) { return false; }
+            entry.value.emplace_back(x);
+          } break;
+          case type::PrimitiveType::Kind::U8: {
+            uint8_t x;
+            if (not nth::io::deserialize(d, x)) { return false; }
+            entry.value.emplace_back(x);
+          } break;
+          case type::PrimitiveType::Kind::U16: {
+            uint16_t x;
+            if (not nth::io::deserialize(d, x)) { return false; }
+            entry.value.emplace_back(x);
+          } break;
+          case type::PrimitiveType::Kind::U32: {
+            uint32_t x;
+            if (not nth::io::deserialize(d, x)) { return false; }
+            entry.value.emplace_back(x);
+          } break;
+          case type::PrimitiveType::Kind::U64: {
+            uint64_t x;
+            if (not nth::io::deserialize(d, x)) { return false; }
+            entry.value.emplace_back(x);
+          } break;
+          case type::PrimitiveType::Kind::Type: {
+            type::Type x;
+            if (not nth::io::deserialize(d, x)) { return false; }
+            entry.value.emplace_back(x);
+          } break;
+          case type::PrimitiveType::Kind::Integer: {
+            Integer x;
+            if (not nth::io::deserialize(d, x)) { return false; }
+            entry.value.emplace_back(x);
+          } break;
+          case type::PrimitiveType::Kind::Module: {
+            ModuleId x;
+            if (not nth::io::deserialize(d, x)) { return false; }
+            entry.value.emplace_back(x);
+          } break;
+          case type::PrimitiveType::Kind::NullType: return true;
+          default: NTH_UNIMPLEMENTED("{}") <<= {t};
+        }
+      } break;
+      case type::Type::Kind::Function: {
+        FunctionId id;
+        if (not nth::io::deserialize(d, id)) { return false; }
+        entry.value.emplace_back(&global_function_registry.function(id));
+      } break;
+      default: NTH_UNIMPLEMENTED("{}") <<= {t};
+    }
+    return true;
   }
 
   friend bool NthDeserialize(
@@ -61,9 +150,7 @@ struct ModuleDeserializer : jasmin::ProgramDeserializer, R {
     exported_symbols.reserve(symbol_count);
 
     for (size_t i = 0; i < symbol_count; ++i) {
-      uint32_t index;
-      if (not nth::io::deserialize_fixed(d, index)) { return false; }
-      auto [iter, inserted] = exported_symbols.try_emplace(translation[index]);
+      auto [iter, inserted] = exported_symbols.try_emplace(translation[i]);
       if (not nth::io::deserialize(d, iter->second)) { return false; }
     }
     return true;
@@ -124,12 +211,16 @@ struct ModuleDeserializer : jasmin::ProgramDeserializer, R {
   }
 
   friend bool NthDeserialize(ModuleDeserializer& d, Module& m) {
-    absl::flat_hash_map<Identifier, Module::Entry> entries;
     nth::black_hole<StringLiteral> str_lits;
     nth::black_hole<ForeignFunction> foreign_fns;
-    return nth::io::deserialize(
-        d, nth::io::as_sequence(str_lits), type::GlobalTypeSystem(),
-        nth::io::as_sequence(foreign_fns), entries, global_program);
+    bool result = nth::io::deserialize(d, nth::io::as_sequence(str_lits),
+                                       type::GlobalTypeSystem(),
+                                       nth::io::as_sequence(foreign_fns));
+    for (auto f : ForeignFunction::LatestGeneration()) {
+      InsertForeignFunction(f.name(), f.type(), true);
+    }
+
+    return nth::io::deserialize(d, m.program(), m.entries());
   }
 
  private:

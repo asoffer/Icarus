@@ -5,6 +5,7 @@
 #include <string>
 #include <string_view>
 
+#include "common/foreign_function.h"
 #include "common/resources.h"
 #include "ir/function.h"
 #include "ir/function_id.h"
@@ -16,7 +17,7 @@
 namespace ic {
 namespace {
 
-nth::flyweight_map<std::pair<size_t, type::FunctionType>,
+nth::flyweight_map<std::pair<StringLiteral, type::FunctionType>,
                    std::pair<type::FunctionType, IrFunction const*>>
     foreign_functions;
 
@@ -24,37 +25,16 @@ nth::flyweight_map<std::pair<size_t, type::PointerType>,
                    std::pair<type::PointerType, void*>>
     foreign_pointers;
 
+ProgramFragment global_program;
+
 }  // namespace
 
-nth::flyweight_map<std::pair<size_t, type::FunctionType>,
-                   std::pair<type::FunctionType, IrFunction const*>> const&
-AllForeignFunctions() {
-  return foreign_functions;
-}
-
-nth::flyweight_map<std::pair<size_t, type::PointerType>,
-                   std::pair<type::PointerType, void*>> const&
-AllForeignPointers() {
-  return foreign_pointers;
-}
-
-std::pair<type::FunctionType, IrFunction const*> const& LookupForeignFunction(
-    LocalFunctionId id) {
-  return foreign_functions.from_index(id.value()).second;
-}
-
-size_t ForeignFunctionIndex(std::string_view name, type::FunctionType t) {
-  return foreign_functions.index(foreign_functions.find(
-      std::make_pair(resources.StringLiteralIndex(name), t)));
-}
-
-IrFunction const& InsertForeignFunction(std::string_view name,
-                                        type::FunctionType t, bool implement) {
-  auto [iter, inserted] = foreign_functions.try_emplace(
-      std::make_pair(resources.StringLiteralIndex(name), t), t, nullptr);
-  if (not inserted) {
-    return *iter->second.second;
-  }
+IrFunction const& InsertForeignFunction(StringLiteral name,
+                                        type::FunctionType t, bool) {
+  ForeignFunction f(name, t);
+  auto [iter, inserted] =
+      foreign_functions.try_emplace(std::make_pair(name, t), t, nullptr);
+  if (not inserted) { return *iter->second.second; }
 
   size_t jasmin_parameter_size = 0;
   size_t jasmin_return_size    = 0;
@@ -64,22 +44,17 @@ IrFunction const& InsertForeignFunction(std::string_view name,
   for (type::Type return_type : t.returns()) {
     jasmin_return_size += type::JasminSize(return_type);
   }
-  auto& fn =
-      global_program
-          .declare(std::string(name), jasmin_parameter_size, jasmin_return_size)
-          .function;
+  std::string name_str(name.str());
+  auto& fn = global_program
+                 .declare(name_str, jasmin_parameter_size, jasmin_return_size)
+                 .function;
 
-  if (implement) {
-    dlerror();  // Clear existing errors.
-    void* result      = dlsym(RTLD_DEFAULT, std::string(name).c_str());
-    char const* error = dlerror();
-    if (error != nullptr) { NTH_UNIMPLEMENTED("{}") <<= {error}; }
+  // TODO: Always implement?
+  fn.append<InvokeForeignFunction>(
+      {.parameters = static_cast<uint32_t>(t.parameters().size()),
+       .returns    = static_cast<uint32_t>(t.returns().size())},
+      t, f.function().ptr());
 
-    auto const& parameters = fn.append<InvokeForeignFunction>(
-        {.parameters = static_cast<uint32_t>(t.parameters().size()),
-         .returns    = static_cast<uint32_t>(t.returns().size())},
-        t, result);
-  }
   fn.append<jasmin::Return>();
   global_function_registry.Register(
       FunctionId(ModuleId::Foreign(),
@@ -92,9 +67,7 @@ IrFunction const& InsertForeignFunction(std::string_view name,
 void* InsertForeignPointer(std::string_view name, type::PointerType t) {
   auto [iter, inserted] = foreign_pointers.try_emplace(
       std::make_pair(resources.StringLiteralIndex(name), t), t, nullptr);
-  if (not inserted) {
-    return iter->second.second;
-  }
+  if (not inserted) { return iter->second.second; }
 
   dlerror();  // Clear existing errors.
   iter->second.second = dlsym(RTLD_DEFAULT, std::string(name).c_str());
@@ -104,16 +77,6 @@ void* InsertForeignPointer(std::string_view name, type::PointerType t) {
   global_pointer_registry.Register(foreign_pointers.index(iter),
                                    iter->second.second);
   return iter->second.second;
-}
-
-
-size_t ForeignPointerIndex(std::string_view name, type::PointerType t) {
-  return foreign_pointers.index(foreign_pointers.find(
-      std::make_pair(resources.StringLiteralIndex(name), t)));
-}
-
-std::pair<type::PointerType, void*> const& LookupForeignPointer(size_t index) {
-  return foreign_pointers.from_index(index).second;
 }
 
 }  // namespace ic

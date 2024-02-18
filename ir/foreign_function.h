@@ -13,27 +13,10 @@
 
 namespace ic {
 
-nth::flyweight_map<std::pair<size_t, type::FunctionType>,
-                   std::pair<type::FunctionType, IrFunction const*>> const&
-AllForeignFunctions();
-
-std::pair<type::FunctionType, IrFunction const*> const& LookupForeignFunction(
-    LocalFunctionId id);
-
-IrFunction const& InsertForeignFunction(std::string_view name,
-                                        type::FunctionType t, bool implement);
-
-size_t ForeignFunctionIndex(std::string_view name, type::FunctionType t);
+IrFunction const& InsertForeignFunction(StringLiteral str, type::FunctionType t,
+                                        bool implement);
 
 void* InsertForeignPointer(std::string_view name, type::PointerType t);
-
-nth::flyweight_map<std::pair<size_t, type::PointerType>,
-                   std::pair<type::PointerType, void*>> const&
-AllForeignPointers();
-
-size_t ForeignPointerIndex(std::string_view name, type::PointerType t);
-
-std::pair<type::PointerType, void*> const& LookupForeignPointer(size_t index);
 
 }  // namespace ic
 

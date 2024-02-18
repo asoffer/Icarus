@@ -22,7 +22,7 @@
 #include "nth/debug/log/stderr_log_sink.h"
 #include "nth/io/file.h"
 #include "nth/io/file_path.h"
-#include "nth/io/serialize/string_reader.h"
+#include "nth/io/reader/string.h"
 #include "nth/process/exit_code.h"
 #include "toolchain/module_map.h"
 

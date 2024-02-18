@@ -33,6 +33,7 @@ cc_library(
     hdrs = ["dependent_modules.h"],
     srcs = ["dependent_modules.cc"],
     deps = [
+        ":builtin_module",
         ":module",
         "//common:module_id",
         "@nth_cc//nth/debug",
@@ -56,7 +57,7 @@ cc_library(
         "@nth_cc//nth/debug",
         "@nth_cc//nth/debug/log",
         "@nth_cc//nth/io/serialize:deserialize",
-        "@nth_cc//nth/io/serialize:string_reader",
+        "@nth_cc//nth/io/reader:string",
     ],
 )
 
@@ -105,6 +106,7 @@ cc_library(
     deps = [
         ":function_id",
         ":program_arguments",
+        "//common:foreign_function",
         "//common:identifier",
         "//common:integer",
         "//common:interface",
@@ -126,7 +128,7 @@ cc_library(
         "@jasmin//jasmin/core:instruction",
         "@jasmin//jasmin/core:input",
         "@jasmin//jasmin/core:output",
-        "@jasmin//jasmin/core:program",
+        "@jasmin//jasmin/core:program_fragment",
         "@jasmin//jasmin/core:value",
         "@jasmin//jasmin/instructions:arithmetic",
         "@jasmin//jasmin/instructions:bool",
@@ -251,7 +253,7 @@ cc_library(
         "@nth_cc//nth/debug",
         "@nth_cc//nth/debug/log",
         "@nth_cc//nth/io/serialize",
-        "@nth_cc//nth/io/serialize:string_writer",
+        "@nth_cc//nth/io/writer:string",
     ],
 )
 

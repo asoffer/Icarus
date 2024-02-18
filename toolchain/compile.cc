@@ -23,7 +23,7 @@
 #include "nth/io/file.h"
 #include "nth/io/file_path.h"
 #include "nth/io/serialize/serialize.h"
-#include "nth/io/serialize/string_writer.h"
+#include "nth/io/writer/string.h"
 #include "nth/process/exit_code.h"
 #include "parse/parser.h"
 #include "toolchain/module_map.h"
@@ -48,8 +48,8 @@ nth::exit_code Compile(nth::FlagValueSet flags, nth::file_path const& source) {
 
   diag::StreamingConsumer consumer;
 
-  std::optional dependent_module = PopulateModuleMap(module_map_path);
-  if (not dependent_module) {
+  std::optional dependencies = PopulateModuleMap(module_map_path);
+  if (not dependencies) {
     consumer.Consume({
         diag::Header(diag::MessageKind::Error),
         diag::Text(InterpolateString<
@@ -84,17 +84,14 @@ nth::exit_code Compile(nth::FlagValueSet flags, nth::file_path const& source) {
   }
   consumer.set_parse_tree(parse_tree);
 
-  // TODO: Remove
-  DependentModules dependencies;
-
   Module module;
-  EmitContext emit_context(parse_tree, dependencies, scope_tree, module);
+  EmitContext emit_context(parse_tree, *dependencies, scope_tree, module);
   ProcessIr(emit_context, consumer);
   if (consumer.count() != 0) { return nth::exit_code::generic_error; }
   EmitContext::WorkItem item{
       .range = parse_tree.node_range(),
   };
-  item.push_function(module.initializer(), LexicalScope::Index::Root());
+  item.push_function(module.insert_initializer(), LexicalScope::Index::Root());
   emit_context.queue.push(std::move(item));
   EmitIr(emit_context);
   SetExported(emit_context);

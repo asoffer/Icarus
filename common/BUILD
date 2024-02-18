@@ -71,6 +71,8 @@ cc_library(
     deps = [
         ":strong_identifier_type",
         "@nth_cc//nth/container:flyweight_set",
+        "@nth_cc//nth/io/serialize",
+        "@nth_cc//nth/io/serialize:deserialize",
     ],
 )
 
@@ -98,6 +100,8 @@ cc_library(
     hdrs = ["module_id.h"],
     deps = [
         "@jasmin//jasmin/core:value",
+        "@nth_cc//nth/io/serialize",
+        "@nth_cc//nth/io/serialize:deserialize",
     ],
 )
 

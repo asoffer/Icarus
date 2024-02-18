@@ -4,7 +4,7 @@
 #include <cstring>
 
 #include "nth/io/serialize/serialize.h"
-#include "nth/io/serialize/writer.h"
+#include "nth/io/writer/writer.h"
 #include "nth/meta/concepts.h"
 #include "type/parameters.h"
 #include "type/type.h"

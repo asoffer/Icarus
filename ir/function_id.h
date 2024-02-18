@@ -32,6 +32,14 @@ struct LocalFunctionId {
     return H::combine(std::move(h), m.id_);
   }
 
+  friend bool NthSerialize(auto &s, LocalFunctionId id) {
+    return nth::io::serialize_integer(s, id.value());
+  }
+
+  friend bool NthDeserialize(auto &d, LocalFunctionId &id) {
+    return nth::io::deserialize_integer(d, id.id_);
+  }
+
  private:
   uint32_t id_;
 };
@@ -56,6 +64,18 @@ struct FunctionId {
   friend void NthPrint(auto &p, auto &f, FunctionId id) {
     nth::Interpolate<"fn.{}.{}">(p, f, id.module(),
                                  id.local_function().value());
+  }
+
+  friend bool NthSerialize(auto &s, FunctionId id) {
+    return nth::io::serialize(s, id.module(), id.local_function());
+  }
+
+  friend bool NthDeserialize(auto &s, FunctionId &id) {
+    ModuleId mod_id;
+    LocalFunctionId fn_id;
+    if (not nth::io::deserialize(s, mod_id, fn_id)) { return false; }
+    id = FunctionId(mod_id, fn_id);
+    return true;
   }
 
   constexpr uint64_t value() const { return id_; }
