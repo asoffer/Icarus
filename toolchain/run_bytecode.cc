@@ -1,12 +1,10 @@
 #include <cstdio>
-#include <fstream>
 #include <optional>
 #include <string>
 
 #include "absl/debugging/failure_signal_handler.h"
 #include "absl/debugging/symbolize.h"
 #include "common/debug.h"
-#include "common/file.h"
 #include "common/string.h"
 #include "diagnostics/consumer/streaming.h"
 #include "diagnostics/message.h"
@@ -20,8 +18,8 @@
 #include "nth/container/stack.h"
 #include "nth/debug/log/log.h"
 #include "nth/debug/log/stderr_log_sink.h"
-#include "nth/io/file.h"
 #include "nth/io/file_path.h"
+#include "nth/io/reader/file.h"
 #include "nth/io/reader/string.h"
 #include "nth/process/exit_code.h"
 #include "toolchain/module_map.h"
@@ -55,9 +53,16 @@ nth::exit_code Run(nth::FlagValueSet flags, std::span<std::string_view const> ar
     return nth::exit_code::generic_error;
   }
 
-  std::optional serialized_content = ReadFileToString(input);
-  if (not serialized_content) { return nth::exit_code::generic_error; }
-  ModuleDeserializer<nth::io::string_reader> deserializer(*serialized_content);
+  std::optional reader = nth::io::file_reader::try_open(input);
+  if (not reader) { return nth::exit_code::generic_error; }
+  std::string serialized_content(reader->size(), '\0');
+  if (not reader->read(std::span<std::byte>(
+          reinterpret_cast<std::byte*>(serialized_content.data()),
+          serialized_content.size()))) {
+    return nth::exit_code::generic_error;
+  }
+
+  ModuleDeserializer<nth::io::string_reader> deserializer(serialized_content);
   Module module;
   if (not nth::io::deserialize(deserializer, module)) {
     return nth::exit_code::generic_error;

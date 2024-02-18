@@ -6,7 +6,6 @@
 #include "absl/debugging/symbolize.h"
 #include "common/debug.h"
 #include "common/errno.h"
-#include "common/file.h"
 #include "common/resources.h"
 #include "common/string.h"
 #include "diagnostics/consumer/streaming.h"
@@ -20,7 +19,7 @@
 #include "lexer/lexer.h"
 #include "nth/commandline/commandline.h"
 #include "nth/debug/log/log.h"
-#include "nth/io/file.h"
+#include "nth/io/reader/file.h"
 #include "nth/io/file_path.h"
 #include "nth/io/serialize/serialize.h"
 #include "nth/io/writer/string.h"
@@ -63,8 +62,18 @@ nth::exit_code Compile(nth::FlagValueSet flags, nth::file_path const& source) {
   StringLiteral::CompleteGeneration();
   ForeignFunction::CompleteGeneration();
 
-  std::optional content = ReadFileToString(source);
-  if (not content) {
+  std::optional reader = nth::io::file_reader::try_open(source);
+  if (not reader) {
+    consumer.Consume({
+        diag::Header(diag::MessageKind::Error),
+        diag::Text(
+            InterpolateString<"Failed to load the content from {}.">(source)),
+    });
+    return nth::exit_code::generic_error;
+  }
+  std::string content(reader->size(), '\0');
+  if (not reader->read(std::span<std::byte>(
+          reinterpret_cast<std::byte*>(content.data()), content.size()))) {
     consumer.Consume({
         diag::Header(diag::MessageKind::Error),
         diag::Text(
@@ -73,9 +82,9 @@ nth::exit_code Compile(nth::FlagValueSet flags, nth::file_path const& source) {
     return nth::exit_code::generic_error;
   }
 
-  consumer.set_source(*content);
+  consumer.set_source(content);
 
-  TokenBuffer token_buffer = lex::Lex(*content, consumer);
+  TokenBuffer token_buffer = lex::Lex(content, consumer);
   if (consumer.count() != 0) { return nth::exit_code::generic_error; }
   auto [parse_tree, scope_tree] = Parse(token_buffer, consumer);
   if (consumer.count() != 0) { return nth::exit_code::generic_error; }

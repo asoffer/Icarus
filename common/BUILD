@@ -45,18 +45,6 @@ cc_library(
 )
 
 cc_library(
-    name = "file",
-    hdrs = ["file.h"],
-    srcs = ["file.cc"],
-    deps = [
-        ":errno",
-        "@nth_cc//nth/debug",
-        "@nth_cc//nth/io:file",
-        "@nth_cc//nth/io:file_path",
-    ],
-)
-
-cc_library(
     name = "identifier",
     hdrs = ["identifier.h"],
     deps = [
