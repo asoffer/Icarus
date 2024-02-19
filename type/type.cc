@@ -45,10 +45,7 @@ ParametersType Parameters(std::vector<ParametersType::Parameter>&& p) {
 }
 
 FunctionType Function(ParametersType pt, std::vector<Type>&& r, Evaluation e) {
-  uint64_t rt = type_system->returns.index(
-      type_system->returns.insert(std::move(r)).first);
-  return FunctionType(type_system->functions.index(
-      type_system->functions.insert({pt, rt, e}).first));
+  return type_system->function(pt, std::move(r), e);
 }
 
 FunctionType Function(ParametersType pt, std::vector<Type> const& r,

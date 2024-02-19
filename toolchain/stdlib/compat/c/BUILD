@@ -116,11 +116,11 @@ ic_library(
     deps = [
         ":ctype",
         # ":errno",
-        # ":limits",
-        # ":locale",
+        ":limits",
+        ":locale",
         ":string",
-        # ":stdio",
+        ":stdio",
         ":types",
-        # ":time",
+        ":time",
     ],
 )

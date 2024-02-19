@@ -103,12 +103,12 @@ struct Integer : private StrongIdentifierType<Integer, uint32_t> {
           internal_integer::integers.from_index(n.value() & (InlineLimit - 1));
       return nth::io::serialize(s, value);
     } else {
-      return nth::io::serialize(s, n.value());
+      return nth::io::serialize(s, nth::integer(n.value()));
     }
   }
 
   friend bool NthDeserialize(auto &d, Integer &n) {
-    int64_t num;
+    nth::integer num;
     if (not nth::io::deserialize(d, num)) { return false; }
     n = Integer(num);
     return true;

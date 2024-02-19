@@ -45,6 +45,7 @@ struct ModuleDeserializer : jasmin::ProgramFragmentDeserializer, R {
     type::Type t;
     if (not nth::io::deserialize(d, t)) { return false; }
     std::vector<jasmin::Value> values;
+    t = type::Reindex(t, d.from_module_, type::GlobalTypeSystem());
     switch (t.kind()) {
       case type::Type::Kind::Primitive: {
         auto p = t.AsPrimitive();
@@ -194,22 +195,22 @@ struct ModuleDeserializer : jasmin::ProgramFragmentDeserializer, R {
 
   template <nth::io::deserializable_with<ModuleDeserializer> T>
   friend bool NthDeserialize(ModuleDeserializer& d, std::vector<T>& v) {
+    v.clear();
     return nth::io::deserialize_sequence(d, v);
   }
 
   friend bool NthDeserialize(ModuleDeserializer& d, type::TypeSystem& ts) {
-    type::TypeSystem scratch;
     if (not nth::io::deserialize(
             d,  //
-            nth::io::as_sequence(scratch.parameters),
-            nth::io::as_sequence(scratch.returns),
-            nth::io::as_sequence(scratch.functions),
-            nth::io::as_sequence(scratch.pointee_types),
-            nth::io::as_sequence(scratch.buffer_pointee_types),
-            nth::io::as_sequence(scratch.slice_element_types))) {
+            nth::io::as_sequence(d.from_module_.parameters),
+            nth::io::as_sequence(d.from_module_.returns),
+            nth::io::as_sequence(d.from_module_.functions),
+            nth::io::as_sequence(d.from_module_.pointee_types),
+            nth::io::as_sequence(d.from_module_.buffer_pointee_types),
+            nth::io::as_sequence(d.from_module_.slice_element_types))) {
       return false;
     }
-    ts.merge_from(scratch);
+    ts.merge_from(d.from_module_);
     return true;
   }
 
@@ -228,6 +229,8 @@ struct ModuleDeserializer : jasmin::ProgramFragmentDeserializer, R {
   }
 
  private:
+  type::TypeSystem from_module_;
+
   bool deserialize_as_string(std::string& content) {
     uint32_t size;
     if (not nth::io::deserialize_integer(*this, size)) { return false; }

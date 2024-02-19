@@ -53,6 +53,7 @@ struct FunctionType : internal_type::BasicType {
 
  private:
   friend Type;
+  friend struct TypeSystem;
   friend FunctionType Function(ParametersType, std::vector<Type>&&, Evaluation);
   friend FunctionType Function(ParametersType, std::vector<Type> const&,
                                Evaluation);

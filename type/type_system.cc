@@ -25,6 +25,14 @@ Type Reindex(Type t, TypeSystem const& from, TypeSystem& to) {
       }
       return to.parameter_type(std::move(ps));
     } break;
+    case Type::Kind::Function: {
+      auto const& [param_type, ret_index, eval] =
+          from.functions.from_index(t.index());
+      auto p                 = Reindex(param_type, from, to).AsParameters();
+      std::vector<Type> rets = from.returns.from_index(ret_index);
+      for (auto& ret : rets) { ret = Reindex(ret, from, to); }
+      return to.function(p, std::move(rets), eval);
+    }
     case Type::Kind::Opaque:
       return t;  // TODO: This doesn't actually work, but type systems don't
                  // support the required functionality to make it work yet. The
@@ -58,6 +66,12 @@ ParametersType TypeSystem::parameter_type(
 ParametersType TypeSystem::parameter_type(
     std::vector<ParametersType::Parameter> const& p) {
   return ParametersType(parameters.index(parameters.insert(p).first));
+}
+
+FunctionType TypeSystem::function(ParametersType p, std::vector<Type> r,
+                                  Evaluation e) {
+  uint64_t rt = returns.index(returns.insert(std::move(r)).first);
+  return FunctionType(functions.index(functions.insert({p, rt, e}).first));
 }
 
 void TypeSystem::merge_from(TypeSystem const& ts) {

@@ -28,6 +28,7 @@ struct TypeSystem {
   ParametersType parameter_type(
       std::vector<ParametersType::Parameter> const& p);
   ParametersType parameter_type(std::vector<ParametersType::Parameter>&& p);
+  FunctionType function(ParametersType p, std::vector<Type> r, Evaluation e);
 
   nth::flyweight_set<std::vector<ParametersType::Parameter>> parameters;
   nth::flyweight_set<std::vector<Type>> returns;
