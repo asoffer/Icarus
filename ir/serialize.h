@@ -12,6 +12,7 @@
 #include "jasmin/core/serialization.h"
 #include "nth/io/serialize/serialize.h"
 #include "nth/io/writer/writer.h"
+#include "nth/numeric/integer.h"
 
 namespace ic {
 

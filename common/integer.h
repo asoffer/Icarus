@@ -8,15 +8,15 @@
 #include "nth/debug/debug.h"
 #include "nth/io/serialize/deserialize.h"
 #include "nth/io/serialize/serialize.h"
+#include "nth/numeric/integer.h"
 
 namespace ic {
 namespace internal_integer {
 
-// TODO: Actually represent arbitrary-precision.
-inline nth::flyweight_set<int64_t> integers;
+inline nth::flyweight_set<nth::integer> integers;
 
-inline uint32_t InsertAndMark(int64_t n) {
-  auto index = integers.index(integers.insert(n).first);
+inline uint32_t InsertAndMark(nth::integer n) {
+  auto index = integers.index(integers.insert(std::move(n)).first);
   NTH_REQUIRE((v.harden), index < (uint32_t{1} << 23));
   return (uint32_t{1} << 23) | index;
 }
@@ -38,24 +38,12 @@ struct Integer : private StrongIdentifierType<Integer, uint32_t> {
   // represented inline. Otherwise its value is stored in
   // `internal_integer::integers` and an index into that set is stored along
   // with a set high-bit to distinguish this case.
-  template <std::unsigned_integral N>
-  Integer(N n) requires(std::numeric_limits<N>::max() < InlineLimit)
-      : StrongIdentifierType(static_cast<uint32_t>(n)) {}
-  template <std::unsigned_integral N>
-  Integer(N n) requires(std::numeric_limits<N>::max() >= InlineLimit)
-      : StrongIdentifierType((n < static_cast<N>(InlineLimit))
-                                 ? static_cast<uint32_t>(n)
-                                 : internal_integer::InsertAndMark(n)) {}
-
-  template <std::signed_integral N>
-  Integer(N n) requires(std::numeric_limits<N>::max() < InlineLimit)
-      : StrongIdentifierType(n >= 0 ? static_cast<uint32_t>(n)
-                                    : internal_integer::InsertAndMark(n)) {}
-  template <std::signed_integral N>
-  Integer(N n) requires(std::numeric_limits<N>::max() >= InlineLimit)
-      : StrongIdentifierType((n < static_cast<N>(InlineLimit) and n >= 0)
-                                 ? static_cast<uint32_t>(n)
-                                 : internal_integer::InsertAndMark(n)) {}
+  Integer(nth::integer n)
+      : StrongIdentifierType(
+            (not nth::negative(n) and n < InlineLimit)
+                ? static_cast<uint32_t>(n)
+                : internal_integer::InsertAndMark(std::move(n))) {}
+  Integer(std::integral auto n) : Integer(nth::integer(n)) {}
 
   static Integer FromRepresentation(uint32_t n) { return Integer(raw_t{}, n); }
   static uint32_t ToRepresentation(Integer n) { return n.value(); }
@@ -111,17 +99,17 @@ struct Integer : private StrongIdentifierType<Integer, uint32_t> {
 
   friend bool NthSerialize(auto &s, Integer n) {
     if (n.value() >= InlineLimit) {
-      auto value =
+      nth::integer value =
           internal_integer::integers.from_index(n.value() & (InlineLimit - 1));
-      return nth::io::serialize_integer(s, value);
+      return nth::io::serialize(s, value);
     } else {
-      return nth::io::serialize_integer(s, n.value());
+      return nth::io::serialize(s, n.value());
     }
   }
 
   friend bool NthDeserialize(auto &d, Integer &n) {
     int64_t num;
-    if (not nth::io::deserialize_integer(d, num)) { return false; }
+    if (not nth::io::deserialize(d, num)) { return false; }
     n = Integer(num);
     return true;
   }

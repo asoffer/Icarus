@@ -2,19 +2,19 @@
 
 #include "common/resources.h"
 #include "nth/debug/log/log.h"
+#include "nth/numeric/integer.h"
 
 namespace ic {
 
 void TokenBuffer::AppendIntegerLiteral(std::string_view integer,
                                        uint32_t offset) {
-  uint64_t value = 0;
-  // TODO: Overflow detection.
+  nth::integer value = 0;
   for (char c : integer) {
     if (c == '_') { continue; }
     value = value * 10 + (c - '0');
   }
 
-  tokens_.push_back(Token::IntegerLiteral(offset, value));
+  tokens_.push_back(Token::IntegerLiteral(offset, std::move(value)));
 }
 
 void TokenBuffer::AppendStringLiteral(std::string s, uint32_t offset) {

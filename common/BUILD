@@ -61,6 +61,7 @@ cc_library(
         "@nth_cc//nth/container:flyweight_set",
         "@nth_cc//nth/io/serialize",
         "@nth_cc//nth/io/serialize:deserialize",
+        "@nth_cc//nth/numeric:integer",
     ],
 )
 

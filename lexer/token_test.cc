@@ -41,7 +41,7 @@ NTH_TEST("token/print") {
   NTH_EXPECT(AsString(Token::Identifier(5, Identifier(3))) ==
              "[tk.Identifier @5 #3]");
   NTH_EXPECT(AsString(Token::IntegerLiteral(5, 9'000'000'000)) ==
-             "[tk.IntegerLiteral @5 9000000000]");
+             "[tk.IntegerLiteral @5 0x218711a00]");
   NTH_EXPECT(AsString(Token::IntegerLiteral(5, 3)) ==
              "[tk.IntegerLiteral @5 3]");
   NTH_EXPECT(AsString(Token::Symbol(Token::Kind::Colon, 3)) == "[tk.(:) @3]");

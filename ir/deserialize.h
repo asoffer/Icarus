@@ -14,6 +14,7 @@
 #include "nth/container/black_hole.h"
 #include "nth/io/reader/reader.h"
 #include "nth/io/serialize/deserialize.h"
+#include "nth/numeric/integer.h"
 
 namespace ic {
 

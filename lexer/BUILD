@@ -97,5 +97,6 @@ cc_library(
         "//diagnostics/consumer",
         "@nth_cc//nth/container:flyweight_set",
         "@nth_cc//nth/debug",
+        "@nth_cc//nth/numeric:integer",
     ],
 )
