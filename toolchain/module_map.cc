@@ -46,8 +46,8 @@ std::optional<DependentModules> PopulateModuleMap(
         nth::io::file_reader::try_open(*path);
     if (not serialized_module_reader) { return std::nullopt; }
 
-    std::string serialized_module_content(reader->size(), '\0');
-    if (not reader->read(std::span<std::byte>(
+    std::string serialized_module_content(serialized_module_reader->size(), '\0');
+    if (not serialized_module_reader->read(std::span<std::byte>(
             reinterpret_cast<std::byte*>(serialized_module_content.data()),
             serialized_module_content.size()))) {
       return std::nullopt;

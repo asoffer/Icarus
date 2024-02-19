@@ -104,9 +104,7 @@ Module BuiltinModule() {
 
   auto Register = [&](std::string_view name, type::Type t,
                       IrFunction const &f) {
-    m.Insert(Identifier(name),
-             {.qualified_type = type::QualifiedType::Constant(t),
-              .value          = {jasmin::Value(&f)}});
+    m.Insert(Identifier(name), AnyValue(t, &f));
     global_function_registry.Register(
         FunctionId(ModuleId::Builtin(), LocalFunctionId(next_id++)), &f);
     BuiltinNamesImpl->emplace_back(name);

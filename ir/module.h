@@ -6,6 +6,7 @@
 
 #include "absl/container/flat_hash_map.h"
 #include "absl/container/inlined_vector.h"
+#include "common/any_value.h"
 #include "common/identifier.h"
 #include "ir/function.h"
 #include "ir/global_function_registry.h"
@@ -16,13 +17,8 @@
 namespace ic {
 
 struct Module {
-  struct Entry {
-    type::QualifiedType qualified_type =
-        type::QualifiedType(type::Qualifier::Unqualified(), type::Error);
-    absl::InlinedVector<jasmin::Value, 2> value;
-  };
-  Entry const& Lookup(Identifier id) const;
-  void Insert(Identifier id, Entry e);
+  AnyValue const& Lookup(Identifier id) const;
+  void Insert(Identifier id, AnyValue e);
 
   IrFunction& insert_initializer();
   constexpr IrFunction& initializer() { return *init_; }
@@ -40,10 +36,11 @@ struct Module {
   auto& program() { return program_; }
 
  private:
-  static Entry const DefaultEntry;
+  static AnyValue const DefaultEntry;
 
   ProgramFragment program_;
-  absl::flat_hash_map<Identifier, Entry> entries_;
+  // TODO: Entries might not be constants.
+  absl::flat_hash_map<Identifier, AnyValue> entries_;
   IrFunction* init_;
   std::deque<Scope> scopes_;
 };

@@ -593,7 +593,7 @@ void HandleParseTreeNodeMemberExpression(ParseNodeIndex index,
 
     auto symbol = context.module(module_id).Lookup(
         context.Node(index).token.Identifier());
-    context.Push(symbol.value, symbol.qualified_type.type());
+    context.Push(symbol.value(), symbol.type());
   }
 }
 
@@ -1029,13 +1029,8 @@ void SetExported(EmitContext const& context) {
     std::span types      = constant.types();
     std::span value_span = constant.value_span();
     NTH_REQUIRE((v.harden), types.size() == 1);
-    // TODO: This is pretty gross. We can't iterate because the subtree_size is
-    // shared in a union with another field we want to use.
-    context.current_module.Insert(
-        context.Node(*iter - 1).token.Identifier(),
-        Module::Entry{.qualified_type = type::QualifiedType::Constant(types[0]),
-                      .value          = absl::InlinedVector<jasmin::Value, 2>(
-                          value_span.begin(), value_span.end())});
+    context.current_module.Insert(context.Node(*iter - 1).token.Identifier(),
+                                  AnyValue(types[0], value_span));
   }
 }
 

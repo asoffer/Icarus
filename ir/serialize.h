@@ -36,49 +36,49 @@ struct ModuleSerializer : jasmin::ProgramFragmentSerializer, W {
     return s.serialize_as_string(lit);
   }
 
-  friend bool NthSerialize(ModuleSerializer& s, Module::Entry const& entry) {
-    type::Type t = entry.qualified_type.type();
+  friend bool NthSerialize(ModuleSerializer& s, AnyValue const& value) {
+    type::Type t = value.type();
     if (not nth::io::serialize(s, t)) { return false; }
     switch (t.kind()) {
       case type::Type::Kind::Primitive: {
         auto p = t.AsPrimitive();
         switch (p.kind()) {
           case type::PrimitiveType::Kind::Bool:
-            return nth::io::serialize(s, entry.value[0].as<bool>());
+            return nth::io::serialize(s, value.value()[0].as<bool>());
           case type::PrimitiveType::Kind::Char:
-            return nth::io::serialize(s, entry.value[0].as<char>());
+            return nth::io::serialize(s, value.value()[0].as<char>());
           case type::PrimitiveType::Kind::Byte:
-            return nth::io::serialize(s, entry.value[0].as<std::byte>());
+            return nth::io::serialize(s, value.value()[0].as<std::byte>());
           case type::PrimitiveType::Kind::I8:
-            return nth::io::serialize(s, entry.value[0].as<int8_t>());
+            return nth::io::serialize(s, value.value()[0].as<int8_t>());
           case type::PrimitiveType::Kind::I16:
-            return nth::io::serialize(s, entry.value[0].as<int16_t>());
+            return nth::io::serialize(s, value.value()[0].as<int16_t>());
           case type::PrimitiveType::Kind::I32:
-            return nth::io::serialize(s, entry.value[0].as<int32_t>());
+            return nth::io::serialize(s, value.value()[0].as<int32_t>());
           case type::PrimitiveType::Kind::I64:
-            return nth::io::serialize(s, entry.value[0].as<int64_t>());
+            return nth::io::serialize(s, value.value()[0].as<int64_t>());
           case type::PrimitiveType::Kind::U8:
-            return nth::io::serialize(s, entry.value[0].as<uint8_t>());
+            return nth::io::serialize(s, value.value()[0].as<uint8_t>());
           case type::PrimitiveType::Kind::U16:
-            return nth::io::serialize(s, entry.value[0].as<uint16_t>());
+            return nth::io::serialize(s, value.value()[0].as<uint16_t>());
           case type::PrimitiveType::Kind::U32:
-            return nth::io::serialize(s, entry.value[0].as<uint32_t>());
+            return nth::io::serialize(s, value.value()[0].as<uint32_t>());
           case type::PrimitiveType::Kind::U64:
-            return nth::io::serialize(s, entry.value[0].as<uint64_t>());
+            return nth::io::serialize(s, value.value()[0].as<uint64_t>());
           case type::PrimitiveType::Kind::Type:
-            return nth::io::serialize(s, entry.value[0].as<type::Type>());
+            return nth::io::serialize(s, value.value()[0].as<type::Type>());
           case type::PrimitiveType::Kind::Integer:
-            return nth::io::serialize(s, entry.value[0].as<Integer>());
+            return nth::io::serialize(s, value.value()[0].as<Integer>());
           case type::PrimitiveType::Kind::Module:
-            return nth::io::serialize(s, entry.value[0].as<ModuleId>());
+            return nth::io::serialize(s, value.value()[0].as<ModuleId>());
           case type::PrimitiveType::Kind::NullType: return true;
           default: NTH_UNIMPLEMENTED("{}") <<= {t};
         }
       } break;
       case type::Type::Kind::Function: {
-        return nth::io::serialize(s,
-                                  global_function_registry.id(
-                                      entry.value[0].as<IrFunction const*>()));
+        return nth::io::serialize(
+            s, global_function_registry.id(
+                   value.value()[0].as<IrFunction const*>()));
       } break;
       default: NTH_UNIMPLEMENTED("{}") <<= {t};
     }
@@ -87,13 +87,13 @@ struct ModuleSerializer : jasmin::ProgramFragmentSerializer, W {
 
   friend bool NthSerialize(
       ModuleSerializer& s,
-      absl::flat_hash_map<Identifier, Module::Entry> const& exported_symbols) {
+      absl::flat_hash_map<Identifier, AnyValue> const& exported_symbols) {
     // TODO: Container that supports multiplicity?
     uint32_t size = exported_symbols.size();
     if (not nth::io::serialize_integer(s, size)) { return false; }
     if (not nth::io::serialize_integer(s, size)) { return false; }
 
-    std::vector<std::pair<Identifier const, Module::Entry> const*> pairs;
+    std::vector<std::pair<Identifier const, AnyValue> const*> pairs;
     pairs.reserve(size);
     for (auto const& pair : exported_symbols) { pairs.push_back(&pair); }
     std::sort(pairs.begin(), pairs.end(), [](auto const* lhs, auto const* rhs) {

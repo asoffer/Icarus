@@ -599,9 +599,10 @@ void HandleParseTreeNodeMemberExpression(ParseNodeIndex index,
     if (context.type_stack().top()[0].constant()) {
       auto module_id = context.EvaluateAs<ModuleId>(index - 1);
       NTH_REQUIRE(module_id.has_value());
-      auto qt = context.emit.module(*module_id)
-                    .Lookup(node.token.Identifier())
-                    .qualified_type;
+      auto qt =
+          type::QualifiedType::Constant(context.emit.module(*module_id)
+                                            .Lookup(node.token.Identifier())
+                                            .type());
       context.type_stack().pop();
       context.type_stack().push({qt});
       context.emit.SetQualifiedType(index, qt);
