@@ -51,7 +51,7 @@ let rewind   ::= builtin.foreign("rewind", *FILE -> c.int)
 let clearerr ::= builtin.foreign("clearerr", *FILE -> ())
 let feof     ::= builtin.foreign("feof", *FILE -> c.int)
 let ferror   ::= builtin.foreign("ferror", *FILE -> ())
-let perror   ::= builtin.foreign("perror", [*]char -> c.int)
+let perror   ::= builtin.foreign("perror", [*]char -> ())
 
 let remove   ::= builtin.foreign("remove", [*]char -> c.int)
 let rename   ::= builtin.foreign("rename", ([*]char, [*]char) -> c.int)

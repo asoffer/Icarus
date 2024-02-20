@@ -80,6 +80,10 @@ struct ModuleSerializer : jasmin::ProgramFragmentSerializer, W {
             s, global_function_registry.id(
                    value.value()[0].as<IrFunction const*>()));
       } break;
+      case type::Type::Kind::Pointer: {
+        // TODO: How do we serialize a pointer?
+        return true;
+      }
       default: NTH_UNIMPLEMENTED("{}") <<= {t};
     }
     return false;

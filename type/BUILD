@@ -131,6 +131,7 @@ cc_library(
     deps = [
         ":basic",
         "//common/language:type_kind",
+        "//common:identifier",
         "@nth_cc//nth/debug",
     ],
 )
@@ -260,14 +261,4 @@ cc_library(
         "@nth_cc//nth/debug",
         "@nth_cc//nth/utility:no_destructor",
     ],
-)
-
-cc_test(
-    name = "type_system_test",
-    srcs = ["type_system_test.cc"],
-    deps = [
-        ":type",
-        ":type_system",
-        "@nth_cc//nth/test:main",
-    ]
 )

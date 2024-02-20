@@ -69,14 +69,6 @@ struct ForeignFunction
     return nth::io::serialize(s, f.name(), f.type());
   }
 
-  friend bool NthDeserialize(auto &d, ForeignFunction &f) {
-    StringLiteral name;
-    type::FunctionType ft;
-    if (not nth::io::deserialize(d, name, ft)) { return false; }
-    f = ForeignFunction(name, ft);
-    return true;
-  }
-
   friend bool operator==(ForeignFunction lhs, ForeignFunction rhs) {
     return lhs.value() == rhs.value();
   }

@@ -44,10 +44,21 @@ struct TypeSystem {
   nth::flyweight_set<std::pair<Type, ::ic::Pattern>> refinements;
   nth::flyweight_set<Type> pattern_match_types;
 
-  void merge_from(TypeSystem const& ts);
-};
+  struct ReindexTable {
+    Type operator()(Type t) const;
+    void clear() {
+      returns_.clear();
+      mapping_.clear();
+    }
 
-Type Reindex(Type t, TypeSystem const& from, TypeSystem& to);
+   private:
+    friend TypeSystem;
+    std::vector<uint64_t> returns_;
+    absl::flat_hash_map<Type, Type> mapping_;
+  };
+
+  ReindexTable merge_from(TypeSystem const& ts);
+};
 
 }  // namespace ic::type
 

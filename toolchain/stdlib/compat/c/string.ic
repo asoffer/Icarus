@@ -28,4 +28,4 @@ let memset   ::= builtin.foreign("memset", ([*]byte, c.int, size_t) -> [*]byte)
 let memcpy   ::= builtin.foreign("memcpy", ([*]byte, [*]byte, size_t) -> [*]byte)
 let memmove  ::= builtin.foreign("memmove", ([*]byte, [*]byte, size_t) -> [*]byte)
 
-let strerror ::= builtin.foreign("strerror", c.int -> [*]byte)
+let strerror ::= builtin.foreign("strerror", c.int -> [*]char)
