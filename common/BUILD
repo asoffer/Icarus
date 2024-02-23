@@ -32,13 +32,14 @@ cc_library(
     hdrs = ["foreign_function.h"],
     srcs = ["foreign_function.cc"],
     deps = [
+        ":result",
         ":string_literal",
         ":strong_identifier_type",
         "//type:function",
         "@nth_cc//nth/container:flyweight_map",
         "@nth_cc//nth/container:flyweight_set",
+        "@nth_cc//nth/io/deserialize",
         "@nth_cc//nth/io/serialize",
-        "@nth_cc//nth/io/serialize:deserialize",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/synchronization",
     ],
@@ -59,8 +60,8 @@ cc_library(
     deps = [
         ":strong_identifier_type",
         "@nth_cc//nth/container:flyweight_set",
+        "@nth_cc//nth/io/deserialize",
         "@nth_cc//nth/io/serialize",
-        "@nth_cc//nth/io/serialize:deserialize",
         "@nth_cc//nth/numeric:integer",
     ],
 )
@@ -89,8 +90,8 @@ cc_library(
     hdrs = ["module_id.h"],
     deps = [
         "@jasmin//jasmin/core:value",
+        "@nth_cc//nth/io/deserialize",
         "@nth_cc//nth/io/serialize",
-        "@nth_cc//nth/io/serialize:deserialize",
     ],
 )
 
@@ -129,8 +130,8 @@ cc_library(
     srcs = ["string_literal.cc"],
     deps = [
         ":strong_identifier_type",
+        "@nth_cc//nth/io/deserialize",
         "@nth_cc//nth/io/serialize",
-        "@nth_cc//nth/io/serialize:deserialize",
         "@nth_cc//nth/container:flyweight_map",
         "@com_google_absl//absl/synchronization",
     ],
@@ -153,6 +154,11 @@ cc_library(
     deps = [
         ":module_map",
     ],
+)
+
+cc_library(
+    name = "result",
+    hdrs = ["result.h"],
 )
 
 cc_library(

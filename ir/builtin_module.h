@@ -10,6 +10,8 @@ namespace ic {
 
 Module BuiltinModule();
 
+jasmin::ProgramFragment<InstructionSet> const& BuiltinFunctionFragment();
+
 std::span<std::string const> BuiltinNames();
 
 }  // namespace ic

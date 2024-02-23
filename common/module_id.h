@@ -6,7 +6,7 @@
 #include <utility>
 
 #include "jasmin/core/value.h"
-#include "nth/io/serialize/deserialize.h"
+#include "nth/io/deserialize/deserialize.h"
 #include "nth/io/serialize/serialize.h"
 
 namespace ic {
@@ -45,12 +45,12 @@ struct ModuleId {
   }
 
   friend bool NthSerialize(auto &s, ModuleId id) {
-    return nth::io::serialize_integer(s, id.value());
+    return nth::io::write_integer(s, id.value());
   }
 
   friend bool NthDeserialize(auto &d, ModuleId &id) {
     uint32_t n;
-    if (not nth::io::deserialize_integer(d, n)) { return false; }
+    if (not nth::io::read_integer(d, n)) { return false; }
     id = ModuleId(n);
     return true;
   }

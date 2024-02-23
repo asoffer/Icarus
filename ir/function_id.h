@@ -5,6 +5,8 @@
 #include <utility>
 
 #include "common/module_id.h"
+#include "nth/io/reader/reader.h"
+#include "nth/io/writer/writer.h"
 #include "nth/strings/interpolate.h"
 
 namespace ic {
@@ -33,11 +35,11 @@ struct LocalFunctionId {
   }
 
   friend bool NthSerialize(auto &s, LocalFunctionId id) {
-    return nth::io::serialize_integer(s, id.value());
+    return nth::io::write_integer(s, id.value());
   }
 
   friend bool NthDeserialize(auto &d, LocalFunctionId &id) {
-    return nth::io::deserialize_integer(d, id.id_);
+    return nth::io::read_integer(d, id.id_);
   }
 
  private:

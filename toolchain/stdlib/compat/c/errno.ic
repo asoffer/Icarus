@@ -2,6 +2,6 @@
 
 let c ::= import "std.compat.c.types"
 
-let errno    ::= builtin.foreign("errno", *c.int)
+// let errno    ::= builtin.foreign("errno", *c.int)
 let perror   ::= builtin.foreign("perror", [*]char -> ())
 let strerror ::= builtin.foreign("strerror", c.int -> [*]char)

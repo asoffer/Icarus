@@ -4,6 +4,7 @@
 #include <span>
 #include <string_view>
 
+#include "jasmin/core/function_registry.h"
 #include "common/identifier.h"
 #include "common/integer.h"
 #include "common/interface.h"
@@ -213,10 +214,16 @@ using InstructionSet = jasmin::MakeInstructionSet<
     jasmin::Negate<float>, jasmin::Negate<double>, ConstructRefinementType,
     CheckInterfaceSatisfaction>;
 
-using IrFunction = jasmin::Function<InstructionSet>;
-using ProgramFragment    = jasmin::ProgramFragment<InstructionSet>;
+using IrFunction      = jasmin::Function<InstructionSet>;
+using ProgramFragment = jasmin::ProgramFragment<InstructionSet>;
 
 void Extend(Interface intf, type::Type t);
+
+struct SharedContext {
+  jasmin::FunctionRegistry registry;
+  ProgramFragment foreign;
+};
+inline SharedContext shared_context;
 
 }  // namespace ic
 

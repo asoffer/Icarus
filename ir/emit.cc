@@ -871,6 +871,7 @@ void EmitContext::Push(std::span<jasmin::Value const> vs, type::Type t) {
     case type::Type::Kind::DependentFunction:
     case type::Type::Kind::Function: {
       NTH_REQUIRE((v.harden), vs.size() == 1);
+      NTH_REQUIRE(vs[0].as<jasmin::Function<> const*>() != nullptr);
       current_function().append<jasmin::Push<jasmin::Function<> const*>>(
           vs[0].as<jasmin::Function<> const*>());
     } break;
@@ -895,6 +896,9 @@ void EmitContext::Push(std::span<jasmin::Value const> vs, type::Type t) {
     current_function().append<jasmin::Push<cpp>>(vs[0].as<cpp>());             \
     break;
 #include "common/language/primitive_types.xmacro.h"
+        case type::PrimitiveType::Kind::NullType:
+          current_function().append<PushNull>();
+          break;
         default: NTH_LOG("{}") <<= {t}; NTH_UNIMPLEMENTED();
       }
     } break;

@@ -10,9 +10,10 @@ cc_library(
         "//ir:deserialize",
         "@nth_cc//nth/io:file_path",
         "@nth_cc//nth/io:file",
+        "@nth_cc//nth/io/deserialize",
         "@nth_cc//nth/io/reader:file",
         "@nth_cc//nth/io/reader:string",
-        "@nth_cc//nth/io/serialize:deserialize",
+        "@nth_cc//nth/io/serialize",
         "@com_google_absl//absl/strings",
     ],
 )

@@ -7,7 +7,7 @@
 #include <utility>
 
 #include "jasmin/core/value.h"
-#include "nth/io/serialize/deserialize.h"
+#include "nth/io/deserialize/deserialize.h"
 #include "nth/io/serialize/serialize.h"
 #include "type/type_contour.h"
 
@@ -192,13 +192,13 @@ bool NthSerialize(auto& s, Type t) {
   uint64_t n;
   static_assert(sizeof(n) == sizeof(t));
   std::memcpy(&n, &t, sizeof(n));
-  return nth::io::serialize_fixed(s, n);
+  return nth::io::write_fixed(s, n);
 }
 
 bool NthDeserialize(auto& d, Type& t) {
   uint64_t n;
   static_assert(sizeof(n) == sizeof(t));
-  if (not nth::io::deserialize_fixed(d, n)) { return false; }
+  if (not nth::io::read_fixed(d, n)) { return false; }
   std::memcpy(&t, &n, sizeof(n));
   return true;
 }

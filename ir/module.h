@@ -21,8 +21,17 @@ struct Module {
   void Insert(Identifier id, AnyValue e);
 
   IrFunction& insert_initializer();
-  constexpr IrFunction& initializer() { return *init_; }
-  constexpr IrFunction const& initializer() const { return *init_; }
+  void set_initializer(IrFunction& f NTH_ATTRIBUTE(lifetimebound)) {
+    init_ = &f;
+  }
+  IrFunction& initializer() {
+    NTH_REQUIRE(init_ != nullptr);
+    return *init_;
+  }
+  IrFunction const& initializer() const {
+    NTH_REQUIRE(init_ != nullptr);
+    return *init_;
+  }
 
   IrFunction& add_function(size_t parameters, size_t returns);
   IrFunction& add_function(ModuleId id, size_t parameters, size_t returns);

@@ -7,14 +7,15 @@
 #include "absl/strings/str_split.h"
 #include "common/resources.h"
 #include "ir/deserialize.h"
+#include "jasmin/core/function_registry.h"
+#include "nth/io/deserialize/deserialize.h"
 #include "nth/io/reader/file.h"
 #include "nth/io/reader/string.h"
-#include "nth/io/serialize/deserialize.h"
 
 namespace ic {
 
 std::optional<DependentModules> PopulateModuleMap(
-    nth::file_path const& module_map_file) {
+    nth::file_path const& module_map_file, SharedContext& context) {
   std::optional reader = nth::io::file_reader::try_open(module_map_file);
   if (not reader) { return std::nullopt; }
 
@@ -54,10 +55,9 @@ std::optional<DependentModules> PopulateModuleMap(
     }
 
     ModuleDeserializer<nth::io::string_reader> deserializer(
-        serialized_module_content);
-    if (not nth::io::deserialize(deserializer, dependent_modules.add(name))) {
-      return std::nullopt;
-    }
+        serialized_module_content, context);
+    Result r = nth::io::deserialize(deserializer, dependent_modules.add(name));
+    if (not r) { return std::nullopt; }
   }
 
   return dependent_modules;

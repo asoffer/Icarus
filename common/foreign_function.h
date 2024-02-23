@@ -6,12 +6,15 @@
 #include <string_view>
 
 #include "absl/container/flat_hash_map.h"
+#include "common/result.h"
 #include "common/string_literal.h"
 #include "common/strong_identifier_type.h"
 #include "nth/container/flyweight_map.h"
 #include "nth/debug/debug.h"
-#include "nth/io/serialize/deserialize.h"
+#include "nth/io/deserialize/deserialize.h"
+#include "nth/io/reader/reader.h"
 #include "nth/io/serialize/serialize.h"
+#include "nth/io/writer/writer.h"
 #include "type/function.h"
 
 namespace ic {
@@ -22,8 +25,8 @@ struct ForeignFunctionHandle {
 
   void const *ptr() const { return ptr_; }
 
-  friend bool NthSerialize(auto &s, ForeignFunctionHandle f);
-  friend bool NthDeserialize(auto &d, ForeignFunctionHandle &f);
+  friend Result NthSerialize(auto &s, ForeignFunctionHandle f);
+  friend Result NthDeserialize(auto &d, ForeignFunctionHandle &f);
 
   friend bool operator==(ForeignFunctionHandle lhs, ForeignFunctionHandle rhs) {
     return lhs.ptr_ == rhs.ptr_;
@@ -65,7 +68,7 @@ struct ForeignFunction
   type::FunctionType type() const;
   ForeignFunctionHandle function() const;
 
-  friend bool NthSerialize(auto &s, ForeignFunction f) {
+  friend Result NthSerialize(auto &s, ForeignFunction f) {
     return nth::io::serialize(s, f.name(), f.type());
   }
 
@@ -94,18 +97,17 @@ struct ForeignFunction
   ForeignFunction(uint32_t n);
 };
 
-bool NthSerialize(auto &s, ForeignFunctionHandle f) {
+Result NthSerialize(auto &s, ForeignFunctionHandle f) {
   auto iter = internal_foreign_function::ptr_index.find(f);
   NTH_REQUIRE((v.debug), iter != internal_foreign_function::ptr_index.end());
-  return nth::io::serialize_fixed(s, iter->second);
+  return nth::io::write_fixed(s, iter->second);
 }
 
-bool NthDeserialize(auto &d, ForeignFunctionHandle &f) {
+Result NthDeserialize(auto &d, ForeignFunctionHandle &f) {
   uint32_t index;
-  if (not nth::io::deserialize_fixed(d, index)) { return false; }
+  if (not nth::io::read_fixed(d, index)) { return Result(false); }
   f = ForeignFunction::FromIndex(index).function();
-  return true;
-
+  return Result::success();
 }
 
 }  // namespace ic

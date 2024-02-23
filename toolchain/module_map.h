@@ -10,7 +10,7 @@
 namespace ic {
 
 std::optional<DependentModules> PopulateModuleMap(
-    nth::file_path const& module_map_file);
+    nth::file_path const& module_map_file, SharedContext& context);
 
 }  // namespace ic
 

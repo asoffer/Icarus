@@ -2,7 +2,7 @@ load("//toolchain/internal:transitions.bzl", "ic_tooling_transition")
 
 IcarusInfo = provider(
     "Information needed to compile and link an Icarus binary",
-    fields = ["icm", "icm_deps", "data_deps"],
+    fields = ["deps", "icm", "data_deps"],
 )
 
 def _module_name(p):
@@ -31,19 +31,25 @@ def _ic_compile_impl(ctx):
         label = ctx.label.name
     ))
 
+
+    deps = depset(
+        direct = ctx.attr.deps,
+        order = "postorder",
+        transitive = [d[IcarusInfo].deps for d in ctx.attr.deps])
+    dep_list = deps.to_list()
+
     ctx.actions.write(
         output = mod_file,
         content = "\n".join([
             "{}\t{}\n".format(_module_name(p), _module_location(p))
-            for p in depset(ctx.attr.deps).to_list()
+            for p in dep_list
         ])
     )
 
-    icm_deps = [d[IcarusInfo].icm_deps for d in ctx.attr.deps]
     data_deps = [d[IcarusInfo].data_deps for d in ctx.attr.deps]
 
     ctx.actions.run(
-        inputs = depset([src_file, mod_file], transitive = icm_deps),
+        inputs = depset([src_file, mod_file] + [d[IcarusInfo].icm for d in dep_list]),
         outputs = [icm_file],
         arguments = [
             src_file.path,
@@ -58,24 +64,24 @@ def _ic_compile_impl(ctx):
         executable = ctx.attr._compile[0][DefaultInfo].files_to_run.executable,
     )
 
-    return (icm_file,
+    return (deps,
+            icm_file,
             mod_file,
-            depset([icm_file], transitive = icm_deps),
             depset(ctx.attr.data, transitive = data_deps))
 
 def _ic_library_impl(ctx):
     if len(ctx.attr.srcs) != 1:
         fail("ic_library rules must have exactly one file in 'srcs'.")
 
-    (icm_file, mod_file, icm_deps, data_deps) = _ic_compile_impl(ctx)
+    (deps, icm_file, mod_file, data_deps) = _ic_compile_impl(ctx)
 
     return [
         DefaultInfo(
             files = depset([icm_file]),
         ),
         IcarusInfo(
+            deps = deps,
             icm = icm_file,
-            icm_deps = icm_deps,
             data_deps = data_deps,
         ),
     ]
@@ -86,24 +92,27 @@ def _ic_binary_impl(ctx):
     if len(ctx.attr.srcs) != 1:
         fail("ic_binary rules must have exactly one file in 'srcs'.")
 
-    (icm_file, _, icm_deps, data_deps) = _ic_compile_impl(ctx)
+    (deps, icm_file, _, data_deps) = _ic_compile_impl(ctx)
 
     mod_file = ctx.actions.declare_file("{label}.icrunmod".format(
         label = ctx.label.name
     ))
 
+    dep_list = deps.to_list()
+
     ctx.actions.write(
         output = mod_file,
         content = "\n".join([
             "{}\t{}\n".format(_module_name(p), _short_module_location(p))
-            for p in depset(ctx.attr.deps).to_list()
+            for p in dep_list
         ])
     )
 
     runfiles = ctx.runfiles(
-        files = [ctx.executable._run_bytecode, mod_file],
+        files = [ctx.executable._run_bytecode, mod_file, icm_file],
         transitive_files = depset(
-            transitive = [icm_deps] + [d.files for d in data_deps.to_list()]),
+            direct = [d[IcarusInfo].icm for d in dep_list],
+            transitive = [d.files for d in data_deps.to_list()]),
     )
 
     ctx.actions.write(
@@ -119,7 +128,8 @@ def _ic_binary_impl(ctx):
     )
     return [
         DefaultInfo(
-            files = depset([icm_file], transitive = [icm_deps]),
+            executable = ctx.outputs.executable,
+            files = depset([icm_file] + [d[IcarusInfo].icm for d in deps.to_list()]),
             runfiles = runfiles
         ),
     ]

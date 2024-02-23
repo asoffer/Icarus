@@ -12,9 +12,12 @@
 namespace ic {
 namespace {
 
+jasmin::ProgramFragment<InstructionSet> builtin_function_fragment;
+
 IrFunction const &FunctionOrPointer() {
-  static nth::NoDestructor<IrFunction> f([] {
-    IrFunction f(1, 1);
+  static nth::NoDestructor<IrFunction const *> f([]() -> IrFunction const * {
+    auto &f = builtin_function_fragment.declare("~function_or_pointer", 1, 1)
+                  .function;
     f.append<TypeKind>();
     f.append<jasmin::Duplicate>();
     f.append<jasmin::Push<type::Type::Kind>>(type::Type::Kind::Function);
@@ -28,68 +31,68 @@ IrFunction const &FunctionOrPointer() {
     f.append<jasmin::Push<type::Type::Kind>>(type::Type::Kind::Pointer);
     f.append<jasmin::Equal<type::Type::Kind>>();
     f.append<jasmin::Return>();
-    return f;
+    return &f;
   }());
-  return *f;
+  return **f;
 }
 
 IrFunction const &AsciiEncodeFn() {
-  static nth::NoDestructor<IrFunction> f([] {
-    IrFunction f(1, 1);
+  static nth::NoDestructor<IrFunction const *> f([]() -> IrFunction const * {
+    auto &f = builtin_function_fragment.declare("ascii_encode", 1, 1).function;
     f.append<AsciiEncode>();
     f.append<jasmin::Return>();
-    return f;
+    return &f;
   }());
-  return *f;
+  return **f;
 }
 
 IrFunction const &AsciiDecodeFn() {
-  static nth::NoDestructor<IrFunction> f([] {
-    IrFunction f(1, 1);
+  static nth::NoDestructor<IrFunction const *> f([]() -> IrFunction const * {
+    auto &f = builtin_function_fragment.declare("ascii_decode", 1, 1).function;
     f.append<AsciiDecode>();
     f.append<jasmin::Return>();
-    return f;
+    return &f;
   }());
-  return *f;
+  return **f;
 }
 
 IrFunction const &Foreign() {
-  static nth::NoDestructor<IrFunction> f([] {
-    IrFunction f(3, 1);
+  static nth::NoDestructor<IrFunction const *> f([]() -> IrFunction const * {
+    auto &f = builtin_function_fragment.declare("foreign", 3, 1).function;
     f.append<RegisterForeignFunction>();
     f.append<jasmin::Return>();
-    return f;
+    return &f;
   }());
-  return *f;
+  return **f;
 }
 
 IrFunction const &Opaque() {
-  static nth::NoDestructor<IrFunction> f([] {
-    IrFunction f(0, 1);
+  static nth::NoDestructor<IrFunction const *> f([]() -> IrFunction const * {
+    auto &f = builtin_function_fragment.declare("opaque", 0, 1).function;
     f.append<ConstructOpaqueType>();
     f.append<jasmin::Return>();
-    return f;
+    return &f;
   }());
-  return *f;
+  return **f;
 }
 
 IrFunction const &Arguments() {
-  static nth::NoDestructor<IrFunction> f([] {
-    IrFunction f(0, 2);
+  static nth::NoDestructor<IrFunction const *> f([]() -> IrFunction const * {
+    auto &f = builtin_function_fragment.declare("arguments", 0, 2).function;
     f.append<LoadProgramArguments>();
     f.append<jasmin::Return>();
-    return f;
+    return &f;
   }());
-  return *f;
+  return **f;
 }
 
 IrFunction const &Slice() {
-  static nth::NoDestructor<IrFunction> f([] {
-    IrFunction f(2, 2);
+  static nth::NoDestructor<IrFunction const *> f([]() -> IrFunction const * {
+    auto &f = builtin_function_fragment.declare("slice", 2, 2).function;
     f.append<jasmin::Return>();
-    return f;
+    return &f;
   }());
-  return *f;
+  return **f;
 }
 
 nth::NoDestructor<std::vector<std::string>> BuiltinNamesImpl;
@@ -105,6 +108,7 @@ Module BuiltinModule() {
   auto Register = [&](std::string_view name, type::Type t,
                       IrFunction const &f) {
     m.Insert(Identifier(name), AnyValue(t, &f));
+    shared_context.registry.register_function(builtin_function_fragment, f);
     global_function_registry.Register(
         FunctionId(ModuleId::Builtin(), LocalFunctionId(next_id++)), &f);
     BuiltinNamesImpl->emplace_back(name);
@@ -155,6 +159,10 @@ Module BuiltinModule() {
                    {type::DependentParameterMapping::Index::Value(1)})),
            Foreign());
   return m;
+}
+
+jasmin::ProgramFragment<InstructionSet> const &BuiltinFunctionFragment() {
+  return builtin_function_fragment;
 }
 
 }  // namespace ic

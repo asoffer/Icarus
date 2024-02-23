@@ -1276,6 +1276,7 @@ void HandleParseTreeNodeFunctionLiteral(ParseNodeIndex index,
                                         diag::DiagnosticConsumer& diag) {
   context.queue.front().functions.pop_back();
   context.pop_lexical_scope();
+  context.emit.SetQualifiedType(index, context.type_stack().top()[0]);
   // TODO: Check that the return type matches the signature.
 }
 

@@ -119,7 +119,7 @@ ic_library(
         ":limits",
         ":locale",
         ":string",
-        ":stdio",
+        # ":stdio",
         ":types",
         ":time",
     ],

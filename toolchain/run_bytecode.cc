@@ -42,7 +42,7 @@ nth::exit_code Run(nth::FlagValueSet flags, std::span<std::string_view const> ar
 
   diag::StreamingConsumer consumer;
 
-  std::optional dependent_modules = PopulateModuleMap(module_map_path);
+  std::optional dependent_modules = PopulateModuleMap(module_map_path, shared_context);
   if (not dependent_modules) {
     consumer.Consume({
         diag::Header(diag::MessageKind::Error),
@@ -62,7 +62,8 @@ nth::exit_code Run(nth::FlagValueSet flags, std::span<std::string_view const> ar
     return nth::exit_code::generic_error;
   }
 
-  ModuleDeserializer<nth::io::string_reader> deserializer(serialized_content);
+  ModuleDeserializer<nth::io::string_reader> deserializer(serialized_content,
+                                                          shared_context);
   Module module;
   if (not nth::io::deserialize(deserializer, module)) {
     return nth::exit_code::generic_error;

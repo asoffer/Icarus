@@ -6,7 +6,7 @@
 #include "common/strong_identifier_type.h"
 #include "nth/container/flyweight_set.h"
 #include "nth/debug/debug.h"
-#include "nth/io/serialize/deserialize.h"
+#include "nth/io/deserialize/deserialize.h"
 #include "nth/io/serialize/serialize.h"
 #include "nth/numeric/integer.h"
 

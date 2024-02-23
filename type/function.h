@@ -5,7 +5,7 @@
 #include <utility>
 #include <vector>
 
-#include "nth/io/serialize/deserialize.h"
+#include "nth/io/deserialize/deserialize.h"
 #include "nth/io/serialize/serialize.h"
 #include "type/basic.h"
 #include "type/parameters.h"

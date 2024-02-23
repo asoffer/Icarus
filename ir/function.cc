@@ -5,13 +5,15 @@
 #include "absl/container/flat_hash_map.h"
 #include "absl/container/flat_hash_set.h"
 #include "absl/container/node_hash_map.h"
+#include "absl/strings/str_cat.h"
+#include "common/foreign_function.h"
 #include "common/interface.h"
 #include "common/pattern.h"
 #include "common/slice.h"
-#include "ir/foreign_function.h"
 #include "ir/function_id.h"
 #include "ir/global_function_registry.h"
 #include "ir/program_arguments.h"
+#include "jasmin/core/program_fragment.h"
 #include "jasmin/core/value.h"
 #include "nth/utility/no_destructor.h"
 #include "type/function.h"
@@ -57,12 +59,30 @@ void RegisterForeignFunction::consume(
     jasmin::Output<void const*> out) {
   auto [data, length, t] = in;
   if (t.kind() == type::Type::Kind::Function) {
-    auto const& f = InsertForeignFunction(std::string_view(data, length),
-                                          t.AsFunction(), false);
-    out.set(&f);
+    ForeignFunction f(std::string_view(data, length), t.AsFunction());
+    size_t params = 0;
+
+    // TODO: Come up with a better mangling
+    std::string mangled_name(f.name().str());
+    for (auto const& p : *t.AsFunction().parameters()) {
+      params += type::JasminSize(p.type);
+      absl::StrAppend(&mangled_name, "_", static_cast<int>(p.type.kind()), ".",
+                      p.type.index());
+    }
+    size_t rets = 0;
+    mangled_name.append("_");
+    for (type::Type ret : t.AsFunction().returns()) {
+      rets += type::JasminSize(ret);
+      absl::StrAppend(&mangled_name, "_", static_cast<int>(ret.kind()), ".",
+                      ret.index());
+    }
+    auto& fn =
+        shared_context.foreign.declare(mangled_name, params, rets).function;
+    out.set(&fn);
   } else {
-    out.set(
-        InsertForeignPointer(std::string_view(data, length), t.AsPointer()));
+    NTH_UNIMPLEMENTED();
+    out.set(nullptr);
+    //   InsertForeignPointer(std::string_view(data, length), t.AsPointer()));
   }
 }
 

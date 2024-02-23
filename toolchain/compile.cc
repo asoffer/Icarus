@@ -47,7 +47,7 @@ nth::exit_code Compile(nth::FlagValueSet flags, nth::file_path const& source) {
 
   diag::StreamingConsumer consumer;
 
-  std::optional dependencies = PopulateModuleMap(module_map_path);
+  std::optional dependencies = PopulateModuleMap(module_map_path, shared_context);
   if (not dependencies) {
     consumer.Consume({
         diag::Header(diag::MessageKind::Error),
@@ -106,8 +106,12 @@ nth::exit_code Compile(nth::FlagValueSet flags, nth::file_path const& source) {
   SetExported(emit_context);
 
   std::string serialized_content;
-  ModuleSerializer<nth::io::string_writer> serializer(serialized_content);
-  if (not nth::io::serialize(serializer, module)) {
+  ModuleSerializer<nth::io::string_writer> serializer(serialized_content,
+                                                      shared_context);
+
+  Result r = nth::io::serialize(serializer, module);
+  if (not r) {
+    NTH_LOG("{}") <<= {r};
     consumer.Consume(
         {diag::Header(diag::MessageKind::Error),
          diag::Text("Failed to serialize module. This is a compiler bug.")});

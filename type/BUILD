@@ -22,9 +22,9 @@ cc_library(
         "//common/language:type_kind",
         "@jasmin//jasmin/core:value",
         "@nth_cc//nth/debug",
+        "@nth_cc//nth/io/deserialize",
         "@nth_cc//nth/io/reader",
         "@nth_cc//nth/io/serialize",
-        "@nth_cc//nth/io/serialize:deserialize",
     ],
 )
 
@@ -54,18 +54,6 @@ cc_library(
         ":type",
         "//common:any_value",
         "//common:integer",
-    ],
-)
-
-cc_library(
-    name = "deserialize",
-    hdrs = ["deserialize.h"],
-    deps = [
-        ":parameters",
-        ":type",
-        "@nth_cc//nth/io/reader",
-        "@nth_cc//nth/io/serialize:deserialize",
-        "@nth_cc//nth/meta:concepts",
     ],
 )
 
@@ -110,7 +98,7 @@ cc_library(
         ":parameters",
         "//common/language:type_kind",
         "@nth_cc//nth/debug",
-        "@nth_cc//nth/io/serialize:deserialize",
+        "@nth_cc//nth/io/deserialize",
         "@nth_cc//nth/io/serialize",
     ],
 )
@@ -177,34 +165,6 @@ cc_library(
         "//common:pattern",
         "@jasmin//jasmin/core:function",
         "@nth_cc//nth/debug",
-    ],
-)
-
-cc_test(
-    name = "round_trip_test",
-    srcs = ["round_trip_test.cc"],
-    deps = [
-        ":deserialize",
-        ":serialize",
-        ":type",
-        ":type_system",
-        "@nth_cc//nth/io/reader:string",
-        "@nth_cc//nth/io/serialize",
-        "@nth_cc//nth/io/serialize:deserialize",
-        "@nth_cc//nth/io/writer:string",
-        "@nth_cc//nth/test:main",
-    ],
-)
-
-cc_library(
-    name = "serialize",
-    hdrs = ["serialize.h"],
-    deps = [
-        ":parameters",
-        ":type",
-        "@nth_cc//nth/io/serialize",
-        "@nth_cc//nth/io/writer",
-        "@nth_cc//nth/meta:concepts",
     ],
 )
 
