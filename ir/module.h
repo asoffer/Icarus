@@ -9,7 +9,6 @@
 #include "common/any_value.h"
 #include "common/identifier.h"
 #include "ir/function.h"
-#include "ir/global_function_registry.h"
 #include "ir/scope.h"
 #include "jasmin/core/value.h"
 #include "type/type.h"

@@ -5,7 +5,6 @@
 #include <string_view>
 
 #include "common/module_id.h"
-#include "ir/builtin_module.h"
 #include "ir/module.h"
 
 namespace ic {
@@ -18,9 +17,6 @@ struct DependentModules {
 
   Module const &operator[](ModuleId id) const;
 
-  // Returns a reference to the builtin module.
-  Module const &builtin_module() const { return builtin_; }
-
   Module &foreign_module() { return foreign_; }
   Module const &foreign_module() const { return foreign_; }
 
@@ -31,7 +27,6 @@ struct DependentModules {
   // transitively. Modules are ordered according to some topological sorting
   // so that if `b` depends on `a`, then `a` appears before `b`.
   std::vector<Module> modules_;
-  Module builtin_ = BuiltinModule();
   Module foreign_;
 };
 

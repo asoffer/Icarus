@@ -9,7 +9,7 @@
 #include "common/integer.h"
 #include "common/result.h"
 #include "common/string_literal.h"
-#include "ir/builtin_module.h"
+#include "common/to_bytes.h"
 #include "ir/module.h"
 #include "jasmin/core/function_registry.h"
 #include "nth/container/black_hole.h"
@@ -261,7 +261,8 @@ struct ModuleDeserializer : R {
     co_await nth::io::deserialize(d, d.str_lits_);
     co_await nth::io::deserialize(d, m.program());
     m.set_initializer(m.program().function("~"));
-    co_return nth::io::deserialize(d, m.entries());
+    co_await nth::io::deserialize(d, m.entries());
+    co_return Result::success();
   }
 
   jasmin::FunctionRegistry& context(
@@ -277,8 +278,7 @@ struct ModuleDeserializer : R {
     uint32_t size;
     if (not nth::io::read_integer(*this, size)) { return false; }
     content.resize(size, '\0');
-    return Result(this->read(std::span<std::byte>(
-        reinterpret_cast<std::byte*>(content.data()), size)));
+    return Result(this->read(ToBytes(content)));
   }
 };
 

@@ -6,6 +6,7 @@
 #include "absl/debugging/symbolize.h"
 #include "common/debug.h"
 #include "common/string.h"
+#include "common/to_bytes.h"
 #include "diagnostics/consumer/streaming.h"
 #include "diagnostics/message.h"
 #include "ir/dependent_modules.h"
@@ -56,9 +57,7 @@ nth::exit_code Run(nth::FlagValueSet flags, std::span<std::string_view const> ar
   std::optional reader = nth::io::file_reader::try_open(input);
   if (not reader) { return nth::exit_code::generic_error; }
   std::string serialized_content(reader->size(), '\0');
-  if (not reader->read(std::span<std::byte>(
-          reinterpret_cast<std::byte*>(serialized_content.data()),
-          serialized_content.size()))) {
+  if (not reader->read(ToBytes(serialized_content))) {
     return nth::exit_code::generic_error;
   }
 

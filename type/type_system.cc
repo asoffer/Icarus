@@ -91,6 +91,12 @@ TypeSystem::ReindexTable TypeSystem::merge_from(TypeSystem const& ts) {
     work.push(Action::Reindex);
   }
 
+  for (DependentTerm t : ts.dependent_terms) {
+    NTH_LOG("{}")<<={
+      t
+    };
+  }
+
   i = 0;
   for (auto const& [p, ret_index, ev] : ts.functions) {
     types.push({.type = FunctionType(i++)});

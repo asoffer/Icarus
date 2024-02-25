@@ -8,6 +8,7 @@
 #include "common/errno.h"
 #include "common/resources.h"
 #include "common/string.h"
+#include "common/to_bytes.h"
 #include "diagnostics/consumer/streaming.h"
 #include "diagnostics/message.h"
 #include "ir/declaration.h"
@@ -19,8 +20,8 @@
 #include "lexer/lexer.h"
 #include "nth/commandline/commandline.h"
 #include "nth/debug/log/log.h"
-#include "nth/io/reader/file.h"
 #include "nth/io/file_path.h"
+#include "nth/io/reader/file.h"
 #include "nth/io/serialize/serialize.h"
 #include "nth/io/writer/string.h"
 #include "nth/process/exit_code.h"
@@ -72,8 +73,7 @@ nth::exit_code Compile(nth::FlagValueSet flags, nth::file_path const& source) {
     return nth::exit_code::generic_error;
   }
   std::string content(reader->size(), '\0');
-  if (not reader->read(std::span<std::byte>(
-          reinterpret_cast<std::byte*>(content.data()), content.size()))) {
+  if (not reader->read(ToBytes(content))) {
     consumer.Consume({
         diag::Header(diag::MessageKind::Error),
         diag::Text(
@@ -111,7 +111,6 @@ nth::exit_code Compile(nth::FlagValueSet flags, nth::file_path const& source) {
 
   Result r = nth::io::serialize(serializer, module);
   if (not r) {
-    NTH_LOG("{}") <<= {r};
     consumer.Consume(
         {diag::Header(diag::MessageKind::Error),
          diag::Text("Failed to serialize module. This is a compiler bug.")});

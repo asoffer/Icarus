@@ -11,7 +11,6 @@
 #include "common/pattern.h"
 #include "common/slice.h"
 #include "ir/function_id.h"
-#include "ir/global_function_registry.h"
 #include "ir/program_arguments.h"
 #include "jasmin/core/program_fragment.h"
 #include "jasmin/core/value.h"

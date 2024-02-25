@@ -1,13 +1,12 @@
-load("//toolchain/internal:transitions.bzl", "ic_tooling_transition")
+load("//toolchain/bazel:provider.bzl", "IcarusInfo")
+load("//toolchain/bazel:transitions.bzl", "ic_tooling_transition")
 
-IcarusInfo = provider(
-    "Information needed to compile and link an Icarus binary",
-    fields = ["deps", "icm", "data_deps"],
-)
 
 def _module_name(p):
     s = str(p.label)
     name = s[s.rfind("//") + 2:].replace("/", ".").replace(":", ".")
+    if name == "toolchain.builtin.builtin":
+        name = "~builtin~"
     if name.startswith("toolchain.stdlib"):
         name = "std" + name[16:]
     return name
@@ -16,8 +15,10 @@ def _module_name(p):
 def _module_location(p):
     return p[IcarusInfo].icm.path
 
+
 def _short_module_location(p):
     return p[IcarusInfo].icm.short_path
+
 
 def _ic_compile_impl(ctx):
     src = ctx.attr.srcs[0]
@@ -31,9 +32,8 @@ def _ic_compile_impl(ctx):
         label = ctx.label.name
     ))
 
-
     deps = depset(
-        direct = ctx.attr.deps,
+        direct = ctx.attr.deps + [ctx.attr._builtin],
         order = "postorder",
         transitive = [d[IcarusInfo].deps for d in ctx.attr.deps])
     dep_list = deps.to_list()
@@ -49,7 +49,8 @@ def _ic_compile_impl(ctx):
     data_deps = [d[IcarusInfo].data_deps for d in ctx.attr.deps]
 
     ctx.actions.run(
-        inputs = depset([src_file, mod_file] + [d[IcarusInfo].icm for d in dep_list]),
+        inputs = depset([src_file, mod_file, ctx.attr._builtin[IcarusInfo].icm]
+                        + [d[IcarusInfo].icm for d in dep_list]),
         outputs = [icm_file],
         arguments = [
             src_file.path,
@@ -69,6 +70,7 @@ def _ic_compile_impl(ctx):
             mod_file,
             depset(ctx.attr.data, transitive = data_deps))
 
+
 def _ic_library_impl(ctx):
     if len(ctx.attr.srcs) != 1:
         fail("ic_library rules must have exactly one file in 'srcs'.")
@@ -85,7 +87,6 @@ def _ic_library_impl(ctx):
             data_deps = data_deps,
         ),
     ]
-
 
 
 def _ic_binary_impl(ctx):
@@ -134,12 +135,16 @@ def _ic_binary_impl(ctx):
         ),
     ]
 
+
 ic_library = rule(
     implementation = _ic_library_impl,
     attrs = {
         "srcs": attr.label_list(allow_files = [".ic"]),
         "deps": attr.label_list(providers = [IcarusInfo]),
         "data": attr.label_list(),
+        "_builtin": attr.label(
+            default = Label("//toolchain/builtin"),
+        ),
         "_compile": attr.label(
             default = Label("//toolchain:compile"),
             allow_single_file = True,
@@ -152,12 +157,16 @@ ic_library = rule(
     },
 )
 
+
 ic_binary = rule(
     implementation = _ic_binary_impl,
     attrs = {
         "srcs": attr.label_list(allow_files = [".ic"]),
         "deps": attr.label_list(providers = [IcarusInfo]),
         "data": attr.label_list(),
+        "_builtin": attr.label(
+            default = Label("//toolchain/builtin"),
+        ),
         "_compile": attr.label(
             default = Label("//toolchain:compile"),
             allow_single_file = True,

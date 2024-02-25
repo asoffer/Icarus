@@ -8,7 +8,7 @@
 #include "common/identifier.h"
 #include "common/result.h"
 #include "common/string_literal.h"
-#include "ir/builtin_module.h"
+#include "common/to_bytes.h"
 #include "ir/module.h"
 #include "jasmin/core/function_registry.h"
 #include "nth/io/serialize/serialize.h"
@@ -80,6 +80,7 @@ struct ModuleSerializer : W {
           default: NTH_UNIMPLEMENTED("{}") <<= {t};
         }
       } break;
+      case type::Type::Kind::DependentFunction:
       case type::Type::Kind::Function: {
         co_return nth::io::serialize(s,
                                      value.value()[0].as<IrFunction const*>());
@@ -88,7 +89,10 @@ struct ModuleSerializer : W {
         // TODO: How do we serialize a pointer?
         co_return Result::success();
       }
-      default: NTH_UNIMPLEMENTED("{}") <<= {t};
+      case type::Type::Kind::Pattern: NTH_UNIMPLEMENTED("{}") <<= {t};
+      case type::Type::Kind::Refinement: NTH_UNIMPLEMENTED("{}") <<= {t};
+      case type::Type::Kind::Opaque: NTH_UNIMPLEMENTED("{}") <<= {t};
+      default: NTH_UNIMPLEMENTED("{} (kind = {})") <<= {t, t.kind()};
     }
   }
 
@@ -156,7 +160,8 @@ struct ModuleSerializer : W {
                               nth::io::as_sequence(ts.functions),
                               nth::io::as_sequence(ts.pointee_types),
                               nth::io::as_sequence(ts.buffer_pointee_types),
-                              nth::io::as_sequence(ts.slice_element_types));
+                              nth::io::as_sequence(ts.slice_element_types),
+                              nth::io::as_sequence(ts.dependent_terms));
   }
 
   friend Result NthSerialize(ModuleSerializer& s, Module const& module) {
@@ -177,10 +182,8 @@ struct ModuleSerializer : W {
   SharedContext& context_;
 
   Result serialize_as_string(std::string_view content) {
-    std::span<std::byte const> span(
-        reinterpret_cast<std::byte const*>(content.data()), content.size());
     return Result(nth::io::write_integer(*this, content.size()) and
-                  this->write(span));
+                  this->write(ToBytes(content)));
   }
 };
 

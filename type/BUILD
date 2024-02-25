@@ -66,6 +66,7 @@ cc_library(
         ":function",
         ":refinement",
         "//common:any_value",
+        "//common:result",
         "@jasmin//jasmin/core:function",
         "@jasmin//jasmin/core:value",
         "@nth_cc//nth/container:flyweight_set",

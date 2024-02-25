@@ -6,6 +6,7 @@ cc_library(
     srcs = ["module_map.cc"],
     deps = [
         "//common:resources",
+        "//common:to_bytes",
         "//ir:module",
         "//ir:deserialize",
         "@nth_cc//nth/io:file_path",
@@ -26,6 +27,7 @@ cc_binary(
         "//common:debug",
         "//common:errno",
         "//common:string",
+        "//common:to_bytes",
         "//diagnostics:message",
         "//diagnostics/consumer:streaming",
         "//ir",
@@ -57,6 +59,7 @@ cc_binary(
         "//common:debug",
         "//common:errno",
         "//common:string",
+        "//common:to_bytes",
         "//diagnostics:message",
         "//diagnostics/consumer:streaming",
         "//ir:dependent_modules",

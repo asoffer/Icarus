@@ -159,9 +159,17 @@ cc_library(
 cc_library(
     name = "result",
     hdrs = ["result.h"],
+    deps = [
+        "@nth_cc//nth/utility:early_exit",
+    ],
 )
 
 cc_library(
     name = "slice",
     hdrs = ["slice.h"],
+)
+
+cc_library(
+    name = "to_bytes",
+    hdrs = ["to_bytes.h"],
 )

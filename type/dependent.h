@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "common/any_value.h"
+#include "common/result.h"
 #include "nth/container/flyweight_set.h"
 #include "nth/container/interval.h"
 #include "type/basic.h"
@@ -45,6 +46,31 @@ struct DependentTerm {
   // Returns a pointer to a fully-evaluated value if the expression can be
   // completely evaluated, and null otherwise.
   AnyValue const *evaluate() const;
+
+  friend Result NthSerialize(auto &s, DependentTerm const &term) {
+    co_await nth::io::write_integer(s, term.nodes_.size());
+    for (auto const &node : term.nodes_) {
+      co_await nth::io::write_fixed(s, static_cast<uint8_t>(node.kind));
+      co_await nth::io::write_fixed(s, node.index);
+      co_await nth::io::write_integer(s, node.subtree_size);
+    }
+    co_return nth::io::serialize(s, nth::io::as_sequence(term.values_));
+  }
+
+  friend Result NthDeserialize(auto &d, DependentTerm &term) {
+    size_t size;
+    co_await nth::io::read_integer(d, size);
+    term.nodes_.reserve(size);
+    for (size_t i = 0; i < size; ++i) {
+      uint8_t kind;
+      auto &node = term.nodes_.emplace_back();
+      co_await nth::io::read_fixed(d, kind);
+      node.kind = static_cast<Node::Kind>(kind);
+      co_await nth::io::read_fixed(d, node.index);
+      co_await nth::io::read_integer(d, node.subtree_size);
+    }
+    co_return nth::io::deserialize(d, nth::io::as_sequence(term.values_));
+  }
 
  private:
   void Substitute(size_t index,

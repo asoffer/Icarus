@@ -1,21 +1,6 @@
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
-    name = "builtin_module",
-    hdrs = ["builtin_module.h"],
-    srcs = ["builtin_module.cc"],
-    deps = [
-        ":function",
-        ":module",
-        "//common:identifier",
-        "//common:module_id",
-        "//common:pattern",
-        "//type",
-        "@nth_cc//nth/utility:no_destructor",
-    ],
-)
-
-cc_library(
     name = "declaration",
     hdrs = ["declaration.h"],
     srcs = ["declaration.cc"],
@@ -33,7 +18,6 @@ cc_library(
     hdrs = ["dependent_modules.h"],
     srcs = ["dependent_modules.cc"],
     deps = [
-        ":builtin_module",
         ":module",
         "//common:module_id",
         "@nth_cc//nth/debug",
@@ -44,13 +28,13 @@ cc_library(
     name = "deserialize",
     hdrs = ["deserialize.h"],
     deps = [
-        ":builtin_module",
         ":dependent_modules",
         ":function",
         ":module",
         "//common:foreign_function",
         "//common:result",
         "//common:string_literal",
+        "//common:to_bytes",
         "@jasmin//jasmin/core:function_registry",
         "@nth_cc//nth/base:attributes",
         "@nth_cc//nth/container:black_hole",
@@ -250,6 +234,7 @@ cc_library(
         "//common:foreign_function",
         "//common:result",
         "//common:string_literal",
+        "//common:to_bytes",
         "@jasmin//jasmin/core:function_registry",
         "@nth_cc//nth/debug",
         "@nth_cc//nth/debug/log",

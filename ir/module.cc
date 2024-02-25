@@ -23,11 +23,8 @@ IrFunction& Module::add_function(size_t parameters, size_t returns) {
 IrFunction& Module::add_function(ModuleId id, size_t parameters,
                                  size_t returns) {
   size_t count = program_.function_count();
-  auto& f = program_.declare(absl::StrCat("fn.", count), parameters, returns)
-                .function;
-  FunctionId fn_id(id, LocalFunctionId(count));
-  global_function_registry.Register(fn_id, &f);
-  return f;
+  return program_.declare(absl::StrCat("fn.", count), parameters, returns)
+      .function;
 }
 
 Scope& Module::add_scope() { return scopes_.emplace_back(); }
