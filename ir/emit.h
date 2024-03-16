@@ -9,6 +9,7 @@
 #include "absl/container/flat_hash_map.h"
 #include "common/identifier.h"
 #include "common/module_id.h"
+#include "common/type.h"
 #include "ir/dependent_modules.h"
 #include "ir/lexical_scope.h"
 #include "ir/local_storage.h"
@@ -20,7 +21,6 @@
 #include "parse/declaration.h"
 #include "parse/node_index.h"
 #include "parse/tree.h"
-#include "type/type.h"
 
 namespace ic {
 

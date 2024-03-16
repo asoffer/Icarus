@@ -1,4 +1,4 @@
-#include "type/type.h"
+#include "common/type.h"
 
 #include <cstring>
 #include <utility>
@@ -9,11 +9,11 @@
 #include "common/pattern.h"
 #include "nth/debug/debug.h"
 #include "nth/utility/no_destructor.h"
+#include "type/dependent.h"
+#include "type/type_contour.h"
 
 namespace ic::type {
 namespace {
-
-nth::NoDestructor<TypeSystem> type_system;
 
 uint64_t opaque_count = 0;
 

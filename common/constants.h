@@ -112,7 +112,6 @@ struct PointerType : Type {
 
  private:
   friend Type;
-  friend struct TypeSystem;
   friend PointerType Ptr(Type t);
 
   explicit PointerType() = default;
@@ -131,7 +130,6 @@ struct BufferPointerType : Type {
 
  private:
   friend Type;
-  friend struct TypeSystem;
   friend BufferPointerType BufPtr(Type t);
 
   explicit BufferPointerType() = default;
@@ -151,7 +149,6 @@ struct SliceType : Type {
 
  private:
   friend Type;
-  friend struct TypeSystem;
   friend SliceType Slice(Type t);
 
   explicit SliceType() = default;
@@ -222,7 +219,6 @@ struct ParametersType : Type {
  private:
   friend Type;
   friend struct FunctionType;
-  friend struct TypeSystem;
   friend ParametersType Parameters(std::span<Parameter const>);
   explicit constexpr ParametersType(uint32_t n)
       : Type(Type::Kind::Parameters, n) {}
@@ -266,7 +262,6 @@ struct FunctionType : Type {
 
  private:
   friend Type;
-  friend struct TypeSystem;
   friend FunctionType Function(ParametersType, std::span<Type const>,
                                Evaluation);
 

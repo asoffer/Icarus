@@ -9,7 +9,6 @@
 #include "nth/debug/debug.h"
 #include "nth/utility/iterator_range.h"
 #include "parse/node_index.h"
-#include "type/type.h"
 
 namespace ic {
 

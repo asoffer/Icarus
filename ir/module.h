@@ -11,7 +11,6 @@
 #include "ir/function.h"
 #include "ir/scope.h"
 #include "jasmin/core/value.h"
-#include "type/type.h"
 
 namespace ic {
 

@@ -52,7 +52,6 @@ struct ModuleDeserializer : R {
     type::Type t;
     co_await nth::io::deserialize(d, t);
     std::vector<jasmin::Value> values;
-    t = d.reindexing_(t);
     switch (t.kind()) {
       case type::Type::Kind::Primitive: {
         auto p = t.AsPrimitive();
@@ -197,13 +196,11 @@ struct ModuleDeserializer : R {
     StringLiteral name;
     type::Type t;
     co_await nth::io::deserialize(d, name, t);
-    f = ForeignFunction(name, d.reindexing_(t).AsFunction());
+    f = ForeignFunction(name, t.AsFunction());
     co_return Result::success();
   }
 
   friend Result NthDeserialize(ModuleDeserializer& d, Module& m) {
-    d.reindexing_.clear();
-
     co_await nth::io::deserialize(d, GlobalConstantTable());
     co_await nth::io::deserialize(d, d.context_.foreign);
     co_await nth::io::deserialize(d, m.program());
@@ -217,7 +214,6 @@ struct ModuleDeserializer : R {
     return context_.registry;
   }
  private:
-  type::TypeSystem::ReindexTable reindexing_;
   SharedContext& context_;
 
   Result read_as_string(std::string& content) {

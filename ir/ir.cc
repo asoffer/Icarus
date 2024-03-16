@@ -10,6 +10,7 @@
 #include "common/module_id.h"
 #include "common/resources.h"
 #include "common/string.h"
+#include "common/type.h"
 #include "ir/lexical_scope.h"
 #include "ir/type_stack.h"
 #include "jasmin/core/function.h"
@@ -19,7 +20,6 @@
 #include "parse/node_index.h"
 #include "parse/tree.h"
 #include "type/cast.h"
-#include "type/type.h"
 
 namespace ic {
 namespace {

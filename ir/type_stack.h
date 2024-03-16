@@ -6,7 +6,8 @@
 #include <span>
 #include <vector>
 
-#include "type/type.h"
+#include "common/type.h"
+#include "type/basic.h"
 
 namespace ic {
 

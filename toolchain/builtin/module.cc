@@ -5,7 +5,7 @@
 #include "common/any_value.h"
 #include "common/identifier.h"
 #include "common/pattern.h"
-#include "type/type.h"
+#include "common/type.h"
 
 namespace ic::builtin {
 namespace {

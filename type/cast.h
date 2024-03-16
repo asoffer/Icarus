@@ -1,8 +1,8 @@
 #ifndef ICARUS_TYPE_CAST_H
 #define ICARUS_TYPE_CAST_H
 
-#include "type/type.h"
 #include "common/any_value.h"
+#include "common/type.h"
 
 namespace ic::type {
 

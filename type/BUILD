@@ -173,10 +173,10 @@ cc_library(
 
 cc_library(
     name = "type",
-    hdrs = ["type.h"],
     srcs = ["type.cc"],
     deps = [
-        ":type_system",
+        ":dependent",
+        ":type_contour",
         "//common:constants",
         "@nth_cc//nth/container:flyweight_set",
         "@nth_cc//nth/debug",
@@ -200,29 +200,4 @@ cc_test(
         ":type",
         "@nth_cc//nth/test:main",
     ]
-)
-
-cc_library(
-    name = "type_system",
-    hdrs = ["type_system.h"],
-    srcs = ["type_system.cc"],
-    deps = [
-        ":alignment",
-        ":basic",
-        ":byte_width",
-        ":dependent",
-        ":function",
-        ":opaque",
-        ":parameters",
-        ":pattern",
-        ":pointer",
-        ":primitive",
-        ":refinement",
-        ":type_contour",
-        "//common/language:type_kind",
-        "//common:pattern",
-        "@nth_cc//nth/container:flyweight_set",
-        "@nth_cc//nth/debug",
-        "@nth_cc//nth/utility:no_destructor",
-    ],
 )

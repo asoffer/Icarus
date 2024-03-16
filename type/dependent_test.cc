@@ -1,13 +1,14 @@
 #include "type/dependent.h"
 
 #include "common/any_value.h"
+#include "common/type.h"
 #include "jasmin/instructions/arithmetic.h"
 #include "jasmin/instructions/common.h"
 #include "nth/test/test.h"
+#include "type/basic.h"
 #include "type/function.h"
 #include "type/parameters.h"
 #include "type/primitive.h"
-#include "type/type.h"
 
 namespace ic::type {
 namespace {
