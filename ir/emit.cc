@@ -87,7 +87,7 @@ void HandleParseTreeNodeMinusStart(ParseNodeIndex index, EmitContext& context) {
 void HandleParseTreeNodeMinus(ParseNodeIndex index, EmitContext& context) {
   auto qt = context.QualifiedTypeOf(index - 1);
   if (qt.type().kind() == type::Type::Kind::Primitive) {
-    switch (qt.type().AsPrimitive().kind()) {
+    switch (qt.type().AsPrimitive().primitive_kind()) {
       case type::PrimitiveType::Kind::I8:
         context.current_function().append<jasmin::Negate<int8_t>>();
         break;
@@ -241,16 +241,16 @@ void HandleParseTreeNodeScopeStart(ParseNodeIndex, EmitContext&) {}
 Iteration HandleParseTreeNodeFunctionLiteralStart(ParseNodeIndex index,
                                                   EmitContext& context) {
   auto fn_type           = context.QualifiedTypeOf(index).type().AsFunction();
-  auto const& parameters = *fn_type.parameters();
+  auto parameters        = fn_type.parameters();
   size_t input_size      = 0;
   size_t output_size     = 0;
   type::ByteWidth bytes(0);
   std::vector<type::ByteWidth> storage_offsets;
   storage_offsets.reserve(parameters.size());
-  for (auto const& p : parameters) {
-    input_size += type::JasminSize(p.type);
+  for (size_t i = 0; i < parameters.size(); ++i) {
+    input_size += type::JasminSize(parameters[i].type);
     storage_offsets.push_back(bytes);
-    auto contour = type::Contour(p.type);
+    auto contour = type::Contour(parameters[i].type);
     bytes.align_forward_to(contour.alignment());
     bytes += contour.byte_width();
   }
@@ -265,9 +265,9 @@ Iteration HandleParseTreeNodeFunctionLiteralStart(ParseNodeIndex index,
   f.append<jasmin::StackAllocate>(context.current_storage().size().value());
 
   auto storage_iter = storage_offsets.rbegin();
-  for (auto iter = parameters.rbegin(); iter != parameters.rend();
-       ++storage_iter, ++iter) {
-    StoreStackValue(f, *storage_iter, iter->type);
+  for (size_t i = 0; i < parameters.size(); ++i, ++storage_iter) {
+    StoreStackValue(f, *storage_iter,
+                    parameters[parameters.size() - 1 - i].type);
   }
 
   // TODO: We should be able to jump directly rather than iterate and check,
@@ -293,7 +293,7 @@ void HandleParseTreeNodeDeclaration(ParseNodeIndex index,
       auto t  = context.QualifiedTypeOf(index).type();
       switch (t.kind()) {
         case type::Type::Kind::Primitive:
-          switch (t.AsPrimitive().kind()) {
+          switch (t.AsPrimitive().primitive_kind()) {
             case type::PrimitiveType::Kind::Bool:
               f.append<jasmin::Push<bool>>(false);
               break;
@@ -890,7 +890,7 @@ void EmitContext::Push(std::span<jasmin::Value const> vs, type::Type t) {
     } break;
     case type::Type::Kind::Primitive: {
       NTH_REQUIRE((v.harden), vs.size() == 1);
-      switch (t.AsPrimitive().kind()) {
+      switch (t.AsPrimitive().primitive_kind()) {
 #define IC_XMACRO_PRIMITIVE_CPP_TYPE_MAPPING(t, cpp)                           \
   case type::PrimitiveType::Kind::t:                                           \
     current_function().append<jasmin::Push<cpp>>(vs[0].as<cpp>());             \

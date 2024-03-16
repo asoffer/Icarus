@@ -1,3 +1,6 @@
+#include "absl/debugging/failure_signal_handler.h"
+#include "absl/debugging/symbolize.h"
+#include "common/to_bytes.h"
 #include "ir/serialize.h"
 #include "nth/commandline/commandline.h"
 #include "nth/debug/log/log.h"
@@ -38,13 +41,12 @@ auto FatalError(std::string_view message) {
   };
 }
 
-std::span<std::byte const> ToByteSpan(std::string_view content) {
-  return std::span<std::byte const>(
-      reinterpret_cast<std::byte const*>(content.data()), content.size());
-}
-
 nth::exit_code WriteBuiltinToFile(nth::FlagValueSet,
                                   nth::file_path const& path) {
+  absl::InitializeSymbolizer("");
+  absl::FailureSignalHandlerOptions opts;
+  absl::InstallFailureSignalHandler(opts);
+
   nth::io::file_writer writer = co_await nth::on_exit(
       nth::io::file_writer::try_open(path, nth::io::file_writer::create),
       FatalError("Failed to open file"));
@@ -58,7 +60,7 @@ nth::exit_code WriteBuiltinToFile(nth::FlagValueSet,
   co_await nth::on_exit(nth::io::serialize(s, builtin),
                         FatalError("Failed to write module contents"));
 
-  co_await nth::on_exit(writer.write(ToByteSpan(content)),
+  co_await nth::on_exit(writer.write(ToBytes(content)),
                         FatalError("Failed to write module contents"));
 
   co_return nth::exit_code::success;

@@ -180,30 +180,31 @@ void DependentTerm::PartiallyEvaluate() {
 }
 
 bool DependentTerm::bind(AnyValue const &value) {
-  auto iter = nodes_.rbegin();
-  NTH_REQUIRE((v.harden), iter->kind == Node::Kind::Function);
-  ++iter;
-  NTH_REQUIRE((v.harden), iter->kind == Node::Kind::Value);
-  NTH_REQUIRE((v.harden), values_.from_index(iter->index).type() == Type_);
-  Type parameter     = values_.from_index(iter->index).value()[0].as<Type>();
-  Type argument_type = value.type();
-  if (parameter == argument_type) {
-    // Okay.
-  } else if (parameter.kind() == Type::Kind::Refinement and
-             parameter.AsRefinement().underlying() == Type_ and
-             parameter.AsRefinement()(value)) {
-    // Okay.
-  } else {
-    return false;
-  }
+  NTH_UNIMPLEMENTED();
+  // auto iter = nodes_.rbegin();
+  // NTH_REQUIRE((v.harden), iter->kind == Node::Kind::Function);
+  // ++iter;
+  // NTH_REQUIRE((v.harden), iter->kind == Node::Kind::Value);
+  // NTH_REQUIRE((v.harden), values_.from_index(iter->index).type() == Type_);
+  // Type parameter     = values_.from_index(iter->index).value()[0].as<Type>();
+  // Type argument_type = value.type();
+  // if (parameter == argument_type) {
+  //   // Okay.
+  // } else if (parameter.kind() == Type::Kind::Refinement and
+  //            parameter.AsRefinement().underlying() == Type_ and
+  //            parameter.AsRefinement()(value)) {
+  //   // Okay.
+  // } else {
+  //   return false;
+  // }
 
-  ++iter;
-  Substitute(values_.index(values_.insert(value).first),
-             nth::interval(iter, nodes_.rend()));
-  nodes_.pop_back();
-  nodes_.pop_back();
-  PartiallyEvaluate();
-  return true;
+  // ++iter;
+  // Substitute(values_.index(values_.insert(value).first),
+  //            nth::interval(iter, nodes_.rend()));
+  // nodes_.pop_back();
+  // nodes_.pop_back();
+  // PartiallyEvaluate();
+  // return true;
 }
 
 DependentParameterMapping::Index DependentParameterMapping::Index::Type(

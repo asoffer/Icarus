@@ -7,6 +7,7 @@
 
 namespace ic::type {
 
+#if 0
 struct RefinementType : internal_type::BasicType {
   explicit RefinementType() = default;
 
@@ -26,6 +27,7 @@ struct RefinementType : internal_type::BasicType {
   explicit constexpr RefinementType(uint64_t n)
       : internal_type::BasicType(Type::Kind::Refinement, n) {}
 };
+#endif
 
 // TODO: Accepting an opaque function here is not a viable long-term strategy.
 // We want users to be able to provide proofs that an object satisfies the

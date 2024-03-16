@@ -34,7 +34,7 @@ bool ImplicitCast(AnyValue const &from, Type to) {
       return to.AsRefinement()(from);
     } else if (from.type() == Integer and to.kind() == Type::Kind::Primitive) {
       auto n = from.value()[0].as<::ic::Integer>();
-      switch (to.AsPrimitive().kind()) {
+      switch (to.AsPrimitive().primitive_kind()) {
         default: NTH_UNREACHABLE();
         case PrimitiveType::Kind::I8:
           return n >= std::numeric_limits<int8_t>::lowest() and

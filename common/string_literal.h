@@ -4,16 +4,16 @@
 #include <cstddef>
 #include <string>
 #include <string_view>
+#include <vector>
 
-#include "common/strong_identifier_type.h"
-#include "nth/container/flyweight_map.h"
+#include "common/internal/constant_handle.h"
 #include "nth/debug/debug.h"
-#include "nth/io/deserialize/deserialize.h"
-#include "nth/io/serialize/serialize.h"
 
 namespace ic {
 
-struct StringLiteral : private StrongIdentifierType<StringLiteral, uint32_t> {
+struct StringLiteral : internal_constants::ConstantHandle<StringLiteral> {
+  using backing_type = std::string;
+
   StringLiteral();
   StringLiteral(std::string &&s);
   StringLiteral(std::string const &s);
@@ -23,35 +23,16 @@ struct StringLiteral : private StrongIdentifierType<StringLiteral, uint32_t> {
     return StrongIdentifierType<StringLiteral, uint32_t>::value();
   }
 
-  std::string_view str() const;
+  explicit operator std::string const &() const;
 
-  friend bool NthSerialize(auto &s, StringLiteral lit) {
-    return nth::io::serialize(s, lit.str());
-  }
-  friend bool NthDeserialize(auto &d, StringLiteral &s) {
-    std::string content;
-    if (not nth::io::deserialize(d, content)) { return false; }
-    s = StringLiteral(std::move(content));
-    return true;
+  static void CompleteGeneration() {
+    // TODO
   }
 
-  friend bool operator==(StringLiteral lhs, StringLiteral rhs) {
-    return lhs.value() == rhs.value();
+  static std::vector<std::string_view> LatestGeneration() {
+    // TODO
+    return {};
   }
-
-  friend bool operator!=(StringLiteral lhs, StringLiteral rhs) {
-    return lhs.value() != rhs.value();
-  }
-
-  template <typename H>
-  friend H AbslHashValue(H h, StringLiteral s) {
-    return H::combine(std::move(h), s.value());
-  }
-
-  static void CompleteGeneration();
-  static std::vector<std::string_view> LatestGeneration();
-
-  friend void NthPrint(auto &p, auto &f, StringLiteral s) { f(p, s.str()); }
 };
 
 }  // namespace ic

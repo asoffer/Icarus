@@ -43,12 +43,13 @@ uint32_t Token::AsStringLiteralIndex() const {
 }
 
 Token Token::Identifier(uint32_t offset, ic::Identifier identifier_index) {
-  NTH_REQUIRE((v.debug), identifier_index.value() < PayloadLimit);
+  uint32_t rep = Identifier::ToRepresentation(identifier_index);
+  NTH_REQUIRE((v.debug), rep < PayloadLimit);
 
   Token token;
   token.offset_  = offset;
   token.kind_    = static_cast<uint8_t>(Kind::Identifier);
-  token.payload_ = identifier_index.value();
+  token.payload_ = Identifier::ToRepresentation(identifier_index);
   return token;
 }
 
@@ -92,7 +93,7 @@ Token Token::Invalid() {
 
 ic::Identifier Token::Identifier() const {
   NTH_REQUIRE((v.debug), kind() == Kind::Identifier);
-  return ic::Identifier(payload_);
+  return ic::Identifier::FromRepresentation(payload_);
 }
 
 Token Token::CloseSymbol(Token::Kind kind, uint32_t open_index,

@@ -6,6 +6,7 @@
 #include "absl/container/flat_hash_set.h"
 #include "absl/container/node_hash_map.h"
 #include "absl/strings/str_cat.h"
+#include "common/constants.h"
 #include "common/foreign_function.h"
 #include "common/interface.h"
 #include "common/pattern.h"
@@ -62,11 +63,11 @@ void RegisterForeignFunction::consume(
     size_t params = 0;
 
     // TODO: Come up with a better mangling
-    std::string mangled_name(f.name().str());
-    for (auto const& p : *t.AsFunction().parameters()) {
-      params += type::JasminSize(p.type);
-      absl::StrAppend(&mangled_name, "_", static_cast<int>(p.type.kind()), ".",
-                      p.type.index());
+    std::string mangled_name(f.name());
+    for (auto const& pt : t.AsFunction().parameters().types()) {
+      params += type::JasminSize(pt);
+      absl::StrAppend(&mangled_name, "_", static_cast<int>(pt.kind()), ".",
+                      pt.index());
     }
     size_t rets = 0;
     mangled_name.append("_");
@@ -88,10 +89,12 @@ void RegisterForeignFunction::consume(
 void InvokeForeignFunction::consume(std::span<jasmin::Value> input,
                                     std::span<jasmin::Value> output,
                                     type::FunctionType type,
-VoidConstPtr fn_ptr) {
-  std::span returns      = type.returns();
-  auto const& parameters = *type.parameters();
-  auto parameter_iter    = parameters.begin();
+                                    VoidConstPtr fn_ptr) {
+  auto returns = type.returns();
+  // TODO: There's no need to allocate this, but lifetimes are tricky and
+  // index-based iterators are annoying to implement so I'm not doing it yet.
+  std::vector<type::Type> parameter_types = type.parameters().types();
+  auto parameter_iter                     = parameter_types.begin();
   NTH_REQUIRE((v.debug), returns.size() <= 1);
 
   ffi_cif call_interface;
@@ -100,12 +103,12 @@ VoidConstPtr fn_ptr) {
       returns.empty() ? &ffi_type_void : FfiType(returns[0]);
   std::vector<ffi_type*> argument_types;
   std::vector<void*> argument_values;
-  argument_types.reserve(parameters.size());
-  argument_values.reserve(parameters.size());
+  argument_types.reserve(parameter_types.size());
+  argument_values.reserve(parameter_types.size());
 
   for (auto iter = input.begin(); iter != input.end();
        ++iter, ++parameter_iter) {
-    argument_types.push_back(FfiType(parameter_iter->type));
+    argument_types.push_back(FfiType(*parameter_iter));
     argument_values.push_back(static_cast<void*>(&*iter));
   }
 
@@ -158,7 +161,7 @@ void ConstructFunctionType::consume(jasmin::Input<type::Type, type::Type> in,
     out.set(type::Function(parameter.AsParameters(), std::move(returns)));
   } else {
     out.set(type::Function(
-        type::Parameters({{.name = Identifier("").value(), .type = parameter}}),
+        type::Parameters({{.name = Identifier(""), .type = parameter}}),
         std::move(returns)));
   }
 }

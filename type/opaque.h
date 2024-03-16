@@ -5,6 +5,7 @@
 
 namespace ic::type {
 
+#if 0
 struct OpaqueType : internal_type::BasicType {
   friend void NthPrint(auto& p, auto& fmt, OpaqueType o) {
     p.write("opaque.");
@@ -20,6 +21,7 @@ struct OpaqueType : internal_type::BasicType {
       : BasicType(Type::Kind::Opaque, n) {}
 };
 
+#endif
 OpaqueType Opaque();
 
 }  // namespace ic::type

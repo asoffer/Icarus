@@ -3,6 +3,7 @@
 
 #include "common/any_value.h"
 #include "jasmin/core/function.h"
+#include "nth/container/stack.h"
 
 namespace ic {
 

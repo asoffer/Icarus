@@ -119,8 +119,9 @@ cc_library(
     hdrs = ["parameters.h"],
     deps = [
         ":basic",
-        "//common/language:type_kind",
+        "//common:constants",
         "//common:identifier",
+        "//common/language:type_kind",
         "@nth_cc//nth/debug",
     ],
 )
@@ -149,6 +150,7 @@ cc_library(
     hdrs = ["primitive.h"],
     deps = [
         ":basic",
+        "//common:constants",
         "//common/language:primitive_types",
         "//common/language:type_kind",
         "@nth_cc//nth/debug",
@@ -175,6 +177,7 @@ cc_library(
     srcs = ["type.cc"],
     deps = [
         ":type_system",
+        "//common:constants",
         "@nth_cc//nth/container:flyweight_set",
         "@nth_cc//nth/debug",
         "@nth_cc//nth/utility:no_destructor",

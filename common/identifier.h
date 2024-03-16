@@ -1,44 +1,40 @@
 #ifndef ICARUS_COMMON_IDENTIFIER_H
 #define ICARUS_COMMON_IDENTIFIER_H
 
-#include <cstdint>
+#include <string>
+#include <string_view>
 
-#include "common/strong_identifier_type.h"
-#include "nth/container/flyweight_set.h"
+#include "common/internal/constant_handle.h"
 
 namespace ic {
-namespace internal_identifier {
-
-inline nth::flyweight_set<std::string> identifiers;
-
-}  // namespace internal_identifier
 
 // Represents an identifier in a program.
-struct Identifier : StrongIdentifierType<Identifier, uint32_t> {
-  explicit Identifier(uint32_t n) : StrongIdentifierType(n) {}
+struct Identifier : internal_constants::ConstantHandle<Identifier> {
+  using backing_type = std::string;
 
-  explicit Identifier(char const *identifier)
-      : StrongIdentifierType(internal_identifier::identifiers.index(
-            internal_identifier::identifiers.insert(identifier).first)) {}
-  explicit Identifier(std::string_view identifier)
-      : StrongIdentifierType(internal_identifier::identifiers.index(
-            internal_identifier::identifiers.insert(std::string(identifier))
-                .first)) {}
-  explicit Identifier(std::string &&identifier)
-      : StrongIdentifierType(internal_identifier::identifiers.index(
-            internal_identifier::identifiers.insert(std::move(identifier))
-                .first)) {}
-  explicit Identifier(std::string const &identifier)
-      : StrongIdentifierType(internal_identifier::identifiers.index(
-            internal_identifier::identifiers.insert(identifier).first)) {}
+  static Identifier FromRepresentation(uint32_t n) {
+    return Identifier(raw_t{}, n);
+  }
+  static uint32_t ToRepresentation(Identifier id) { return id.value(); }
 
-  friend void NthPrint(auto &p, auto &f, Identifier const &i) {
-    f(p, internal_identifier::identifiers.from_index(i.value()));
+  Identifier();
+  template <int N>
+  Identifier(char const (&s)[N])
+      : Identifier(([&] { NTH_REQUIRE(s[N - 1] == '\0'); }(),
+                    std::string_view(s, N - 1))) {}
+  Identifier(std::string&& s);
+  Identifier(std::string const& s);
+  Identifier(std::string_view s);
+
+  size_t index() const {
+    return StrongIdentifierType<Identifier, uint32_t>::value();
   }
 
-  explicit operator std::string_view() const {
-    return internal_identifier::identifiers.from_index(value());
-  }
+  explicit operator std::string const&() const;
+
+ private:
+  struct raw_t {};
+  explicit Identifier(raw_t, uint32_t n) : ConstantHandle(n) {}
 };
 
 }  // namespace ic

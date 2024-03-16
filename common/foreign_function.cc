@@ -24,7 +24,7 @@ uint32_t Insert(StringLiteral name, type::FunctionType t) {
   if (inserted) {
     dlerror();  // Clear existing errors.
     iter->second.first = ForeignFunctionHandle(
-        dlsym(RTLD_DEFAULT, std::string(name.str()).c_str()));
+        dlsym(RTLD_DEFAULT, static_cast<std::string const &>(name).c_str()));
     char const *error = dlerror();
     if (error != nullptr) { NTH_UNIMPLEMENTED("{}") <<= {error}; }
     internal_foreign_function::ptr_index.emplace(iter->second.first, index);

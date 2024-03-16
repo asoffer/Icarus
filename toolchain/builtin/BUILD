@@ -7,7 +7,10 @@ cc_binary(
     srcs = ["construct.cc"],
     deps = [
         ":module",
+        "//common:to_bytes",
         "//ir:serialize",
+        "@com_google_absl//absl/debugging:failure_signal_handler",
+        "@com_google_absl//absl/debugging:symbolize",
         "@nth_cc//nth/commandline:main",
         "@nth_cc//nth/debug/log",
         "@nth_cc//nth/io:file_path",

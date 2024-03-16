@@ -5,10 +5,10 @@
 #include <span>
 #include <string>
 
+#include "common/constants.h"
 #include "common/foreign_function.h"
 #include "common/integer.h"
 #include "common/result.h"
-#include "common/string_literal.h"
 #include "common/to_bytes.h"
 #include "ir/module.h"
 #include "jasmin/core/function_registry.h"
@@ -56,7 +56,7 @@ struct ModuleDeserializer : R {
     switch (t.kind()) {
       case type::Type::Kind::Primitive: {
         auto p = t.AsPrimitive();
-        switch (p.kind()) {
+        switch (p.primitive_kind()) {
           case type::PrimitiveType::Kind::Bool: {
             bool x;
             co_await nth::io::deserialize(d, x);
@@ -173,66 +173,15 @@ struct ModuleDeserializer : R {
     co_return Result::success();
   }
 
-  friend Result NthDeserialize(ModuleDeserializer& d, type::Type& t) {
-    uint64_t n;
-    static_assert(sizeof(n) == sizeof(t));
-    if (not nth::io::read_fixed(d, n)) { return false; }
-    std::memcpy(&t, &n, sizeof(t));
-    return true;
-  }
-
-  friend Result NthDeserialize(ModuleDeserializer& d, nth::enumeration auto& e) {
-    return nth::io::read_fixed(d, e);
-  }
-
   friend Result NthDeserialize(ModuleDeserializer& d,
-                             type::ParametersType::Parameter& p) {
-    return nth::io::deserialize(d, p.name, p.type);
-  }
-
-  template <nth::io::deserializable_with<ModuleDeserializer> X,
-            nth::io::deserializable_with<ModuleDeserializer> Y>
-  friend Result NthDeserialize(ModuleDeserializer& d, std::pair<X, Y>& pair) {
-    return nth::io::deserialize(d, pair.first) and
-           nth::io::deserialize(d, pair.second);
-  }
-
-  template <nth::io::deserializable_with<ModuleDeserializer>... Ts>
-  friend Result NthDeserialize(ModuleDeserializer& d, std::tuple<Ts...>& tuple) {
-    return std::apply(
-        [&](auto&... elements) {
-          return (nth::io::deserialize(d, elements) and ...);
-        },
-        tuple);
-  }
-
-  template <nth::io::deserializable_with<ModuleDeserializer> T>
-  friend Result NthDeserialize(ModuleDeserializer& d, std::vector<T>& v) {
-    v.clear();
-    return nth::io::deserialize(d, nth::io::as_sequence(v));
-  }
-
-  friend Result NthDeserialize(ModuleDeserializer& d, type::TypeSystem& ts) {
-    d.reindexing_.clear();
-    type::TypeSystem scratch;
-    if (not nth::io::deserialize(
-            d,  //
-            nth::io::as_sequence(scratch.parameters),
-            nth::io::as_sequence(scratch.returns),
-            nth::io::as_sequence(scratch.functions),
-            nth::io::as_sequence(scratch.pointee_types),
-            nth::io::as_sequence(scratch.buffer_pointee_types),
-            nth::io::as_sequence(scratch.slice_element_types))) {
-      return false;
-    }
-    d.reindexing_ = ts.merge_from(scratch);
-    return true;
+                               nth::enumeration auto& e) {
+    return nth::io::read_fixed(d, e);
   }
 
   struct StringLiteralReindexTable : std::vector<StringLiteral> {};
 
   friend Result NthDeserialize(ModuleDeserializer& d,
-                             StringLiteralReindexTable& table) {
+                               StringLiteralReindexTable& table) {
     uint32_t size;
     if (not nth::io::read_integer(d, size)) { co_return Result(false); }
     std::string s;
@@ -253,12 +202,10 @@ struct ModuleDeserializer : R {
   }
 
   friend Result NthDeserialize(ModuleDeserializer& d, Module& m) {
-    d.str_lits_.clear();
     d.reindexing_.clear();
 
-    co_await nth::io::deserialize(d, type::GlobalTypeSystem());
+    co_await nth::io::deserialize(d, GlobalConstantTable());
     co_await nth::io::deserialize(d, d.context_.foreign);
-    co_await nth::io::deserialize(d, d.str_lits_);
     co_await nth::io::deserialize(d, m.program());
     m.set_initializer(m.program().function("~"));
     co_await nth::io::deserialize(d, m.entries());
@@ -270,7 +217,6 @@ struct ModuleDeserializer : R {
     return context_.registry;
   }
  private:
-  StringLiteralReindexTable str_lits_;
   type::TypeSystem::ReindexTable reindexing_;
   SharedContext& context_;
 

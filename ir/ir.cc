@@ -95,10 +95,8 @@ struct IrContext {
       char const* ptr = value_stack.top().as<char const*>();
       value_stack.pop();
       return std::string_view(ptr, length);
-    } else if (IcarusDeserializeValue(value_stack.top_span(value_stack.size()),
-                                      result)) {
-      return result;
     } else {
+      // TODO: What about IcarusDeserializeValue?
       return std::nullopt;
     }
   }
@@ -772,7 +770,7 @@ struct CallArguments {
   };
 
   InvocationResult Invoke(type::FunctionType fn_type, EmitContext& context) {
-    auto const& parameters = *fn_type.parameters();
+    auto parameters = fn_type.parameters();
     // TODO: Properly implement function call type-checking.
     if (parameters.size() != arguments.size()) {
       return ParameterArgumentCountMismatch{.parameters = parameters.size(),
@@ -796,10 +794,11 @@ struct CallArguments {
   jasmin::InstructionSpecification MakeInstructionSpecification() const {
     jasmin::InstructionSpecification spec{.parameters = 1, .returns = 0};
     auto fn_type = callee.type().AsFunction();
-    auto iter = (*fn_type.parameters()).begin();
+    size_t index    = 0;
+    auto parameters = fn_type.parameters();
     for (size_t i = 0; i < std::distance(postfix_start, arguments.end()); ++i) {
-      spec.parameters += type::JasminSize(iter->type);
-      ++iter;
+      spec.parameters += type::JasminSize(parameters[index].type);
+      ++index;
     }
 
     for (type::Type r : fn_type.returns()) {
@@ -899,19 +898,21 @@ void HandleParseTreeNodeCallExpression(ParseNodeIndex index, IrContext& context,
     auto [iter, inserted]  = context.emit.instruction_spec.try_emplace(
          index, call.MakeInstructionSpecification());
     NTH_REQUIRE((v.harden), inserted);
-    auto const& returns = fn_type.returns();
+    auto returns = fn_type.returns();
     std::vector<type::QualifiedType> return_qts;
+    std::vector<type::Type> return_types;
     for (type::Type r : returns) {
       return_qts.push_back(type::QualifiedType::Unqualified(r));
+      return_types.push_back(r);
     }
-    context.type_stack().push(return_qts);
+    context.type_stack().push(std::move(return_qts));
 
     switch (fn_type.evaluation()) {
       case type::Evaluation::PreferCompileTime: NTH_UNIMPLEMENTED();
       case type::Evaluation::RequireCompileTime: {
         nth::interval range = context.emit.tree.subtree_range(index);
         nth::stack<jasmin::Value> value_stack;
-        context.emit.Evaluate(range, value_stack, returns);
+        context.emit.Evaluate(range, value_stack, return_types);
         auto module_id = context.EvaluateAs<ModuleId>(index);
         if (module_id == ModuleId::Invalid()) {
           diag.Consume({

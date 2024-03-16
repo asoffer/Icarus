@@ -131,6 +131,7 @@ struct DependentParameterMapping {
   std::vector<Index> indices_;
 };
 
+#if 0
 struct DependentFunctionType : internal_type::BasicType {
   std::optional<Type> operator()(std::span<AnyValue const>) const;
 
@@ -144,7 +145,7 @@ struct DependentFunctionType : internal_type::BasicType {
   std::pair<DependentTerm const &, DependentParameterMapping const &>
   components() const;
 };
-
+#endif
 DependentFunctionType Dependent(DependentTerm const &term,
                                 DependentParameterMapping const &mapping);
 

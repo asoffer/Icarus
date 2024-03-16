@@ -84,7 +84,8 @@ struct EmitContext {
   void Push(ComputedConstants const& c);
 
   void Evaluate(nth::interval<ParseNodeIndex> subtree,
-                nth::stack<jasmin::Value>& value_stack, std::vector<type::Type> types);
+                nth::stack<jasmin::Value>& value_stack,
+                std::vector<type::Type> types);
 
   ParseNode const& Node(ParseNodeIndex index) const { return tree[index]; }
 

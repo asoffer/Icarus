@@ -68,12 +68,12 @@ IrFunction const &PopulateSlice(ProgramFragment &fragment) {
   return f;
 }
 
-IrFunction const &PopulateForeign(ProgramFragment &fragment) {
-  auto &f = fragment.declare("foreign", 3, 1).function;
-  f.append<RegisterForeignFunction>();
-  f.append<jasmin::Return>();
-  return f;
-}
+// IrFunction const &PopulateForeign(ProgramFragment &fragment) {
+//   auto &f = fragment.declare("foreign", 3, 1).function;
+//   f.append<RegisterForeignFunction>();
+//   f.append<jasmin::Return>();
+//   return f;
+// }
 
 }  // namespace
 
@@ -89,62 +89,44 @@ void PopulateModule(Module &builtin) {
 
   auto &function_or_pointer = Register(
       "~function_or_pointer",
-      type::Function(
-          type::Parameters(std::vector<type::ParametersType::Parameter>{
-              {.type = type::Char}}),
-          {type::Bool}),
+      type::Function(type::Parameters({{.type = type::Char}}), {type::Bool}),
       PopulateFunctionOrPointer);
 
-  Register(
-      "~",
-      type::Function(
-          type::Parameters(std::vector<type::ParametersType::Parameter>{}), {}),
-      PopulateInitializer);
+  Register("~", type::Function(type::Parameters({}), {}), PopulateInitializer);
 
   Register("arguments",
-           type::Function(
-               type::Parameters(std::vector<type::ParametersType::Parameter>{}),
-               {type::Slice(type::Slice(type::Char))}),
+           type::Function(type::Parameters({}),
+                          {type::Slice(type::Slice(type::Char))}),
            PopulateArguments);
 
   Register("ascii_decode",
-           type::Function(
-               type::Parameters(std::vector<type::ParametersType::Parameter>{
-                   {.type = type::Char}}),
-               {type::U8}),
+           type::Function(type::Parameters({{.type = type::Char}}), {type::U8}),
            PopulateAsciiDecode);
 
   Register("ascii_encode",
-           type::Function(
-               type::Parameters(std::vector<type::ParametersType::Parameter>{
-                   {.type = type::U8}}),
-               {type::Char}),
+           type::Function(type::Parameters({{.type = type::U8}}), {type::Char}),
            PopulateAsciiEncode);
 
-  Register("opaque",
-           type::Function(
-               type::Parameters(std::vector<type::ParametersType::Parameter>{}),
-               {type::Type_}),
+  Register("opaque", type::Function(type::Parameters({}), {type::Type_}),
            PopulateOpaque);
 
   Register("slice",
-           type::Function(
-               type::Parameters(std::vector<type::ParametersType::Parameter>{
-                   {.type = type::BufPtr(type::Char)}, {.type = type::U64}}),
-               {type::Slice(type::Char)}),
+           type::Function(type::Parameters({{.type = type::BufPtr(type::Char)},
+                                            {.type = type::U64}}),
+                          {type::Slice(type::Char)}),
            PopulateSlice);
 
-  Register("foreign",
-           type::Dependent(
-               type::DependentTerm::Function(
-                   type::DependentTerm::Value(AnyValue(
-                       type::Type_,
-                       {type::Refinement(type::Type_,
-                                         Pattern(&function_or_pointer))})),
-                   type::DependentTerm::DeBruijnIndex(0)),
-               type::DependentParameterMapping(
-                   {type::DependentParameterMapping::Index::Value(1)})),
-           PopulateForeign);
+  // Register("foreign",
+  //          type::Dependent(
+  //              type::DependentTerm::Function(
+  //                  type::DependentTerm::Value(AnyValue(
+  //                      type::Type_,
+  //                      {type::Refinement(type::Type_,
+  //                                        Pattern(&function_or_pointer))})),
+  //                  type::DependentTerm::DeBruijnIndex(0)),
+  //              type::DependentParameterMapping(
+  //                  {type::DependentParameterMapping::Index::Value(1)})),
+  //          PopulateForeign);
 }
 
 }  // namespace ic::builtin

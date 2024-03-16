@@ -22,9 +22,6 @@
 namespace ic::type {
 
 struct TypeSystem {
-  PointerType pointer_type(Type t);
-  BufferPointerType buffer_pointer_type(Type t);
-  SliceType slice_type(Type t);
   ParametersType parameter_type(
       std::vector<ParametersType::Parameter> const& p);
   ParametersType parameter_type(std::vector<ParametersType::Parameter>&& p);
@@ -35,9 +32,6 @@ struct TypeSystem {
 
   nth::flyweight_set<std::tuple<ParametersType, uint64_t, Evaluation>>
       functions;
-  nth::flyweight_set<Type> slice_element_types;
-  nth::flyweight_set<Type> pointee_types;
-  nth::flyweight_set<Type> buffer_pointee_types;
   nth::flyweight_set<DependentTerm> dependent_terms;
   nth::flyweight_set<DependentParameterMapping> dependent_mapping;
   nth::flyweight_set<std::pair<size_t, size_t>> dependent_term_mapping_pairs;
@@ -56,8 +50,6 @@ struct TypeSystem {
     std::vector<uint64_t> returns_;
     absl::flat_hash_map<Type, Type> mapping_;
   };
-
-  ReindexTable merge_from(TypeSystem const& ts);
 };
 
 }  // namespace ic::type

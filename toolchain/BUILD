@@ -52,6 +52,27 @@ cc_binary(
 )
 
 cc_binary(
+    name = "dump",
+    srcs = ["dump.cc"],
+    deps = [
+        "//common:constants",
+        "//common:result",
+        "//common:to_bytes",
+        "//common/internal:component",
+        "@com_google_absl//absl/debugging:failure_signal_handler",
+        "@com_google_absl//absl/debugging:symbolize",
+        "@nth_cc//nth/commandline:main",
+        "@nth_cc//nth/io:file_path",
+        "@nth_cc//nth/io/reader",
+        "@nth_cc//nth/io/reader:file",
+        "@nth_cc//nth/io/deserialize",
+        "@nth_cc//nth/numeric:integer",
+        "@nth_cc//nth/process:exit_code",
+    ],
+)
+
+
+cc_binary(
     name = "run_bytecode",
     srcs = ["run_bytecode.cc"],
     deps = [

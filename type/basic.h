@@ -6,6 +6,7 @@
 #include <span>
 #include <utility>
 
+#include "common/constants.h"
 #include "jasmin/core/value.h"
 #include "nth/io/deserialize/deserialize.h"
 #include "nth/io/serialize/serialize.h"
@@ -21,66 +22,6 @@ namespace ic::type {
 // the corresponding `Type::Kind` defined below.
 #define IC_XMACRO_TYPE_KIND(kind) struct kind##Type;
 #include "common/language/type_kind.xmacro.h"
-
-// Objects of type `Type` represent types within the modeled type-system. The
-// type `Type` is regular (i.e., can be safely copied, compared for equality,
-// etc as one would expect `int` to be). Two `Type`s are considered equal if and
-// only if they represent the same type in the type-system. A `Type` is
-// precisely 64-bits wide, and its most-significant 8 bits must always be unset.
-struct Type {
-  Type() = default;
-
-  enum class Kind : uint8_t {
-#define IC_XMACRO_TYPE_KIND(kind) kind,
-#include "common/language/type_kind.xmacro.h"
-  };
-
-  friend void NthPrint(auto& p, auto&, Kind k) {
-    static constexpr std::array Names = {
-#define IC_XMACRO_TYPE_KIND(kind) #kind,
-#include "common/language/type_kind.xmacro.h"
-    };
-    p.write("Type::Kind::");
-    p.write(Names[static_cast<std::underlying_type_t<Kind>>(k)]);
-  }
-
-  constexpr Kind kind() const {
-    return static_cast<Kind>((data_ >> 48) & 0xff);
-  }
-
-  uint64_t index() const { return data_ & uint64_t{0x0000'ffff'ffff'ffff}; }
-
-  friend bool operator==(Type, Type) = default;
-
-  template <typename H>
-  friend H AbslHashValue(H h, Type t) {
-    return H::combine(std::move(h), t.data_);
-  }
-
-  friend bool IcarusDeserializeValue(std::span<jasmin::Value const> values,
-                                     Type& t) {
-    if (values.size() != 1) { return false; }
-    t.data_ = values.front().raw_value();
-    return true;
-  }
-
-  // Defines implicit constructors from each specific type-kind, as well as
-  // functions which convert to specific types. These functions are all named by
-  // the specific type-kind prefixed with "As", so that `AsSpecificType` would
-  // convert to `SpecificType`.
-#define IC_XMACRO_TYPE_KIND(kind)                                              \
-  Type(kind##Type t);                                                          \
-  kind##Type As##kind() const;
-#include "common/language/type_kind.xmacro.h"
-
-  friend void NthPrint(auto& p, auto& f, Type t);
-
- private:
-  friend struct QualifiedType;
-  explicit constexpr Type(uint64_t data) : data_(data) {}
-
-  uint64_t data_;
-};
 
 struct Qualifier {
   static constexpr Qualifier Addressable() { return Qualifier(2); }
@@ -112,7 +53,7 @@ struct Qualifier {
 
  private:
   friend struct QualifiedType;
-  explicit constexpr Qualifier(uint8_t data) : data_(data) {}
+  explicit constexpr Qualifier(uint8_t data = 0) : data_(data) {}
 
   uint8_t data_;
 };
@@ -129,7 +70,7 @@ struct QualifiedType {
   }
 
   constexpr explicit QualifiedType(Qualifier q, Type t)
-      : data_(static_cast<uint64_t>(q.data_) << 56 | t.data_) {}
+      : qualifier_(q), type_(t) {}
 
   friend bool operator==(QualifiedType, QualifiedType) = default;
 
@@ -138,7 +79,7 @@ struct QualifiedType {
 
   template <typename H>
   friend H AbslHashValue(H h, QualifiedType q) {
-    return H::combine(std::move(h), q.data_);
+    return H::combine(std::move(h), q.qualifier_, q.type_);
   }
 
   friend void NthPrint(auto& p, auto& f, QualifiedType qt) {
@@ -148,13 +89,12 @@ struct QualifiedType {
     p.write(")");
   }
 
-  constexpr Qualifier qualifier() const { return Qualifier(data_ >> 56); }
-  constexpr Type type() const {
-    return Type(data_ & uint64_t{0x00ffffff'ffffffff});
-  }
+  [[nodiscard]] constexpr Qualifier qualifier() const { return qualifier_; }
+  [[nodiscard]] constexpr Type type() const { return type_; }
 
  private:
-  uint64_t data_;
+  Qualifier qualifier_;
+  Type type_;
 };
 
 // Returns the number of `jasmin::Value`s required to hold a value of the given
@@ -167,8 +107,8 @@ namespace internal_type {
 
 struct BasicType {
   explicit BasicType() = default;
-  explicit constexpr BasicType(Type::Kind k, uint64_t n)
-      : data_((static_cast<uint64_t>(k) << 48) | n) {}
+  explicit constexpr BasicType(Type::Kind k, uint32_t n)
+      : data_((n << 8) | static_cast<uint8_t>(k)) {}
 
   friend bool operator==(BasicType, BasicType) = default;
   friend bool operator!=(BasicType, BasicType) = default;
@@ -178,31 +118,17 @@ struct BasicType {
     return H::combine(std::move(h), t.data_);
   }
 
+  uint32_t index() const { return data_ >> 8; }
+
  protected:
-  uint64_t data() const { return data_ & uint64_t{0x0000ffff'ffffffff}; }
+  uint32_t data() const { return data_ >> 8; }
 
  private:
   friend Type;
-  uint64_t data_;
+  uint32_t data_;
 };
 
 }  // namespace internal_type
-
-bool NthSerialize(auto& s, Type t) {
-  uint64_t n;
-  static_assert(sizeof(n) == sizeof(t));
-  std::memcpy(&n, &t, sizeof(n));
-  return nth::io::write_fixed(s, n);
-}
-
-bool NthDeserialize(auto& d, Type& t) {
-  uint64_t n;
-  static_assert(sizeof(n) == sizeof(t));
-  if (not nth::io::read_fixed(d, n)) { return false; }
-  std::memcpy(&t, &n, sizeof(n));
-  return true;
-}
-
 }  // namespace ic::type
 
 #endif  // ICARUS_TYPE_BASIC_H

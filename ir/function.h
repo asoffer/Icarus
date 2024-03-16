@@ -67,7 +67,7 @@ struct VoidConstPtr {
 struct PushStringLiteral : jasmin::Instruction<PushStringLiteral> {
   static void execute(jasmin::Input<>, jasmin::Output<char const*, size_t> out,
                       StringLiteral s) {
-    std::string_view str = s.str();
+    std::string_view str = static_cast<std::string const&>(s);
     out.set(str.data(), str.size());
   }
 };

@@ -19,12 +19,14 @@ NTH_TEST("type/construction") {
   NTH_EXPECT(t.kind() == Type::Kind::Primitive);
 }
 
-
 NTH_TEST("type/parameters/construction") {
   Type t0 = Parameters({});
-  Type t1 = Parameters({ParametersType::Parameter{.name = 3, .type = Bool}});
-  Type t2 = Parameters({ParametersType::Parameter{.name = 4, .type = Bool}});
-  Type t3 = Parameters({ParametersType::Parameter{.name = 4, .type = Char}});
+  Type t1 = Parameters(
+      {ParametersType::Parameter{.name = Identifier("a"), .type = Bool}});
+  Type t2 = Parameters(
+      {ParametersType::Parameter{.name = Identifier("b"), .type = Bool}});
+  Type t3 = Parameters(
+      {ParametersType::Parameter{.name = Identifier("b"), .type = Char}});
 
   NTH_EXPECT(t0 == t0);
   NTH_EXPECT(t0 != t1);
@@ -51,8 +53,8 @@ NTH_TEST("type/parameters/construction") {
   NTH_EXPECT(t0 != Error);
   NTH_EXPECT(t0 != Bool);
 
-  NTH_EXPECT(t3 ==
-             Parameters({ParametersType::Parameter{.name = 4, .type = Char}}));
+  NTH_EXPECT(t3 == Parameters({ParametersType::Parameter{
+                       .name = Identifier("b"), .type = Char}}));
 }
 
 NTH_TEST("type/pointer") {
