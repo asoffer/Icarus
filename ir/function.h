@@ -22,7 +22,6 @@
 #include "jasmin/instructions/common.h"
 #include "jasmin/instructions/compare.h"
 #include "jasmin/instructions/stack.h"
-#include "type/basic.h"
 #include "type/function.h"
 #include "type/opaque.h"
 #include "type/parameters.h"

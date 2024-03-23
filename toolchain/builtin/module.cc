@@ -5,7 +5,10 @@
 #include "common/any_value.h"
 #include "common/identifier.h"
 #include "common/pattern.h"
-#include "common/type.h"
+#include "type/dependent.h"
+#include "type/opaque.h"
+#include "type/primitive.h"
+#include "type/type.h"
 
 namespace ic::builtin {
 namespace {
@@ -89,7 +92,7 @@ void PopulateModule(Module &builtin) {
 
   auto &function_or_pointer = Register(
       "~function_or_pointer",
-      type::Function(type::Parameters({{.type = type::Char}}), {type::Bool}),
+      type::Function(type::Parameters({type::Param(type::Char)}), {type::Bool}),
       PopulateFunctionOrPointer);
 
   Register("~", type::Function(type::Parameters({}), {}), PopulateInitializer);
@@ -99,22 +102,25 @@ void PopulateModule(Module &builtin) {
                           {type::Slice(type::Slice(type::Char))}),
            PopulateArguments);
 
-  Register("ascii_decode",
-           type::Function(type::Parameters({{.type = type::Char}}), {type::U8}),
-           PopulateAsciiDecode);
+  Register(
+      "ascii_decode",
+      type::Function(type::Parameters({type::Param(type::Char)}), {type::U8}),
+      PopulateAsciiDecode);
 
-  Register("ascii_encode",
-           type::Function(type::Parameters({{.type = type::U8}}), {type::Char}),
-           PopulateAsciiEncode);
+  Register(
+      "ascii_encode",
+      type::Function(type::Parameters({type::Param(type::U8)}), {type::Char}),
+      PopulateAsciiEncode);
 
   Register("opaque", type::Function(type::Parameters({}), {type::Type_}),
            PopulateOpaque);
 
-  Register("slice",
-           type::Function(type::Parameters({{.type = type::BufPtr(type::Char)},
-                                            {.type = type::U64}}),
-                          {type::Slice(type::Char)}),
-           PopulateSlice);
+  Register(
+      "slice",
+      type::Function(type::Parameters({type::Param(type::BufPtr(type::Char)),
+                                       type::Param(type::U64)}),
+                     {type::Slice(type::Char)}),
+      PopulateSlice);
 
   // Register("foreign",
   //          type::Dependent(

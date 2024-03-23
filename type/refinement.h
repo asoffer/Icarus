@@ -3,12 +3,11 @@
 
 #include "common/any_value.h"
 #include "common/pattern.h"
-#include "type/basic.h"
+#include "type/type.h"
 
 namespace ic::type {
 
-#if 0
-struct RefinementType : internal_type::BasicType {
+struct RefinementType : Type {
   explicit RefinementType() = default;
 
   Type underlying() const;
@@ -24,10 +23,9 @@ struct RefinementType : internal_type::BasicType {
   friend Type;
   friend RefinementType Refinement(Type, ::ic::Pattern p);
 
-  explicit constexpr RefinementType(uint64_t n)
-      : internal_type::BasicType(Type::Kind::Refinement, n) {}
+  explicit constexpr RefinementType(uint32_t n)
+      : Type(Type::Kind::Refinement, n) {}
 };
-#endif
 
 // TODO: Accepting an opaque function here is not a viable long-term strategy.
 // We want users to be able to provide proofs that an object satisfies the

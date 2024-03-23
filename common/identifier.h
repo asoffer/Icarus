@@ -10,13 +10,6 @@ namespace ic {
 
 // Represents an identifier in a program.
 struct Identifier : internal_constants::ConstantHandle<Identifier> {
-  using backing_type = std::string;
-
-  static Identifier FromRepresentation(uint32_t n) {
-    return Identifier(raw_t{}, n);
-  }
-  static uint32_t ToRepresentation(Identifier id) { return id.value(); }
-
   Identifier();
   template <int N>
   Identifier(char const (&s)[N])
@@ -30,11 +23,19 @@ struct Identifier : internal_constants::ConstantHandle<Identifier> {
     return StrongIdentifierType<Identifier, uint32_t>::value();
   }
 
+  friend void NthPrint(auto& p, auto& f, Identifier id) {
+    p.write("`");
+    f(p, static_cast<std::string const&>(id));
+    p.write("`");
+  }
+
   explicit operator std::string const&() const;
 
  private:
-  struct raw_t {};
-  explicit Identifier(raw_t, uint32_t n) : ConstantHandle(n) {}
+  friend ConstantHandle;
+
+  explicit Identifier(internal_constants::from_representation_t, uint32_t n)
+      : ConstantHandle(n) {}
 };
 
 }  // namespace ic

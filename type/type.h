@@ -1,15 +1,15 @@
-#ifndef IC_COMMON_TYPE_H
-#define IC_COMMON_TYPE_H
+#ifndef IC_TYPE_TYPE_H
+#define IC_TYPE_TYPE_H
 
 #include <array>
+#include <concepts>
+#include <cstring>
 #include <utility>
 
 #include "common/internal/constant_handle.h"
+#include "type/type_contour.h"
 
 namespace ic::type {
-
-#define IC_XMACRO_TYPE_KIND(kind) struct kind##Type;
-#include "common/language/type_kind.xmacro.h"
 
 // Objects of type `Type` represent types within the modeled type-system. The
 // type `Type` is regular (i.e., can be safely copied, compared for equality,
@@ -55,17 +55,14 @@ struct Type : internal_constants::ConstantHandle<Type> {
 
   friend bool operator==(Type, Type) = default;
 
-  // Defines implicit constructors from each specific type-kind, as well as
-  // functions which convert to specific types. These functions are all named by
-  // the specific type-kind prefixed with "As", so that `AsSpecificType` would
-  // convert to `SpecificType`.
-  Type(OpaqueType t);
-  Type(RefinementType t);
-  Type(DependentFunctionType t);
-#define IC_XMACRO_TYPE_KIND(kind) kind##Type As##kind() const;
-#include "common/language/type_kind.xmacro.h"
+  template <std::derived_from<Type> T>
+  T as() const {
+    T t;
+    std::memcpy(&t, this, sizeof(Type));
+    return t;
+  }
 
-  friend void NthPrint(auto& p, auto& f, Type t);
+  friend void NthPrint(auto& p, auto& f, Type t) { NTH_UNIMPLEMENTED(); }
 
   struct from_index_t {};
   static constexpr from_index_t from_index;
@@ -76,6 +73,12 @@ struct Type : internal_constants::ConstantHandle<Type> {
       : ConstantHandle((data << 8) | static_cast<uint8_t>(k)) {}
 };
 
+// Returns the number of `jasmin::Value`s required to hold a value of the given
+// type `t`.
+size_t JasminSize(Type t);
+
+TypeContour Contour(Type t);
+
 }  // namespace ic::type
 
-#endif  // IC_COMMON_TYPE_H
+#endif  // IC_TYPE_TYPE_H

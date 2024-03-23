@@ -5,7 +5,7 @@
 #include <span>
 #include <string>
 
-#include "common/constants.h"
+#include "common/constant/manifest.h"
 #include "common/foreign_function.h"
 #include "common/integer.h"
 #include "common/result.h"
@@ -54,7 +54,7 @@ struct ModuleDeserializer : R {
     std::vector<jasmin::Value> values;
     switch (t.kind()) {
       case type::Type::Kind::Primitive: {
-        auto p = t.AsPrimitive();
+        auto p = t.as<type::PrimitiveType>();
         switch (p.primitive_kind()) {
           case type::PrimitiveType::Kind::Bool: {
             bool x;
@@ -196,12 +196,12 @@ struct ModuleDeserializer : R {
     StringLiteral name;
     type::Type t;
     co_await nth::io::deserialize(d, name, t);
-    f = ForeignFunction(name, t.AsFunction());
+    f = ForeignFunction(name, t.as<type::FunctionType>());
     co_return Result::success();
   }
 
   friend Result NthDeserialize(ModuleDeserializer& d, Module& m) {
-    co_await nth::io::deserialize(d, GlobalConstantTable());
+    co_await nth::io::deserialize(d, ConstantManifest::Global());
     co_await nth::io::deserialize(d, d.context_.foreign);
     co_await nth::io::deserialize(d, m.program());
     m.set_initializer(m.program().function("~"));

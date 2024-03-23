@@ -24,15 +24,6 @@ struct StringLiteral : internal_constants::ConstantHandle<StringLiteral> {
   }
 
   explicit operator std::string const &() const;
-
-  static void CompleteGeneration() {
-    // TODO
-  }
-
-  static std::vector<std::string_view> LatestGeneration() {
-    // TODO
-    return {};
-  }
 };
 
 }  // namespace ic

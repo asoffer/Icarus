@@ -10,7 +10,6 @@
 #include "common/module_id.h"
 #include "common/resources.h"
 #include "common/string.h"
-#include "common/type.h"
 #include "ir/lexical_scope.h"
 #include "ir/type_stack.h"
 #include "jasmin/core/function.h"
@@ -20,6 +19,8 @@
 #include "parse/node_index.h"
 #include "parse/tree.h"
 #include "type/cast.h"
+#include "type/dependent.h"
+#include "type/type.h"
 
 namespace ic {
 namespace {
@@ -90,7 +91,7 @@ struct IrContext {
     nth::stack<jasmin::Value> value_stack;
     emit.Evaluate(range, value_stack, {FromConstant<T>()});
     if constexpr (nth::type<T> == nth::type<std::string_view>) {
-      size_t length   = value_stack.top().as<size_t>();
+      size_t length = value_stack.top().as<size_t>();
       value_stack.pop();
       char const* ptr = value_stack.top().as<char const*>();
       value_stack.pop();
@@ -227,7 +228,7 @@ bool TryDiagnoseUnexpanded(TypeStack& type_stack,
 }
 
 void HandleParseTreeNodeDeref(ParseNodeIndex index, IrContext& context,
-                             diag::DiagnosticConsumer& diag) {
+                              diag::DiagnosticConsumer& diag) {
   if (TryDiagnoseUnexpanded(context.type_stack(), diag,
                             context.Node(index - 1).token)) {
     return;
@@ -237,12 +238,12 @@ void HandleParseTreeNodeDeref(ParseNodeIndex index, IrContext& context,
   context.type_stack().pop();
   switch (qt.type().kind()) {
     case type::Type::Kind::Pointer:
-      context.type_stack().push(
-          {type::QualifiedType::Unqualified(qt.type().AsPointer().pointee())});
+      context.type_stack().push({type::QualifiedType::Unqualified(
+          qt.type().as<type::PointerType>().pointee())});
       break;
     case type::Type::Kind::BufferPointer:
       context.type_stack().push({type::QualifiedType::Unqualified(
-          qt.type().AsBufferPointer().pointee())});
+          qt.type().as<type::BufferPointerType>().pointee())});
       break;
     default: NTH_UNIMPLEMENTED();
   }
@@ -362,7 +363,7 @@ void HandleParseTreeNodeDeclaration(ParseNodeIndex index, IrContext& context,
     if (not type) { NTH_UNIMPLEMENTED(); }
     if (not type::ImplicitCast(AnyValue::JustType(init_qt.type()), *type)) {
       auto token = context.Node(index).token;
-    diag.Consume({
+      diag.Consume({
           diag::Header(diag::MessageKind::Error),
           diag::Text(InterpolateString<"Initializing expression does not match "
                                        "declared type ({} vs {}).">(
@@ -545,7 +546,7 @@ void HandleParseTreeNodeExpressionPrecedenceGroup(
       }
       context.type_stack().pop();
       bool constant = context.type_stack().top()[0].constant();
-      context.PopTypeStack( node.child_count / 2);
+      context.PopTypeStack(node.child_count / 2);
       std::optional t = context.EvaluateAs<type::Type>(index - 1);
       if (not t) { NTH_UNIMPLEMENTED(); }
       context.type_stack().push({constant
@@ -628,8 +629,12 @@ void HandleParseTreeNodeMemberExpression(ParseNodeIndex index,
   } else if (context.type_stack().top()[0].type().kind() ==
              type::Type::Kind::Slice) {
     if (context.Node(index).token.Identifier() == Identifier("data")) {
-      auto qt = type::QualifiedType::Unqualified(type::BufPtr(
-          context.type_stack().top()[0].type().AsSlice().element_type()));
+      auto qt = type::QualifiedType::Unqualified(
+          type::BufPtr(context.type_stack()
+                           .top()[0]
+                           .type()
+                           .as<type::SliceType>()
+                           .element_type()));
       context.type_stack().pop();
       context.type_stack().push({qt});
       context.emit.SetQualifiedType(index, qt);
@@ -676,7 +681,7 @@ void HandleParseTreeNodeIndexExpression(ParseNodeIndex index,
     context.type_stack().pop();
   }
 
-  for (auto qt :index_argument_qts ) {
+  for (auto qt : index_argument_qts) {
     if (qt.type() == type::Error) {
       context.type_stack().pop();
       context.type_stack().push(
@@ -704,9 +709,10 @@ void HandleParseTreeNodeIndexExpression(ParseNodeIndex index,
       if (index_argument_qts.size() == 1) {
         if (index_argument_qts[0].type().kind() ==
                 type::Type::Kind::Primitive and
-            type::Integral(index_argument_qts[0].type().AsPrimitive())) {
+            type::Integral(
+                index_argument_qts[0].type().as<type::PrimitiveType>())) {
           context.type_stack().push({type::QualifiedType(
-              qt.qualifier(), qt.type().AsSlice().element_type())});
+              qt.qualifier(), qt.type().as<type::SliceType>().element_type())});
         } else {
           NTH_UNIMPLEMENTED();
         }
@@ -718,9 +724,11 @@ void HandleParseTreeNodeIndexExpression(ParseNodeIndex index,
       if (index_argument_qts.size() == 1) {
         if (index_argument_qts[0].type().kind() ==
                 type::Type::Kind::Primitive and
-            type::Integral(index_argument_qts[0].type().AsPrimitive())) {
+            type::Integral(
+                index_argument_qts[0].type().as<type::PrimitiveType>())) {
           context.type_stack().push({type::QualifiedType(
-              qt.qualifier(), qt.type().AsBufferPointer().pointee())});
+              qt.qualifier(),
+              qt.type().as<type::BufferPointerType>().pointee())});
         } else {
           NTH_UNIMPLEMENTED();
         }
@@ -734,7 +742,7 @@ void HandleParseTreeNodeIndexExpression(ParseNodeIndex index,
       // isn't a constant.
       context.type_stack().push({qt});
     } break;
-      default: NTH_UNIMPLEMENTED("{}") <<= {qt};
+    default: NTH_UNIMPLEMENTED("{}") <<= {qt};
   }
 }
 
@@ -743,13 +751,14 @@ struct ParameterArgumentCountMismatch {
   size_t parameters;
   size_t arguments;
 };
-struct InvalidBinding{
+struct InvalidBinding {
   size_t index;
   type::Type parameter;
   type::Type argument;
 };
 using InvocationResult =
-    std::variant<InvocationSuccess, ParameterArgumentCountMismatch, InvalidBinding>;
+    std::variant<InvocationSuccess, ParameterArgumentCountMismatch,
+                 InvalidBinding>;
 
 struct CallArguments {
   struct Argument {
@@ -793,7 +802,7 @@ struct CallArguments {
 
   jasmin::InstructionSpecification MakeInstructionSpecification() const {
     jasmin::InstructionSpecification spec{.parameters = 1, .returns = 0};
-    auto fn_type = callee.type().AsFunction();
+    auto fn_type    = callee.type().as<type::FunctionType>();
     size_t index    = 0;
     auto parameters = fn_type.parameters();
     for (size_t i = 0; i < std::distance(postfix_start, arguments.end()); ++i) {
@@ -860,9 +869,9 @@ void HandleParseTreeNodeCallExpression(ParseNodeIndex index, IrContext& context,
   auto node = context.Node(index);
 
   if (call.callee.type().kind() == type::Type::Kind::Function) {
-    auto fn_type           = call.callee.type().AsFunction();
+    auto fn_type            = call.callee.type().as<type::FunctionType>();
     InvocationResult result = call.Invoke(fn_type, context.emit);
-    bool success = std::visit(
+    bool success            = std::visit(
         [&](auto const& r) {
           constexpr auto t = nth::type<decltype(r)>.decayed();
           if constexpr (t == nth::type<InvocationSuccess>) {
@@ -895,8 +904,8 @@ void HandleParseTreeNodeCallExpression(ParseNodeIndex index, IrContext& context,
       return;
     }
 
-    auto [iter, inserted]  = context.emit.instruction_spec.try_emplace(
-         index, call.MakeInstructionSpecification());
+    auto [iter, inserted] = context.emit.instruction_spec.try_emplace(
+        index, call.MakeInstructionSpecification());
     NTH_REQUIRE((v.harden), inserted);
     auto returns = fn_type.returns();
     std::vector<type::QualifiedType> return_qts;
@@ -948,7 +957,7 @@ void HandleParseTreeNodeCallExpression(ParseNodeIndex index, IrContext& context,
       spec.parameters += type::JasminSize(iter->type());
     }
 
-    auto dep = call.callee.type().AsDependentFunction();
+    auto dep        = call.callee.type().as<type::DependentFunctionType>();
     std::optional t = dep(arguments);
     if (not t) {
       diag.Consume({
@@ -973,7 +982,6 @@ void HandleParseTreeNodeCallExpression(ParseNodeIndex index, IrContext& context,
     });
     context.type_stack().push({type::QualifiedType::Unqualified(type::Error)});
     return;
-
   }
 }
 
@@ -1019,7 +1027,7 @@ void TryDiagnoseUnaryTypeConstructorError(TypeStack& type_stack,
               type_constructor, type_stack.top()[0].type())),
       diag::SourceQuote(token),
   });
-auto q  = type_stack.top()[0].qualifier();
+  auto q = type_stack.top()[0].qualifier();
   type_stack.pop();
   type_stack.push({type::QualifiedType(q, type::Error)});
 }
@@ -1175,17 +1183,17 @@ Iteration HandleParseTreeNodeExtendWith(ParseNodeIndex index,
   if (not RequireConstant(qts[0], type::Type_, diag)) {
     context.MakeError(1);
     return Iteration::SkipTo(index + 2);
- }
- std::optional type = context.EvaluateAs<type::Type>(index - 1);
- if (not type) { NTH_UNIMPLEMENTED(); }
- // TODO: Register the extension.
- return Iteration::SkipTo(index + 2);
+  }
+  std::optional type = context.EvaluateAs<type::Type>(index - 1);
+  if (not type) { NTH_UNIMPLEMENTED(); }
+  // TODO: Register the extension.
+  return Iteration::SkipTo(index + 2);
 }
 void HandleParseTreeNodeExtension(ParseNodeIndex, IrContext&,
                                   diag::DiagnosticConsumer&) {}
 
-void HandleParseTreeNodeBinding(ParseNodeIndex index, IrContext&context,
-                                diag::DiagnosticConsumer&diag) {
+void HandleParseTreeNodeBinding(ParseNodeIndex index, IrContext& context,
+                                diag::DiagnosticConsumer& diag) {
   context.declaration_stack().push({});
 }
 

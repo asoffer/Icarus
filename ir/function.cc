@@ -6,7 +6,7 @@
 #include "absl/container/flat_hash_set.h"
 #include "absl/container/node_hash_map.h"
 #include "absl/strings/str_cat.h"
-#include "common/constants.h"
+#include "common/constant/manifest.h"
 #include "common/foreign_function.h"
 #include "common/interface.h"
 #include "common/pattern.h"
@@ -59,19 +59,20 @@ void RegisterForeignFunction::consume(
     jasmin::Output<void const*> out) {
   auto [data, length, t] = in;
   if (t.kind() == type::Type::Kind::Function) {
-    ForeignFunction f(std::string_view(data, length), t.AsFunction());
+    ForeignFunction f(std::string_view(data, length),
+                      t.as<type::FunctionType>());
     size_t params = 0;
 
     // TODO: Come up with a better mangling
     std::string mangled_name(f.name());
-    for (auto const& pt : t.AsFunction().parameters().types()) {
+    for (auto const& pt : t.as<type::FunctionType>().parameters().types()) {
       params += type::JasminSize(pt);
       absl::StrAppend(&mangled_name, "_", static_cast<int>(pt.kind()), ".",
                       pt.index());
     }
     size_t rets = 0;
     mangled_name.append("_");
-    for (type::Type ret : t.AsFunction().returns()) {
+    for (type::Type ret : t.as<type::FunctionType>().returns()) {
       rets += type::JasminSize(ret);
       absl::StrAppend(&mangled_name, "_", static_cast<int>(ret.kind()), ".",
                       ret.index());
@@ -82,7 +83,8 @@ void RegisterForeignFunction::consume(
   } else {
     NTH_UNIMPLEMENTED();
     out.set(nullptr);
-    //   InsertForeignPointer(std::string_view(data, length), t.AsPointer()));
+    //   InsertForeignPointer(std::string_view(data, length),
+    //   t.as<type::PointerType>()));
   }
 }
 
@@ -158,7 +160,8 @@ void ConstructFunctionType::consume(jasmin::Input<type::Type, type::Type> in,
   std::vector<type::Type> returns;
   if (return_type != type::Bottom) { returns.push_back(return_type); }
   if (parameter.kind() == type::Type::Kind::Parameters) {
-    out.set(type::Function(parameter.AsParameters(), std::move(returns)));
+    out.set(type::Function(parameter.as<type::ParametersType>(),
+                           std::move(returns)));
   } else {
     out.set(type::Function(
         type::Parameters({{.name = Identifier(""), .type = parameter}}),

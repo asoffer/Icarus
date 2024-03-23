@@ -4,12 +4,15 @@
 #include <limits>
 #include <utility>
 
+#include "common/constant/category.h"
 #include "common/result.h"
 #include "common/strong_identifier_type.h"
 #include "nth/io/deserialize/deserialize.h"
 #include "nth/io/serialize/serialize.h"
 
 namespace ic::internal_constants {
+
+struct from_representation_t {};
 
 template <typename T>
 struct ConstantHandle : protected StrongIdentifierType<T, uint32_t> {
@@ -29,6 +32,9 @@ struct ConstantHandle : protected StrongIdentifierType<T, uint32_t> {
   friend bool operator!=(ConstantHandle lhs, ConstantHandle rhs) {
     return lhs.value() != rhs.value();
   }
+
+  static T FromRepresentation(uint32_t n) { return T(from_representation_t{}, n); }
+  static uint32_t ToRepresentation(T n) { return n.value(); }
 
   template <typename H>
   friend H AbslHashValue(H h, T t) {

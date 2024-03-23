@@ -87,7 +87,7 @@ void HandleParseTreeNodeMinusStart(ParseNodeIndex index, EmitContext& context) {
 void HandleParseTreeNodeMinus(ParseNodeIndex index, EmitContext& context) {
   auto qt = context.QualifiedTypeOf(index - 1);
   if (qt.type().kind() == type::Type::Kind::Primitive) {
-    switch (qt.type().AsPrimitive().primitive_kind()) {
+    switch (qt.type().as<type::PrimitiveType>().primitive_kind()) {
       case type::PrimitiveType::Kind::I8:
         context.current_function().append<jasmin::Negate<int8_t>>();
         break;
@@ -233,17 +233,18 @@ void HandleParseTreeNodeTypeLiteral(ParseNodeIndex index,
 
 void HandleParseTreeNodeBuiltinLiteral(ParseNodeIndex index,
                                        EmitContext& context) {
-  context.current_function().append<jasmin::Push<ModuleId>>(ModuleId::Builtin());
+  context.current_function().append<jasmin::Push<ModuleId>>(
+      ModuleId::Builtin());
 }
 
 void HandleParseTreeNodeScopeStart(ParseNodeIndex, EmitContext&) {}
 
 Iteration HandleParseTreeNodeFunctionLiteralStart(ParseNodeIndex index,
                                                   EmitContext& context) {
-  auto fn_type           = context.QualifiedTypeOf(index).type().AsFunction();
-  auto parameters        = fn_type.parameters();
-  size_t input_size      = 0;
-  size_t output_size     = 0;
+  auto fn_type = context.QualifiedTypeOf(index).type().as<type::FunctionType>();
+  auto parameters    = fn_type.parameters();
+  size_t input_size  = 0;
+  size_t output_size = 0;
   type::ByteWidth bytes(0);
   std::vector<type::ByteWidth> storage_offsets;
   storage_offsets.reserve(parameters.size());
@@ -293,7 +294,7 @@ void HandleParseTreeNodeDeclaration(ParseNodeIndex index,
       auto t  = context.QualifiedTypeOf(index).type();
       switch (t.kind()) {
         case type::Type::Kind::Primitive:
-          switch (t.AsPrimitive().primitive_kind()) {
+          switch (t.as<type::PrimitiveType>().primitive_kind()) {
             case type::PrimitiveType::Kind::Bool:
               f.append<jasmin::Push<bool>>(false);
               break;
@@ -608,7 +609,7 @@ void HandleParseTreeNodeIndexExpression(ParseNodeIndex index,
   auto qt = context.QualifiedTypeOf(*++iter);
   auto& f = context.current_function();
   if (qt.type().kind() == type::Type::Kind::Slice) {
-    auto t    = qt.type().AsSlice().element_type();
+    auto t    = qt.type().as<type::SliceType>().element_type();
     auto size = type::Contour(t).byte_width();
     f.append<jasmin::Swap>();
     f.append<jasmin::Drop>();
@@ -621,7 +622,7 @@ void HandleParseTreeNodeIndexExpression(ParseNodeIndex index,
       Load(f, size);
     }
   } else if (qt.type().kind() == type::Type::Kind::BufferPointer) {
-    auto t    = qt.type().AsBufferPointer().pointee();
+    auto t    = qt.type().as<type::BufferPointerType>().pointee();
     auto size = type::Contour(t).byte_width();
     f.append<jasmin::Push<int64_t>>(size.value());
     f.append<jasmin::Multiply<int64_t>>();
@@ -663,7 +664,8 @@ void HandleParseTreeNodeIndexArgumentStart(ParseNodeIndex index,
 void HandleParseTreeNodePrefixInvocationArgumentEnd(ParseNodeIndex index,
                                                     EmitContext& context) {}
 
-void HandleParseTreeNodeNamedArgument(ParseNodeIndex index, EmitContext& context) {}
+void HandleParseTreeNodeNamedArgument(ParseNodeIndex index,
+                                      EmitContext& context) {}
 
 void HandleParseTreeNodeNamedArgumentStart(ParseNodeIndex index,
                                            EmitContext& context) {}
@@ -710,8 +712,7 @@ Iteration HandleParseTreeNodeExtensionStart(ParseNodeIndex index,
   return Iteration::SkipTo(index);
 }
 
-void HandleParseTreeNodeExtendWith(ParseNodeIndex, EmitContext&) {
-}
+void HandleParseTreeNodeExtendWith(ParseNodeIndex, EmitContext&) {}
 
 void HandleParseTreeNodeExtension(ParseNodeIndex, EmitContext&) {}
 
@@ -734,8 +735,9 @@ void HandleParseTreeNodeInterfaceLiteral(ParseNodeIndex index,
                                          EmitContext& context) {
   context.current_function().append<ConstructInterface>(
       jasmin::InstructionSpecification{
-          .parameters = static_cast<uint32_t>(context.Node(index).child_count) - 2,
-          .returns    = 1});
+          .parameters =
+              static_cast<uint32_t>(context.Node(index).child_count) - 2,
+          .returns = 1});
 }
 
 void HandleParseTreeNodeWhileLoopStart(ParseNodeIndex index,
@@ -890,7 +892,7 @@ void EmitContext::Push(std::span<jasmin::Value const> vs, type::Type t) {
     } break;
     case type::Type::Kind::Primitive: {
       NTH_REQUIRE((v.harden), vs.size() == 1);
-      switch (t.AsPrimitive().primitive_kind()) {
+      switch (t.as<type::PrimitiveType>().primitive_kind()) {
 #define IC_XMACRO_PRIMITIVE_CPP_TYPE_MAPPING(t, cpp)                           \
   case type::PrimitiveType::Kind::t:                                           \
     current_function().append<jasmin::Push<cpp>>(vs[0].as<cpp>());             \
@@ -904,7 +906,7 @@ void EmitContext::Push(std::span<jasmin::Value const> vs, type::Type t) {
     } break;
     default: {
       NTH_REQUIRE((v.harden), vs.size() == 1);
-      NTH_LOG("{}")<<={t};
+      NTH_LOG("{}") <<= {t};
       NTH_UNIMPLEMENTED();
     } break;
   }

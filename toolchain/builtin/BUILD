@@ -38,5 +38,7 @@ cc_library(
         "//ir:function",
         "//ir:module",
         "//type",
+        "//type:dependent",
+        "//type:opaque",
     ],
 )

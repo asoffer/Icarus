@@ -8,7 +8,7 @@
 #include "common/result.h"
 #include "nth/container/flyweight_set.h"
 #include "nth/container/interval.h"
-#include "type/basic.h"
+#include "type/type.h"
 
 namespace ic::type {
 
@@ -131,21 +131,28 @@ struct DependentParameterMapping {
   std::vector<Index> indices_;
 };
 
-#if 0
-struct DependentFunctionType : internal_type::BasicType {
-  std::optional<Type> operator()(std::span<AnyValue const>) const;
+struct DependentFunctionType : Type {
+  DependentFunctionType() = default;
+
+  std::optional<Type> operator()(std::span<AnyValue const>) const {
+    NTH_UNIMPLEMENTED();
+  }
+
+  friend void NthPrint(auto&, auto&, DependentFunctionType) {
+    NTH_UNIMPLEMENTED();
+  }
 
  private:
+  friend Type;
   friend DependentFunctionType Dependent(DependentTerm const &,
                                          DependentParameterMapping const &);
-  friend Type;
-  explicit constexpr DependentFunctionType(size_t index = 0)
-      : internal_type::BasicType(Type::Kind::DependentFunction, index) {}
 
+  explicit constexpr DependentFunctionType(uint32_t n)
+      : Type(Type::Kind::DependentFunction, n) {}
   std::pair<DependentTerm const &, DependentParameterMapping const &>
   components() const;
 };
-#endif
+
 DependentFunctionType Dependent(DependentTerm const &term,
                                 DependentParameterMapping const &mapping);
 

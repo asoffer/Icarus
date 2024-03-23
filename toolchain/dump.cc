@@ -1,7 +1,6 @@
 #include "absl/debugging/failure_signal_handler.h"
 #include "absl/debugging/symbolize.h"
-#include "common/constants.h"
-#include "common/internal/component.h"
+#include "common/constant/manifest.h"
 #include "common/result.h"
 #include "common/to_bytes.h"
 #include "nth/commandline/commandline.h"
@@ -12,6 +11,7 @@
 #include "nth/numeric/integer.h"
 #include "nth/process/exit_code.h"
 #include "nth/utility/early_exit.h"
+#include "type/pointer.h"
 
 namespace ic {
 namespace {
@@ -31,7 +31,8 @@ nth::Usage const nth::program_usage = {
             {
                 .name        = "icm",
                 .description = "Dumps the contents of a `.icm` file",
-                .execute     = ic::DumpIcm,
+                .execute = ic::DumpIcm,
+
             },
         },
 };
@@ -39,6 +40,7 @@ nth::Usage const nth::program_usage = {
 namespace ic {
 namespace {
 
+#if 0
 struct ShowTypes {
   using iterator = decltype(GlobalConstantTable().begin());
   ShowTypes(iterator b, iterator e) : b_(b), e_(e) {}
@@ -128,21 +130,24 @@ struct ShowTypes {
  private:
   iterator b_, e_;
 };
+#endif
 
 struct IcmLogger {
   friend Result NthDeserialize(auto& d, IcmLogger&) {
-    co_await nth::io::deserialize(d, GlobalConstantTable());
+    co_await MergeConstantManifest(d);
 
     NTH_LOG(
         "\n"
         "  Identifiers: {}\n"
-        "  Strings:     {}\n"
         "  Integers:    {}\n"
-        "  Types:       {}\n") <<= {
-        GlobalConstantTable().identifiers(),
-        GlobalConstantTable().strings(),
-        GlobalConstantTable().integers(),
-        ShowTypes{GlobalConstantTable().begin(), GlobalConstantTable().end()},
+        "  Strings:     {}\n"
+        "  Types:\n"
+        "    Pointers: {}\n"
+        "    BufferPointers: {}\n"
+        "    Slices: {}\n") <<= {
+        internal_common::Identifiers(), internal_common::Integers(),
+        internal_common::Strings(),     type::Pointers(),
+        type::BufferPointers(),         type::Slices(),
     };
     // co_await nth::io::deserialize(d, foreign);
     // co_await nth::io::deserialize(d, module.program());

@@ -1,6 +1,8 @@
 #include "type/cast.h"
 
 #include "common/integer.h"
+#include "type/primitive.h"
+#include "type/refinement.h"
 
 namespace ic::type {
 namespace {
@@ -8,7 +10,8 @@ namespace {
 bool ImplicitCast(Type from, Type to) {
   if (from == to) { return true; }
   if (from == Integer) {
-    if (to.kind() == Type::Kind::Primitive and Numeric(to.AsPrimitive())) {
+    if (to.kind() == Type::Kind::Primitive and
+        Numeric(to.as<type::PrimitiveType>())) {
       return true;
     }
   } else if (from == U8) {
@@ -30,11 +33,13 @@ bool ImplicitCast(Type from, Type to) {
 bool ImplicitCast(AnyValue const &from, Type to) {
   if (from.has_value()) {
     if (to.kind() == Type::Kind::Refinement) {
-      if (to.AsRefinement().underlying() != from.type()) { return false; }
-      return to.AsRefinement()(from);
+      if (to.as<type::RefinementType>().underlying() != from.type()) {
+        return false;
+      }
+      return to.as<type::RefinementType>()(from);
     } else if (from.type() == Integer and to.kind() == Type::Kind::Primitive) {
       auto n = from.value()[0].as<::ic::Integer>();
-      switch (to.AsPrimitive().primitive_kind()) {
+      switch (to.as<type::PrimitiveType>().primitive_kind()) {
         default: NTH_UNREACHABLE();
         case PrimitiveType::Kind::I8:
           return n >= std::numeric_limits<int8_t>::lowest() and

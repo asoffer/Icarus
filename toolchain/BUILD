@@ -55,10 +55,10 @@ cc_binary(
     name = "dump",
     srcs = ["dump.cc"],
     deps = [
-        "//common:constants",
         "//common:result",
         "//common:to_bytes",
-        "//common/internal:component",
+        "//common/constant:manifest",
+        "//type:pointer",
         "@com_google_absl//absl/debugging:failure_signal_handler",
         "@com_google_absl//absl/debugging:symbolize",
         "@nth_cc//nth/commandline:main",

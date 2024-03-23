@@ -4,8 +4,8 @@
 #include <memory>
 #include <utility>
 
-#include "common/type.h"
 #include "jasmin/core/value.h"
+#include "type/type.h"
 
 namespace ic {
 

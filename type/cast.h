@@ -2,7 +2,7 @@
 #define ICARUS_TYPE_CAST_H
 
 #include "common/any_value.h"
-#include "common/type.h"
+#include "type/type.h"
 
 namespace ic::type {
 

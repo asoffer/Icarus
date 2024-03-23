@@ -5,7 +5,6 @@
 #include "jasmin/core/function.h"
 #include "nth/container/stack.h"
 #include "type/function.h"
-#include "type/primitive.h"
 #include "type/refinement.h"
 
 namespace ic::type {
@@ -71,7 +70,7 @@ AnyValue DependentTerm::Call(AnyValue const &f, AnyValue const &v) {
   for (jasmin::Value value : v.value()) { stack.push(value); }
   fn.invoke(stack);
   std::span results = stack.top_span(stack.size());
-  return AnyValue(f.type().AsFunction().returns()[0],
+  return AnyValue(f.type().as<type::FunctionType>().returns()[0],
                   std::vector(results.begin(), results.end()));
 }
 
@@ -191,8 +190,8 @@ bool DependentTerm::bind(AnyValue const &value) {
   // if (parameter == argument_type) {
   //   // Okay.
   // } else if (parameter.kind() == Type::Kind::Refinement and
-  //            parameter.AsRefinement().underlying() == Type_ and
-  //            parameter.AsRefinement()(value)) {
+  //            parameter.as<type::RefinementType>().underlying() == Type_ and
+  //            parameter.as<type::RefinementType>()(value)) {
   //   // Okay.
   // } else {
   //   return false;
@@ -215,6 +214,54 @@ DependentParameterMapping::Index DependentParameterMapping::Index::Type(
 DependentParameterMapping::Index DependentParameterMapping::Index::Value(
     uint16_t n) {
   return Index(Kind::Value, n);
+}
+
+std::pair<DependentTerm const &, DependentParameterMapping const &>
+DependentFunctionType::components() const {
+  NTH_UNIMPLEMENTED();
+  //   auto [term_index, mapping_index] =
+  //       type_system->dependent_term_mapping_pairs.from_index(data());
+  //   return std::pair<DependentTerm const&, DependentParameterMapping const&>(
+  //       type_system->dependent_terms.from_index(term_index),
+  //       type_system->dependent_mapping.from_index(term_index));
+}
+
+// std::optional<Type> DependentFunctionType::operator()(
+//     std::span<AnyValue const> values) const {
+//   NTH_UNIMPLEMENTED();
+//   auto [term, mapping] = components();
+//   auto term_copy       = term;
+//   for (auto index : mapping) {
+//     switch (index.kind()) {
+//       case DependentParameterMapping::Index::Kind::Type:
+//         if (not term_copy.bind(AnyValue(Type_,
+//         values[index.index()].type()))) {
+//           return std::nullopt;
+//         }
+//         break;
+//       case DependentParameterMapping::Index::Kind::Value:
+//         if (not term_copy.bind(values[index.index()])) {
+//           return std::nullopt;
+//         }
+//         break;
+//     }
+//   }
+//   if (auto* v = term_copy.evaluate()) { return v->value()[0].as<Type>(); }
+//   return std::nullopt;
+// }
+
+DependentFunctionType Dependent(DependentTerm const &term,
+                                DependentParameterMapping const &mapping) {
+  NTH_UNIMPLEMENTED();
+  // size_t term_index = type_system->dependent_terms.index(
+  //     type_system->dependent_terms.insert(term).first);
+  // size_t mapping_index = type_system->dependent_mapping.index(
+  //     type_system->dependent_mapping.insert(mapping).first);
+  // size_t pair_index = type_system->dependent_term_mapping_pairs.index(
+  //     type_system->dependent_term_mapping_pairs
+  //         .insert({term_index, mapping_index})
+  //         .first);
+  // return DependentFunctionType(pair_index);
 }
 
 }  // namespace ic::type

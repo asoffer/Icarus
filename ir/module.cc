@@ -1,6 +1,7 @@
 #include "ir/module.h"
 
 #include "absl/strings/str_cat.h"
+#include "type/primitive.h"
 
 namespace ic {
 

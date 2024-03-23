@@ -4,16 +4,17 @@
 #include <span>
 #include <string_view>
 
+#include "common/constant/manifest.h"
 #include "common/foreign_function.h"
 #include "common/identifier.h"
 #include "common/result.h"
-#include "common/constants.h"
 #include "common/to_bytes.h"
 #include "ir/module.h"
 #include "jasmin/core/function_registry.h"
 #include "nth/io/serialize/serialize.h"
 #include "nth/io/writer/writer.h"
 #include "nth/numeric/integer.h"
+#include "type/primitive.h"
 
 namespace ic {
 
@@ -46,7 +47,7 @@ struct ModuleSerializer : W {
     co_await nth::io::serialize(s, t);
     switch (t.kind()) {
       case type::Type::Kind::Primitive: {
-        auto p = t.AsPrimitive();
+        auto p = t.as<type::PrimitiveType>();
         switch (p.primitive_kind()) {
           case type::PrimitiveType::Kind::Bool:
             co_return nth::io::serialize(s, value.value()[0].as<bool>());
@@ -123,7 +124,7 @@ struct ModuleSerializer : W {
   }
 
   friend Result NthSerialize(ModuleSerializer& s, Module const& module) {
-    co_await nth::io::serialize(s, GlobalConstantTable());
+    co_await nth::io::serialize(s, ConstantManifest::Global());
     co_await nth::io::serialize(s, s.context_.foreign);
     co_await nth::io::serialize(s, module.program());
     co_return nth::io::serialize(s, module.entries());
