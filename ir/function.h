@@ -95,7 +95,7 @@ struct ConstructParametersType : jasmin::Instruction<ConstructParametersType> {
     std::vector<type::ParametersType::Parameter> parameters;
     parameters.reserve(inputs.size());
     for (jasmin::Value value : inputs) {
-      parameters.emplace_back().type = value.as<type::Type>();
+      parameters.emplace_back().type = value.as<type::Type>().index();
     }
     outputs[0] = type::Type(type::Parameters(std::move(parameters)));
   }

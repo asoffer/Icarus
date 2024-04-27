@@ -10,6 +10,25 @@ cc_library(
 )
 
 cc_library(
+    name = "constant",
+    hdrs = ["constant.h"],
+    deps = [
+        "@nth_cc//nth/meta:type",
+        "@com_google_absl//absl/container:flat_hash_set",
+    ],
+)
+
+cc_test(
+    name = "constant_test",
+    srcs = ["constant_test.cc"],
+    deps = [
+        ":constant",
+        "@nth_cc//nth/debug",
+        "@nth_cc//nth/test:main",
+    ],
+)
+
+cc_library(
     name = "debug",
     hdrs = ["debug.h"],
 )

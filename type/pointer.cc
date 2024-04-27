@@ -22,44 +22,44 @@ absl::flat_hash_map<Type, Constant> const& BufferPointers() {
 }
 absl::flat_hash_map<Type, Constant> const& Slices() { return *slices_; }
 
-Type PointerType::pointee() const {
-  return Type(Type::from_index, ConstantManifest::Global()[index()].value());
-}
-
-Type SliceType::element_type() const {
-  return Type(Type::from_index, ConstantManifest::Global()[index()].value());
-}
-
-Type BufferPointerType::pointee() const {
-  return Type(Type::from_index, ConstantManifest::Global()[index()].value());
-}
-
-PointerType Ptr(Type t) {
-  auto [iter, inserted] =
-      pointers_->emplace(t, ConstantManifest::Global().NextSlot());
-  if (inserted) {
-    InsertIntoGlobalConstantManifest(ConstantCategory::PointerType, t.index());
-  }
-  return PointerType(iter->second.value());
-}
-
-BufferPointerType BufPtr(Type t) {
-  auto [iter, inserted] =
-      buffer_pointers_->emplace(t, ConstantManifest::Global().NextSlot());
-  if (inserted) {
-    InsertIntoGlobalConstantManifest(ConstantCategory::BufferPointerType,
-                                     t.index());
-  }
-  return BufferPointerType(iter->second.value());
-}
-
-SliceType Slice(Type t) {
-  auto [iter, inserted] =
-      slices_->emplace(t, ConstantManifest::Global().NextSlot());
-  if (inserted) {
-    InsertIntoGlobalConstantManifest(ConstantCategory::SliceType, t.index());
-  }
-  return SliceType(iter->second.value());
-}
+// Type PointerType::pointee() const {
+//   return Type(Type::from_index, ConstantManifest::Global()[index()].value());
+// }
+// 
+// Type SliceType::element_type() const {
+//   return Type(Type::from_index, ConstantManifest::Global()[index()].value());
+// }
+// 
+// Type BufferPointerType::pointee() const {
+//   return Type(Type::from_index, ConstantManifest::Global()[index()].value());
+// }
+// 
+// PointerType Ptr(Type t) {
+//   auto [iter, inserted] =
+//       pointers_->emplace(t, ConstantManifest::Global().NextSlot());
+//   if (inserted) {
+//     InsertIntoGlobalConstantManifest(ConstantCategory::PointerType, t.index());
+//   }
+//   return PointerType(iter->second.value());
+// }
+// 
+// BufferPointerType BufPtr(Type t) {
+//   auto [iter, inserted] =
+//       buffer_pointers_->emplace(t, ConstantManifest::Global().NextSlot());
+//   if (inserted) {
+//     InsertIntoGlobalConstantManifest(ConstantCategory::BufferPointerType,
+//                                      t.index());
+//   }
+//   return BufferPointerType(iter->second.value());
+// }
+// 
+// SliceType Slice(Type t) {
+//   auto [iter, inserted] =
+//       slices_->emplace(t, ConstantManifest::Global().NextSlot());
+//   if (inserted) {
+//     InsertIntoGlobalConstantManifest(ConstantCategory::SliceType, t.index());
+//   }
+//   return SliceType(iter->second.value());
+// }
 
 }  // namespace ic::type

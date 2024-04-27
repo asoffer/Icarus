@@ -233,7 +233,7 @@ cc_library(
     deps = [
         ":function",
         ":module",
-        "//common/constant:manifest",
+        "//common/constant:table",
         "//common:foreign_function",
         "//common:result",
         "//common:to_bytes",

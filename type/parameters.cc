@@ -10,8 +10,9 @@
 
 namespace ic::type {
 
+#if 0
 size_t ParametersType::size() const {
-  return ConstantManifest::Global()[index()].value();
+  return ConstantManifest::Global()[index()].value() / 2;
 }
 
 Parameter ParametersType::operator[](size_t index) const {
@@ -58,5 +59,6 @@ ParametersType Parameters(std::span<Parameter const> p) {
 ParametersType Parameters(std::initializer_list<Parameter> p) {
   return Parameters(std::span<Parameter const>(p.begin(), p.end()));
 }
+#endif
 
 }  // namespace ic::type

@@ -164,7 +164,7 @@ void ConstructFunctionType::consume(jasmin::Input<type::Type, type::Type> in,
                            std::move(returns)));
   } else {
     out.set(type::Function(
-        type::Parameters({{.name = Identifier(""), .type = parameter}}),
+        type::Parameters({{.name = Identifier(""), .type = parameter.index()}}),
         std::move(returns)));
   }
 }

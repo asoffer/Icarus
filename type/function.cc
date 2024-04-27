@@ -7,6 +7,7 @@
 
 namespace ic::type {
 
+#if 0
 struct FunctionInsertionType {
   type::ParametersType parameters;
   std::span<type::Type const> returns;
@@ -72,5 +73,6 @@ ReturnsType::iterator ReturnsType::begin() const {
 ReturnsType::iterator ReturnsType::end() const {
   return iterator(&ConstantManifest::Global()[index_ + size_]);
 }
+#endif
 
 }  // namespace ic::type

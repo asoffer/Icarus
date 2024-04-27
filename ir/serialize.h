@@ -4,7 +4,7 @@
 #include <span>
 #include <string_view>
 
-#include "common/constant/manifest.h"
+#include "common/constant/table.h"
 #include "common/foreign_function.h"
 #include "common/identifier.h"
 #include "common/result.h"
@@ -124,7 +124,7 @@ struct ModuleSerializer : W {
   }
 
   friend Result NthSerialize(ModuleSerializer& s, Module const& module) {
-    co_await nth::io::serialize(s, ConstantManifest::Global());
+    co_await nth::io::serialize(s, ConstantTable::Global());
     co_await nth::io::serialize(s, s.context_.foreign);
     co_await nth::io::serialize(s, module.program());
     co_return nth::io::serialize(s, module.entries());

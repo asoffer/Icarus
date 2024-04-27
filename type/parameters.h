@@ -1,19 +1,35 @@
 #ifndef ICARUS_TYPE_PARAMETERS_H
 #define ICARUS_TYPE_PARAMETERS_H
 
+#include "absl/hash/hash.h"
 #include "common/identifier.h"
+#include "common/internal/parameters.h"
 #include "type/type.h"
 
 namespace ic::type {
 
-Parameter Param(Identifier name, Type t) {
+inline Parameter Param(Identifier name, Type t) {
   return {.name = name, .type = t.index()};
 };
-Parameter Param(Type t) { return {.type = t.index()}; };
+inline Parameter Param(Type t) { return {.type = t.index()}; };
 
 // Represents a set of parameters to an invocable type.
 struct ParametersType : Type {
   explicit ParametersType() = default;
+
+  struct Insertion {
+    static size_t HashOf(std::span<ConstantComponent const> parameters) {
+      size_t h = 0;
+      for (ConstantComponent const& p : parameters) {
+        h = absl::HashOf(h, p.value());
+      }
+      return h;
+    }
+    std::span<type::Parameter const> parameters;
+    size_t index;
+
+    operator size_t() const { return index; }
+  };
 
   using Parameter = ::ic::type::Parameter;
 

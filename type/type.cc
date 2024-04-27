@@ -19,7 +19,9 @@ uint64_t opaque_count = 0;
 Type::Type(from_index_t, size_t index) {
   mutable_value() =
       (index << 8) |
-      static_cast<uint8_t>(ConstantManifest::Global()[index].category());
+      static_cast<uint8_t>(0
+                           // ConstantManifest::Global()[index].category()
+      );
 }
 
 size_t JasminSize(Type t) {
